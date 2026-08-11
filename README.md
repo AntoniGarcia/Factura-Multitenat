@@ -1,2 +1,2 @@
 # Factura-Multitenat
-Aplicacion web PWA
+Aplicacion web progresiva (PWA)
