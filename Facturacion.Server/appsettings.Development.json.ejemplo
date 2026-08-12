@@ -1,0 +1,8 @@
+{
+  "//": "Copia este archivo como appsettings.Development.json y ajusta la cadena de conexión.",
+  "//_": "appsettings.Development.json está en .gitignore: no lo subas, aquí va la configuración local.",
+
+  "ConnectionStrings": {
+    "BaseDeDatos": "Server=.;Database=FacturacionDev;Trusted_Connection=True;TrustServerCertificate=True;Encrypt=False"
+  }
+}

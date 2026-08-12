@@ -1,0 +1,13 @@
+<Project>
+
+  <PropertyGroup>
+    <LangVersion>latest</LangVersion>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <!-- Las fechas y los importes se presentan en es-MX: con globalización invariante
+         el formato de moneda y de fecha larga queda mal en toda la aplicación. -->
+    <InvariantGlobalization>false</InvariantGlobalization>
+    <VersionPrefix>0.1.0</VersionPrefix>
+  </PropertyGroup>
+
+</Project>
