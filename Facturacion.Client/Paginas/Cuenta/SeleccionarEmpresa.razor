@@ -1,0 +1,46 @@
+@page "/seleccionar-empresa"
+@attribute [Authorize]
+@using Facturacion.Client.Componentes.Comunes
+@using Facturacion.Client.Servicios.Plataforma
+@using Facturacion.Shared.Comun
+@inject ServicioDeSesion Sesion
+@inject NavigationManager Navegacion
+
+<PageTitle>Elegir empresa</PageTitle>
+
+<section class="tarjeta-acceso">
+    <h1>Elige la empresa</h1>
+
+    <p>Vas a trabajar en la empresa que elijas. Puedes cambiarla cuando quieras.</p>
+
+    <PanelErrores Problema="_problema" />
+
+    <ul class="lista-empresas">
+        @foreach (var empresa in Sesion.Sesion?.Empresas ?? [])
+        {
+            <li>
+                <button type="button" disabled="@_cambiando" @onclick="() => Elegir(empresa.Id)">
+                    <span class="empresa-nombre">@empresa.NombreFiscal</span>
+                    <span class="empresa-rfc">@empresa.Rfc</span>
+                </button>
+            </li>
+        }
+    </ul>
+</section>
+
+@code {
+    private DetalleProblema? _problema;
+    private bool _cambiando;
+
+    private async Task Elegir(Guid empresaId)
+    {
+        _cambiando = true;
+        _problema = null;
+
+        _problema = await Sesion.CambiarEmpresaAsync(empresaId);
+
+        _cambiando = false;
+
+        if (_problema is null) Navegacion.NavigateTo("/");
+    }
+}

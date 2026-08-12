@@ -1,0 +1,7 @@
+@inject NavigationManager Navegacion
+
+@* Manda a la pantalla de inicio de sesión cuando la ruta exige autenticación y no hay sesión. *@
+
+@code {
+    protected override void OnInitialized() => Navegacion.NavigateTo("/iniciar-sesion", replace: true);
+}

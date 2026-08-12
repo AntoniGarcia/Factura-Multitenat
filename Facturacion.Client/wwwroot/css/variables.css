@@ -1,0 +1,26 @@
+/*
+  Variables semánticas. Ningún componente escribe un color literal, nunca (CLAUDE.md §8).
+
+  Esto es el mínimo que necesita la fase 1 para no dejar colores sueltos en las pantallas
+  de acceso. Los tres temas —claro, oscuro ergonómico y cálido— y el resto del conjunto de
+  variables son la fase 2, que además los aplicará con un atributo data-tema en la raíz.
+*/
+
+:root {
+    --superficie: #FFFFFF;
+    --superficie-elevada: #FFFFFF;
+    --fondo: #F7F8FA;
+    --borde: #E3E6EB;
+    --borde-fuerte: #C6CBD4;
+    --texto: #1A1D23;
+    --texto-suave: #5A6270;
+    --texto-inverso: #FFFFFF;
+    --acento: #1B3A6B;
+    --acento-suave: #E8EDF5;
+    --estado-error: #B42318;
+    --estado-advertencia: #B54708;
+    --foco: #1B3A6B;
+
+    --radio: 6px;
+    --alto-control: 36px;
+}

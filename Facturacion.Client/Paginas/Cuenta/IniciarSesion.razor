@@ -1,0 +1,65 @@
+@page "/iniciar-sesion"
+@using Facturacion.Client.Componentes.Comunes
+@using Facturacion.Client.Servicios.Plataforma
+@using Facturacion.Shared.Comun
+@using Facturacion.Shared.Plataforma
+@inject ServicioDeSesion Sesion
+@inject NavigationManager Navegacion
+
+<PageTitle>Iniciar sesión</PageTitle>
+
+<section class="tarjeta-acceso">
+    <h1>Iniciar sesión</h1>
+
+    <EditForm Model="_datos" OnValidSubmit="Entrar" FormName="acceso">
+        <div class="campo">
+            <label for="correo">Correo</label>
+            <InputText id="correo" @bind-Value="_datos.Correo" type="email" autocomplete="username" />
+        </div>
+
+        <div class="campo">
+            <label for="contrasena">Contraseña</label>
+            <InputText id="contrasena" @bind-Value="_datos.Contrasena" type="password" autocomplete="current-password" />
+        </div>
+
+        <div class="campo-casilla">
+            <InputCheckbox id="mantener" @bind-Value="_datos.MantenerSesion" />
+            <label for="mantener">Mantener sesión iniciada</label>
+        </div>
+
+        <PanelErrores Problema="_problema" />
+
+        <button type="submit" disabled="@_enviando">
+            @(_enviando ? "Entrando…" : "Entrar")
+        </button>
+    </EditForm>
+</section>
+
+@code {
+    private sealed class Datos
+    {
+        public string Correo { get; set; } = string.Empty;
+        public string Contrasena { get; set; } = string.Empty;
+        public bool MantenerSesion { get; set; }
+    }
+
+    private readonly Datos _datos = new();
+    private DetalleProblema? _problema;
+    private bool _enviando;
+
+    private async Task Entrar()
+    {
+        _enviando = true;
+        _problema = null;
+
+        _problema = await Sesion.IniciarSesionAsync(
+            new PeticionInicioSesion(_datos.Correo, _datos.Contrasena, _datos.MantenerSesion));
+
+        _enviando = false;
+
+        if (_problema is not null) return;
+
+        // Con una sola empresa el token ya salió con ella activa; con varias hay que elegir.
+        Navegacion.NavigateTo(Sesion.Sesion?.EmpresaActivaId is null ? "/seleccionar-empresa" : "/");
+    }
+}

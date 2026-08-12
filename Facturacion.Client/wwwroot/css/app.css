@@ -1,15 +1,157 @@
-.valid.modified:not([type=checkbox]) {
-    outline: 1px solid #26b050;
+@import "variables.css";
+
+/*
+  Estilos mínimos de la fase 1: lo justo para que las pantallas de acceso sean usables y
+  legibles. El sistema de diseño completo —tres temas, densidad, tipografías— es la fase 2.
+  Todo color sale de una variable; ninguno se escribe literal (CLAUDE.md §8).
+*/
+
+body {
+    margin: 0;
+    background: var(--fondo);
+    color: var(--texto);
+    font-family: system-ui, sans-serif;
+}
+
+h1 {
+    font-size: 1.25rem;
+    font-weight: 500;
+}
+
+.puerta-arranque {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 100vh;
+    color: var(--texto-suave);
+}
+
+.tarjeta-acceso {
+    max-width: 24rem;
+    margin: 3rem auto;
+    padding: 1.5rem;
+    background: var(--superficie);
+    border: 1px solid var(--borde);
+    border-radius: var(--radio);
+}
+
+.campo {
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+    margin-bottom: 0.75rem;
+}
+
+.campo label {
+    color: var(--texto-suave);
+    font-size: 0.875rem;
+}
+
+.campo input {
+    height: var(--alto-control);
+    padding: 0 0.5rem;
+    border: 1px solid var(--borde-fuerte);
+    border-radius: var(--radio);
+    background: var(--superficie);
+    color: var(--texto);
+}
+
+.campo-casilla {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    margin-bottom: 1rem;
+}
+
+button {
+    min-height: var(--alto-control);
+    padding: 0 0.75rem;
+    border: 1px solid var(--acento);
+    border-radius: var(--radio);
+    background: var(--acento);
+    color: var(--texto-inverso);
+    cursor: pointer;
+}
+
+button:disabled {
+    cursor: default;
+    opacity: 0.6;
+}
+
+/* El foco visible no es negociable: un capturista factura ocho horas con el teclado. */
+:focus-visible {
+    outline: 2px solid var(--foco);
+    outline-offset: 2px;
+}
+
+.lista-empresas {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+
+.lista-empresas button {
+    width: 100%;
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.125rem;
+    padding: 0.5rem 0.75rem;
+    background: var(--superficie);
+    color: var(--texto);
+    border-color: var(--borde-fuerte);
+    text-align: left;
+}
+
+.empresa-rfc {
+    color: var(--texto-suave);
+    font-family: ui-monospace, monospace;
+    font-size: 0.8125rem;
+}
+
+.panel-errores {
+    margin-bottom: 0.75rem;
+    padding: 0.625rem 0.75rem;
+    border: 1px solid var(--estado-error);
+    border-radius: var(--radio);
+    background: var(--superficie);
+}
+
+.panel-errores-titulo {
+    margin: 0;
+    color: var(--estado-error);
+}
+
+.panel-errores-detalle,
+.panel-errores-campos {
+    margin: 0.375rem 0 0;
+    color: var(--texto);
+    font-size: 0.875rem;
+}
+
+.panel-errores-traza {
+    margin: 0.5rem 0 0;
+    color: var(--texto-suave);
+    font-size: 0.75rem;
+}
+
+.panel-errores-traza code {
+    font-family: ui-monospace, monospace;
+    user-select: all;
 }
 
 .invalid {
-    outline: 1px solid red;
+    outline: 1px solid var(--estado-error);
 }
 
 .validation-message {
-    color: red;
+    color: var(--estado-error);
 }
 
+/* Andamio de Blazor: la fase 2 lo integra al sistema de diseño. */
 #blazor-error-ui {
     color-scheme: light only;
     background: lightyellow;
@@ -24,22 +166,12 @@
     z-index: 1000;
 }
 
-    #blazor-error-ui .dismiss {
-        cursor: pointer;
-        position: absolute;
-        right: 0.75rem;
-        top: 0.5rem;
-    }
-
-.blazor-error-boundary {
-    background: url(data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNTYiIGhlaWdodD0iNDkiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyIgeG1sbnM6eGxpbms9Imh0dHA6Ly93d3cudzMub3JnLzE5OTkveGxpbmsiIG92ZXJmbG93PSJoaWRkZW4iPjxkZWZzPjxjbGlwUGF0aCBpZD0iY2xpcDAiPjxyZWN0IHg9IjIzNSIgeT0iNTEiIHdpZHRoPSI1NiIgaGVpZ2h0PSI0OSIvPjwvY2xpcFBhdGg+PC9kZWZzPjxnIGNsaXAtcGF0aD0idXJsKCNjbGlwMCkiIHRyYW5zZm9ybT0idHJhbnNsYXRlKC0yMzUgLTUxKSI+PHBhdGggZD0iTTI2My41MDYgNTFDMjY0LjcxNyA1MSAyNjUuODEzIDUxLjQ4MzcgMjY2LjYwNiA1Mi4yNjU4TDI2Ny4wNTIgNTIuNzk4NyAyNjcuNTM5IDUzLjYyODMgMjkwLjE4NSA5Mi4xODMxIDI5MC41NDUgOTIuNzk1IDI5MC42NTYgOTIuOTk2QzI5MC44NzcgOTMuNTEzIDI5MSA5NC4wODE1IDI5MSA5NC42NzgyIDI5MSA5Ny4wNjUxIDI4OS4wMzggOTkgMjg2LjYxNyA5OUwyNDAuMzgzIDk5QzIzNy45NjMgOTkgMjM2IDk3LjA2NTEgMjM2IDk0LjY3ODIgMjM2IDk0LjM3OTkgMjM2LjAzMSA5NC4wODg2IDIzNi4wODkgOTMuODA3MkwyMzYuMzM4IDkzLjAxNjIgMjM2Ljg1OCA5Mi4xMzE0IDI1OS40NzMgNTMuNjI5NCAyNTkuOTYxIDUyLjc5ODUgMjYwLjQwNyA1Mi4yNjU4QzI2MS4yIDUxLjQ4MzcgMjYyLjI5NiA1MSAyNjMuNTA2IDUxWk0yNjMuNTg2IDY2LjAxODNDMjYwLjczNyA2Ni4wMTgzIDI1OS4zMTMgNjcuMTI0NSAyNTkuMzEzIDY5LjMzNyAyNTkuMzEzIDY5LjYxMDIgMjU5LjMzMiA2OS44NjA4IDI1OS4zNzEgNzAuMDg4N0wyNjEuNzk1IDg0LjAxNjEgMjY1LjM4IDg0LjAxNjEgMjY3LjgyMSA2OS43NDc1QzI2Ny44NiA2OS43MzA5IDI2Ny44NzkgNjkuNTg3NyAyNjcuODc5IDY5LjMxNzkgMjY3Ljg3OSA2Ny4xMTgyIDI2Ni40NDggNjYuMDE4MyAyNjMuNTg2IDY2LjAxODNaTTI2My41NzYgODYuMDU0N0MyNjEuMDQ5IDg2LjA1NDcgMjU5Ljc4NiA4Ny4zMDA1IDI1OS43ODYgODkuNzkyMSAyNTkuNzg2IDkyLjI4MzcgMjYxLjA0OSA5My41Mjk1IDI2My41NzYgOTMuNTI5NSAyNjYuMTE2IDkzLjUyOTUgMjY3LjM4NyA5Mi4yODM3IDI2Ny4zODcgODkuNzkyMSAyNjcuMzg3IDg3LjMwMDUgMjY2LjExNiA4Ni4wNTQ3IDI2My41NzYgODYuMDU0N1oiIGZpbGw9IiNGRkU1MDAiIGZpbGwtcnVsZT0iZXZlbm9kZCIvPjwvZz48L3N2Zz4=) no-repeat 1rem/1.8rem, #b32121;
-    padding: 1rem 1rem 1rem 3.7rem;
-    color: white;
+#blazor-error-ui .dismiss {
+    cursor: pointer;
+    position: absolute;
+    right: 0.75rem;
+    top: 0.5rem;
 }
-
-    .blazor-error-boundary::after {
-        content: "An error has occurred."
-    }
 
 .loading-progress {
     position: absolute;
@@ -50,19 +182,19 @@
     margin: 0 auto 0 auto;
 }
 
-    .loading-progress circle {
-        fill: none;
-        stroke: #e0e0e0;
-        stroke-width: 0.6rem;
-        transform-origin: 50% 50%;
-        transform: rotate(-90deg);
-    }
+.loading-progress circle {
+    fill: none;
+    stroke: var(--borde);
+    stroke-width: 0.6rem;
+    transform-origin: 50% 50%;
+    transform: rotate(-90deg);
+}
 
-        .loading-progress circle:last-child {
-            stroke: #1b6ec2;
-            stroke-dasharray: calc(3.141 * var(--blazor-load-percentage, 0%) * 0.8), 500%;
-            transition: stroke-dasharray 0.05s ease-in-out;
-        }
+.loading-progress circle:last-child {
+    stroke: var(--acento);
+    stroke-dasharray: calc(3.141 * var(--blazor-load-percentage, 0%) * 0.8), 500%;
+    transition: stroke-dasharray 0.05s ease-in-out;
+}
 
 .loading-progress-text {
     position: absolute;
@@ -71,19 +203,6 @@
     inset: calc(20vh + 3.25rem) 0 auto 0.2rem;
 }
 
-    .loading-progress-text:after {
-        content: var(--blazor-load-percentage-text, "Loading");
-    }
-
-code {
-    color: #c02d76;
-}
-
-.form-floating > .form-control-plaintext::placeholder, .form-floating > .form-control::placeholder {
-    color: var(--bs-secondary-color);
-    text-align: end;
-}
-
-.form-floating > .form-control-plaintext:focus::placeholder, .form-floating > .form-control:focus::placeholder {
-    text-align: start;
+.loading-progress-text:after {
+    content: var(--blazor-load-percentage-text, "Cargando");
 }

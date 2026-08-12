@@ -1,0 +1,35 @@
+@using Facturacion.Client.Servicios.Plataforma
+@inject ServicioDeSesion Sesion
+
+@*
+    Antes de renderizar nada, intenta recuperar la sesión con la cookie de refresh.
+    Sin esta puerta, cada F5 muestra la interfaz de invitado durante un instante y luego
+    salta a la de usuario autenticado (CLAUDE.md §4).
+*@
+
+@if (_listo)
+{
+    @ChildContent
+}
+else
+{
+    <div class="puerta-arranque" role="status" aria-live="polite">
+        <p>Restaurando tu sesión…</p>
+    </div>
+}
+
+@code {
+    [Parameter, EditorRequired]
+    public RenderFragment ChildContent { get; set; } = default!;
+
+    private bool _listo;
+
+    protected override async Task OnInitializedAsync()
+    {
+        // Que falle es lo normal cuando no hay cookie: significa que no hay sesión que
+        // restaurar, no que algo esté mal.
+        await Sesion.RefrescarAsync();
+
+        _listo = true;
+    }
+}
