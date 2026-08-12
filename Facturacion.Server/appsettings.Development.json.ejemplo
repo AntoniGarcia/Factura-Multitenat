@@ -1,8 +1,21 @@
 {
-  "//": "Copia este archivo como appsettings.Development.json y ajusta la cadena de conexión.",
+  "//": "Copia este archivo como appsettings.Development.json y ajusta los valores.",
   "//_": "appsettings.Development.json está en .gitignore: no lo subas, aquí va la configuración local.",
 
   "ConnectionStrings": {
     "BaseDeDatos": "Server=.;Database=FacturacionDev;Trusted_Connection=True;TrustServerCertificate=True;Encrypt=False"
+  },
+
+  "//Jwt": "ClaveDeFirma: mínimo 32 caracteres. Genera una propia y no la compartas entre equipos. En producción va en una variable de entorno, nunca en un archivo.",
+  "Jwt": {
+    "Emisor": "facturacion-local",
+    "Audiencia": "facturacion-client",
+    "ClaveDeFirma": "cambia-esta-clave-por-una-tuya-de-al-menos-32-caracteres"
+  },
+
+  "//Sembrado": "Solo se usa en Development. Si quitas estas dos claves, el sembrado no corre. Crea una cuenta con dos empresas y un usuario con los seis permisos.",
+  "Sembrado": {
+    "Correo": "contador@ejemplo.mx",
+    "Contrasena": "PonUnaContrasena123"
   }
 }

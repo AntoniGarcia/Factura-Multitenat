@@ -11,11 +11,14 @@
   <ItemGroup>
     <PackageVersion Include="Microsoft.AspNetCore.Components.WebAssembly" Version="10.0.10" />
     <PackageVersion Include="Microsoft.AspNetCore.Components.WebAssembly.DevServer" Version="10.0.10" />
+    <PackageVersion Include="Microsoft.AspNetCore.Components.Authorization" Version="10.0.10" />
     <PackageVersion Include="Microsoft.AspNetCore.Components.WebAssembly.Server" Version="10.0.10" />
+    <PackageVersion Include="Microsoft.AspNetCore.Authentication.JwtBearer" Version="10.0.10" />
     <PackageVersion Include="Microsoft.AspNetCore.Identity.EntityFrameworkCore" Version="10.0.10" />
     <PackageVersion Include="Microsoft.AspNetCore.OpenApi" Version="10.0.10" />
     <PackageVersion Include="Microsoft.EntityFrameworkCore.Design" Version="10.0.10" />
     <PackageVersion Include="Microsoft.EntityFrameworkCore.SqlServer" Version="10.0.10" />
+    <PackageVersion Include="Microsoft.Extensions.Http" Version="10.0.10" />
     <!-- Fijado por transitividad: Microsoft.AspNetCore.OpenApi 10.0.10 arrastra
          Microsoft.OpenApi 2.0.0, que tiene la vulnerabilidad GHSA-v5pm-xwqc-g5wc
          (corregida a partir de 2.7.5). -->

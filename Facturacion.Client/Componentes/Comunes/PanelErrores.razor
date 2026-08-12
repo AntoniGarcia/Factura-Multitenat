@@ -1,0 +1,44 @@
+@using Facturacion.Shared.Comun
+
+@*
+    Pinta un Problem Details. El traceId se muestra siempre: es lo que el usuario le dicta a
+    soporte para que soporte encuentre el error en el log (CLAUDE.md §4).
+    La fase 2 lo extiende con el sistema de diseño; no lo dupliques.
+*@
+
+@if (Problema is not null)
+{
+    <div class="panel-errores" role="alert">
+        <p class="panel-errores-titulo">@Problema.Titulo</p>
+
+        @if (!string.IsNullOrWhiteSpace(Problema.Detalle))
+        {
+            <p class="panel-errores-detalle">@Problema.Detalle</p>
+        }
+
+        @if (Problema.Errores is { Count: > 0 })
+        {
+            <ul class="panel-errores-campos">
+                @foreach (var campo in Problema.Errores)
+                {
+                    @foreach (var mensaje in campo.Value)
+                    {
+                        <li>@mensaje</li>
+                    }
+                }
+            </ul>
+        }
+
+        @if (!string.IsNullOrWhiteSpace(Problema.TraceId))
+        {
+            <p class="panel-errores-traza">
+                Referencia para soporte: <code>@Problema.TraceId</code>
+            </p>
+        }
+    </div>
+}
+
+@code {
+    [Parameter]
+    public DetalleProblema? Problema { get; set; }
+}

@@ -1,7 +1,42 @@
 @page "/"
+@attribute [Authorize]
+@using Facturacion.Client.Componentes.Comunes
+@using Facturacion.Client.Servicios.Plataforma
+@inject ServicioDeSesion Sesion
+@inject NavigationManager Navegacion
 
 <PageTitle>Sistema de facturación</PageTitle>
 
 <h1>Sistema de facturación CFDI 4.0</h1>
 
-<p>Fundación instalada. La interfaz se construye en la fase 2.</p>
+@if (Sesion.Sesion is { } sesion)
+{
+    <p>Sesión de <strong>@sesion.Nombre</strong>.</p>
+
+    <p>
+        Empresa activa:
+        <strong>@(sesion.Empresas.FirstOrDefault(e => e.Id == sesion.EmpresaActivaId)?.NombreFiscal ?? "ninguna")</strong>
+        @if (sesion.Empresas.Count > 1)
+        {
+            <text> · </text>
+            <a href="/seleccionar-empresa">cambiar</a>
+        }
+    </p>
+
+    <p>Permisos en esta empresa: @string.Join(", ", sesion.Permisos)</p>
+
+    @* El selector de empresa y el menú de usuario viven en el layout desde la fase 2. *@
+    <SiTienePermiso Permiso="@Permisos.Timbrar">
+        <p>Con el permiso de timbrar, aquí aparecería el acceso a nueva factura.</p>
+    </SiTienePermiso>
+
+    <button type="button" @onclick="Salir">Cerrar sesión</button>
+}
+
+@code {
+    private async Task Salir()
+    {
+        await Sesion.CerrarSesionAsync();
+        Navegacion.NavigateTo("/iniciar-sesion", replace: true);
+    }
+}

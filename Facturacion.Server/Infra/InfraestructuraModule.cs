@@ -1,5 +1,6 @@
 using System.Reflection;
 using Facturacion.Server.Data;
+using Facturacion.Server.Infra.Bitacora;
 using Facturacion.Server.Infra.Errores;
 using Facturacion.Server.Infra.Idempotencia;
 using Facturacion.Server.Infra.Seguridad;
@@ -33,6 +34,11 @@ public static class InfraestructuraModule
             configuracion.GetConnectionString("BaseDeDatos"),
             sp.GetRequiredService<IContextoEmpresaInterno>()));
 
+        servicios.AddScoped<IServicioDeBitacora, ServicioDeBitacora>();
+
+        servicios.AddMemoryCache();
+        servicios.AddSingleton<IControlDeIntentos, ControlDeIntentos>();
+
         servicios.AddHostedService<PurgaDeClavesIdempotencia>();
 
         servicios.AddOpenApi();
@@ -61,6 +67,9 @@ public static class InfraestructuraModule
         aplicacion.UseStaticFiles();
 
         aplicacion.UseRouting();
+
+        aplicacion.UseAuthentication();
+        aplicacion.UseAuthorization();
 
         return aplicacion;
     }

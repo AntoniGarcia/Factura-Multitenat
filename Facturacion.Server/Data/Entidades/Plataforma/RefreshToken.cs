@@ -26,6 +26,17 @@ public sealed class RefreshToken
     /// </summary>
     public required string HashToken { get; set; }
 
+    /// <summary>
+    /// Empresa que el usuario tenía activa en esta sesión. Vive aquí, del lado del servidor,
+    /// y no en el navegador: al refrescar, el token nuevo sale ya con ella, así que un F5 o
+    /// una renovación a los quince minutos no devuelven al usuario al selector de empresa.
+    /// <para>
+    /// Que esté aquí no relaja la regla de CLAUDE.md §4: el Client sigue sin enviar un
+    /// identificador de empresa en ninguna petición salvo <c>/cambiar-empresa</c>.
+    /// </para>
+    /// </summary>
+    public Guid? EmpresaActivaId { get; set; }
+
     public DateTime CreadoUtc { get; set; }
 
     public DateTime ExpiraUtc { get; set; }

@@ -23,6 +23,12 @@ public sealed class Usuario : IdentityUser<Guid>
     /// <summary>Baja lógica. Desactivar invalida todas sus familias de refresh token (fase 8).</summary>
     public bool Activo { get; set; } = true;
 
+    /// <summary>
+    /// Bloqueos por intentos fallidos seguidos, sin un inicio de sesión correcto en medio.
+    /// Es lo que hace creciente el castigo: Identity solo sabe bloquear por un plazo fijo.
+    /// </summary>
+    public int BloqueosConsecutivos { get; set; }
+
     public DateTime FechaAltaUtc { get; set; }
 
     public ICollection<UsuarioEmpresa> Empresas { get; set; } = [];
