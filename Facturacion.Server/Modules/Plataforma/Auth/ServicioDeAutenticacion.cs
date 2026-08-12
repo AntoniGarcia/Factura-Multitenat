@@ -1,3 +1,4 @@
+using System.Diagnostics;
 using System.Security.Claims;
 using Facturacion.Server.Data;
 using Facturacion.Server.Data.Entidades.Plataforma;
@@ -29,11 +30,35 @@ public sealed class ServicioDeAutenticacion(
 {
     private readonly OpcionesDeJwt _opciones = opciones.Value;
 
-    // Hash de una contraseña que no es de nadie. Sirve para gastar el mismo tiempo cuando el
-    // correo no existe que cuando existe: si no, la diferencia de milisegundos entre los dos
-    // casos revela qué correos están dados de alta.
-    private static readonly string HashSenuelo = new PasswordHasher<Usuario>()
-        .HashPassword(UsuarioSenuelo, "no-es-la-contrasena-de-nadie");
+    /// <summary>
+    /// Piso de tiempo de <c>/iniciar-sesion</c>.
+    ///
+    /// <para><b>Por qué no basta con el hash señuelo</b></para>
+    /// El señuelo iguala el costo del hash, que es lo caro, pero no todo lo demás: cuando el
+    /// usuario existe, el camino de fallo hace un <c>UPDATE</c> extra para contar el intento;
+    /// cuando no existe, no lo hace. Medido con 50 muestras de cada tipo, eso dejaba un sesgo
+    /// consistente de ~1.2 ms. Parece poco, pero un sesgo consistente se extrae promediando:
+    /// con diez mil intentos el ruido baja como la raíz de n y el sesgo queda muy por encima.
+    /// Y en un SaaS de facturación, saber qué correos están dados de alta es la lista de
+    /// clientes de alguien.
+    ///
+    /// <para><b>Qué hace el piso</b></para>
+    /// Toda respuesta tarda lo mismo, sin importar por dónde pasó. Así el tiempo deja de
+    /// depender del código, y las fases que agreguen trabajo aquí —la 8 toca este camino— no
+    /// pueden reintroducir el oráculo sin darse cuenta.
+    ///
+    /// <para><b>Lo que el piso no cubre</b></para>
+    /// Si el trabajo real llegara a superar el piso —una base lenta, mucha carga—, el relleno
+    /// es cero y la diferencia vuelve a asomar. Por eso el piso está muy por encima del
+    /// tiempo observado (~73 ms de media, ~77 ms en el percentil 90) y no pegado a él.
+    /// </summary>
+    private static readonly TimeSpan PisoDeRespuesta = TimeSpan.FromMilliseconds(250);
+
+    // Hash de una contraseña que no es de nadie, para gastar el mismo tiempo cuando el correo
+    // no existe que cuando existe. Se calcula con el MISMO hasher que usa el camino real
+    // —el de UserManager, con las opciones configuradas—, no con uno nuevo por omisión: si
+    // difirieran en número de iteraciones, el señuelo costaría distinto que lo que imita.
+    private static string? _hashSenuelo;
 
     private static Usuario UsuarioSenuelo => new() { Nombre = "señuelo" };
 
@@ -42,6 +67,21 @@ public sealed class ServicioDeAutenticacion(
         => ErrorNegocio.Validacion("credenciales-invalidas", "El correo o la contraseña no son correctos.");
 
     public async Task<Resultado<SesionIniciada>> IniciarSesionAsync(
+        PeticionInicioSesion peticion, string? ip, string? agente, CancellationToken ct)
+    {
+        var marca = Stopwatch.GetTimestamp();
+
+        try
+        {
+            return await Intentar(peticion, ip, agente, ct);
+        }
+        finally
+        {
+            await Nivelar(marca);
+        }
+    }
+
+    private async Task<Resultado<SesionIniciada>> Intentar(
         PeticionInicioSesion peticion, string? ip, string? agente, CancellationToken ct)
     {
         var claveIp = ip ?? "desconocida";
@@ -293,10 +333,31 @@ public sealed class ServicioDeAutenticacion(
         _ => TimeSpan.FromHours(1)
     };
 
-    private static bool VerificarSenuelo(string contrasena)
+    private bool VerificarSenuelo(string contrasena)
     {
-        new PasswordHasher<Usuario>().VerifyHashedPassword(UsuarioSenuelo, HashSenuelo, contrasena);
+        // La primera petición del proceso paga un hash extra al calcular el señuelo. El piso
+        // de tiempo la absorbe, así que tampoco esa se distingue.
+        _hashSenuelo ??= usuarios.PasswordHasher.HashPassword(UsuarioSenuelo, "no-es-la-contrasena-de-nadie");
+
+        usuarios.PasswordHasher.VerifyHashedPassword(UsuarioSenuelo, _hashSenuelo, contrasena);
+
         return false;
+    }
+
+    /// <summary>
+    /// Rellena hasta <see cref="PisoDeRespuesta"/>. Se aplica a <b>todas</b> las salidas de
+    /// inicio de sesión, también a las que hoy no filtran nada: una sola regla es más fácil
+    /// de sostener que una lista de qué caminos sí y cuáles no.
+    /// </summary>
+    private static async Task Nivelar(long marcaInicial)
+    {
+        var transcurrido = Stopwatch.GetElapsedTime(marcaInicial);
+
+        if (transcurrido >= PisoDeRespuesta) return;
+
+        // Sin el token de cancelación a propósito: si la petición se abortó, la respuesta se
+        // descarta igual, y lanzar desde aquí ocultaría el resultado real.
+        await Task.Delay(PisoDeRespuesta - transcurrido, CancellationToken.None);
     }
 
     private async Task<(Usuario? Usuario, Guid? FamiliaId)> LeerDelToken(CancellationToken ct)
