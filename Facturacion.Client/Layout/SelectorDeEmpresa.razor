@@ -1,0 +1,70 @@
+@implements IDisposable
+@inject ServicioDeSesion Sesion
+
+@*
+    Vive en la barra superior y en ningún otro lugar (CLAUDE.md §8). Llama a
+    /auth/cambiar-empresa; MainLayout envuelve el contenido de la página en un @key ligado
+    a la empresa activa, así que en cuanto el token nuevo llega, toda página montada se
+    descarta y se reconstruye desde cero: una lista de la empresa anterior no puede quedar
+    un segundo de más en pantalla.
+
+    Sin ActivatorContent a propósito: se probó con un <button> propio y con un MudButton
+    dentro de ActivatorContent, y en los dos casos el menú se queda cerrado —se comprobó
+    a mano, inspeccionando la clase mud-popover-open, no se dedujo—. Solo el activador que
+    arma el propio MudMenu (Label/EndIcon) abre de verdad en esta versión del paquete.
+*@
+
+@if (Sesion.Sesion is { Empresas.Count: > 1 } sesion)
+{
+    <MudMenu Class="selector-empresa"
+             Label="@NombreActivo(sesion)"
+             EndIcon="@Icons.Material.Filled.ExpandMore"
+             Disabled="@_cambiando"
+             AnchorOrigin="Origin.BottomLeft">
+        @foreach (var empresa in sesion.Empresas)
+        {
+            <MudMenuItem OnClick="@(() => Elegir(empresa.Id))">
+                @empresa.NombreFiscal
+                @if (empresa.Id == sesion.EmpresaActivaId)
+                {
+                    <MudIcon Icon="@Icons.Material.Filled.Check" Size="Size.Small" />
+                }
+            </MudMenuItem>
+        }
+    </MudMenu>
+}
+else if (Sesion.Sesion is { Empresas.Count: 1 } sesionDeUna)
+{
+    <span class="selector-empresa-unica">@sesionDeUna.Empresas[0].NombreFiscal</span>
+}
+
+@code {
+    private bool _cambiando;
+
+    protected override void OnInitialized() => Sesion.Cambio += Redibujar;
+
+    public void Dispose() => Sesion.Cambio -= Redibujar;
+
+    private static string NombreActivo(SesionDto sesion)
+        => sesion.Empresas.FirstOrDefault(e => e.Id == sesion.EmpresaActivaId)?.NombreFiscal
+           ?? "Elegir empresa";
+
+    private async Task Elegir(Guid empresaId)
+    {
+        if (empresaId == Sesion.Sesion?.EmpresaActivaId || _cambiando) return;
+
+        _cambiando = true;
+        try
+        {
+            // Un fallo aquí es que el acceso a esa empresa se revocó justo ahora; Sesion ya
+            // conserva la empresa anterior porque CambiarEmpresaAsync no la toca si falla.
+            await Sesion.CambiarEmpresaAsync(empresaId);
+        }
+        finally
+        {
+            _cambiando = false;
+        }
+    }
+
+    private void Redibujar() => InvokeAsync(StateHasChanged);
+}

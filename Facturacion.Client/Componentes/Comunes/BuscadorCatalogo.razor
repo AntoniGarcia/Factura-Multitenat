@@ -1,0 +1,60 @@
+@using Facturacion.Shared.Contratos
+@inject IBusquedaDeCatalogo Busqueda
+
+@*
+    Autocompletado contra el servidor: mínimo 3 caracteres, debounce 300 ms, "clave —
+    descripción", navegable con flechas, Enter confirma, Esc limpia (CLAUDE.md §7). Todo
+    eso ya lo hace MudAutocomplete de fábrica, incluido cancelar la búsqueda anterior al
+    escribir de nuevo.
+*@
+
+<MudAutocomplete T="ClaveSatDto"
+                  Label="@Label"
+                  Value="@Valor"
+                  ValueChanged="@(v => ValorCambiado.InvokeAsync(v))"
+                  SearchFunc="Buscar"
+                  ToStringFunc="@Formatear"
+                  MinCharacters="3"
+                  DebounceInterval="300"
+                  ResetValueOnEmptyText="true"
+                  CoerceText="false"
+                  Clearable="true"
+                  Required="@Requerido"
+                  Disabled="@Deshabilitado"
+                  Placeholder="Escribe al menos 3 caracteres…">
+    <ItemTemplate Context="clave">
+        <span class="cifra-tabular buscador-catalogo-clave">@clave.Clave</span>
+        <span class="buscador-catalogo-descripcion">@clave.Descripcion</span>
+    </ItemTemplate>
+</MudAutocomplete>
+
+@code {
+    /// <summary>Nombre del catálogo, por ejemplo <c>c_RegimenFiscal</c> (CLAUDE.md §7).</summary>
+    [Parameter, EditorRequired]
+    public string Catalogo { get; set; } = default!;
+
+    [Parameter]
+    public string Label { get; set; } = "Buscar clave";
+
+    [Parameter]
+    public ClaveSatDto? Valor { get; set; }
+
+    [Parameter]
+    public EventCallback<ClaveSatDto?> ValorCambiado { get; set; }
+
+    [Parameter]
+    public bool Requerido { get; set; }
+
+    [Parameter]
+    public bool Deshabilitado { get; set; }
+
+    private async Task<IEnumerable<ClaveSatDto>> Buscar(string texto, CancellationToken ct)
+    {
+        if (string.IsNullOrWhiteSpace(texto) || texto.Length < 3) return [];
+
+        return await Busqueda.BuscarAsync(Catalogo, texto, ct);
+    }
+
+    private static string Formatear(ClaveSatDto? clave)
+        => clave is null ? string.Empty : $"{clave.Clave} — {clave.Descripcion}";
+}

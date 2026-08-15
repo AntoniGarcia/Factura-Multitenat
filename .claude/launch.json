@@ -1,0 +1,12 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "servidor",
+      "runtimeExecutable": "dotnet",
+      "runtimeArgs": ["run", "--project", "Facturacion.Server", "--launch-profile", "https"],
+      "port": 7123,
+      "url": "https://localhost:7123"
+    }
+  ]
+}

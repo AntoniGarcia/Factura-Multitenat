@@ -1,0 +1,180 @@
+@page "/productos/importar"
+@attribute [Authorize(Policy = Permisos.ConfigurarEmpresa)]
+@inject ServicioDeProductos Productos
+@inject NavigationManager Navegacion
+
+<PageTitle>Importar productos</PageTitle>
+<TituloDePagina Texto="Importar productos desde CSV" />
+
+<PanelErrores Problema="_error" />
+
+@if (_resultado is null)
+{
+    <p class="seccion-ayuda">
+        Sube el archivo y revisa la vista previa. <strong>No se guarda nada hasta que confirmes.</strong>
+        Los renglones con error se quedan fuera; los demás entran.
+    </p>
+
+    <div class="carga-csd">
+        <MudFileUpload T="IBrowserFile" FilesChanged="a => _archivo = a" Accept=".csv">
+            <CustomContent Context="carga">
+                <MudButton Variant="Variant.Outlined" OnClick="@(() => carga.OpenFilePickerAsync())">
+                    @(_archivo is null ? "Elegir archivo CSV" : _archivo.Name)
+                </MudButton>
+            </CustomContent>
+        </MudFileUpload>
+
+        <MudButton Variant="Variant.Filled" OnClick="Analizar" Disabled="@(_analizando || _archivo is null)">
+            @(_analizando ? "Revisando…" : "Revisar archivo")
+        </MudButton>
+
+        <MudButton Variant="Variant.Text" OnClick="DescargarPlantilla">Descargar plantilla</MudButton>
+    </div>
+}
+
+@if (_vista is not null && _resultado is null)
+{
+    <h2 class="seccion-titulo">Vista previa</h2>
+
+    <div class="resumen-importacion">
+        <span class="indicador-estado indicador-estado-timbrada">@_vista.Validos van a entrar</span>
+        @if (_vista.ConError > 0)
+        {
+            <span class="indicador-estado indicador-estado-cancelada">@_vista.ConError se quedan fuera</span>
+        }
+    </div>
+
+    <MudSimpleTable Dense="true" Hover="true">
+        <thead>
+            <tr>
+                <th class="cifra-tabular">Renglón</th>
+                <th>Descripción</th>
+                <th class="cifra-tabular">Clave SAT</th>
+                <th class="cifra-tabular">Precio</th>
+                <th>Resultado</th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var renglon in _vista.Renglones)
+            {
+                <tr>
+                    <td class="cifra-tabular">@renglon.Numero</td>
+                    <td>@(renglon.Producto?.Descripcion ?? "—")</td>
+                    <td class="cifra-tabular">@(renglon.Producto?.ClaveProdServ ?? "—")</td>
+                    <td class="cifra-tabular">@(renglon.Producto?.ValorUnitario.ToString("N2") ?? "—")</td>
+                    <td>
+                        @if (renglon.Error is null)
+                        {
+                            <span class="indicador-estado indicador-estado-timbrada">Correcto</span>
+                        }
+                        else
+                        {
+                            <span class="texto-error">@renglon.Error</span>
+                        }
+                    </td>
+                </tr>
+            }
+        </tbody>
+    </MudSimpleTable>
+
+    <div class="acciones-formulario">
+        <MudButton Variant="Variant.Filled" OnClick="Confirmar" Disabled="@(_confirmando || _vista.Validos == 0)">
+            @(_confirmando ? "Guardando…" : $"Importar {_vista.Validos} productos")
+        </MudButton>
+        <MudButton Variant="Variant.Text" OnClick="Limpiar">Elegir otro archivo</MudButton>
+    </div>
+}
+
+@if (_resultado is not null)
+{
+    <h2 class="seccion-titulo">Listo</h2>
+
+    <p class="mensaje-exito" role="status">
+        Se crearon @_resultado.Creados productos y se actualizaron @_resultado.Actualizados.
+    </p>
+
+    @if (_resultado.Rechazados.Count > 0)
+    {
+        <p class="seccion-ayuda">Estos renglones no entraron:</p>
+        <ul class="lista-rechazos">
+            @foreach (var rechazado in _resultado.Rechazados)
+            {
+                <li>Renglón @rechazado.Numero: @rechazado.Error</li>
+            }
+        </ul>
+    }
+
+    <div class="acciones-formulario">
+        <MudButton Variant="Variant.Filled" OnClick="@(() => Navegacion.NavigateTo("/productos"))">
+            Ver el catálogo
+        </MudButton>
+        <MudButton Variant="Variant.Text" OnClick="Limpiar">Importar otro archivo</MudButton>
+    </div>
+}
+
+@code {
+    /// <summary>Cinco megabytes: el mismo tope que acepta el servidor.</summary>
+    private const long TopeArchivo = 5 * 1024 * 1024;
+
+    private IBrowserFile? _archivo;
+    private VistaPreviaDeImportacion? _vista;
+    private ResultadoDeImportacion? _resultado;
+    private DetalleProblema? _error;
+    private bool _analizando, _confirmando;
+
+    private async Task Analizar()
+    {
+        if (_archivo is null) return;
+
+        _analizando = true;
+        _error = null;
+
+        try
+        {
+            await using var flujo = _archivo.OpenReadStream(TopeArchivo);
+            var (exito, error) = await Productos.AnalizarCsvAsync(flujo, _archivo.Name);
+
+            _error = error;
+            _vista = exito;
+        }
+        finally
+        {
+            _analizando = false;
+        }
+    }
+
+    private async Task Confirmar()
+    {
+        if (_vista is null) return;
+
+        _confirmando = true;
+        _error = null;
+
+        try
+        {
+            // Se mandan solo los correctos: los que fallaron ya se le mostraron al usuario y
+            // no tiene sentido que el servidor los vuelva a rechazar.
+            var validos = _vista.Renglones.Where(r => r.Error is null).ToList();
+
+            var (exito, error) = await Productos.ConfirmarImportacionAsync(validos);
+
+            _error = error;
+            _resultado = exito;
+        }
+        finally
+        {
+            _confirmando = false;
+        }
+    }
+
+    private void Limpiar()
+    {
+        _archivo = null;
+        _vista = null;
+        _resultado = null;
+        _error = null;
+    }
+
+    private void DescargarPlantilla()
+        => Navegacion.NavigateTo(ServicioDeProductos.RutaDePlantilla(), forceLoad: true);
+}

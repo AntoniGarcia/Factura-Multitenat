@@ -1,0 +1,105 @@
+@using Facturacion.Shared.Contratos
+@inject IBusquedaDeCatalogo Busqueda
+
+@*
+    La alternativa de rejilla de BuscadorCatalogo, para quien prefiere teclado y lista en vez
+    de autocompletado en línea (sustituye al modal de §31 del legacy). No se usa
+    directamente: se abre con IServicioModalCatalogo.ElegirAsync, igual que
+    ConfirmacionAccion se abre con IServicioDeConfirmacion.
+*@
+
+<MudDialog>
+    <DialogContent>
+        <MudTextField T="string"
+                       @ref="_campoBusqueda"
+                       Value="@_texto"
+                       ValueChanged="Buscar"
+                       Placeholder="Escribe al menos 3 caracteres…"
+                       Adornment="Adornment.Start"
+                       AdornmentIcon="@Icons.Material.Filled.Search"
+                       Immediate="true"
+                       DebounceInterval="300"
+                       Class="modal-catalogo-buscador" />
+
+        @if (_buscando)
+        {
+            <p class="modal-catalogo-estado">Buscando…</p>
+        }
+        else if (_texto.Length > 0 && _texto.Length < 3)
+        {
+            <p class="modal-catalogo-estado">Escribe al menos 3 caracteres.</p>
+        }
+        else if (_resultados.Count == 0 && _texto.Length >= 3)
+        {
+            <p class="modal-catalogo-estado">Sin resultados para «@_texto».</p>
+        }
+        else
+        {
+            <MudList T="ClaveSatDto" SelectedValueChanged="Elegir">
+                @foreach (var clave in _resultados)
+                {
+                    <MudListItem T="ClaveSatDto" Value="@clave">
+                        <span class="cifra-tabular buscador-catalogo-clave">@clave.Clave</span>
+                        <span class="buscador-catalogo-descripcion">@clave.Descripcion</span>
+                    </MudListItem>
+                }
+            </MudList>
+        }
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="Cancelar">Cancelar</MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter]
+    private IMudDialogInstance Dialogo { get; set; } = default!;
+
+    [Parameter, EditorRequired]
+    public string Catalogo { get; set; } = default!;
+
+    private MudTextField<string>? _campoBusqueda;
+    private string _texto = string.Empty;
+    private bool _buscando;
+    private IReadOnlyList<ClaveSatDto> _resultados = [];
+    private CancellationTokenSource? _cancelacion;
+
+    protected override async Task OnAfterRenderAsync(bool primeraVez)
+    {
+        if (primeraVez && _campoBusqueda is not null)
+            await _campoBusqueda.FocusAsync();
+    }
+
+    private async Task Buscar(string texto)
+    {
+        _texto = texto;
+
+        _cancelacion?.Cancel();
+
+        if (texto.Length < 3)
+        {
+            _resultados = [];
+            return;
+        }
+
+        _cancelacion = new CancellationTokenSource();
+        var ct = _cancelacion.Token;
+
+        _buscando = true;
+        try
+        {
+            var resultado = await Busqueda.BuscarAsync(Catalogo, texto, ct);
+            if (ct.IsCancellationRequested) return;
+
+            _resultados = resultado;
+        }
+        finally
+        {
+            if (!ct.IsCancellationRequested) _buscando = false;
+        }
+    }
+
+    private void Elegir(ClaveSatDto clave) => Dialogo.Close(DialogResult.Ok(clave));
+
+    private void Cancelar() => Dialogo.Cancel();
+}

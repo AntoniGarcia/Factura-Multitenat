@@ -1,11 +1,13 @@
 {
-  "name": "Facturacion.Client",
-  "short_name": "Facturacion.Client",
+  "name": "Sistema de facturación",
+  "short_name": "Facturación",
+  "description": "Facturación electrónica CFDI 4.0",
   "id": "./",
   "start_url": "./",
   "display": "standalone",
-  "background_color": "#ffffff",
-  "theme_color": "#03173d",
+  "background_color": "#F7F8FA",
+  "theme_color": "#1B3A6B",
+  "lang": "es-MX",
   "prefer_related_applications": false,
   "icons": [
     {

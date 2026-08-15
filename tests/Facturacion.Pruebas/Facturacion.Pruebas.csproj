@@ -15,6 +15,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\..\Facturacion.Server\Facturacion.Server.csproj" />
+    <ProjectReference Include="..\..\Facturacion.Client\Facturacion.Client.csproj" />
   </ItemGroup>
 
   <ItemGroup>

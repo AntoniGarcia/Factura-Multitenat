@@ -27,13 +27,22 @@ public sealed record EmpresaDisponibleDto(
 /// </param>
 /// <param name="Empresas">Empresas a las que tiene acceso dentro de su cuenta.</param>
 /// <param name="Permisos">Permisos en la empresa activa. Vacío mientras no haya empresa.</param>
+/// <param name="Tema">
+/// Clave de <c>Facturacion.Shared.Comun.Temas</c>. El Client la aplica al arrancar, antes
+/// de que el usuario vea nada: el tema es parte de su perfil, no una preferencia del
+/// navegador (CLAUDE.md §8).
+/// </param>
 public sealed record SesionDto(
     Guid UsuarioId,
     string Nombre,
     string Correo,
     Guid? EmpresaActivaId,
     IReadOnlyList<EmpresaDisponibleDto> Empresas,
-    IReadOnlyList<string> Permisos);
+    IReadOnlyList<string> Permisos,
+    string Tema);
+
+/// <summary>Cambio de tema. La clave se valida contra <c>Temas.Todos</c> en el servidor.</summary>
+public sealed record PeticionCambioTema(string Tema);
 
 /// <summary>
 /// Access token nuevo y la sesión que describe. El token vive <b>solo en memoria</b> del

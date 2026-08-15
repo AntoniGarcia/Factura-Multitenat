@@ -1,38 +1,39 @@
 using System.Security.Cryptography;
 using System.Text;
 using System.Text.RegularExpressions;
-using Microsoft.Extensions.FileProviders;
 
 namespace Facturacion.Server.Infra.Seguridad;
 
 /// <summary>
-/// Arma la Content-Security-Policy al arrancar.
+/// La plantilla de la Content-Security-Policy y el cálculo de hashes de script en línea.
 ///
-/// <para><b>Por qué no es una constante</b></para>
+/// <para><b>Por qué el importmap necesita un hash</b></para>
 /// El SDK de Blazor inyecta en <c>index.html</c> un <c>&lt;script type="importmap"&gt;</c>
-/// <b>en línea</b> con los nombres huellados del runtime y sus hashes de integridad. Con
-/// <c>script-src 'self'</c> el navegador lo bloquea, <c>dotnet.js</c> nunca se resuelve y la
-/// aplicación se queda para siempre en la pantalla de carga.
+/// <b>en línea</b> con los nombres huellados del runtime. Con <c>script-src 'self'</c> el
+/// navegador lo bloquea, <c>dotnet.js</c> nunca se resuelve y la aplicación se queda para
+/// siempre en la pantalla de carga.
 ///
 /// <para>
 /// Las salidas eran tres: aflojar la CSP con <c>'unsafe-inline'</c>, apagar el huellado de
 /// assets, o autorizar ese script concreto por su hash. CLAUDE.md §4 descarta la primera
 /// —<c>wasm-unsafe-eval</c> es lo único que se concede—, y la segunda resultó imposible: ni
 /// <c>StaticWebAssetFingerprintingEnabled</c> ni <c>StaticWebAssetsFingerprintContent</c>
-/// desactivan el huellado de los archivos del framework. Queda la tercera, que además es la
-/// forma estándar de servir un SPA estático con CSP estricta.
+/// desactivan el huellado de los archivos del framework. Queda la tercera.
 /// </para>
 ///
-/// <para><b>Por qué recorre varios archivos</b></para>
-/// El <c>index.html</c> que se sirve no es el del proyecto: el SDK genera una copia con el
-/// importmap ya resuelto. En publicación esa copia es la única que existe, pero en
-/// desarrollo el proveedor compuesto del raíz web ofrece las dos, y la primera que devuelve
-/// es la del código fuente, con el importmap todavía vacío. Por eso se recogen los hashes de
-/// <b>todos</b> los candidatos.
-///
+/// <para><b>Por qué el hash no se calcula leyendo el archivo del disco</b></para>
+/// Se intentó así primero: leer <c>index.html</c> desde <c>IFileProvider</c> al arrancar.
+/// Funcionaba en desarrollo por una casualidad —el proveedor compuesto expone ahí una copia
+/// ya procesada— pero <b>revienta la aplicación al publicar</b>: en modo publicado no hay
+/// ningún <c>IFileProvider</c> que resuelva a un <c>index.html</c> con el importmap ya
+/// resuelto, y el arranque lanzaba <c>InvalidOperationException</c> antes de poder escuchar
+/// una sola petición. Se descubrió publicando de verdad y corriendo el binario publicado,
+/// no leyendo el código: "no des por hecho que funciona porque el proyecto compila"
+/// (CLAUDE.md §9).
 /// <para>
-/// Eso no afloja nada: un hash autoriza <b>ese contenido exacto</b> y nada más. Sobra el de
-/// la variante que no se sirve, y no autoriza ningún script que alguien pudiera inyectar.
+/// La solución robusta —en <see cref="CabecerasDeSeguridad"/>— calcula el hash de los bytes
+/// que de verdad se van a mandar por el cable en la primera respuesta HTML, sin importar
+/// qué mecanismo del framework los produjo ni si venían comprimidos.
 /// </para>
 /// </summary>
 public static partial class PoliticaDeContenido
@@ -41,6 +42,7 @@ public static partial class PoliticaDeContenido
         "default-src 'self'; " +
         "script-src 'self' 'wasm-unsafe-eval'{0}; " +
         "style-src 'self'; " +
+        "style-src-attr 'unsafe-inline'; " +
         "img-src 'self' data:; " +
         "font-src 'self'; " +
         "connect-src 'self'; " +
@@ -51,55 +53,20 @@ public static partial class PoliticaDeContenido
         "form-action 'self'; " +
         "object-src 'none'";
 
-    public static string Construir(IFileProvider archivos)
+    /// <summary>Política sin hashes, para todo lo que no es HTML.</summary>
+    public static string Base { get; } = string.Format(Plantilla, string.Empty);
+
+    /// <summary>Política que autoriza los scripts en línea que trae ese HTML, y ningún otro.</summary>
+    public static string ParaHtml(string html)
     {
-        var hashes = Candidatos(archivos)
-            .SelectMany(HashesDe)
-            .Distinct()
-            .ToList();
-
-        if (hashes.Count == 0)
-            throw new InvalidOperationException(
-                "No se encontró ningún index.html con el importmap del runtime. Sin su hash, " +
-                "la CSP bloquearía el arranque del WebAssembly en el navegador.");
-
-        return string.Format(Plantilla, string.Concat(hashes.Select(hash => $" '{hash}'")));
-    }
-
-    private static IEnumerable<string> Candidatos(IFileProvider archivos)
-    {
-        var proveedores = archivos is CompositeFileProvider compuesto
-            ? compuesto.FileProviders
-            : [archivos];
-
-        foreach (var proveedor in proveedores)
-        {
-            var indice = proveedor.GetFileInfo("index.html");
-            if (!indice.Exists) continue;
-
-            using var flujo = indice.CreateReadStream();
-            using var lector = new StreamReader(flujo);
-            yield return lector.ReadToEnd();
-        }
-    }
-
-    private static IEnumerable<string> HashesDe(string html)
-        => ScriptsEnLinea()
+        var hashes = ScriptsEnLinea()
             .Matches(html)
             .Select(coincidencia => coincidencia.Groups["contenido"].Value)
             .Where(contenido => !string.IsNullOrWhiteSpace(contenido))
-            .SelectMany(Variantes)
-            .Select(Hash);
+            .Select(Hash)
+            .Distinct();
 
-    // El archivo en disco y el que sale por el cable no siempre coinciden en el fin de
-    // línea, y el hash se calcula sobre bytes: un CRLF de más lo cambia por completo. Se
-    // autorizan las dos normalizaciones, que siguen siendo contenido exacto y conocido.
-    private static IEnumerable<string> Variantes(string contenido)
-    {
-        var conLf = contenido.Replace("\r\n", "\n");
-
-        yield return conLf;
-        yield return conLf.Replace("\n", "\r\n");
+        return string.Format(Plantilla, string.Concat(hashes.Select(hash => $" '{hash}'")));
     }
 
     private static string Hash(string contenido)

@@ -31,5 +31,12 @@ public sealed class Usuario : IdentityUser<Guid>
 
     public DateTime FechaAltaUtc { get; set; }
 
+    /// <summary>
+    /// Tema elegido, o <c>null</c> si nunca lo cambió y usa el claro por omisión. Vive aquí y
+    /// no en el navegador: el contador que cambia de máquina tiene que encontrar su tema
+    /// (CLAUDE.md §8, PROMPT-FASES-A §2).
+    /// </summary>
+    public string? TemaPreferido { get; set; }
+
     public ICollection<UsuarioEmpresa> Empresas { get; set; } = [];
 }

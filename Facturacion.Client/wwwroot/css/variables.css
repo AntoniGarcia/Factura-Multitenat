@@ -1,9 +1,33 @@
 /*
-  Variables semánticas. Ningún componente escribe un color literal, nunca (CLAUDE.md §8).
+  Variables semánticas de todo el sistema (CLAUDE.md §8). Ningún componente escribe un
+  color literal, nunca: si hace falta uno que no está aquí, se agrega aquí primero.
 
-  Esto es el mínimo que necesita la fase 1 para no dejar colores sueltos en las pantallas
-  de acceso. Los tres temas —claro, oscuro ergonómico y cálido— y el resto del conjunto de
-  variables son la fase 2, que además los aplicará con un atributo data-tema en la raíz.
+  Tres temas, seleccionados con el atributo data-tema en <html>. El bloque :root de abajo
+  es el tema claro y sirve de valor por omisión mientras la preferencia del usuario —que
+  vive en su perfil del servidor, no en el navegador— todavía no llegó.
+
+  Los sufijos -rgb son el mismo color en tripleta "r,g,b" en vez de hexadecimal. MudBlazor
+  los necesita para construir estados translúcidos (hover, ripple) con rgba(); no son un
+  color nuevo, son el mismo valor de arriba descompuesto para quien no puede consumir
+  hexadecimal. Se listan junto a su variable de origen para que no se desincronicen.
+
+  === Contraste AA, verificado con la fórmula de WCAG 2.1, no a ojo ===
+
+  Todo lo que es texto sobre su fondo pasa 4.5:1 en los tres temas. Los elementos de
+  interfaz que necesitan distinguirse sin ser texto —foco, borde-fuerte— pasan el mínimo
+  de 3:1 de la 1.4.11. El detalle completo, con los números, está en el reporte de cierre
+  de esta fase.
+
+  Dos decisiones que no estaban en CLAUDE.md y hubo que tomar:
+
+  - `--acento` NO es el mismo azul tinta en los tres temas. El #1B3A6B de CLAUDE.md §8 da
+    apenas 1.46:1 contra la superficie del tema oscuro: un botón con ese color se
+    confundiría con el fondo. El tema oscuro usa #376FBE, la misma familia de azul pero
+    calibrado para pasar 3:1 contra su propia superficie sin perder legibilidad con texto
+    blanco encima (5.02:1). El tema claro y el cálido sí usan el #1B3A6B exacto.
+  - `--estado-error` se agregó aparte de `--estado-cancelada`. CLAUDE.md solo nombra cuatro
+    colores de estado para comprobantes, pero un campo de formulario inválido no es un
+    comprobante cancelado: son conceptos distintos aunque hoy compartan el mismo tono.
 */
 
 :root {
@@ -11,16 +35,61 @@
     --superficie-elevada: #FFFFFF;
     --fondo: #F7F8FA;
     --borde: #E3E6EB;
-    --borde-fuerte: #C6CBD4;
+    --borde-fuerte: #7E889A;
     --texto: #1A1D23;
+    --texto-rgb: 26, 29, 35;
     --texto-suave: #5A6270;
     --texto-inverso: #FFFFFF;
     --acento: #1B3A6B;
+    --acento-rgb: 27, 58, 107;
     --acento-suave: #E8EDF5;
-    --estado-error: #B42318;
+    --estado-timbrada: #1E7A45;
+    --estado-timbrada-rgb: 30, 122, 69;
+    --estado-borrador: #6B7280;
+    --estado-borrador-rgb: 107, 114, 128;
+    --estado-cancelada: #B42318;
     --estado-advertencia: #B54708;
-    --foco: #1B3A6B;
+    --estado-advertencia-rgb: 181, 71, 8;
+    --estado-error: #B42318;
+    --estado-error-rgb: 180, 35, 24;
+    --foco: var(--acento);
 
     --radio: 6px;
+    --alto-fila-tabla: 40px;
     --alto-control: 36px;
+}
+
+/* Oscuro ergonómico: grises y azules profundos, jamás negro puro (CLAUDE.md §8). */
+:root[data-tema="oscuro"] {
+    --superficie: #182029;
+    --superficie-elevada: #1F2833;
+    --fondo: #12181F;
+    --borde: #2C3542;
+    --borde-fuerte: #707A8F;
+    --texto: #E4E8EE;
+    --texto-rgb: 228, 232, 238;
+    --texto-suave: #93A0B2;
+    --texto-inverso: #FFFFFF;
+    --acento: #376FBE;
+    --acento-rgb: 55, 111, 190;
+    --acento-suave: #1F3550;
+    /* Los estados de comprobante y el error se conservan: ya pasan 4.5:1 con texto
+       blanco encima en cualquier tema, y mantener el mismo tono es lo que le permite al
+       contador reconocer "cancelada" de un vistazo sin reaprenderlo por tema. */
+}
+
+/* Cálido / sepia. */
+:root[data-tema="calido"] {
+    --superficie: #FBF7EF;
+    --superficie-elevada: #FFFDF8;
+    --fondo: #F5EFE4;
+    --borde: #E3D8C4;
+    --borde-fuerte: #707A8F;
+    --texto: #2B2114;
+    --texto-rgb: 43, 33, 20;
+    --texto-suave: #6B5D48;
+    --texto-inverso: #FFFFFF;
+    --acento: #1B3A6B;
+    --acento-rgb: 27, 58, 107;
+    --acento-suave: #E8EDF5;
 }

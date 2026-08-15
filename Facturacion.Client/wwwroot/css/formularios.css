@@ -1,0 +1,239 @@
+/*
+  Formularios de captura densos (CLAUDE.md §8): sin adornos, muchos campos a la vista, y
+  siempre sobre variables semánticas — ningún color literal.
+*/
+
+.seccion-titulo {
+    font-size: 1rem;
+    font-weight: 500;
+    color: var(--texto);
+    margin: 1.5rem 0 0.25rem;
+    padding-bottom: 0.35rem;
+    border-bottom: 1px solid var(--borde);
+}
+
+.seccion-ayuda {
+    color: var(--texto-suave);
+    font-size: 0.875rem;
+    margin: 0 0 0.75rem;
+}
+
+/*
+  Rejilla que se acomoda sola: en escritorio caben tres o cuatro campos por renglón, y en
+  móvil cae a uno sin necesidad de una consulta de medios propia.
+*/
+.rejilla-campos {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(15rem, 1fr));
+    gap: 0.75rem 1rem;
+    margin-bottom: 0.5rem;
+}
+
+.acciones-formulario {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    margin: 1.25rem 0;
+}
+
+.mensaje-exito {
+    color: var(--estado-timbrada);
+    font-size: 0.875rem;
+}
+
+/*
+  Lo que se le quitó al nombre para cumplir con CFDI 4.0. Se muestra antes de guardar, no
+  después: el usuario tiene que poder decidir si eso sigue siendo su razón social.
+*/
+.aviso-normalizacion {
+    background: var(--acento-suave);
+    border-left: 3px solid var(--acento);
+    border-radius: var(--radio);
+    padding: 0.75rem 1rem;
+    margin: 0.5rem 0 1rem;
+    font-size: 0.875rem;
+}
+
+.aviso-normalizacion p {
+    margin: 0 0 0.35rem;
+}
+
+.aviso-normalizacion ul {
+    margin: 0;
+    padding-left: 1.1rem;
+    color: var(--texto-suave);
+}
+
+/* Licencias de fase 2: visibles pero explícitamente reservadas. */
+.aviso-reservado {
+    background: var(--superficie-elevada);
+    border: 1px dashed var(--borde-fuerte);
+    border-radius: var(--radio);
+    padding: 0.75rem 1rem;
+    margin-bottom: 0.75rem;
+    font-size: 0.875rem;
+    color: var(--texto-suave);
+}
+
+.aviso-reservado p {
+    margin: 0;
+}
+
+/* Certificado por caducar o ya caducado: no se puede timbrar sin uno vigente. */
+.aviso-caducidad {
+    background: var(--superficie-elevada);
+    border-left: 3px solid var(--estado-advertencia);
+    border-radius: var(--radio);
+    padding: 0.75rem 1rem;
+    margin-bottom: 1rem;
+    font-size: 0.875rem;
+}
+
+.aviso-caducidad p {
+    margin: 0;
+}
+
+.carga-csd {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.75rem;
+    margin-bottom: 0.75rem;
+}
+
+/* ── Productos ─────────────────────────────────────────────────────────────── */
+
+/* Descripción resuelta de una clave del SAT, debajo del buscador. */
+.clave-resuelta {
+    margin: 0.25rem 0 0;
+    font-size: 0.8125rem;
+    color: var(--texto-suave);
+}
+
+.seccion-subtitulo {
+    font-size: 0.875rem;
+    font-weight: 500;
+    color: var(--texto-suave);
+    margin: 1rem 0 0.5rem;
+}
+
+.atajos-iva {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    margin-bottom: 0.75rem;
+}
+
+.tabla-impuestos {
+    margin-bottom: 0.5rem;
+}
+
+.acciones-renglon {
+    display: flex;
+    gap: 0.25rem;
+    white-space: nowrap;
+}
+
+.resumen-importacion {
+    display: flex;
+    gap: 0.5rem;
+    margin-bottom: 0.75rem;
+}
+
+.texto-error {
+    color: var(--estado-error);
+    font-size: 0.8125rem;
+}
+
+.lista-rechazos {
+    color: var(--texto-suave);
+    font-size: 0.875rem;
+    margin: 0 0 1rem;
+    padding-left: 1.25rem;
+}
+
+/* ── Timbres ───────────────────────────────────────────────────────────────── */
+
+.tarjetas-saldo {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.75rem;
+    margin-bottom: 0.5rem;
+}
+
+.tarjeta-saldo {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    min-width: 8rem;
+    padding: 0.75rem 1rem;
+    background: var(--superficie);
+    border: 1px solid var(--borde);
+    border-radius: var(--radio);
+}
+
+.tarjeta-saldo-cifra {
+    font-size: 1.75rem;
+    line-height: 1.1;
+    color: var(--texto);
+}
+
+.tarjeta-saldo-etiqueta {
+    font-size: 0.8125rem;
+    color: var(--texto-suave);
+}
+
+/*
+  Se acomoda sola: en escritorio caben los paquetes lado a lado y en móvil caen a uno,
+  sin necesidad de una consulta de medios propia.
+*/
+.rejilla-paquetes {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(14rem, 1fr));
+    gap: 0.75rem;
+    margin-bottom: 0.5rem;
+}
+
+.tarjeta-paquete {
+    padding: 1rem;
+    background: var(--superficie);
+    border: 1px solid var(--borde);
+    border-radius: var(--radio);
+}
+
+.tarjeta-paquete h3 {
+    margin: 0 0 0.5rem;
+    font-size: 0.9375rem;
+    font-weight: 500;
+    color: var(--texto);
+}
+
+.paquete-total {
+    margin: 0;
+    font-size: 1.5rem;
+    color: var(--texto);
+}
+
+.paquete-unitario,
+.paquete-vigencia {
+    margin: 0 0 0.25rem;
+    font-size: 0.8125rem;
+    color: var(--texto-suave);
+}
+
+.paquete-vigencia {
+    margin-bottom: 0.75rem;
+}
+
+.filtros-movimientos {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.75rem;
+    margin-bottom: 1rem;
+}
+
+.filtros-movimientos .mud-input-control {
+    min-width: 10rem;
+    max-width: 14rem;
+}

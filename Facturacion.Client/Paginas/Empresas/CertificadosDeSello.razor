@@ -1,0 +1,164 @@
+@page "/empresa/certificados"
+@attribute [Authorize(Policy = Permisos.ConfigurarEmpresa)]
+@inject ServicioDeEmpresa Empresas
+
+<PageTitle>Certificados de sello digital</PageTitle>
+<TituloDePagina Texto="Certificados de sello digital" />
+
+<PanelErrores Problema="_error" />
+
+@if (_certificados.FirstOrDefault(c => c.Activo) is { PorCaducar: true } porCaducar)
+{
+    <div class="aviso-caducidad" role="alert">
+        @if (porCaducar.DiasParaCaducar < 0)
+        {
+            <p><strong>El certificado activo ya caducó.</strong> No se puede timbrar hasta cargar uno vigente.</p>
+        }
+        else
+        {
+            <p>
+                <strong>El certificado activo caduca en @porCaducar.DiasParaCaducar días</strong>
+                (@porCaducar.VigenciaHastaUtc.ToLocalTime().ToString("dd/MM/yyyy")).
+                Tramita el nuevo ante el SAT antes de esa fecha.
+            </p>
+        }
+    </div>
+}
+
+<h2 class="seccion-titulo">Cargar un certificado</h2>
+<p class="seccion-ayuda">
+    Necesitas el <strong>.cer</strong> y el <strong>.key</strong> de tu certificado de sello digital
+    —no la e.firma— y la contraseña de la llave privada. Al cargar uno nuevo, el anterior se
+    conserva inactivo para poder leer comprobantes viejos.
+</p>
+
+@*
+    CustomContent y no ActivatorContent: esta versión de MudBlazor no tiene ese parámetro en
+    MudFileUpload, así que lo captura como atributo suelto y lo ignora sin avisar — el botón
+    salía con el texto por omisión en inglés. Se descubrió mirando la pantalla, no el código.
+*@
+<div class="carga-csd">
+    <MudFileUpload T="IBrowserFile" FilesChanged="a => _cer = a" Accept=".cer">
+        <CustomContent Context="carga">
+            <MudButton Variant="Variant.Outlined" OnClick="@(() => carga.OpenFilePickerAsync())">
+                @(_cer is null ? "Elegir .cer" : _cer.Name)
+            </MudButton>
+        </CustomContent>
+    </MudFileUpload>
+
+    <MudFileUpload T="IBrowserFile" FilesChanged="a => _key = a" Accept=".key">
+        <CustomContent Context="carga">
+            <MudButton Variant="Variant.Outlined" OnClick="@(() => carga.OpenFilePickerAsync())">
+                @(_key is null ? "Elegir .key" : _key.Name)
+            </MudButton>
+        </CustomContent>
+    </MudFileUpload>
+
+    <MudTextField @bind-Value="_contrasena"
+                  Label="Contraseña de la llave privada"
+                  InputType="InputType.Password" />
+
+    <MudButton Variant="Variant.Filled" OnClick="Cargar" Disabled="@(_cargando || _cer is null || _key is null)">
+        @(_cargando ? "Validando…" : "Cargar certificado")
+    </MudButton>
+</div>
+
+@if (_cargado)
+{
+    <p class="mensaje-exito" role="status">Certificado cargado y validado.</p>
+}
+
+<h2 class="seccion-titulo">Certificados de esta empresa</h2>
+
+@if (_certificados.Count == 0)
+{
+    <p class="tabla-datos-estado">Todavía no se ha cargado ningún certificado.</p>
+}
+else
+{
+    <MudSimpleTable Dense="true" Hover="true">
+        <thead>
+            <tr>
+                <th>Número de serie</th>
+                <th>Vigente desde</th>
+                <th>Vigente hasta</th>
+                <th>Estado</th>
+                <th>Cargado</th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var certificado in _certificados)
+            {
+                <tr>
+                    <td class="cifra-tabular">@certificado.NumeroSerie</td>
+                    <td class="cifra-tabular">@certificado.VigenciaDesdeUtc.ToLocalTime().ToString("dd/MM/yyyy")</td>
+                    <td class="cifra-tabular">@certificado.VigenciaHastaUtc.ToLocalTime().ToString("dd/MM/yyyy")</td>
+                    @*
+                        Píldora con las clases de IndicadorEstado pero sin usar ese componente:
+                        el suyo es el estatus de un comprobante y un certificado no lo es.
+                        Reutilizar el estilo está bien; forzar el significado del componente
+                        que va a usar la mitad B, no.
+                    *@
+                    <td>
+                        <span class="indicador-estado indicador-estado-@(certificado.Activo ? "timbrada" : "borrador")">
+                            @(certificado.Activo ? "Activo" : "Reemplazado")
+                        </span>
+                    </td>
+                    <td class="cifra-tabular">@certificado.FechaCargaUtc.ToLocalTime().ToString("dd/MM/yyyy HH:mm")</td>
+                </tr>
+            }
+        </tbody>
+    </MudSimpleTable>
+}
+
+@code {
+    private IReadOnlyList<CertificadoCsdDto> _certificados = [];
+    private DetalleProblema? _error;
+    private IBrowserFile? _cer;
+    private IBrowserFile? _key;
+    private string _contrasena = string.Empty;
+    private bool _cargando, _cargado;
+
+    /// <summary>Tope de lectura del navegador. Un CSD son unos pocos kilobytes; 512 KB sobra.</summary>
+    private const long TopeArchivo = 512 * 1024;
+
+    protected override async Task OnInitializedAsync() => await RecargarAsync();
+
+    private async Task RecargarAsync() => _certificados = await Empresas.ListarCertificadosAsync();
+
+    private async Task Cargar()
+    {
+        if (_cer is null || _key is null) return;
+
+        _cargando = true;
+        _cargado = false;
+        _error = null;
+
+        try
+        {
+            await using var cer = _cer.OpenReadStream(TopeArchivo);
+            await using var key = _key.OpenReadStream(TopeArchivo);
+
+            var (exito, error) = await Empresas.CargarCertificadoAsync(
+                cer, _cer.Name, key, _key.Name, _contrasena);
+
+            if (error is not null)
+            {
+                _error = error;
+                return;
+            }
+
+            // La contraseña no se conserva en memoria del navegador más de lo necesario.
+            _contrasena = string.Empty;
+            _cer = null;
+            _key = null;
+            _cargado = exito is not null;
+
+            await RecargarAsync();
+        }
+        finally
+        {
+            _cargando = false;
+        }
+    }
+}

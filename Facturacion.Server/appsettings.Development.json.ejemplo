@@ -13,6 +13,13 @@
     "ClaveDeFirma": "cambia-esta-clave-por-una-tuya-de-al-menos-32-caracteres"
   },
 
+  "//Almacen": "Archivos de empresa (logo, CSD) cifrados y fuera de wwwroot. LlaveMaestraPfx protege el llavero de Data Protection y con él los certificados: genérala con 'dotnet run -- --generar-llave-maestra' y RESPÁLDALA — si se pierde, los CSD ya cargados quedan ilegibles. En producción va en una variable de entorno.",
+  "Almacen": {
+    "Raiz": "almacenamiento",
+    "RutaLlavero": "almacenamiento/llavero",
+    "LlaveMaestraPfx": "genera-la-tuya-con-dotnet-run----generar-llave-maestra"
+  },
+
   "//Sembrado": "Solo se usa en Development. Si quitas estas dos claves, el sembrado no corre. Crea una cuenta con dos empresas y un usuario con los seis permisos.",
   "Sembrado": {
     "Correo": "contador@ejemplo.mx",

@@ -1,0 +1,39 @@
+@*
+    Contenido del diálogo de confirmación para operaciones irreversibles. No se usa
+    directamente: se invoca a través de <see cref="Facturacion.Client.Servicios.Plataforma.IServicioDeConfirmacion"/>,
+    que es quien de verdad abre el diálogo (vía IDialogService, no vía ActivatorContent, así
+    que no le afecta la limitación de MudMenu descrita en SelectorDeEmpresa.razor).
+*@
+
+<MudDialog>
+    <DialogContent>
+        <p>@Mensaje</p>
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="Cancelar">@TextoCancelar</MudButton>
+        <MudButton Color="@(EsPeligrosa ? Color.Error : Color.Primary)" Variant="Variant.Filled" OnClick="Confirmar">
+            @TextoConfirmar
+        </MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter]
+    private IMudDialogInstance Dialogo { get; set; } = default!;
+
+    [Parameter]
+    public string Mensaje { get; set; } = string.Empty;
+
+    [Parameter]
+    public string TextoConfirmar { get; set; } = "Confirmar";
+
+    [Parameter]
+    public string TextoCancelar { get; set; } = "Cancelar";
+
+    [Parameter]
+    public bool EsPeligrosa { get; set; }
+
+    private void Confirmar() => Dialogo.Close(DialogResult.Ok(true));
+
+    private void Cancelar() => Dialogo.Cancel();
+}

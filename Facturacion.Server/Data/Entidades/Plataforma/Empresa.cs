@@ -9,8 +9,9 @@ namespace Facturacion.Server.Data.Entidades.Plataforma;
 /// de la barra superior. Se acota siempre por <c>CuentaId</c>.
 /// </para>
 /// <para>
-/// La fase 4 le agrega el resto de los campos de §4 del documento funcional: domicilio,
-/// contacto, logo, tasas por omisión y certificados.
+/// Los datos <b>fiscales</b> son los que viajan al CFDI y son obligatorios. El domicilio y
+/// el contacto son informativos —salen en el PDF, no en el XML— y por eso son opcionales:
+/// obligar a capturarlos para poder timbrar sería inventarse un requisito que el SAT no pone.
 /// </para>
 /// </summary>
 public sealed class Empresa
@@ -41,6 +42,48 @@ public sealed class Empresa
     public bool Activa { get; set; } = true;
 
     public DateTime FechaAltaUtc { get; set; }
+
+    // ── Domicilio (§4 del documento funcional) — informativo, sale en el PDF ────────────
+    public string? Calle { get; set; }
+
+    public string? NumeroExterior { get; set; }
+
+    public string? NumeroInterior { get; set; }
+
+    public string? Referencia { get; set; }
+
+    public string? Colonia { get; set; }
+
+    public string? Localidad { get; set; }
+
+    public string? Municipio { get; set; }
+
+    public string? Estado { get; set; }
+
+    public string? Pais { get; set; }
+
+    /// <summary>
+    /// Código postal del domicilio. <b>No</b> es el mismo que
+    /// <see cref="CodigoPostalExpedicion"/>: ese es el que viaja al CFDI como
+    /// <c>LugarExpedicion</c>, este solo se imprime. Suelen coincidir, pero no siempre —una
+    /// empresa puede expedir desde una sucursal— y confundirlos produce comprobantes con el
+    /// lugar de expedición equivocado.
+    /// </summary>
+    public string? CodigoPostal { get; set; }
+
+    // ── Contacto ───────────────────────────────────────────────────────────────────────
+    public string? Telefono { get; set; }
+
+    public string? CorreoContacto { get; set; }
+
+    // ── Logo ───────────────────────────────────────────────────────────────────────────
+    /// <summary>Ruta dentro del almacén cifrado. Nulo si no se ha cargado ninguno.</summary>
+    public string? LogoRuta { get; set; }
+
+    /// <summary>Tipo verificado por el contenido real del archivo, no por su extensión.</summary>
+    public string? LogoTipoMime { get; set; }
+
+    public string? LogoNombreOriginal { get; set; }
 
     // Licencias de los módulos de la fase 2. Se guardan desde ahora para que agregar esos
     // módulos no obligue a rehacer el esquema; hoy no habilitan nada.

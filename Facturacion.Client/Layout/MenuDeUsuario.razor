@@ -1,0 +1,53 @@
+@implements IAsyncDisposable
+@inject ServicioDeSesion Sesion
+@inject ServicioDeInstalacion Instalacion
+@inject NavigationManager Navegacion
+
+@*
+    Sin ActivatorContent: ver la nota en SelectorDeEmpresa.razor. Solo el activador que
+    arma el propio MudMenu (Label/Icon) abre de verdad en esta versión del paquete.
+*@
+
+<MudMenu Class="menu-usuario"
+         Label="@(Sesion.Sesion?.Nombre)"
+         Icon="@Icons.Material.Filled.AccountCircle"
+         AnchorOrigin="Origin.BottomRight"
+         AriaLabel="Menú de usuario">
+    @if (Instalacion.PuedeInstalarse)
+    {
+        <MudMenuItem OnClick="Instalar">
+            <MudIcon Icon="@Icons.Material.Filled.InstallMobile" Size="Size.Small" />
+            Instalar aplicación
+        </MudMenuItem>
+    }
+    <MudMenuItem OnClick="Salir">
+        <MudIcon Icon="@Icons.Material.Filled.Logout" Size="Size.Small" />
+        Cerrar sesión
+    </MudMenuItem>
+</MudMenu>
+
+@code {
+    protected override async Task OnInitializedAsync()
+    {
+        Sesion.Cambio += Redibujar;
+        Instalacion.Cambio += Redibujar;
+        await Instalacion.InicializarAsync();
+    }
+
+    public ValueTask DisposeAsync()
+    {
+        Sesion.Cambio -= Redibujar;
+        Instalacion.Cambio -= Redibujar;
+        return ValueTask.CompletedTask;
+    }
+
+    private Task Instalar() => Instalacion.InstalarAsync();
+
+    private async Task Salir()
+    {
+        await Sesion.CerrarSesionAsync();
+        Navegacion.NavigateTo("/iniciar-sesion", replace: true);
+    }
+
+    private void Redibujar() => InvokeAsync(StateHasChanged);
+}

@@ -1,0 +1,158 @@
+/*
+  El único MainLayout (CLAUDE.md §8). En escritorio: barra superior fija y menú lateral
+  fijo. En móvil (<=768px): la barra superior se reduce y el menú lateral se convierte en
+  barra inferior de pestañas, que es como se navega con el pulgar.
+*/
+
+html, body {
+    height: 100%;
+}
+
+.cascaron {
+    display: flex;
+    flex-direction: column;
+    height: 100vh;
+}
+
+.barra-superior {
+    flex: 0 0 auto;
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    height: 56px;
+    padding: 0 1rem;
+    background: var(--superficie);
+    border-bottom: 1px solid var(--borde);
+}
+
+.barra-superior-marca {
+    font-weight: 500;
+    color: var(--texto);
+    white-space: nowrap;
+}
+
+.separador-flexible {
+    flex: 1 1 auto;
+}
+
+.indicador-timbres {
+    display: flex;
+    align-items: center;
+    gap: 0.25rem;
+    color: var(--texto-suave);
+    font-size: 0.875rem;
+}
+
+/* SelectorDeEmpresa y MenuDeUsuario usan los parámetros Label/Icon del propio MudMenu, sin
+   ActivatorContent: con un activador propio —un <button>, hasta un MudButton envuelto en
+   ActivatorContent— el menú no abre en esta versión del paquete (se comprobó a mano,
+   inspeccionando la clase mud-popover-open, no se dedujo). El color y la tipografía del
+   botón que arma MudMenu ya llegan de mudblazor-tema.css. */
+.selector-empresa-unica {
+    color: var(--texto-suave);
+    font-size: 0.875rem;
+    white-space: nowrap;
+}
+
+.cuerpo {
+    flex: 1 1 auto;
+    display: flex;
+    min-height: 0;
+}
+
+.menu-lateral {
+    flex: 0 0 auto;
+    width: 220px;
+    background: var(--superficie);
+    border-right: 1px solid var(--borde);
+    overflow-y: auto;
+}
+
+.menu-lateral ul {
+    list-style: none;
+    margin: 0;
+    padding: 0.5rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.125rem;
+}
+
+.menu-lateral a {
+    display: flex;
+    align-items: center;
+    gap: 0.625rem;
+    height: var(--alto-control);
+    padding: 0 0.625rem;
+    border-radius: var(--radio);
+    color: var(--texto);
+    text-decoration: none;
+    font-size: 0.875rem;
+}
+
+.menu-lateral a:hover {
+    background: var(--acento-suave);
+}
+
+/* .active la aplica NavLink cuando la ruta coincide: es la sección donde el capturista
+   está parado ahora mismo. */
+.menu-lateral a.active {
+    background: var(--acento-suave);
+    color: var(--acento);
+    font-weight: 500;
+}
+
+.area-principal {
+    flex: 1 1 auto;
+    overflow-y: auto;
+    padding: 1.5rem;
+}
+
+.area-principal h1 {
+    margin: 0 0 1rem;
+    font-size: 1.125rem;
+    font-weight: 500;
+    color: var(--texto);
+}
+
+@media (max-width: 768px) {
+    .barra-superior-marca {
+        display: none;
+    }
+
+    .cuerpo {
+        flex-direction: column;
+    }
+
+    .area-principal {
+        padding: 1rem;
+        /* Dos veces --alto-control más margen: que el último renglón de la página no
+           quede tapado por la barra de pestañas fija. */
+        padding-bottom: calc(var(--alto-control) * 2);
+    }
+
+    .menu-lateral {
+        order: 1;
+        width: 100%;
+        position: fixed;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        border-right: none;
+        border-top: 1px solid var(--borde);
+        z-index: 10;
+    }
+
+    .menu-lateral ul {
+        flex-direction: row;
+        justify-content: space-around;
+        padding: 0.25rem;
+    }
+
+    .menu-lateral a {
+        flex-direction: column;
+        gap: 0.125rem;
+        height: auto;
+        padding: 0.375rem 0.5rem;
+        font-size: 0.6875rem;
+    }
+}

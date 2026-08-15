@@ -1,0 +1,102 @@
+@page "/clientes"
+@attribute [Authorize]
+@inject ServicioDeClientes Clientes
+@inject NavigationManager Navegacion
+@inject IServicioDeConfirmacion Confirmacion
+
+<PageTitle>Clientes</PageTitle>
+<TituloDePagina Texto="Clientes" />
+
+<PanelErrores Problema="_error" />
+
+<BarraHerramientasCatalogo Texto="@_texto"
+                           TextoCambiado="AlBuscar"
+                           SoloActivos="_soloActivos"
+                           SoloActivosCambiado="AlFiltrarActivos"
+                           TextoNuevo="Nuevo cliente"
+                           OnNuevo="@(() => Navegacion.NavigateTo("/clientes/nuevo"))"
+                           OnExportar="Exportar" />
+
+<TablaDatos T="ClienteEnListaDto"
+            @ref="_tabla"
+            Columnas="_columnas"
+            CargarPagina="CargarAsync"
+            TextoSinDatos="No hay clientes que coincidan." />
+
+@code {
+    private TablaDatos<ClienteEnListaDto>? _tabla;
+    private DetalleProblema? _error;
+    private string _texto = string.Empty;
+    private bool _soloActivos = true;
+
+    private IReadOnlyList<ColumnaDeTabla<ClienteEnListaDto>> _columnas = [];
+
+    protected override void OnInitialized() => _columnas =
+    [
+        new("Clave", c => @<span class="cifra-tabular">@c.ClaveInterna</span>, ClaveOrden: "clave", Tabular: true),
+        new("RFC", c => @<span class="cifra-tabular">@c.Rfc</span>, ClaveOrden: "rfc", Tabular: true),
+        new("Nombre", c => @<text>@c.Nombre</text>, ClaveOrden: "nombre"),
+        new("Régimen", c => @<span class="cifra-tabular">@c.RegimenFiscal</span>, Tabular: true),
+        new("C.P. fiscal", c => @<span class="cifra-tabular">@c.DomicilioFiscalCp</span>, Tabular: true),
+        new("Correo", c => @<text>@c.CorreoPrincipal</text>),
+        new("Estado", c => @<span class="indicador-estado indicador-estado-@(c.Activo ? "timbrada" : "borrador")">
+                                @(c.Activo ? "Activo" : "Inactivo")
+                            </span>),
+        new("", c => @<div class="acciones-renglon">
+                          <MudButton Size="Size.Small" OnClick="@(() => Navegacion.NavigateTo($"/clientes/{c.Id}"))">Editar</MudButton>
+                          <MudButton Size="Size.Small" OnClick="@(() => CambiarActivo(c))">
+                              @(c.Activo ? "Desactivar" : "Reactivar")
+                          </MudButton>
+                      </div>)
+    ];
+
+    private async Task<ResultadoDePagina<ClienteEnListaDto>> CargarAsync(PeticionDePagina peticion, CancellationToken ct)
+    {
+        var pagina = await Clientes.ListarAsync(
+            _texto, _soloActivos, peticion.Pagina, peticion.TamanoPagina,
+            peticion.ClaveOrden, peticion.Descendente, ct);
+
+        return new ResultadoDePagina<ClienteEnListaDto>(pagina.Elementos, pagina.Total);
+    }
+
+    private async Task AlBuscar(string texto)
+    {
+        _texto = texto;
+        await RecargarAsync();
+    }
+
+    private async Task AlFiltrarActivos(bool soloActivos)
+    {
+        _soloActivos = soloActivos;
+        await RecargarAsync();
+    }
+
+    private Task RecargarAsync() => _tabla?.RecargarAsync() ?? Task.CompletedTask;
+
+    /// <summary>
+    /// Dar de baja es reversible —solo apaga <c>Activo</c>— pero igual se confirma: en una
+    /// rejilla densa el botón de al lado es «Editar», y desactivar al cliente equivocado en
+    /// medio de una jornada de captura es una interrupción real.
+    /// </summary>
+    private async Task CambiarActivo(ClienteEnListaDto cliente)
+    {
+        if (cliente.Activo)
+        {
+            var confirmado = await Confirmacion.ConfirmarAsync(
+                "Desactivar cliente",
+                $"«{cliente.Nombre}» dejará de aparecer al facturar. Sus comprobantes ya emitidos no se tocan.",
+                "Desactivar");
+
+            if (!confirmado) return;
+        }
+
+        var (_, error) = await Clientes.CambiarActivoAsync(cliente.Id, !cliente.Activo);
+
+        _error = error;
+
+        if (error is null) await RecargarAsync();
+    }
+
+    private void Exportar()
+        => Navegacion.NavigateTo(ServicioDeClientes.RutaDeExportacion(_soloActivos), forceLoad: true);
+}

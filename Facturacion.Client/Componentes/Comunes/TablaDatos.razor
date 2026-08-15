@@ -1,0 +1,100 @@
+@typeparam T
+@using MudBlazor
+
+@*
+    Columnas configurables, orden y paginación en servidor, filas de 40px (fijado en
+    mudblazor-tema.css), estado vacío, estado de carga, y en móvil se transforma en tarjetas
+    apiladas —eso último con el Breakpoint de MudTable, no con CSS propio: es exactamente
+    lo que ese parámetro hace—. Documentado aquí porque también lo va a usar la mitad B
+    (REPARTO-EQUIPO.md §4).
+
+    CargarPagina es el único punto de contacto con el servidor: quien use el componente
+    decide qué endpoint llamar, TablaDatos solo pide "dame la página N ordenada así".
+*@
+
+<MudTable T="T"
+          ServerData="CargarAsync"
+          @ref="_tabla"
+          Breakpoint="Breakpoint.Sm"
+          Dense="true"
+          Hover="true"
+          Loading="_cargando"
+          RowsPerPage="@TamanoPagina">
+    <HeaderContent>
+        @foreach (var columna in Columnas)
+        {
+            @if (columna.ClaveOrden is { } clave)
+            {
+                <MudTh>
+                    <MudTableSortLabel T="T" SortLabel="@clave">@columna.Encabezado</MudTableSortLabel>
+                </MudTh>
+            }
+            else
+            {
+                <MudTh>@columna.Encabezado</MudTh>
+            }
+        }
+    </HeaderContent>
+    <RowTemplate>
+        @foreach (var columna in Columnas)
+        {
+            <MudTd DataLabel="@columna.Encabezado" Class="@(columna.Tabular ? "cifra-tabular" : null)">
+                @columna.Contenido(context)
+            </MudTd>
+        }
+    </RowTemplate>
+    <NoRecordsContent>
+        <p class="tabla-datos-estado">@TextoSinDatos</p>
+    </NoRecordsContent>
+    <LoadingContent>
+        <p class="tabla-datos-estado">Cargando…</p>
+    </LoadingContent>
+    <PagerContent>
+        <MudTablePager RowsPerPageString="Renglones por página:" InfoFormat="{first_item}-{last_item} de {all_items}" />
+    </PagerContent>
+</MudTable>
+
+@code {
+    [Parameter, EditorRequired]
+    public IReadOnlyList<ColumnaDeTabla<T>> Columnas { get; set; } = [];
+
+    [Parameter, EditorRequired]
+    public Func<PeticionDePagina, CancellationToken, Task<ResultadoDePagina<T>>> CargarPagina { get; set; } = default!;
+
+    [Parameter]
+    public int TamanoPagina { get; set; } = 25;
+
+    [Parameter]
+    public string TextoSinDatos { get; set; } = "No hay registros que mostrar.";
+
+    private MudTable<T>? _tabla;
+    private bool _cargando;
+
+    /// <summary>
+    /// Vuelve a pedir la página actual. Lo llama la página dueña cuando cambia el texto de
+    /// búsqueda de <see cref="BarraHerramientasCatalogo"/>, ya que el filtro de texto viaja
+    /// en la petición al servidor que arma esa página, no en <see cref="PeticionDePagina"/>.
+    /// </summary>
+    public Task RecargarAsync() => _tabla?.ReloadServerData() ?? Task.CompletedTask;
+
+    private async Task<TableData<T>> CargarAsync(TableState estado, CancellationToken ct)
+    {
+        _cargando = true;
+        try
+        {
+            var peticion = new PeticionDePagina(
+                Pagina: estado.Page,
+                TamanoPagina: estado.PageSize,
+                ClaveOrden: estado.SortLabel,
+                Descendente: estado.SortDirection == SortDirection.Descending);
+
+            var resultado = await CargarPagina(peticion, ct);
+
+            return new TableData<T> { Items = resultado.Elementos, TotalItems = resultado.Total };
+        }
+        finally
+        {
+            _cargando = false;
+        }
+    }
+}

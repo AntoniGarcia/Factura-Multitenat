@@ -1,0 +1,42 @@
+@*
+    Decimal, dos decimales a la vista, alineado a la derecha, cifras tabulares. El valor
+    interno sigue siendo decimal de .NET —seis decimales de cálculo, CLAUDE.md §5— y el
+    Format="N2" es solo cómo se pinta: no trunca el número que de verdad se guarda o se
+    envía al servidor.
+*@
+
+<MudNumericField T="decimal"
+                  Label="@Label"
+                  Value="@Valor"
+                  ValueChanged="@(v => ValorCambiado.InvokeAsync(v))"
+                  Format="N2"
+                  Culture="@CulturaEsMx"
+                  Class="cifra-tabular campo-moneda"
+                  Immediate="true"
+                  Min="@Minimo"
+                  Adornment="Adornment.Start"
+                  AdornmentText="$"
+                  Required="@Requerido"
+                  Disabled="@Deshabilitado" />
+
+@code {
+    private static readonly System.Globalization.CultureInfo CulturaEsMx = new("es-MX");
+
+    [Parameter]
+    public string Label { get; set; } = "Importe";
+
+    [Parameter]
+    public decimal Valor { get; set; }
+
+    [Parameter]
+    public EventCallback<decimal> ValorCambiado { get; set; }
+
+    [Parameter]
+    public decimal Minimo { get; set; } = 0m;
+
+    [Parameter]
+    public bool Requerido { get; set; }
+
+    [Parameter]
+    public bool Deshabilitado { get; set; }
+}

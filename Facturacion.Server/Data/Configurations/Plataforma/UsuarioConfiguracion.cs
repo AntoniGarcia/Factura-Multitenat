@@ -14,6 +14,7 @@ public sealed class UsuarioConfiguracion : IEntityTypeConfiguration<Usuario>
     public void Configure(EntityTypeBuilder<Usuario> constructor)
     {
         constructor.Property(u => u.Nombre).HasMaxLength(254);
+        constructor.Property(u => u.TemaPreferido).HasMaxLength(16);
 
         constructor.HasOne(u => u.Cuenta)
             .WithMany(c => c.Usuarios)

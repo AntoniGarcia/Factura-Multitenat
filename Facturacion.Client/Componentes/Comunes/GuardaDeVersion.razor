@@ -1,0 +1,94 @@
+@inject IServicioDeVersion Version
+@inject NavigationManager Navegacion
+@implements IAsyncDisposable
+
+@*
+    Compara la versión compilada del WebAssembly contra la del servidor y, si difieren,
+    fuerza la recarga (CLAUDE.md §4). No es una comodidad: un catálogo del SAT resuelto con
+    un WebAssembly viejo produce comprobantes mal emitidos.
+
+    Vive fuera de PuertaDeArranque, a propósito: tiene que proteger también la pantalla de
+    inicio de sesión, antes de que exista ninguna sesión.
+*@
+
+@if (_desajustada)
+{
+    <div class="guarda-version" role="alertdialog" aria-live="assertive">
+        <div class="guarda-version-caja">
+            <p class="guarda-version-titulo">Hay una versión nueva del sistema</p>
+            <p>Se va a recargar la página para traerla. Esto no cierra tu sesión.</p>
+            <button type="button" @onclick="Recargar">Recargar ahora</button>
+        </div>
+    </div>
+}
+
+@code {
+    // Cada cuánto se vuelve a preguntar mientras la aplicación sigue abierta: una sesión de
+    // ocho horas tiene que enterarse de un despliegue nuevo sin que el capturista tenga que
+    // cerrar y volver a abrir la pestaña.
+    private static readonly TimeSpan Intervalo = TimeSpan.FromMinutes(5);
+
+    private bool _desajustada;
+    private PeriodicTimer? _temporizador;
+    private CancellationTokenSource? _cancelacion;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await VerificarAsync();
+
+        if (_desajustada) return;
+
+        _cancelacion = new CancellationTokenSource();
+        _temporizador = new PeriodicTimer(Intervalo);
+        _ = SondearAsync(_cancelacion.Token);
+    }
+
+    private async Task SondearAsync(CancellationToken ct)
+    {
+        try
+        {
+            while (_temporizador is not null && await _temporizador.WaitForNextTickAsync(ct))
+            {
+                await VerificarAsync();
+                if (_desajustada) return;
+            }
+        }
+        catch (OperationCanceledException)
+        {
+            // El componente se desmontó; no hay nada que hacer.
+        }
+    }
+
+    private async Task VerificarAsync()
+    {
+        var delServidor = await Version.ObtenerVersionDelServidorAsync(CancellationToken.None);
+
+        // Sin respuesta no se puede afirmar un desajuste: podría ser que no hay red, no que
+        // el servidor cambió.
+        if (delServidor is null || delServidor == Version.VersionCompilada) return;
+
+        _desajustada = true;
+        StateHasChanged();
+
+        // El aviso no se puede descartar y, además, se fuerza la recarga sola a los pocos
+        // segundos: no depende de que alguien note el aviso y haga clic.
+        await Task.Delay(TimeSpan.FromSeconds(8));
+        Recargar();
+    }
+
+    private void Recargar()
+    {
+        // forceLoad: true, no un simple StateHasChanged: hace falta una recarga completa
+        // del documento para que el navegador vuelva a pedir el WebAssembly, no solo
+        // re-renderizar con el que ya está cargado en memoria.
+        Navegacion.NavigateTo(Navegacion.Uri, forceLoad: true);
+    }
+
+    public ValueTask DisposeAsync()
+    {
+        _cancelacion?.Cancel();
+        _temporizador?.Dispose();
+        _cancelacion?.Dispose();
+        return ValueTask.CompletedTask;
+    }
+}

@@ -1,11 +1,14 @@
 using System.Reflection;
+using System.Security.Cryptography.X509Certificates;
 using Facturacion.Server.Data;
+using Facturacion.Server.Infra.Almacen;
 using Facturacion.Server.Infra.Bitacora;
 using Facturacion.Server.Infra.Errores;
 using Facturacion.Server.Infra.Idempotencia;
 using Facturacion.Server.Infra.Seguridad;
 using Facturacion.Server.Infra.Tenencia;
 using Facturacion.Shared.Contratos;
+using Microsoft.AspNetCore.DataProtection;
 using Microsoft.EntityFrameworkCore;
 using Serilog;
 
@@ -36,6 +39,8 @@ public static class InfraestructuraModule
 
         servicios.AddScoped<IServicioDeBitacora, ServicioDeBitacora>();
 
+        servicios.AgregarAlmacenCifrado(configuracion);
+
         servicios.AddMemoryCache();
         servicios.AddSingleton<IControlDeIntentos, ControlDeIntentos>();
 
@@ -53,9 +58,10 @@ public static class InfraestructuraModule
         aplicacion.UseMiddleware<MiddlewareDeExcepciones>();
 
         // Antes de los archivos estáticos: index.html y el WebAssembly son justamente lo que
-        // más necesita la CSP, y UseStaticFiles corta la tubería al responder.
-        aplicacion.UseMiddleware<CabecerasDeSeguridad>(
-            PoliticaDeContenido.Construir(aplicacion.Environment.WebRootFileProvider));
+        // más necesita la CSP, y UseStaticFiles corta la tubería al responder. La política
+        // para el HTML se calcula sola, la primera vez que este middleware ve una respuesta
+        // HTML de verdad; ver CabecerasDeSeguridad.
+        aplicacion.UseMiddleware<CabecerasDeSeguridad>();
 
         if (!aplicacion.Environment.IsDevelopment())
             aplicacion.UseHsts();
@@ -63,10 +69,12 @@ public static class InfraestructuraModule
         aplicacion.UseHttpsRedirection();
         aplicacion.UseSerilogRequestLogging();
 
-        aplicacion.UseBlazorFrameworkFiles();
-        aplicacion.UseStaticFiles();
-
         aplicacion.UseRouting();
+
+        // Antes del enlace de modelo: para cuando corre el filtro de idempotencia, el cuerpo
+        // ya se leyó y no se puede rebobinar si nadie lo pidió antes. Ver
+        // MiddlewareDeBufferDeIdempotencia.
+        aplicacion.UseMiddleware<MiddlewareDeBufferDeIdempotencia>();
 
         aplicacion.UseAuthentication();
         aplicacion.UseAuthorization();
@@ -76,6 +84,16 @@ public static class InfraestructuraModule
 
     public static WebApplication MapInfraestructura(this WebApplication aplicacion)
     {
+        // Reemplaza a UseBlazorFrameworkFiles()+UseStaticFiles(): esos dos sirven el archivo
+        // físico tal cual está en wwwroot, sin negociar compresión por Accept-Encoding.
+        // MapStaticAssets() sí lo hace, para todo lo que trae el Client referenciado
+        // (_framework, _content, css, manifest...) excepto index.html: ese archivo en
+        // concreto no forma parte de su manifiesto —se comprobó: cero rutas ".html" en
+        // el endpoints.json publicado— y sigue sirviéndose como archivo físico, vía
+        // MapFallbackToFile en Program.cs. Por qué eso hace falta arreglar aparte:
+        // el Target CorregirMarcadoresDeIndexHtml en Facturacion.Server.csproj.
+        aplicacion.MapStaticAssets();
+
         // La consulta el Client al arrancar: si la versión del servidor no coincide con la
         // suya, fuerza la recarga. Es anónima porque se consulta antes de iniciar sesión.
         aplicacion.MapGet("/api/version", () => Results.Ok(new { version = VersionCompilada() }))
@@ -86,6 +104,62 @@ public static class InfraestructuraModule
             aplicacion.MapOpenApi();
 
         return aplicacion;
+    }
+
+    /// <summary>
+    /// Data Protection con el llavero persistido fuera del repositorio y protegido por el
+    /// certificado de <c>Almacen:LlaveMaestraPfx</c> (CLAUDE.md §4).
+    /// <para>
+    /// Sin esto, el llavero por omisión de ASP.NET Core queda en claro y atado a la máquina:
+    /// al reiniciar en otro contenedor, los CSD ya cargados dejarían de poder descifrarse.
+    /// </para>
+    /// </summary>
+    private static IServiceCollection AgregarAlmacenCifrado(
+        this IServiceCollection servicios, IConfiguration configuracion)
+    {
+        var opciones = configuracion.GetSection(OpcionesDeAlmacen.Seccion).Get<OpcionesDeAlmacen>() ?? new OpcionesDeAlmacen();
+
+        // Se falla al arrancar, como con la clave de firma del JWT: descubrir que no hay
+        // clave maestra el día que alguien sube su primer certificado es demasiado tarde.
+        if (string.IsNullOrWhiteSpace(opciones.LlaveMaestraPfx))
+            throw new InvalidOperationException(
+                "Falta 'Almacen:LlaveMaestraPfx'. Genera una con " +
+                "'dotnet run -- --generar-llave-maestra' y ponla en appsettings.Development.json " +
+                "o en una variable de entorno; nunca en el repositorio.");
+
+        servicios.AddOptions<OpcionesDeAlmacen>()
+            .Bind(configuracion.GetSection(OpcionesDeAlmacen.Seccion))
+            .ValidateDataAnnotations()
+            .ValidateOnStart();
+
+        var llavero = new DirectoryInfo(opciones.RutaLlavero);
+        llavero.Create();
+
+        servicios.AddDataProtection()
+            // Fijo y explícito: el propósito criptográfico no debe cambiar porque cambie el
+            // nombre del ensamblado o del contenedor, o lo cifrado ayer no se lee hoy.
+            .SetApplicationName("Facturacion.Plataforma")
+            .PersistKeysToFileSystem(llavero)
+            .ProtectKeysWithCertificate(LlaveMaestra(opciones.LlaveMaestraPfx));
+
+        servicios.AddSingleton<IAlmacenDeArchivos, AlmacenDeArchivos>();
+        servicios.AddSingleton<IProtectorDeSecretos, ProtectorDeSecretos>();
+
+        return servicios;
+    }
+
+    private static X509Certificate2 LlaveMaestra(string pfxEnBase64)
+    {
+        try
+        {
+            return X509CertificateLoader.LoadPkcs12(Convert.FromBase64String(pfxEnBase64), password: null);
+        }
+        catch (Exception ex)
+        {
+            throw new InvalidOperationException(
+                "'Almacen:LlaveMaestraPfx' no es un certificado válido en base 64. " +
+                "Vuelve a generarla con 'dotnet run -- --generar-llave-maestra'.", ex);
+        }
     }
 
     private static string VersionCompilada()

@@ -2,6 +2,9 @@
 
   <PropertyGroup>
     <TargetFramework>net10.0</TargetFramework>
+    <!-- Lo exige NPOI al compilar: es la promesa de no ejercer patentes de Microsoft sobre
+         OOXML (Open Specification Promise), no una licencia de uso del paquete en sí. -->
+    <AcceptNPOIOSMFLicense>true</AcceptNPOIOSMFLicense>
   </PropertyGroup>
 
   <ItemGroup>
@@ -10,6 +13,7 @@
     <PackageReference Include="Microsoft.AspNetCore.Identity.EntityFrameworkCore" />
     <PackageReference Include="Microsoft.AspNetCore.OpenApi" />
     <PackageReference Include="Microsoft.EntityFrameworkCore.SqlServer" />
+    <PackageReference Include="NPOI" />
     <PackageReference Include="Microsoft.EntityFrameworkCore.Design">
       <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
       <PrivateAssets>all</PrivateAssets>
@@ -22,5 +26,33 @@
     <ProjectReference Include="..\Facturacion.Client\Facturacion.Client.csproj" />
     <ProjectReference Include="..\Facturacion.Shared\Facturacion.Shared.csproj" />
   </ItemGroup>
+
+  <!--
+    Bug del SDK sin corregir a la fecha (dotnet/runtime#121993, dotnet/aspnetcore#64199):
+    al publicar el Server, el Client referenciado nunca ejecuta la fase de "publish" que
+    resuelve los marcadores #[.{fingerprint}] de wwwroot/index.html —solo se ejecuta al
+    publicar el Client directamente—, así que el index.html que llega al publicado del
+    Server queda sin resolver y la aplicación no arranca. Se comprobó publicando de
+    verdad, no leyendo el código (CLAUDE.md §9): con este bug, "blazor.webassembly.js"
+    del index.html publicado literalmente decía "blazor.webassembly#[.{fingerprint}].js".
+
+    La fase de "build" del Client sí resuelve los marcadores correctamente, y con el
+    mismo nombre huellado que termina existiendo de verdad en _framework/ —se comprobó
+    comparando los dos—, así que ese resultado se copia encima del index.html sin
+    procesar que deja la publicación.
+  -->
+  <Target Name="CorregirMarcadoresDeIndexHtml" AfterTargets="Publish">
+    <ItemGroup>
+      <_IndexHtmlResuelto Include="..\Facturacion.Client\obj\$(Configuration)\$(TargetFramework)\staticwebassets\htmlassetplaceholders\publish\*.html" />
+      <_IndexHtmlResuelto Include="..\Facturacion.Client\obj\$(Configuration)\$(TargetFramework)\staticwebassets\htmlassetplaceholders\build\*.html" Condition="'@(_IndexHtmlResuelto)' == ''" />
+    </ItemGroup>
+    <Error
+      Condition="'@(_IndexHtmlResuelto)' == ''"
+      Text="No se encontró el index.html con los marcadores resueltos del Client (¿dotnet/runtime#121993 ya se corrigió? Si es así, esta corrección manual sobra y hay que quitarla)." />
+    <Error
+      Condition="'@(_IndexHtmlResuelto->Count())' &gt; 1"
+      Text="Hay más de un index.html resuelto en obj/ del Client —probablemente restos de una publicación anterior—. Ejecuta 'dotnet clean' en Facturacion.Client antes de publicar." />
+    <Copy SourceFiles="@(_IndexHtmlResuelto)" DestinationFiles="$(PublishDir)wwwroot\index.html" />
+  </Target>
 
 </Project>

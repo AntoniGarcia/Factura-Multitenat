@@ -491,8 +491,20 @@ appsettings.Development.json
 *.key
 *.pfx
 
-# Almacén de archivos (logos, XML, PDF, CSD): fuera de wwwroot y fuera de Git.
-/almacenamiento/
+# Almacén de archivos (logos, XML, PDF, CSD) y llavero de Data Protection: fuera de wwwroot
+# y fuera de Git.
+#
+# SIN barra inicial a propósito. Anclado a la raíz ("/almacenamiento/") NO cubría
+# "Facturacion.Server/almacenamiento/", que es donde la aplicación lo crea de verdad al
+# correr desde su propia carpeta: las llaves privadas de los CSD y el llavero quedaban
+# commiteables. Se descubrió con `git check-ignore` sobre un archivo real, no leyendo el
+# patrón.
+almacenamiento/
+
+# Archivo oficial de catálogos del SAT (Anexo 20): pesa ~48 MB y es un insumo del
+# importador (fase 3), no código fuente. Se documenta cómo conseguirlo y cómo cargarlo
+# en docs/DESPLIEGUE.md (fase 9).
+/CatalogosSAT/
 
 # Configuración local de Claude Code: es de la máquina, no del proyecto.
 .claude/settings.local.json
