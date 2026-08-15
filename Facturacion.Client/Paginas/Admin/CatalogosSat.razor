@@ -1,0 +1,67 @@
+@page "/admin/catalogos-sat"
+@attribute [Authorize]
+@using Facturacion.Shared.Plataforma
+@inject IHttpClientFactory FabricaHttp
+
+<PageTitle>Catálogos del SAT</PageTitle>
+<TituloDePagina Texto="Catálogos del SAT" />
+
+<p class="cat-sat-ayuda">
+    Versión publicada por el SAT y fecha de la última carga de cada catálogo (CLAUDE.md §7).
+    Se actualiza corriendo <code>dotnet run -- --cargar-catalogos ruta.xls</code> en el Server.
+</p>
+
+@if (_cargando)
+{
+    <p>Cargando…</p>
+}
+else if (_versiones.Count == 0)
+{
+    <p class="tabla-datos-estado">Todavía no se ha cargado ningún catálogo.</p>
+}
+else
+{
+    <MudSimpleTable Dense="true" Hover="true">
+        <thead>
+            <tr>
+                <th>Catálogo</th>
+                <th>Versión</th>
+                <th>Revisión</th>
+                <th>Publicado por el SAT</th>
+                <th>Cargado</th>
+                <th class="cifra-tabular">Claves vigentes</th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var v in _versiones)
+            {
+                <tr>
+                    <td>@v.Catalogo</td>
+                    <td>@v.VersionCatalogo</td>
+                    <td>@v.RevisionCatalogo</td>
+                    <td>@(v.FechaPublicacion?.ToString("dd/MM/yyyy") ?? "—")</td>
+                    <td>@v.FechaCargaUtc.ToLocalTime().ToString("dd/MM/yyyy HH:mm")</td>
+                    <td class="cifra-tabular">@v.RenglonesVigentes.ToString("N0")</td>
+                </tr>
+            }
+        </tbody>
+    </MudSimpleTable>
+}
+
+@code {
+    private IReadOnlyList<CatalogoVersionDto> _versiones = [];
+    private bool _cargando = true;
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            var cliente = FabricaHttp.CreateClient(Servicios.Plataforma.ClientesHttp.Api);
+            _versiones = await cliente.GetFromJsonAsync<IReadOnlyList<CatalogoVersionDto>>("api/catalogos/version") ?? [];
+        }
+        finally
+        {
+            _cargando = false;
+        }
+    }
+}

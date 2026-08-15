@@ -1,0 +1,332 @@
+@page "/productos/nuevo"
+@page "/productos/{Id:guid}"
+@attribute [Authorize(Policy = Permisos.ConfigurarEmpresa)]
+@using Facturacion.Shared.Contratos
+@inject ServicioDeProductos Productos
+@inject ServicioDeCatalogos Catalogos
+@inject IBusquedaDeCatalogo Busqueda
+@inject NavigationManager Navegacion
+
+<PageTitle>@(EsNuevo ? "Nuevo producto" : "Editar producto")</PageTitle>
+<TituloDePagina Texto="@(EsNuevo ? "Nuevo producto" : $"Producto {_codigoInterno}")" />
+
+<PanelErrores Problema="_error" />
+
+@if (_cargando)
+{
+    <p>Cargando…</p>
+}
+else
+{
+    <EditForm Model="this" OnValidSubmit="Guardar">
+        <h2 class="seccion-titulo">Identificación</h2>
+
+        <div class="rejilla-campos">
+            <MudTextField @bind-Value="_descripcion" Label="Descripción" MaxLength="1000"
+                          Lines="2" HelperText="Es lo que sale como concepto en la factura." />
+            <MudTextField @bind-Value="_unidadTexto" Label="Unidad de medida" MaxLength="64"
+                          HelperText="La que lee el cliente en el PDF: «Litro», «Caja con 12»." />
+        </div>
+
+        <h2 class="seccion-titulo">Claves del SAT</h2>
+        <p class="seccion-ayuda">
+            Se eligen del catálogo, nunca se escriben a mano. Al elegirlas se muestra su descripción.
+        </p>
+
+        <div class="rejilla-campos">
+            <div>
+                <BuscadorCatalogo Catalogo="c_ClaveProdServ"
+                                  Label="Clave de producto o servicio"
+                                  Valor="@_claveProdServSel"
+                                  ValorCambiado="AlElegirClaveProdServ"
+                                  Requerido="true" />
+                @if (_claveProdServSel is not null)
+                {
+                    <p class="clave-resuelta">
+                        <span class="cifra-tabular">@_claveProdServSel.Clave</span> — @_claveProdServSel.Descripcion
+                    </p>
+                }
+            </div>
+
+            <div>
+                <BuscadorCatalogo Catalogo="c_ClaveUnidad"
+                                  Label="Clave de unidad"
+                                  Valor="@_claveUnidadSel"
+                                  ValorCambiado="AlElegirClaveUnidad"
+                                  Requerido="true" />
+                @if (_claveUnidadSel is not null)
+                {
+                    <p class="clave-resuelta">
+                        <span class="cifra-tabular">@_claveUnidadSel.Clave</span> — @_claveUnidadSel.Descripcion
+                    </p>
+                }
+            </div>
+        </div>
+
+        <h2 class="seccion-titulo">Precio y peso</h2>
+
+        <div class="rejilla-campos">
+            <MudNumericField @bind-Value="_valorUnitario" Label="Precio de venta" Min="0M" Format="N2"
+                             Class="cifra-tabular" />
+            <MudNumericField @bind-Value="_pesoKg" Label="Peso en kilogramos" Min="0M" Format="N3"
+                             Class="cifra-tabular" HelperText="Opcional." />
+        </div>
+
+        <h2 class="seccion-titulo">Impuestos</h2>
+
+        <div class="rejilla-campos">
+            <MudSelect T="string" @bind-Value="_objetoImp" @bind-Value:after="AlCambiarObjeto" Label="Objeto de impuesto">
+                @foreach (var o in Catalogos.Obtener("c_ObjetoImp"))
+                {
+                    <MudSelectItem T="string" Value="@o.Clave">@o.Clave — @o.Descripcion</MudSelectItem>
+                }
+            </MudSelect>
+        </div>
+
+        @if (!LlevaDesglose)
+        {
+            <div class="aviso-reservado" role="note">
+                <p>Con este objeto de impuesto el concepto no lleva desglose, así que no se configuran impuestos.</p>
+            </div>
+        }
+        else
+        {
+            <p class="seccion-ayuda">
+                Los atajos cubren los casos comunes. Debajo se ve lo que de verdad va a viajar al
+                XML, que es lo que el SAT valida.
+            </p>
+
+            <div class="atajos-iva">
+                @foreach (var atajo in Atajos)
+                {
+                    <MudButton Variant="@(EsAtajoActivo(atajo) ? Variant.Filled : Variant.Outlined)"
+                               Size="Size.Small"
+                               OnClick="@(() => AplicarAtajo(atajo))">
+                        @atajo.Etiqueta
+                    </MudButton>
+                }
+            </div>
+
+            <MudSimpleTable Dense="true" Class="tabla-impuestos">
+                <thead>
+                    <tr>
+                        <th>Impuesto</th>
+                        <th>Tipo de factor</th>
+                        <th class="cifra-tabular">Tasa o cuota</th>
+                        <th>Sentido</th>
+                        <th></th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var impuesto in _impuestos)
+                    {
+                        <tr>
+                            <td class="cifra-tabular">@impuesto.Impuesto — @NombreImpuesto(impuesto.Impuesto)</td>
+                            <td>@impuesto.TipoFactor</td>
+                            <td class="cifra-tabular">
+                                @(impuesto.TasaOCuota is { } t ? t.ToString("0.######") : "—")
+                            </td>
+                            <td>@(impuesto.EsRetencion ? "Retención" : "Traslado")</td>
+                            <td>
+                                <MudButton Size="Size.Small" OnClick="@(() => _impuestos.Remove(impuesto))">Quitar</MudButton>
+                            </td>
+                        </tr>
+                    }
+                    @if (_impuestos.Count == 0)
+                    {
+                        <tr><td colspan="5" class="tabla-datos-estado">Sin impuestos configurados.</td></tr>
+                    }
+                </tbody>
+            </MudSimpleTable>
+
+            <h3 class="seccion-subtitulo">Agregar otro impuesto</h3>
+            <div class="rejilla-campos">
+                <MudSelect T="string" @bind-Value="_nuevoImpuesto" Label="Impuesto">
+                    @foreach (var i in Catalogos.Obtener("c_Impuesto"))
+                    {
+                        <MudSelectItem T="string" Value="@i.Clave">@i.Clave — @i.Descripcion</MudSelectItem>
+                    }
+                </MudSelect>
+
+                <MudSelect T="string" @bind-Value="_nuevoFactor" Label="Tipo de factor">
+                    @foreach (var f in Catalogos.Obtener("c_TipoFactor"))
+                    {
+                        <MudSelectItem T="string" Value="@f.Clave">@f.Clave</MudSelectItem>
+                    }
+                </MudSelect>
+
+                <MudNumericField @bind-Value="_nuevaTasa" Label="Tasa o cuota" Format="0.######"
+                                 Class="cifra-tabular" HelperText="0.16 es 16 %. Vacío si es exento." />
+
+                <MudSelect T="bool" @bind-Value="_nuevoEsRetencion" Label="Sentido">
+                    <MudSelectItem T="bool" Value="false">Traslado</MudSelectItem>
+                    <MudSelectItem T="bool" Value="true">Retención</MudSelectItem>
+                </MudSelect>
+
+                <MudButton Variant="Variant.Outlined" OnClick="AgregarImpuesto">Agregar</MudButton>
+            </div>
+        }
+
+        <div class="acciones-formulario">
+            <MudButton ButtonType="ButtonType.Submit" Variant="Variant.Filled" Disabled="_guardando">
+                @(_guardando ? "Guardando…" : "Guardar")
+            </MudButton>
+            <MudButton Variant="Variant.Text" OnClick="@(() => Navegacion.NavigateTo("/productos"))">Cancelar</MudButton>
+        </div>
+    </EditForm>
+}
+
+@code {
+    [Parameter]
+    public Guid? Id { get; set; }
+
+    private bool EsNuevo => Id is null;
+
+    /// <summary>Objetos de impuesto que no llevan desglose; los mismos que valida el servidor.</summary>
+    private bool LlevaDesglose => _objetoImp is not ("01" or "03");
+
+    private DetalleProblema? _error;
+    private bool _cargando = true;
+    private bool _guardando;
+    private int _codigoInterno;
+
+    private string _descripcion = string.Empty;
+    private string _unidadTexto = string.Empty;
+    private decimal _valorUnitario;
+    private decimal? _pesoKg;
+    private string _objetoImp = "02";
+    private bool _activo = true;
+
+    private ClaveSatDto? _claveProdServSel;
+    private ClaveSatDto? _claveUnidadSel;
+
+    private readonly List<ImpuestoDeProductoDto> _impuestos = [];
+
+    private string _nuevoImpuesto = "002";
+    private string _nuevoFactor = "Tasa";
+    private decimal? _nuevaTasa;
+    private bool _nuevoEsRetencion;
+
+    /// <summary>
+    /// Los tres casos que cubren casi todo, como el grupo de radios del sistema viejo (§6
+    /// del documento funcional). Son atajos sobre el modelo completo, no un modelo aparte:
+    /// cada uno escribe las tres columnas del SAT y se ve en la tabla de abajo.
+    /// El 8 % es la tasa de la franja fronteriza.
+    /// </summary>
+    private static readonly (string Etiqueta, string Factor, decimal? Tasa)[] Atajos =
+    [
+        ("IVA 16 %", "Tasa", 0.16m),
+        ("IVA 8 % frontera", "Tasa", 0.08m),
+        ("IVA 0 %", "Tasa", 0m),
+        ("Exento de IVA", "Exento", null)
+    ];
+
+    protected override async Task OnParametersSetAsync()
+    {
+        _cargando = true;
+
+        if (Id is { } id)
+        {
+            var producto = await Productos.ObtenerAsync(id);
+
+            if (producto is not null)
+            {
+                _codigoInterno = producto.CodigoInterno;
+                _descripcion = producto.Descripcion;
+                _unidadTexto = producto.UnidadTexto;
+                _valorUnitario = producto.ValorUnitario;
+                _pesoKg = producto.PesoKg;
+                _objetoImp = producto.ObjetoImp;
+                _activo = producto.Activo;
+
+                _impuestos.Clear();
+                _impuestos.AddRange(producto.Impuestos);
+
+                // Se resuelven contra el catálogo para poder mostrar la descripción, que es
+                // lo que le dice al capturista si eligió la clave correcta.
+                _claveProdServSel = await ResolverAsync("c_ClaveProdServ", producto.ClaveProdServ);
+                _claveUnidadSel = await ResolverAsync("c_ClaveUnidad", producto.ClaveUnidad);
+            }
+        }
+
+        _cargando = false;
+    }
+
+    private async Task<ClaveSatDto?> ResolverAsync(string catalogo, string clave)
+    {
+        var encontrados = await Busqueda.BuscarAsync(catalogo, clave, CancellationToken.None);
+        return encontrados.FirstOrDefault(c => c.Clave == clave);
+    }
+
+    private void AlElegirClaveProdServ(ClaveSatDto? clave) => _claveProdServSel = clave;
+
+    private void AlElegirClaveUnidad(ClaveSatDto? clave)
+    {
+        _claveUnidadSel = clave;
+
+        // La unidad en texto se precarga con la del catálogo, pero se puede cambiar: es lo
+        // que ve el cliente y a veces conviene que diga «Caja con 12» y no «Pieza».
+        if (clave is not null && string.IsNullOrWhiteSpace(_unidadTexto))
+            _unidadTexto = clave.Descripcion;
+    }
+
+    private void AlCambiarObjeto()
+    {
+        // Cambiar a un objeto sin desglose limpia los impuestos: dejarlos produciría un
+        // error del servidor que el usuario no entendería.
+        if (!LlevaDesglose) _impuestos.Clear();
+    }
+
+    private string NombreImpuesto(string clave)
+        => Catalogos.Obtener("c_Impuesto").FirstOrDefault(i => i.Clave == clave)?.Descripcion ?? clave;
+
+    private bool EsAtajoActivo((string Etiqueta, string Factor, decimal? Tasa) atajo)
+        => _impuestos.Count == 1
+           && _impuestos[0] is { Impuesto: "002", EsRetencion: false } unico
+           && unico.TipoFactor == atajo.Factor
+           && unico.TasaOCuota == atajo.Tasa;
+
+    private void AplicarAtajo((string Etiqueta, string Factor, decimal? Tasa) atajo)
+    {
+        // Solo reemplaza el traslado de IVA; si el producto tiene retenciones o IEPS
+        // configurados a mano, se respetan.
+        _impuestos.RemoveAll(i => i is { Impuesto: "002", EsRetencion: false });
+        _impuestos.Insert(0, new ImpuestoDeProductoDto("002", atajo.Factor, atajo.Tasa, EsRetencion: false));
+    }
+
+    private void AgregarImpuesto()
+    {
+        _impuestos.RemoveAll(i => i.Impuesto == _nuevoImpuesto && i.EsRetencion == _nuevoEsRetencion);
+
+        _impuestos.Add(new ImpuestoDeProductoDto(
+            _nuevoImpuesto, _nuevoFactor,
+            _nuevoFactor == "Exento" ? null : _nuevaTasa,
+            _nuevoEsRetencion));
+    }
+
+    private async Task Guardar()
+    {
+        _guardando = true;
+        _error = null;
+
+        var peticion = new PeticionGuardarProducto(
+            _claveProdServSel?.Clave ?? string.Empty,
+            _claveUnidadSel?.Clave ?? string.Empty,
+            _unidadTexto, _descripcion, _valorUnitario, _pesoKg, _objetoImp,
+            _impuestos, _activo);
+
+        var (exito, error) = EsNuevo
+            ? await Productos.CrearAsync(peticion)
+            : await Productos.ActualizarAsync(Id!.Value, peticion);
+
+        _guardando = false;
+
+        if (error is not null)
+        {
+            _error = error;
+            return;
+        }
+
+        if (exito is not null) Navegacion.NavigateTo("/productos");
+    }
+}

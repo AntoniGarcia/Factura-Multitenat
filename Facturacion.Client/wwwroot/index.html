@@ -7,6 +7,10 @@
     <title>Sistema de facturación</title>
     <base href="/" />
     <link rel="preload" id="webassembly" />
+    <!-- Antes de app.css: app.css sobreescribe las variables --mud-palette-* de MudBlazor
+         con las nuestras (mudblazor-tema.css), y el orden de la cascada es lo que decide
+         quién gana cuando dos reglas tienen la misma especificidad. -->
+    <link rel="stylesheet" href="_content/MudBlazor/MudBlazor.min.css" />
     <link rel="stylesheet" href="css/app.css" />
     <link href="manifest.webmanifest" rel="manifest" />
     <link rel="apple-touch-icon" sizes="512x512" href="icon-512.png" />
@@ -32,6 +36,10 @@
         <span class="dismiss">🗙</span>
     </div>
     <script src="_framework/blazor.webassembly#[.{fingerprint}].js"></script>
+    <script src="_content/MudBlazor/MudBlazor.min.js"></script>
+    <script src="tema.js"></script>
+    <script src="portapapeles.js"></script>
+    <script src="instalacion.js"></script>
     <script src="registrar-sw.js"></script>
 </body>
 

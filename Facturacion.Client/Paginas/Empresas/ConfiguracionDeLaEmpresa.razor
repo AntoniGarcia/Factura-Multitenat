@@ -1,0 +1,94 @@
+@page "/empresa/configuracion"
+@attribute [Authorize(Policy = Permisos.ConfigurarEmpresa)]
+@inject ServicioDeEmpresa Empresas
+
+<PageTitle>Configuración</PageTitle>
+<TituloDePagina Texto="Configuración de la empresa" />
+
+<PanelErrores Problema="_error" />
+
+<p class="seccion-ayuda">
+    Valores por omisión para capturar más rápido. No son la verdad fiscal del comprobante:
+    cada factura puede cambiarlos.
+</p>
+
+@if (_configuracion is null)
+{
+    <p>Cargando…</p>
+}
+else
+{
+    <EditForm Model="_configuracion" OnValidSubmit="Guardar">
+        <h2 class="seccion-titulo">Impuestos por omisión</h2>
+
+        <div class="rejilla-campos">
+            <MudNumericField @bind-Value="_iva" Label="IVA trasladado" Format="P2" Step="0.01M" Min="0M" Max="1M"
+                             HelperText="0.16 es 16 %." Class="cifra-tabular" />
+
+            <MudNumericField @bind-Value="_retIva" Label="Retención de IVA" Format="P2" Step="0.01M" Min="0M" Max="1M"
+                             HelperText="Cero si la empresa no retiene." Class="cifra-tabular" />
+
+            <MudNumericField @bind-Value="_retIsr" Label="Retención de ISR" Format="P2" Step="0.01M" Min="0M" Max="1M"
+                             HelperText="Cero si la empresa no retiene." Class="cifra-tabular" />
+        </div>
+
+        <h2 class="seccion-titulo">Avisos</h2>
+
+        <div class="rejilla-campos">
+            <MudNumericField @bind-Value="_diasAviso" Label="Avisar caducidad del certificado" Min="1" Max="365"
+                             HelperText="Días de anticipación." Class="cifra-tabular" />
+        </div>
+
+        <div class="acciones-formulario">
+            <MudButton ButtonType="ButtonType.Submit" Variant="Variant.Filled" Disabled="_guardando">
+                @(_guardando ? "Guardando…" : "Guardar")
+            </MudButton>
+
+            @if (_guardado)
+            {
+                <span class="mensaje-exito" role="status">Configuración guardada.</span>
+            }
+        </div>
+    </EditForm>
+}
+
+@code {
+    private ConfiguracionEmpresaDto? _configuracion;
+    private DetalleProblema? _error;
+    private bool _guardando, _guardado;
+
+    private decimal _iva, _retIva, _retIsr;
+    private int _diasAviso;
+
+    protected override async Task OnInitializedAsync()
+    {
+        _configuracion = await Empresas.ObtenerConfiguracionAsync();
+        if (_configuracion is null) return;
+
+        _iva = _configuracion.TasaIvaPorDefecto;
+        _retIva = _configuracion.TasaRetencionIvaPorDefecto;
+        _retIsr = _configuracion.TasaRetencionIsrPorDefecto;
+        _diasAviso = _configuracion.DiasAvisoCaducidadCertificado;
+    }
+
+    private async Task Guardar()
+    {
+        _guardando = true;
+        _guardado = false;
+        _error = null;
+
+        var (exito, error) = await Empresas.GuardarConfiguracionAsync(
+            new ConfiguracionEmpresaDto(_iva, _retIva, _retIsr, _diasAviso));
+
+        _guardando = false;
+
+        if (error is not null)
+        {
+            _error = error;
+            return;
+        }
+
+        _configuracion = exito;
+        _guardado = true;
+    }
+}

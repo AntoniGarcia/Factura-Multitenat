@@ -10,6 +10,7 @@
        diverjan de versión en sus .csproj. -->
   <ItemGroup>
     <PackageVersion Include="Microsoft.AspNetCore.Components.WebAssembly" Version="10.0.10" />
+    <PackageVersion Include="MudBlazor" Version="9.8.0" />
     <PackageVersion Include="Microsoft.AspNetCore.Components.WebAssembly.DevServer" Version="10.0.10" />
     <PackageVersion Include="Microsoft.AspNetCore.Components.Authorization" Version="10.0.10" />
     <PackageVersion Include="Microsoft.AspNetCore.Components.WebAssembly.Server" Version="10.0.10" />
@@ -23,6 +24,17 @@
          Microsoft.OpenApi 2.0.0, que tiene la vulnerabilidad GHSA-v5pm-xwqc-g5wc
          (corregida a partir de 2.7.5). -->
     <PackageVersion Include="Microsoft.OpenApi" Version="2.11.0" />
+  </ItemGroup>
+
+  <!-- Lee el .xls (formato binario legado) del catálogo del SAT sin depender de Excel
+       instalado. Solo el Server la referencia: es una herramienta de carga, no algo que
+       viaje al WebAssembly. -->
+  <ItemGroup>
+    <PackageVersion Include="NPOI" Version="2.8.0" />
+    <!-- Fijado por transitividad: NPOI arrastra System.Security.Cryptography.Xml 8.0.2 para
+         firmar/verificar OOXML, algo que este proyecto no usa —solo lee .xls—, pero la
+         versión igual trae varias vulnerabilidades conocidas (NU1903) que hay que tapar. -->
+    <PackageVersion Include="System.Security.Cryptography.Xml" Version="10.0.11" />
   </ItemGroup>
 
   <ItemGroup>

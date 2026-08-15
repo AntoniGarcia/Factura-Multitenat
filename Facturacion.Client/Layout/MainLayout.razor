@@ -1,3 +1,100 @@
-﻿@inherits LayoutComponentBase
+@inherits LayoutComponentBase
+@implements IDisposable
+@inject ServicioDeSesion Sesion
+@inject EstadoDeEncabezado Encabezado
+@inject IIndicadorDeTimbres IndicadorTimbres
+@inject NavigationManager Navegacion
 
-@Body
+@*
+    El único MainLayout del sistema (CLAUDE.md §8). Las páginas aportan solo el contenido
+    del área principal: nunca su propio encabezado, su propia barra ni su propio esqueleto.
+*@
+
+<MudPopoverProvider />
+<MudDialogProvider />
+<MudSnackbarProvider />
+
+<div class="cascaron">
+    <header class="barra-superior">
+        <span class="barra-superior-marca">Sistema de facturación</span>
+
+        <SelectorDeEmpresa />
+
+        <span class="separador-flexible"></span>
+
+        <span class="indicador-timbres cifra-tabular" title="Timbres disponibles">
+            <MudIcon Icon="@Icons.Material.Filled.ConfirmationNumber" Size="Size.Small" />
+            @(_timbresDisponibles?.ToString() ?? "—")
+        </span>
+
+        <SelectorDeTema />
+        <MenuDeUsuario />
+    </header>
+
+    <div class="cuerpo">
+        <nav class="menu-lateral" aria-label="Secciones del sistema">
+            <ul>
+                @foreach (var elemento in MenuPrincipal.Elementos.Where(EsVisible))
+                {
+                    <li>
+                        <NavLink href="@elemento.Ruta" Match="NavLinkMatch.All">
+                            <MudIcon Icon="@elemento.Icono" Size="Size.Small" />
+                            <span>@elemento.Etiqueta</span>
+                        </NavLink>
+                    </li>
+                }
+            </ul>
+        </nav>
+
+        @* El @key es la fuga de datos entre empresas resuelta: al cambiar de empresa, Blazor
+           descarta el árbol completo de la página y lo reconstruye desde cero. Ninguna lista
+           cargada con datos de la empresa anterior puede sobrevivir un instante de más. *@
+        <main class="area-principal" @key="Sesion.Sesion?.EmpresaActivaId">
+            @if (!string.IsNullOrWhiteSpace(Encabezado.Titulo))
+            {
+                <h1>@Encabezado.Titulo</h1>
+            }
+            @if (Sesion.Sesion is { Empresas.Count: 0 })
+            {
+                <p>Tu usuario todavía no tiene acceso a ninguna empresa. Pide a tu administrador que te agregue.</p>
+            }
+            else
+            {
+                @Body
+            }
+        </main>
+    </div>
+</div>
+
+@code {
+    private int? _timbresDisponibles;
+
+    protected override async Task OnInitializedAsync()
+    {
+        Sesion.Cambio += Redibujar;
+        Encabezado.Cambio += Redibujar;
+
+        // Un usuario con varias empresas y ninguna elegida todavía no debería estar aquí:
+        // /seleccionar-empresa vive fuera de este layout porque no hay nada que poner en la
+        // barra superior hasta que elija. Si llegó de todos modos —un marcador viejo, por
+        // ejemplo— se le manda para allá en vez de mostrar la barra a medias.
+        if (Sesion.Sesion is { EmpresaActivaId: null, Empresas.Count: > 1 })
+        {
+            Navegacion.NavigateTo("/seleccionar-empresa");
+            return;
+        }
+
+        _timbresDisponibles = await IndicadorTimbres.ObtenerDisponiblesAsync();
+    }
+
+    public void Dispose()
+    {
+        Sesion.Cambio -= Redibujar;
+        Encabezado.Cambio -= Redibujar;
+    }
+
+    private bool EsVisible(ElementoDeMenu elemento)
+        => elemento.Permiso is null || Sesion.TienePermiso(elemento.Permiso);
+
+    private void Redibujar() => InvokeAsync(StateHasChanged);
+}

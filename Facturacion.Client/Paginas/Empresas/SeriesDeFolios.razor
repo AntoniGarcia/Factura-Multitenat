@@ -1,0 +1,152 @@
+@page "/empresa/series"
+@attribute [Authorize(Policy = Permisos.ConfigurarEmpresa)]
+@inject ServicioDeEmpresa Empresas
+@inject ServicioDeCatalogos Catalogos
+
+<PageTitle>Series de folios</PageTitle>
+<TituloDePagina Texto="Series de folios" />
+
+<PanelErrores Problema="_error" />
+
+<p class="seccion-ayuda">
+    Cada serie lleva su propia numeración consecutiva. El folio se aparta al timbrar, no antes;
+    si un timbrado falla, ese número queda apartado y no se reutiliza.
+</p>
+
+<h2 class="seccion-titulo">@(_editando is null ? "Nueva serie" : $"Editar serie {_editando.Prefijo}")</h2>
+
+<div class="rejilla-campos">
+    <MudTextField @bind-Value="_prefijo" Label="Prefijo" MaxLength="25" Class="cifra-tabular"
+                  HelperText="Solo letras y números." />
+
+    <MudNumericField @bind-Value="_folioInicial" Label="Folio inicial" Min="1" Class="cifra-tabular"
+                     Disabled="@(_editando is not null && _editando.FolioActual >= _editando.FolioInicial)"
+                     HelperText="@(_editando is not null && _editando.FolioActual >= _editando.FolioInicial
+                                   ? "No se puede cambiar: la serie ya entregó folios."
+                                   : "Desde qué número empieza a contar.")" />
+
+    <MudSelect T="string" @bind-Value="_tipoComprobante" Label="Tipo de comprobante">
+        @foreach (var tipo in Catalogos.Obtener("c_TipoDeComprobante"))
+        {
+            <MudSelectItem T="string" Value="@tipo.Clave">@tipo.Clave — @tipo.Descripcion</MudSelectItem>
+        }
+    </MudSelect>
+
+    <MudCheckBox @bind-Value="_activa" Label="Activa" />
+</div>
+
+<div class="acciones-formulario">
+    <MudButton Variant="Variant.Filled" OnClick="Guardar" Disabled="_guardando">
+        @(_guardando ? "Guardando…" : _editando is null ? "Crear serie" : "Guardar cambios")
+    </MudButton>
+
+    @if (_editando is not null)
+    {
+        <MudButton Variant="Variant.Text" OnClick="Limpiar">Cancelar</MudButton>
+    }
+</div>
+
+<h2 class="seccion-titulo">Series de esta empresa</h2>
+
+@if (_series.Count == 0)
+{
+    <p class="tabla-datos-estado">Todavía no hay ninguna serie.</p>
+}
+else
+{
+    <MudSimpleTable Dense="true" Hover="true">
+        <thead>
+            <tr>
+                <th>Prefijo</th>
+                <th>Tipo</th>
+                <th class="cifra-tabular">Folio inicial</th>
+                <th class="cifra-tabular">Último entregado</th>
+                <th>Estado</th>
+                <th></th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var serie in _series)
+            {
+                <tr>
+                    <td class="cifra-tabular">@serie.Prefijo</td>
+                    <td>@serie.TipoComprobante</td>
+                    <td class="cifra-tabular">@serie.FolioInicial</td>
+                    <td class="cifra-tabular">
+                        @(serie.FolioActual < serie.FolioInicial ? "—" : serie.FolioActual.ToString())
+                    </td>
+                    <td>
+                        <span class="indicador-estado indicador-estado-@(serie.Activa ? "timbrada" : "borrador")">
+                            @(serie.Activa ? "Activa" : "Inactiva")
+                        </span>
+                    </td>
+                    <td>
+                        <MudButton Size="Size.Small" OnClick="() => Editar(serie)">Editar</MudButton>
+                    </td>
+                </tr>
+            }
+        </tbody>
+    </MudSimpleTable>
+}
+
+@code {
+    private IReadOnlyList<SerieDto> _series = [];
+    private DetalleProblema? _error;
+    private SerieDto? _editando;
+    private bool _guardando;
+
+    private string _prefijo = string.Empty;
+    private int _folioInicial = 1;
+    private string _tipoComprobante = "I";
+    private bool _activa = true;
+
+    protected override async Task OnInitializedAsync() => await RecargarAsync();
+
+    private async Task RecargarAsync() => _series = await Empresas.ListarSeriesAsync();
+
+    private void Editar(SerieDto serie)
+    {
+        _editando = serie;
+        _prefijo = serie.Prefijo;
+        _folioInicial = serie.FolioInicial;
+        _tipoComprobante = serie.TipoComprobante;
+        _activa = serie.Activa;
+        _error = null;
+    }
+
+    private void Limpiar()
+    {
+        _editando = null;
+        _prefijo = string.Empty;
+        _folioInicial = 1;
+        _tipoComprobante = "I";
+        _activa = true;
+        _error = null;
+    }
+
+    private async Task Guardar()
+    {
+        _guardando = true;
+        _error = null;
+
+        var peticion = new PeticionGuardarSerie(_prefijo, _folioInicial, _tipoComprobante, _activa);
+
+        var (exito, error) = _editando is null
+            ? await Empresas.CrearSerieAsync(peticion)
+            : await Empresas.ActualizarSerieAsync(_editando.Id, peticion);
+
+        _guardando = false;
+
+        if (error is not null)
+        {
+            _error = error;
+            return;
+        }
+
+        if (exito is not null)
+        {
+            Limpiar();
+            await RecargarAsync();
+        }
+    }
+}

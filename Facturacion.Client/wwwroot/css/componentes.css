@@ -1,0 +1,125 @@
+/*
+  Estilos de los componentes comunes de Client/Componentes/Comunes/ (PROMPT-FASES-A.md
+  fase 2). Documentados aquí porque también los va a usar la mitad B.
+*/
+
+.indicador-estado {
+    display: inline-flex;
+    align-items: center;
+    height: 22px;
+    padding: 0 0.5rem;
+    border-radius: var(--radio);
+    border: 1px solid transparent;
+    font-size: 0.75rem;
+    font-weight: 500;
+    color: var(--texto-inverso);
+    white-space: nowrap;
+}
+
+/* El borde se pinta con --borde-fuerte y no con el color del propio estado: en el tema
+   oscuro, "cancelada" contra la superficie apenas pasa 2.5:1, por debajo del 3:1 de
+   contraste no textual que pide la 1.4.11. --borde-fuerte sí pasa 3:1 en los tres temas
+   (ver variables.css) y es lo que mantiene la píldora distinguible del fondo. */
+.indicador-estado-timbrada {
+    background: var(--estado-timbrada);
+    border-color: var(--borde-fuerte);
+}
+
+.indicador-estado-borrador {
+    background: var(--estado-borrador);
+    border-color: var(--borde-fuerte);
+}
+
+.indicador-estado-cancelada {
+    background: var(--estado-cancelada);
+    border-color: var(--borde-fuerte);
+}
+
+.indicador-estado-advertencia {
+    background: var(--estado-advertencia);
+    border-color: var(--borde-fuerte);
+}
+
+.indicador-estado-error {
+    background: var(--estado-error);
+    border-color: var(--borde-fuerte);
+}
+
+.buscador-catalogo-clave {
+    margin-right: 0.5rem;
+    color: var(--texto-suave);
+}
+
+.buscador-catalogo-descripcion {
+    color: var(--texto);
+}
+
+.modal-catalogo-buscador {
+    margin-bottom: 0.5rem;
+}
+
+.modal-catalogo-estado {
+    color: var(--texto-suave);
+    font-size: 0.875rem;
+    padding: 1rem 0;
+    text-align: center;
+}
+
+.barra-herramientas-catalogo {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    margin-bottom: 1rem;
+}
+
+.barra-herramientas-buscador {
+    max-width: 20rem;
+}
+
+.tabla-datos-estado {
+    color: var(--texto-suave);
+    padding: 1.5rem 0;
+    text-align: center;
+}
+
+.campo-moneda input {
+    text-align: right;
+}
+
+/* No descartable a propósito (CLAUDE.md §4): sin botón de cerrar, cubre toda la pantalla y
+   se recarga sola a los pocos segundos aunque nadie haga clic. */
+.guarda-version {
+    position: fixed;
+    inset: 0;
+    z-index: 9999;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba(0, 0, 0, 0.6);
+}
+
+.guarda-version-caja {
+    max-width: 22rem;
+    padding: 1.5rem;
+    border-radius: var(--radio);
+    background: var(--superficie);
+    color: var(--texto);
+    text-align: center;
+    box-shadow: 0 4px 24px rgba(0, 0, 0, 0.3);
+}
+
+.guarda-version-titulo {
+    margin: 0 0 0.5rem;
+    font-weight: 500;
+    color: var(--acento);
+}
+
+.panel-errores-copiar {
+    min-height: auto;
+    padding: 0.125rem 0.5rem;
+    margin-left: 0.5rem;
+    font-size: 0.75rem;
+    background: var(--superficie);
+    color: var(--texto-suave);
+    border-color: var(--borde-fuerte);
+}

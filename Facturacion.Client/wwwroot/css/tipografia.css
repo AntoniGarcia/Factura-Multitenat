@@ -1,0 +1,60 @@
+/*
+  Inter para interfaz, IBM Plex Mono con cifras tabulares para RFC, UUID, folios e importes
+  (CLAUDE.md §8). Auto-alojadas en /fuentes: la CSP no admite fonts.googleapis.com
+  (font-src 'self') y, además, una PWA que promete uso sin conexión no puede depender de
+  una red externa para dibujar su propia letra.
+
+  Solo los dos pesos que pide CLAUDE.md: 400 y 500. Nada de cursiva ni de negritas extra
+  que nadie pidió.
+*/
+
+@font-face {
+    font-family: "Inter";
+    font-style: normal;
+    font-weight: 400;
+    font-display: swap;
+    src: url("../fuentes/inter-400.woff2") format("woff2");
+}
+
+@font-face {
+    font-family: "Inter";
+    font-style: normal;
+    font-weight: 500;
+    font-display: swap;
+    src: url("../fuentes/inter-500.woff2") format("woff2");
+}
+
+@font-face {
+    font-family: "IBM Plex Mono";
+    font-style: normal;
+    font-weight: 400;
+    font-display: swap;
+    src: url("../fuentes/ibm-plex-mono-400.woff2") format("woff2");
+}
+
+@font-face {
+    font-family: "IBM Plex Mono";
+    font-style: normal;
+    font-weight: 500;
+    font-display: swap;
+    src: url("../fuentes/ibm-plex-mono-500.woff2") format("woff2");
+}
+
+:root {
+    --tipografia-interfaz: "Inter", system-ui, sans-serif;
+    /* font-variant-numeric: tabular-nums va junto a la variable: sin cifras tabulares las
+       columnas de dinero no alinean y el contador no puede leerlas de un vistazo. */
+    --tipografia-monoespaciada: "IBM Plex Mono", ui-monospace, monospace;
+}
+
+body {
+    font-family: var(--tipografia-interfaz);
+}
+
+/* Clase de uso explícito para RFC, UUID, folios e importes (CLAUDE.md §8). Los componentes
+   CampoRfc, CampoMoneda e IndicadorEstado la aplican; cualquier otro dato de esa misma
+   naturaleza debe usarla también. */
+.cifra-tabular {
+    font-family: var(--tipografia-monoespaciada);
+    font-variant-numeric: tabular-nums;
+}

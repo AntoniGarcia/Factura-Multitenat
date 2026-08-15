@@ -1,16 +1,20 @@
 @import "variables.css";
+@import "tipografia.css";
+@import "mudblazor-tema.css";
+@import "layout.css";
+@import "componentes.css";
+@import "formularios.css";
 
 /*
-  Estilos mínimos de la fase 1: lo justo para que las pantallas de acceso sean usables y
-  legibles. El sistema de diseño completo —tres temas, densidad, tipografías— es la fase 2.
-  Todo color sale de una variable; ninguno se escribe literal (CLAUDE.md §8).
+  Sistema de diseño (CLAUDE.md §8): herramienta densa en datos, sin ilustraciones, sin
+  degradados, sin sombras salvo en menús flotantes. Todo color sale de una variable;
+  ninguno se escribe literal.
 */
 
 body {
     margin: 0;
     background: var(--fondo);
     color: var(--texto);
-    font-family: system-ui, sans-serif;
 }
 
 h1 {
@@ -151,12 +155,16 @@ button:disabled {
     color: var(--estado-error);
 }
 
-/* Andamio de Blazor: la fase 2 lo integra al sistema de diseño. */
+/* El aviso de error nativo de Blazor, integrado al sistema de diseño: sin colores
+   literales, con el mismo borde y radio que el resto. Es de las pocas superficies con
+   sombra propia, y CLAUDE.md §8 la permite en menús flotantes; esto se le parece más a
+   una notificación flotante que a un panel del lienzo. */
 #blazor-error-ui {
-    color-scheme: light only;
-    background: lightyellow;
+    background: var(--superficie);
+    color: var(--texto);
+    border-top: 1px solid var(--estado-error);
     bottom: 0;
-    box-shadow: 0 -1px 2px rgba(0, 0, 0, 0.2);
+    box-shadow: 0 -2px 8px rgba(0, 0, 0, 0.15);
     box-sizing: border-box;
     display: none;
     left: 0;
@@ -171,6 +179,7 @@ button:disabled {
     position: absolute;
     right: 0.75rem;
     top: 0.5rem;
+    color: var(--texto-suave);
 }
 
 .loading-progress {

@@ -1,0 +1,157 @@
+@page "/timbres/movimientos"
+@attribute [Authorize(Policy = Permisos.ComprarTimbres)]
+@inject ServicioDeTimbres Timbres
+@inject NavigationManager Navegacion
+
+<PageTitle>Movimientos de timbres</PageTitle>
+<TituloDePagina Texto="Movimientos de timbres" />
+
+<p class="seccion-ayuda">
+    Cada renglón explica un cambio del saldo. La suma de la columna «disponible» es
+    exactamente el saldo actual: nada mueve el saldo sin dejar aquí su renglón.
+</p>
+
+<div class="filtros-movimientos">
+    <MudSelect T="string" Value="_tipo" ValueChanged="AlCambiarTipo" Label="Tipo"
+               Dense="true" Clearable="true">
+        <MudSelectItem T="string" Value="@(null!)">Todos</MudSelectItem>
+        <MudSelectItem T="string" Value="@("compra")">Compra</MudSelectItem>
+        <MudSelectItem T="string" Value="@("reserva")">Reserva</MudSelectItem>
+        <MudSelectItem T="string" Value="@("consumo")">Consumo</MudSelectItem>
+        <MudSelectItem T="string" Value="@("devolucion")">Devolución</MudSelectItem>
+        <MudSelectItem T="string" Value="@("ajuste")">Ajuste</MudSelectItem>
+    </MudSelect>
+
+    @* CampoFecha entrega ya el UTC del día local elegido, que es lo que espera el servidor. *@
+    <CampoFecha Label="Desde" ValorUtc="_desde" ValorUtcCambiado="AlCambiarDesde" />
+    <CampoFecha Label="Hasta" ValorUtc="_hasta" ValorUtcCambiado="AlCambiarHasta" />
+
+    <MudButton Variant="Variant.Outlined" StartIcon="@Icons.Material.Filled.Download"
+               OnClick="Exportar">
+        Exportar
+    </MudButton>
+</div>
+
+@if (_cargando)
+{
+    <p class="seccion-ayuda">Cargando…</p>
+}
+else if (_movimientos.Count == 0)
+{
+    <p class="seccion-ayuda">No hay movimientos que coincidan.</p>
+}
+else
+{
+    <MudSimpleTable Dense="true" Hover="true">
+        <thead>
+            <tr>
+                <th class="cifra-tabular">Momento</th>
+                <th>Tipo</th>
+                <th class="cifra-tabular">Disponible</th>
+                <th class="cifra-tabular">Apartado</th>
+                <th class="cifra-tabular">Saldo</th>
+                <th>Motivo</th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var movimiento in _movimientos)
+            {
+                <tr>
+                    <td class="cifra-tabular">@movimiento.MomentoUtc.ToLocalTime().ToString("yyyy-MM-dd HH:mm")</td>
+                    <td>
+                        <span class="indicador-estado indicador-estado-@Estilo(movimiento.Tipo)">
+                            @Texto(movimiento.Tipo)
+                        </span>
+                    </td>
+                    <td class="cifra-tabular">@ConSigno(movimiento.DeltaDisponible)</td>
+                    <td class="cifra-tabular">@ConSigno(movimiento.DeltaReservado)</td>
+                    <td class="cifra-tabular">@movimiento.DisponiblesDespues</td>
+                    <td>@(movimiento.Motivo ?? "—")</td>
+                </tr>
+            }
+        </tbody>
+    </MudSimpleTable>
+}
+
+<div class="acciones-formulario">
+    <MudButton Variant="Variant.Text" OnClick="@(() => Navegacion.NavigateTo("/timbres"))">
+        Volver a timbres
+    </MudButton>
+</div>
+
+@code {
+    private IReadOnlyList<MovimientoTimbreDto> _movimientos = [];
+    private string? _tipo;
+    private DateTime? _desde;
+    private DateTime? _hasta;
+    private bool _cargando = true;
+
+    protected override Task OnInitializedAsync() => CargarAsync();
+
+    private async Task CargarAsync()
+    {
+        _cargando = true;
+
+        try
+        {
+            // El «hasta» que elige el usuario es un día, no un instante: sin llevarlo al final
+            // del día, un movimiento de esa misma tarde quedaría fuera del filtro y parecería
+            // que se perdió.
+            _movimientos = await Timbres.MovimientosAsync(_tipo, _desde, _hasta?.Date.AddDays(1).AddTicks(-1));
+        }
+        finally
+        {
+            _cargando = false;
+        }
+    }
+
+    private async Task AlCambiarTipo(string? tipo)
+    {
+        _tipo = tipo;
+        await CargarAsync();
+    }
+
+    private async Task AlCambiarDesde(DateTime? desde)
+    {
+        _desde = desde;
+        await CargarAsync();
+    }
+
+    private async Task AlCambiarHasta(DateTime? hasta)
+    {
+        _hasta = hasta;
+        await CargarAsync();
+    }
+
+    private void Exportar()
+        => Navegacion.NavigateTo(
+            ServicioDeTimbres.RutaDeExportacion(_tipo, _desde, _hasta?.Date.AddDays(1).AddTicks(-1)),
+            forceLoad: true);
+
+    /// <summary>El signo importa más que el número: dice de un vistazo si entró o salió.</summary>
+    private static string ConSigno(int delta) => delta switch
+    {
+        0 => "—",
+        > 0 => $"+{delta}",
+        _ => delta.ToString()
+    };
+
+    private static string Estilo(string tipo) => tipo switch
+    {
+        "compra" => "timbrada",
+        "consumo" => "borrador",
+        "devolucion" => "timbrada",
+        "ajuste" => "advertencia",
+        _ => "borrador"
+    };
+
+    private static string Texto(string tipo) => tipo switch
+    {
+        "compra" => "Compra",
+        "reserva" => "Reserva",
+        "consumo" => "Consumo",
+        "devolucion" => "Devolución",
+        "ajuste" => "Ajuste",
+        _ => tipo
+    };
+}

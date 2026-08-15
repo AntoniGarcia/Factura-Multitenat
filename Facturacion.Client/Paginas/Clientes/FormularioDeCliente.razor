@@ -1,0 +1,272 @@
+@page "/clientes/nuevo"
+@page "/clientes/{Id:guid}"
+@attribute [Authorize(Policy = Permisos.ConfigurarEmpresa)]
+@inject ServicioDeClientes Clientes
+@inject ServicioDeCatalogos Catalogos
+@inject NavigationManager Navegacion
+
+<PageTitle>@(EsNuevo ? "Nuevo cliente" : "Editar cliente")</PageTitle>
+<TituloDePagina Texto="@(EsNuevo ? "Nuevo cliente" : $"Cliente {_claveInterna}")" />
+
+<PanelErrores Problema="_error" />
+
+@if (_cargando)
+{
+    <p>Cargando…</p>
+}
+else
+{
+    <EditForm Model="this" OnValidSubmit="Guardar">
+        <h2 class="seccion-titulo">Datos fiscales</h2>
+        <p class="seccion-ayuda">
+            Tienen que coincidir <strong>exactamente</strong> con la Constancia de Situación Fiscal
+            del cliente. Es lo que más rechazos del SAT provoca.
+        </p>
+
+        <div class="rejilla-campos">
+            <CampoRfc Valor="@_rfc" ValorCambiado="AlCambiarRfc" Requerido="true" />
+
+            <MudTextField @bind-Value="_nombre"
+                          @bind-Value:after="ActualizarVistaPrevia"
+                          Label="Nombre o razón social"
+                          Immediate="true"
+                          MaxLength="254"
+                          Disabled="@_esGenericoNacional"
+                          HelperText="Sin régimen de capital, como en la constancia." />
+        </div>
+
+        @if (_vistaPrevia.HuboCambios && !_esGenericoNacional)
+        {
+            <div class="aviso-normalizacion" role="status">
+                <p>Se va a guardar como <strong class="cifra-tabular">@_vistaPrevia.Normalizado</strong></p>
+                <ul>
+                    @foreach (var ajuste in _vistaPrevia.Ajustes)
+                    {
+                        <li>@ajuste</li>
+                    }
+                </ul>
+            </div>
+        }
+
+        @if (_esGenericoNacional)
+        {
+            <div class="aviso-reservado" role="note">
+                <p>
+                    <strong>Público en general.</strong> El SAT fija el nombre, el régimen 616 y el uso
+                    S01 para este RFC; por eso están bloqueados.
+                </p>
+            </div>
+        }
+
+        <div class="rejilla-campos">
+            @*
+                Se listan todos los regímenes, no solo los del tipo de persona: el catálogo
+                precargado no trae las banderas de física/moral —ClaveSatDto está congelado y
+                solo lleva clave y descripción— así que filtrar aquí sería adivinar. El
+                servidor sí lo sabe y lo rechaza con un mensaje que dice cuál es el problema.
+            *@
+            <MudSelect T="string" @bind-Value="_regimenFiscal" Label="Régimen fiscal" Disabled="@_esGenericoNacional">
+                @foreach (var r in Catalogos.Obtener("c_RegimenFiscal"))
+                {
+                    <MudSelectItem T="string" Value="@r.Clave">@r.Clave — @r.Descripcion</MudSelectItem>
+                }
+            </MudSelect>
+
+            <MudTextField @bind-Value="_domicilioFiscalCp"
+                          Label="Código postal del domicilio fiscal"
+                          Class="cifra-tabular"
+                          MaxLength="5"
+                          HelperText="El de la constancia, no el de entrega. Va al CFDI." />
+        </div>
+
+        @if (_esGenericoExtranjero)
+        {
+            <div class="rejilla-campos">
+                <MudSelect T="string" @bind-Value="_residenciaFiscal" Label="País de residencia fiscal">
+                    @foreach (var p in Catalogos.Obtener("c_Pais"))
+                    {
+                        <MudSelectItem T="string" Value="@p.Clave">@p.Clave — @p.Descripcion</MudSelectItem>
+                    }
+                </MudSelect>
+
+                <MudTextField @bind-Value="_numRegIdTrib" Label="Registro de identidad tributaria" MaxLength="40" />
+            </div>
+        }
+
+        <h2 class="seccion-titulo">Preferencias de facturación</h2>
+        <p class="seccion-ayuda">Precargan el formulario al facturar. Quien emite puede cambiarlas.</p>
+
+        <div class="rejilla-campos">
+            <MudSelect T="string" @bind-Value="_usoCfdi" Label="Uso de CFDI" Clearable="true" Disabled="@_esGenericoNacional">
+                @foreach (var u in Catalogos.Obtener("c_UsoCFDI"))
+                {
+                    <MudSelectItem T="string" Value="@u.Clave">@u.Clave — @u.Descripcion</MudSelectItem>
+                }
+            </MudSelect>
+
+            <MudSelect T="string" @bind-Value="_metodoPago" Label="Método de pago" Clearable="true">
+                @foreach (var m in Catalogos.Obtener("c_MetodoPago"))
+                {
+                    <MudSelectItem T="string" Value="@m.Clave">@m.Clave — @m.Descripcion</MudSelectItem>
+                }
+            </MudSelect>
+
+            <MudSelect T="string" @bind-Value="_formaPago" Label="Forma de pago" Clearable="true">
+                @foreach (var f in Catalogos.Obtener("c_FormaPago"))
+                {
+                    <MudSelectItem T="string" Value="@f.Clave">@f.Clave — @f.Descripcion</MudSelectItem>
+                }
+            </MudSelect>
+        </div>
+
+        <h2 class="seccion-titulo">Contacto</h2>
+
+        <div class="rejilla-campos">
+            <MudTextField @bind-Value="_correo" Label="Correo electrónico" MaxLength="254"
+                          HelperText="A donde se manda el comprobante." />
+            <MudTextField @bind-Value="_telefono" Label="Teléfono" MaxLength="32" />
+        </div>
+
+        <h2 class="seccion-titulo">Domicilio de entrega</h2>
+        <p class="seccion-ayuda">Sale en el PDF, no en el XML. Puedes dejarlo en blanco.</p>
+
+        <div class="rejilla-campos">
+            <MudTextField @bind-Value="_calle" Label="Calle" MaxLength="128" />
+            <MudTextField @bind-Value="_numeroExterior" Label="Número exterior" MaxLength="32" />
+            <MudTextField @bind-Value="_numeroInterior" Label="Número interior" MaxLength="32" />
+            <MudTextField @bind-Value="_colonia" Label="Colonia" MaxLength="128" />
+            <MudTextField @bind-Value="_localidad" Label="Localidad" MaxLength="128" />
+            <MudTextField @bind-Value="_municipio" Label="Municipio" MaxLength="128" />
+            <MudTextField @bind-Value="_estado" Label="Estado" MaxLength="128" />
+            <MudTextField @bind-Value="_pais" Label="País" MaxLength="64" />
+            <MudTextField @bind-Value="_codigoPostal" Label="Código postal" Class="cifra-tabular" MaxLength="5" />
+            <MudTextField @bind-Value="_referencia" Label="Referencia" MaxLength="256" />
+        </div>
+
+        <div class="acciones-formulario">
+            <MudButton ButtonType="ButtonType.Submit" Variant="Variant.Filled" Disabled="_guardando">
+                @(_guardando ? "Guardando…" : "Guardar")
+            </MudButton>
+            <MudButton Variant="Variant.Text" OnClick="@(() => Navegacion.NavigateTo("/clientes"))">Cancelar</MudButton>
+        </div>
+    </EditForm>
+}
+
+@code {
+    [Parameter]
+    public Guid? Id { get; set; }
+
+    private bool EsNuevo => Id is null;
+
+    private DetalleProblema? _error;
+    private bool _cargando = true;
+    private bool _guardando;
+    private int _claveInterna;
+
+    private string _rfc = string.Empty;
+    private string _nombre = string.Empty;
+    private string _regimenFiscal = string.Empty;
+    private string _domicilioFiscalCp = string.Empty;
+    private string? _residenciaFiscal, _numRegIdTrib, _usoCfdi, _metodoPago, _formaPago;
+    private string? _correo, _telefono, _calle, _numeroExterior, _numeroInterior;
+    private string? _colonia, _localidad, _referencia, _municipio, _estado, _pais, _codigoPostal;
+    private bool _activo = true;
+
+    private NombreFiscalNormalizado _vistaPrevia = NombreFiscal.Normalizar(string.Empty);
+
+    private bool _esGenericoNacional;
+    private bool _esGenericoExtranjero;
+
+    protected override async Task OnParametersSetAsync()
+    {
+        _cargando = true;
+
+        if (Id is { } id)
+        {
+            var cliente = await Clientes.ObtenerAsync(id);
+
+            if (cliente is not null)
+            {
+                _claveInterna = cliente.ClaveInterna;
+                _rfc = cliente.Rfc;
+                _nombre = cliente.Nombre;
+                _regimenFiscal = cliente.RegimenFiscal;
+                _domicilioFiscalCp = cliente.DomicilioFiscalCp;
+                _residenciaFiscal = cliente.ResidenciaFiscal;
+                _numRegIdTrib = cliente.NumRegIdTrib;
+                _usoCfdi = cliente.UsoCfdiPreferido;
+                _metodoPago = cliente.MetodoPagoPreferido;
+                _formaPago = cliente.FormaPagoPreferida;
+                _correo = cliente.CorreoPrincipal;
+                _telefono = cliente.Telefono;
+                _calle = cliente.Calle;
+                _numeroExterior = cliente.NumeroExterior;
+                _numeroInterior = cliente.NumeroInterior;
+                _colonia = cliente.Colonia;
+                _localidad = cliente.Localidad;
+                _referencia = cliente.Referencia;
+                _municipio = cliente.Municipio;
+                _estado = cliente.Estado;
+                _pais = cliente.Pais;
+                _codigoPostal = cliente.CodigoPostal;
+                _activo = cliente.Activo;
+            }
+        }
+
+        AplicarReglasDeGenerico();
+        ActualizarVistaPrevia();
+        _cargando = false;
+    }
+
+    private void ActualizarVistaPrevia() => _vistaPrevia = NombreFiscal.Normalizar(_nombre);
+
+    private void AlCambiarRfc(string valor)
+    {
+        _rfc = valor;
+        AplicarReglasDeGenerico();
+        ActualizarVistaPrevia();
+    }
+
+    /// <summary>
+    /// Los tres valores fijos del público en general se ponen solos y se bloquean
+    /// (CLAUDE.md §7). Fijarlos aquí no sustituye la validación del servidor, que los
+    /// comprueba igual: esto es para que el capturista no tenga que saberlos de memoria.
+    /// </summary>
+    private void AplicarReglasDeGenerico()
+    {
+        _esGenericoNacional = _rfc == Rfc.GenericoNacional;
+        _esGenericoExtranjero = _rfc == Rfc.GenericoExtranjero;
+
+        if (!_esGenericoNacional) return;
+
+        _nombre = "PUBLICO EN GENERAL";
+        _regimenFiscal = "616";
+        _usoCfdi = "S01";
+    }
+
+    private async Task Guardar()
+    {
+        _guardando = true;
+        _error = null;
+
+        var peticion = new PeticionGuardarCliente(
+            _rfc, _nombre, _regimenFiscal, _domicilioFiscalCp,
+            _residenciaFiscal, _numRegIdTrib, _usoCfdi, _metodoPago, _formaPago,
+            _telefono, _correo, _calle, _numeroExterior, _numeroInterior, _colonia,
+            _localidad, _referencia, _municipio, _estado, _pais, _codigoPostal, _activo);
+
+        var (exito, error) = EsNuevo
+            ? await Clientes.CrearAsync(peticion)
+            : await Clientes.ActualizarAsync(Id!.Value, peticion);
+
+        _guardando = false;
+
+        if (error is not null)
+        {
+            _error = error;
+            return;
+        }
+
+        if (exito is not null) Navegacion.NavigateTo("/clientes");
+    }
+}

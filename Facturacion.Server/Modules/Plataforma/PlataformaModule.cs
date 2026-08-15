@@ -2,7 +2,16 @@ using System.Text;
 using Facturacion.Server.Data;
 using Facturacion.Server.Data.Entidades.Plataforma;
 using Facturacion.Server.Infra.Errores;
+using Facturacion.Server.Infra.Idempotencia;
 using Facturacion.Server.Modules.Plataforma.Auth;
+using Facturacion.Server.Modules.Plataforma.Catalogos;
+using Facturacion.Server.Modules.Plataforma.Clientes;
+using Facturacion.Server.Modules.Plataforma.Empresas;
+using Facturacion.Server.Modules.Plataforma.Folios;
+using Facturacion.Server.Modules.Plataforma.Productos;
+using Facturacion.Server.Modules.Plataforma.Timbres;
+using Facturacion.Server.Modules.Plataforma.Usuarios;
+using Facturacion.Shared.Contratos;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
@@ -51,6 +60,35 @@ public static class PlataformaModule
         servicios.AddScoped<ServicioDeTokens>();
         servicios.AddScoped<ServicioDeRefreshTokens>();
         servicios.AddScoped<ServicioDeAutenticacion>();
+
+        servicios.AddScoped<IServicioCatalogosSat, ServicioCatalogosSat>();
+
+        servicios.AddScoped<ServicioDeEmpresa>();
+        servicios.AddScoped<ServicioDeLogo>();
+        servicios.AddScoped<ServicioDeCsd>();
+        servicios.AddScoped<ServicioDeSeries>();
+
+        servicios.AddScoped<ValidadorDeProducto>();
+        servicios.AddScoped<ServicioDeProductos>();
+
+        servicios.AddScoped<ValidadorDeCliente>();
+        servicios.AddScoped<ServicioDeClientes>();
+
+        servicios.AddScoped<ServicioDeCompras>();
+        servicios.AddScoped<FiltroDeIdempotencia>();
+
+        // Devuelve los timbres de los timbrados que murieron a la mitad. Sin él, cada
+        // reserva sin resolver congela un timbre pagado para siempre.
+        servicios.AddHostedService<BarridoDeReservasDeTimbre>();
+
+        // Las tres implementaciones que la mitad B consume por contrato (REPARTO-EQUIPO.md §5).
+        // En cuanto la fase 4 cierra, puede quitar sus dobles y quedarse con estas.
+        servicios.AddScoped<IServicioEmpresaEmisora, ServicioEmpresaEmisora>();
+        servicios.AddScoped<IProveedorCsdParaTimbrado, ProveedorCsdParaTimbrado>();
+        servicios.AddScoped<IServicioFolios, ServicioDeFolios>();
+        servicios.AddScoped<IServicioClientes>(sp => sp.GetRequiredService<ServicioDeClientes>());
+        servicios.AddScoped<IServicioProductos>(sp => sp.GetRequiredService<ServicioDeProductos>());
+        servicios.AddScoped<IServicioTimbres, ServicioDeTimbres>();
 
         servicios
             .AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
@@ -108,6 +146,13 @@ public static class PlataformaModule
     public static WebApplication MapPlataforma(this WebApplication aplicacion)
     {
         aplicacion.MapAuth();
+        aplicacion.MapPerfil();
+        aplicacion.MapCatalogos();
+        aplicacion.MapEmpresas();
+        aplicacion.MapFolios();
+        aplicacion.MapClientes();
+        aplicacion.MapProductos();
+        aplicacion.MapTimbres();
 
         return aplicacion;
     }

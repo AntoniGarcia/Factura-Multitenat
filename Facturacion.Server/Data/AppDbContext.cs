@@ -1,4 +1,5 @@
 using Facturacion.Server.Data.Entidades.Plataforma;
+using Facturacion.Server.Data.Entidades.Plataforma.Catalogos;
 using Facturacion.Server.Infra.Tenencia;
 using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore;
@@ -39,6 +40,43 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> opciones, IConte
     public DbSet<RefreshToken> RefreshTokens => Set<RefreshToken>();
     public DbSet<ClaveIdempotencia> ClavesIdempotencia => Set<ClaveIdempotencia>();
     public DbSet<RegistroBitacora> Bitacora => Set<RegistroBitacora>();
+    public DbSet<ConfiguracionEmpresa> ConfiguracionesEmpresa => Set<ConfiguracionEmpresa>();
+    public DbSet<CertificadoCsd> CertificadosCsd => Set<CertificadoCsd>();
+    public DbSet<Serie> Series => Set<Serie>();
+    public DbSet<ReservaFolio> ReservasFolio => Set<ReservaFolio>();
+    public DbSet<Cliente> Clientes => Set<Cliente>();
+    public DbSet<Producto> Productos => Set<Producto>();
+    public DbSet<ProductoImpuesto> ProductosImpuestos => Set<ProductoImpuesto>();
+    public DbSet<Paquete> Paquetes => Set<Paquete>();
+    public DbSet<Membresia> Membresias => Set<Membresia>();
+    public DbSet<BolsaTimbres> BolsasTimbres => Set<BolsaTimbres>();
+    public DbSet<MovimientoTimbre> MovimientosTimbre => Set<MovimientoTimbre>();
+    public DbSet<ReservaTimbre> ReservasTimbre => Set<ReservaTimbre>();
+    public DbSet<CompraTimbres> ComprasTimbres => Set<CompraTimbres>();
+
+    // ── Catálogos del SAT — sin EmpresaId, fuera del filtro de empresa (CLAUDE.md §5) ───
+    public DbSet<CatalogoVersion> CatalogoVersiones => Set<CatalogoVersion>();
+    public DbSet<SatFormaPago> SatFormasPago => Set<SatFormaPago>();
+    public DbSet<SatExportacion> SatExportaciones => Set<SatExportacion>();
+    public DbSet<SatMetodoPago> SatMetodosPago => Set<SatMetodoPago>();
+    public DbSet<SatPeriodicidad> SatPeriodicidades => Set<SatPeriodicidad>();
+    public DbSet<SatMes> SatMeses => Set<SatMes>();
+    public DbSet<SatTipoRelacion> SatTiposRelacion => Set<SatTipoRelacion>();
+    public DbSet<SatPais> SatPaises => Set<SatPais>();
+    public DbSet<SatObjetoImp> SatObjetosImp => Set<SatObjetoImp>();
+    public DbSet<SatMoneda> SatMonedas => Set<SatMoneda>();
+    public DbSet<SatTipoDeComprobante> SatTiposDeComprobante => Set<SatTipoDeComprobante>();
+    public DbSet<SatRegimenFiscal> SatRegimenesFiscales => Set<SatRegimenFiscal>();
+    public DbSet<SatUsoCfdi> SatUsosCfdi => Set<SatUsoCfdi>();
+    public DbSet<SatClaveProdServ> SatClavesProdServ => Set<SatClaveProdServ>();
+    public DbSet<SatClaveUnidad> SatClavesUnidad => Set<SatClaveUnidad>();
+    public DbSet<SatImpuesto> SatImpuestos => Set<SatImpuesto>();
+    public DbSet<SatTipoFactor> SatTiposFactor => Set<SatTipoFactor>();
+    public DbSet<SatTasaOCuota> SatTasasOCuota => Set<SatTasaOCuota>();
+    public DbSet<SatEstado> SatEstados => Set<SatEstado>();
+    public DbSet<SatMunicipio> SatMunicipios => Set<SatMunicipio>();
+    public DbSet<SatColonia> SatColonias => Set<SatColonia>();
+    public DbSet<SatCodigoPostal> SatCodigosPostales => Set<SatCodigoPostal>();
 
     // ── DbSet de la mitad B — documentos, timbrado y salidas ────────────────────────────
     // (los agrega el módulo de documentos)

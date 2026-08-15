@@ -291,7 +291,8 @@ public sealed class ServicioDeAutenticacion(
             usuario.Email ?? string.Empty,
             activa,
             empresas,
-            permisos);
+            permisos,
+            Temas.EsValido(usuario.TemaPreferido) ? usuario.TemaPreferido! : Temas.Claro);
     }
 
     private async Task RegistrarFallo(Usuario? usuario, string claveIp, string correo, CancellationToken ct)

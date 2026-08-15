@@ -1,0 +1,240 @@
+@page "/timbres"
+@attribute [Authorize(Policy = Permisos.ComprarTimbres)]
+@inject ServicioDeTimbres Timbres
+@inject IServicioDeConfirmacion Confirmacion
+@inject NavigationManager Navegacion
+
+<PageTitle>Timbres</PageTitle>
+<TituloDePagina Texto="Timbres y membresía" />
+
+<PanelErrores Problema="_error" />
+
+@if (_membresia is not null && EstaPorVencer)
+{
+    <div class="aviso-caducidad" role="status">
+        <p>
+            @if (_membresia.DiasParaVencer < 0)
+            {
+                <text>Tu membresía venció el @_membresia.FinUtc.ToLocalTime().ToString("d 'de' MMMM 'de' yyyy").</text>
+            }
+            else
+            {
+                <text>
+                    Tu membresía vence en @_membresia.DiasParaVencer
+                    @(_membresia.DiasParaVencer == 1 ? "día" : "días"),
+                    el @_membresia.FinUtc.ToLocalTime().ToString("d 'de' MMMM 'de' yyyy").
+                </text>
+            }
+            Renuévala para no interrumpir la facturación.
+        </p>
+    </div>
+}
+
+<h2 class="seccion-titulo">Saldo</h2>
+
+<div class="tarjetas-saldo">
+    <div class="tarjeta-saldo">
+        <span class="tarjeta-saldo-cifra cifra-tabular">@_saldo.Disponibles</span>
+        <span class="tarjeta-saldo-etiqueta">disponibles</span>
+    </div>
+
+    <div class="tarjeta-saldo">
+        <span class="tarjeta-saldo-cifra cifra-tabular">@_saldo.Reservados</span>
+        <span class="tarjeta-saldo-etiqueta">apartados</span>
+    </div>
+</div>
+
+<p class="seccion-ayuda">
+    Los apartados son timbres de comprobantes que se están emitiendo en este momento. Si un
+    timbrado no llega a completarse, su timbre vuelve al saldo disponible solo.
+</p>
+
+@if (_membresia is not null)
+{
+    <h2 class="seccion-titulo">Membresía</h2>
+
+    <MudSimpleTable Dense="true">
+        <tbody>
+            <tr>
+                <th scope="row">Estado</th>
+                <td>
+                    <span class="indicador-estado indicador-estado-@EstiloDeMembresia">
+                        @TextoDeMembresia
+                    </span>
+                </td>
+            </tr>
+            <tr>
+                <th scope="row">Vigente desde</th>
+                <td class="cifra-tabular">@_membresia.InicioUtc.ToLocalTime().ToString("yyyy-MM-dd")</td>
+            </tr>
+            <tr>
+                <th scope="row">Vigente hasta</th>
+                <td class="cifra-tabular">@_membresia.FinUtc.ToLocalTime().ToString("yyyy-MM-dd")</td>
+            </tr>
+        </tbody>
+    </MudSimpleTable>
+}
+
+<h2 class="seccion-titulo">Comprar timbres</h2>
+
+<p class="seccion-ayuda">
+    Los timbres se abonan a la empresa activa. La compra queda registrada y los timbres entran
+    en cuanto se confirma el pago.
+</p>
+
+<div class="rejilla-paquetes">
+    @foreach (var paquete in _paquetes)
+    {
+        <div class="tarjeta-paquete">
+            <h3>@paquete.Nombre</h3>
+
+            <p class="paquete-total cifra-tabular">@paquete.PrecioTotal.ToString("C2")</p>
+
+            <p class="paquete-unitario cifra-tabular">
+                @paquete.PrecioPorTimbre.ToString("C2") por timbre
+            </p>
+
+            <p class="paquete-vigencia">Vigencia de @paquete.VigenciaMeses meses</p>
+
+            <MudButton Variant="Variant.Filled" FullWidth="true"
+                       Disabled="@(_comprando is not null)"
+                       OnClick="@(() => Comprar(paquete))">
+                @(_comprando == paquete.Id ? "Comprando…" : "Comprar")
+            </MudButton>
+        </div>
+    }
+</div>
+
+<h2 class="seccion-titulo">Compras</h2>
+
+@if (_compras.Count == 0)
+{
+    <p class="seccion-ayuda">Todavía no has comprado ningún paquete.</p>
+}
+else
+{
+    <MudSimpleTable Dense="true" Hover="true">
+        <thead>
+            <tr>
+                <th class="cifra-tabular">Fecha</th>
+                <th>Paquete</th>
+                <th class="cifra-tabular">Timbres</th>
+                <th class="cifra-tabular">Total</th>
+                <th>Estado</th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var compra in _compras)
+            {
+                <tr>
+                    <td class="cifra-tabular">@compra.CreadaUtc.ToLocalTime().ToString("yyyy-MM-dd HH:mm")</td>
+                    <td>@compra.NombrePaquete</td>
+                    <td class="cifra-tabular">@compra.CantidadTimbres</td>
+                    <td class="cifra-tabular">@compra.PrecioTotal.ToString("C2")</td>
+                    <td>
+                        <span class="indicador-estado indicador-estado-@EstiloDeCompra(compra.Estado)">
+                            @TextoDeCompra(compra.Estado)
+                        </span>
+                    </td>
+                </tr>
+            }
+        </tbody>
+    </MudSimpleTable>
+}
+
+<div class="acciones-formulario">
+    <MudButton Variant="Variant.Text"
+               OnClick="@(() => Navegacion.NavigateTo("/timbres/movimientos"))">
+        Ver el historial de movimientos
+    </MudButton>
+</div>
+
+@code {
+    private SaldoTimbresDto _saldo = new(0, 0);
+    private IReadOnlyList<PaqueteDto> _paquetes = [];
+    private IReadOnlyList<CompraDto> _compras = [];
+    private MembresiaDto? _membresia;
+    private DetalleProblema? _error;
+    private Guid? _comprando;
+
+    /// <summary>Mismo margen que aplica el servidor para decidir si conviene avisar.</summary>
+    private const int DiasDeAviso = 30;
+
+    private bool EstaPorVencer =>
+        _membresia is not null
+        && _membresia.Estado != "cancelada"
+        && _membresia.DiasParaVencer <= DiasDeAviso;
+
+    protected override Task OnInitializedAsync() => CargarAsync();
+
+    private async Task CargarAsync()
+    {
+        _saldo = await Timbres.SaldoAsync();
+        _paquetes = await Timbres.PaquetesAsync();
+        _compras = await Timbres.ComprasAsync();
+        _membresia = await Timbres.MembresiaAsync();
+    }
+
+    private async Task Comprar(PaqueteDto paquete)
+    {
+        var confirmado = await Confirmacion.ConfirmarAsync(
+            "Confirmar compra",
+            $"Se registrará la compra de «{paquete.Nombre}» por {paquete.PrecioTotal:C2}. " +
+            "Los timbres entran cuando se confirme el pago.",
+            "Comprar");
+
+        if (!confirmado) return;
+
+        _comprando = paquete.Id;
+        _error = null;
+
+        // La clave se genera una sola vez por intención de compra. Si la red falla y el
+        // usuario vuelve a darle, el servidor reconoce la clave y devuelve la compra que ya
+        // registró en vez de crear otra (CLAUDE.md §4).
+        var clave = Guid.NewGuid().ToString();
+
+        try
+        {
+            var (exito, error) = await Timbres.ComprarAsync(paquete.Id, clave);
+
+            _error = error;
+
+            if (exito is not null) await CargarAsync();
+        }
+        finally
+        {
+            _comprando = null;
+        }
+    }
+
+    private string EstiloDeMembresia => _membresia!.Estado switch
+    {
+        "activa" when _membresia.DiasParaVencer <= DiasDeAviso => "advertencia",
+        "activa" => "timbrada",
+        "vencida" => "cancelada",
+        _ => "borrador"
+    };
+
+    private string TextoDeMembresia => _membresia!.Estado switch
+    {
+        "activa" => "Activa",
+        "vencida" => "Vencida",
+        "cancelada" => "Cancelada",
+        _ => _membresia.Estado
+    };
+
+    private static string EstiloDeCompra(string estado) => estado switch
+    {
+        "pagada" => "timbrada",
+        "cancelada" => "cancelada",
+        _ => "advertencia"
+    };
+
+    private static string TextoDeCompra(string estado) => estado switch
+    {
+        "pendiente_de_pago" => "Pendiente de pago",
+        "pagada" => "Pagada",
+        "cancelada" => "Cancelada",
+        _ => estado
+    };
+}

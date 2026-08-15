@@ -1,10 +1,13 @@
 @using Facturacion.Client.Servicios.Plataforma
 @inject ServicioDeSesion Sesion
+@inject ServicioDeTema Tema
+@inject ServicioDeCatalogos Catalogos
 
 @*
-    Antes de renderizar nada, intenta recuperar la sesión con la cookie de refresh.
-    Sin esta puerta, cada F5 muestra la interfaz de invitado durante un instante y luego
-    salta a la de usuario autenticado (CLAUDE.md §4).
+    Antes de renderizar nada, intenta recuperar la sesión con la cookie de refresh y aplica
+    el tema que trajo. Sin esta puerta, cada F5 muestra la interfaz de invitado en el tema
+    claro por un instante y luego salta a la de usuario autenticado en su tema real
+    (CLAUDE.md §4 y §8).
 *@
 
 @if (_listo)
@@ -28,7 +31,14 @@ else
     {
         // Que falle es lo normal cuando no hay cookie: significa que no hay sesión que
         // restaurar, no que algo esté mal.
-        await Sesion.RefrescarAsync();
+        var haySesion = await Sesion.RefrescarAsync();
+
+        await Tema.InicializarAsync(Sesion.Sesion?.Tema);
+
+        // Sin sesión los catálogos precargables igual responderían 401: no vale la pena
+        // pedirlos antes de que haya alguien autenticado.
+        if (haySesion)
+            await Catalogos.InicializarAsync();
 
         _listo = true;
     }

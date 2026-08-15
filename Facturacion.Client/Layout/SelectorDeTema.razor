@@ -1,0 +1,43 @@
+@implements IDisposable
+@inject ServicioDeTema Tema
+
+@*
+    Los tres temas de CLAUDE.md §8. El cambio se aplica de inmediato —Tema.CambiarAsync ya
+    escribe el atributo data-tema antes de llamar al servidor— y se guarda en el perfil.
+*@
+
+<MudMenu Icon="@IconoDe(Tema.Actual)" Size="Size.Small" AnchorOrigin="Origin.BottomLeft" AriaLabel="Elegir tema">
+    @foreach (var (clave, etiqueta) in Opciones)
+    {
+        <MudMenuItem OnClick="@(() => Tema.CambiarAsync(clave))">
+            <MudIcon Icon="@IconoDe(clave)" Size="Size.Small" />
+            @etiqueta
+            @if (clave == Tema.Actual)
+            {
+                <MudIcon Icon="@Icons.Material.Filled.Check" Size="Size.Small" />
+            }
+        </MudMenuItem>
+    }
+</MudMenu>
+
+@code {
+    private static readonly (string Clave, string Etiqueta)[] Opciones =
+    [
+        (Temas.Claro, "Claro"),
+        (Temas.Oscuro, "Oscuro"),
+        (Temas.Calido, "Cálido")
+    ];
+
+    protected override void OnInitialized() => Tema.Cambio += Redibujar;
+
+    public void Dispose() => Tema.Cambio -= Redibujar;
+
+    private static string IconoDe(string tema) => tema switch
+    {
+        Temas.Oscuro => Icons.Material.Filled.DarkMode,
+        Temas.Calido => Icons.Material.Filled.WbSunny,
+        _ => Icons.Material.Filled.LightMode
+    };
+
+    private void Redibujar() => InvokeAsync(StateHasChanged);
+}

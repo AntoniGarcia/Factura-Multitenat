@@ -1,0 +1,40 @@
+@using Facturacion.Shared.Comun
+
+@*
+    La píldora de color por estatus de comprobante (PROMPT-FASES-A.md fase 2).
+    Lleva borde propio además del color de fondo: en el tema oscuro, "cancelada" contra la
+    superficie apenas alcanza 2.5:1 —no llega al 3:1 de contraste no textual de la 1.4.11—,
+    y el borde en --borde-fuerte (que sí pasa 3:1 en los tres temas) es lo que la mantiene
+    distinguible del fondo sin depender del color solo.
+*@
+
+<span class="indicador-estado indicador-estado-@Clase()">
+    @Texto()
+</span>
+
+@code {
+    [Parameter, EditorRequired]
+    public EstatusComprobante Estatus { get; set; }
+
+    private string Clase() => Estatus switch
+    {
+        EstatusComprobante.Timbrado => "timbrada",
+        EstatusComprobante.Borrador => "borrador",
+        EstatusComprobante.Cancelado => "cancelada",
+        EstatusComprobante.EnCancelacion => "cancelada",
+        EstatusComprobante.Timbrando => "advertencia",
+        EstatusComprobante.Error => "error",
+        _ => "borrador"
+    };
+
+    private string Texto() => Estatus switch
+    {
+        EstatusComprobante.Borrador => "Borrador",
+        EstatusComprobante.Timbrando => "Timbrando",
+        EstatusComprobante.Timbrado => "Timbrada",
+        EstatusComprobante.Error => "Error",
+        EstatusComprobante.Cancelado => "Cancelada",
+        EstatusComprobante.EnCancelacion => "En cancelación",
+        _ => Estatus.ToString()
+    };
+}

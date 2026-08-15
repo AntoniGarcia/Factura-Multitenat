@@ -1,0 +1,72 @@
+@using Facturacion.Shared.Comun
+
+@*
+    RFC con mayúsculas automáticas, tipografía monoespaciada y validación de formato y
+    dígito verificador (anexo 20).
+
+    El cálculo vive en Shared/Comun/Rfc.cs, no aquí: el servidor usa exactamente el mismo,
+    y tener dos implementaciones sería tener dos verdades. Esto es respuesta inmediata para
+    el capturista; la validación que cuenta es la del servidor (CLAUDE.md §3).
+
+    El error se pasa con Error/ErrorText en vez de con el parámetro Validation de MudBlazor:
+    con este patrón de enlace —Value + ValueChanged, que hace falta para poder pasar el RFC
+    a mayúsculas al vuelo— Validation no llega a dispararse, ni al escribir ni al salir del
+    campo. Se comprobó en el navegador. Calcularlo aquí no depende del estado interno del
+    componente y hace evidente cuándo se pinta el error.
+*@
+
+<MudTextField T="string"
+              Label="@Label"
+              Value="@Valor"
+              ValueChanged="AlCambiar"
+              Class="cifra-tabular"
+              Immediate="true"
+              MaxLength="13"
+              Error="@(Mensaje is not null)"
+              ErrorText="@Mensaje"
+              HelperText="@Ayuda"
+              Required="@Requerido"
+              Disabled="@Deshabilitado" />
+
+@code {
+    [Parameter]
+    public string Label { get; set; } = "RFC";
+
+    [Parameter]
+    public string Valor { get; set; } = string.Empty;
+
+    [Parameter]
+    public EventCallback<string> ValorCambiado { get; set; }
+
+    [Parameter]
+    public bool Requerido { get; set; }
+
+    [Parameter]
+    public bool Deshabilitado { get; set; }
+
+    /// <summary>
+    /// No dice nada mientras el RFC está a medio escribir: marcar en rojo cada tecla hasta
+    /// el carácter trece es hostil con quien captura ocho horas. Se avisa cuando ya tiene
+    /// longitud de RFC.
+    /// </summary>
+    private string? Mensaje
+    {
+        get
+        {
+            var valor = (Valor ?? string.Empty).Trim();
+
+            if (valor.Length is not (12 or 13)) return null;
+
+            return Rfc.Validar(valor).Mensaje;
+        }
+    }
+
+    private string? Ayuda => Rfc.EsGenerico(Valor) ? "RFC genérico" : null;
+
+    private async Task AlCambiar(string valor)
+    {
+        var mayusculas = (valor ?? string.Empty).ToUpperInvariant();
+        Valor = mayusculas;
+        await ValorCambiado.InvokeAsync(mayusculas);
+    }
+}

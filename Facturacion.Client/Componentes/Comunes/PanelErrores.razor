@@ -1,9 +1,10 @@
 @using Facturacion.Shared.Comun
+@inject IJSRuntime Js
 
 @*
-    Pinta un Problem Details. El traceId se muestra siempre: es lo que el usuario le dicta a
-    soporte para que soporte encuentre el error en el log (CLAUDE.md §4).
-    La fase 2 lo extiende con el sistema de diseño; no lo dupliques.
+    Pinta un Problem Details. El traceId se muestra siempre, con botón de copiar: es lo que
+    el usuario le dicta —o le pega— a soporte para que soporte encuentre el error en el log
+    (CLAUDE.md §4).
 *@
 
 @if (Problema is not null)
@@ -32,7 +33,10 @@
         @if (!string.IsNullOrWhiteSpace(Problema.TraceId))
         {
             <p class="panel-errores-traza">
-                Referencia para soporte: <code>@Problema.TraceId</code>
+                Referencia para soporte: <code class="cifra-tabular">@Problema.TraceId</code>
+                <button type="button" class="panel-errores-copiar" @onclick="Copiar" title="Copiar">
+                    @(_copiado ? "Copiado" : "Copiar")
+                </button>
             </p>
         }
     </div>
@@ -41,4 +45,20 @@
 @code {
     [Parameter]
     public DetalleProblema? Problema { get; set; }
+
+    private bool _copiado;
+
+    private async Task Copiar()
+    {
+        if (Problema?.TraceId is not { Length: > 0 } traceId) return;
+
+        await Js.InvokeVoidAsync("copiarAlPortapapeles", traceId);
+
+        _copiado = true;
+        StateHasChanged();
+
+        await Task.Delay(1500);
+        _copiado = false;
+        StateHasChanged();
+    }
 }

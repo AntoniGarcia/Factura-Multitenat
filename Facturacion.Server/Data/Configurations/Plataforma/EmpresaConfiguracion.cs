@@ -18,6 +18,23 @@ public sealed class EmpresaConfiguracion : IEntityTypeConfiguration<Empresa>
         constructor.Property(e => e.CodigoPostalExpedicion).HasMaxLength(5);
         constructor.Property(e => e.ZonaHoraria).HasMaxLength(64);
 
+        constructor.Property(e => e.Calle).HasMaxLength(128);
+        constructor.Property(e => e.NumeroExterior).HasMaxLength(32);
+        constructor.Property(e => e.NumeroInterior).HasMaxLength(32);
+        constructor.Property(e => e.Referencia).HasMaxLength(256);
+        constructor.Property(e => e.Colonia).HasMaxLength(128);
+        constructor.Property(e => e.Localidad).HasMaxLength(128);
+        constructor.Property(e => e.Municipio).HasMaxLength(128);
+        constructor.Property(e => e.Estado).HasMaxLength(128);
+        constructor.Property(e => e.Pais).HasMaxLength(64);
+        constructor.Property(e => e.CodigoPostal).HasMaxLength(5);
+        constructor.Property(e => e.Telefono).HasMaxLength(32);
+        constructor.Property(e => e.CorreoContacto).HasMaxLength(254);
+
+        constructor.Property(e => e.LogoRuta).HasMaxLength(256);
+        constructor.Property(e => e.LogoTipoMime).HasMaxLength(64);
+        constructor.Property(e => e.LogoNombreOriginal).HasMaxLength(256);
+
         // El RFC es único dentro de la cuenta, no en toda la base: dos cuentas distintas
         // pueden ser dos despachos que administran la misma empresa.
         constructor.HasIndex(e => new { e.CuentaId, e.Rfc }).IsUnique();

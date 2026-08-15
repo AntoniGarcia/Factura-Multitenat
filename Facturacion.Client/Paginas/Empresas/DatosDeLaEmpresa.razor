@@ -1,0 +1,205 @@
+@page "/empresa"
+@attribute [Authorize(Policy = Permisos.ConfigurarEmpresa)]
+@using Facturacion.Shared.Contratos
+@inject ServicioDeEmpresa Empresas
+@inject ServicioDeCatalogos Catalogos
+
+<PageTitle>Datos de la empresa</PageTitle>
+<TituloDePagina Texto="Datos de la empresa" />
+
+<PanelErrores Problema="_error" />
+
+@if (_empresa is null)
+{
+    <p>Cargando…</p>
+}
+else
+{
+    <EditForm Model="_empresa" OnValidSubmit="Guardar" class="formulario-empresa">
+        <h2 class="seccion-titulo">Datos fiscales</h2>
+        <p class="seccion-ayuda">
+            Estos son los que viajan al CFDI. Deben coincidir con tu Constancia de Situación Fiscal.
+        </p>
+
+        <div class="rejilla-campos">
+            <MudTextField Value="@_empresa.Rfc"
+                          Label="RFC"
+                          ReadOnly="true"
+                          Class="cifra-tabular"
+                          HelperText="No se puede cambiar: los certificados y los comprobantes ya emitidos están atados a este RFC." />
+
+            @* :after es lo que dispara la vista previa mientras se escribe; sin él, el valor
+               se enlaza pero nada recalcula la normalización. *@
+            <MudTextField @bind-Value="_nombre"
+                          @bind-Value:after="ActualizarVistaPrevia"
+                          Label="Nombre o razón social"
+                          Immediate="true"
+                          MaxLength="254"
+                          HelperText="Sin régimen de capital, como en la constancia." />
+        </div>
+
+        @if (_vistaPrevia.HuboCambios)
+        {
+            <div class="aviso-normalizacion" role="status">
+                <p>Se va a guardar como <strong class="cifra-tabular">@_vistaPrevia.Normalizado</strong></p>
+                <ul>
+                    @foreach (var ajuste in _vistaPrevia.Ajustes)
+                    {
+                        <li>@ajuste</li>
+                    }
+                </ul>
+            </div>
+        }
+
+        <div class="rejilla-campos">
+            <MudSelect T="string" @bind-Value="_regimenFiscal" Label="Régimen fiscal">
+                @foreach (var regimen in Catalogos.Obtener("c_RegimenFiscal"))
+                {
+                    <MudSelectItem T="string" Value="@regimen.Clave">@regimen.Clave — @regimen.Descripcion</MudSelectItem>
+                }
+            </MudSelect>
+
+            <MudTextField @bind-Value="_cpExpedicion"
+                          Label="Código postal del lugar de expedición"
+                          Class="cifra-tabular"
+                          MaxLength="5"
+                          HelperText="Va en el CFDI como lugar de expedición." />
+
+            <MudTextField @bind-Value="_zonaHoraria"
+                          Label="Huso horario del lugar de expedición"
+                          HelperText="Con esto se sella el comprobante con la hora local correcta." />
+        </div>
+
+        <h2 class="seccion-titulo">Domicilio</h2>
+        <p class="seccion-ayuda">Sale en el PDF, no en el XML. Puedes dejarlo en blanco.</p>
+
+        <div class="rejilla-campos">
+            <MudTextField @bind-Value="_calle" Label="Calle" MaxLength="128" />
+            <MudTextField @bind-Value="_numeroExterior" Label="Número exterior" MaxLength="32" />
+            <MudTextField @bind-Value="_numeroInterior" Label="Número interior" MaxLength="32" />
+            <MudTextField @bind-Value="_colonia" Label="Colonia" MaxLength="128" />
+            <MudTextField @bind-Value="_localidad" Label="Localidad" MaxLength="128" />
+            <MudTextField @bind-Value="_municipio" Label="Municipio" MaxLength="128" />
+            <MudTextField @bind-Value="_estado" Label="Estado" MaxLength="128" />
+            <MudTextField @bind-Value="_pais" Label="País" MaxLength="64" />
+            <MudTextField @bind-Value="_codigoPostal" Label="Código postal" Class="cifra-tabular" MaxLength="5" />
+            <MudTextField @bind-Value="_referencia" Label="Referencia" MaxLength="256" />
+        </div>
+
+        <h2 class="seccion-titulo">Contacto</h2>
+
+        <div class="rejilla-campos">
+            <MudTextField @bind-Value="_telefono" Label="Teléfono" MaxLength="32" />
+            <MudTextField @bind-Value="_correoContacto" Label="Correo electrónico" MaxLength="254" />
+        </div>
+
+        <h2 class="seccion-titulo">Licencias</h2>
+        <div class="aviso-reservado" role="note">
+            <p>
+                <strong>Reservadas para una fase posterior.</strong> Se guardan y se muestran, pero
+                todavía no habilitan ningún módulo: Carta Porte, Comercio Exterior, Notaría e INE
+                están fuera del alcance actual.
+            </p>
+        </div>
+
+        <div class="rejilla-campos">
+            <MudCheckBox @bind-Value="_licNotarios" Label="Notarios" />
+            <MudCheckBox @bind-Value="_licObras" Label="Obras" />
+            <MudCheckBox @bind-Value="_licComercio" Label="Comercio exterior" />
+            <MudCheckBox @bind-Value="_licIne" Label="INE" />
+        </div>
+
+        <div class="acciones-formulario">
+            <MudButton ButtonType="ButtonType.Submit" Variant="Variant.Filled" Disabled="_guardando">
+                @(_guardando ? "Guardando…" : "Guardar")
+            </MudButton>
+
+            @if (_guardado)
+            {
+                <span class="mensaje-exito" role="status">Datos guardados.</span>
+            }
+        </div>
+    </EditForm>
+}
+
+@code {
+    private EmpresaDto? _empresa;
+    private DetalleProblema? _error;
+    private bool _guardando;
+    private bool _guardado;
+
+    private string _nombre = string.Empty;
+    private string _regimenFiscal = string.Empty;
+    private string _cpExpedicion = string.Empty;
+    private string _zonaHoraria = string.Empty;
+    private string? _calle, _numeroExterior, _numeroInterior, _referencia, _colonia;
+    private string? _localidad, _municipio, _estado, _pais, _codigoPostal, _telefono, _correoContacto;
+    private bool _licNotarios, _licObras, _licComercio, _licIne;
+
+    /// <summary>
+    /// La misma normalización que aplica el servidor, corriendo mientras el usuario escribe.
+    /// Es comodidad, no validación: la que cuenta es la del servidor (CLAUDE.md §3).
+    /// </summary>
+    private NombreFiscalNormalizado _vistaPrevia = NombreFiscal.Normalizar(string.Empty);
+
+    protected override async Task OnInitializedAsync()
+    {
+        _empresa = await Empresas.ObtenerAsync();
+        if (_empresa is null) return;
+
+        _nombre = _empresa.NombreFiscal;
+        _regimenFiscal = _empresa.RegimenFiscal;
+        _cpExpedicion = _empresa.CodigoPostalExpedicion;
+        _zonaHoraria = _empresa.ZonaHoraria;
+        _calle = _empresa.Calle;
+        _numeroExterior = _empresa.NumeroExterior;
+        _numeroInterior = _empresa.NumeroInterior;
+        _referencia = _empresa.Referencia;
+        _colonia = _empresa.Colonia;
+        _localidad = _empresa.Localidad;
+        _municipio = _empresa.Municipio;
+        _estado = _empresa.Estado;
+        _pais = _empresa.Pais;
+        _codigoPostal = _empresa.CodigoPostal;
+        _telefono = _empresa.Telefono;
+        _correoContacto = _empresa.CorreoContacto;
+        _licNotarios = _empresa.Licencias.Notarios;
+        _licObras = _empresa.Licencias.Obras;
+        _licComercio = _empresa.Licencias.Comercio;
+        _licIne = _empresa.Licencias.Ine;
+
+        ActualizarVistaPrevia();
+    }
+
+    private void ActualizarVistaPrevia() => _vistaPrevia = NombreFiscal.Normalizar(_nombre);
+
+    private async Task Guardar()
+    {
+        _guardando = true;
+        _guardado = false;
+        _error = null;
+
+        var peticion = new PeticionGuardarEmpresa(
+            _nombre, _regimenFiscal, _cpExpedicion, _zonaHoraria,
+            _calle, _numeroExterior, _numeroInterior, _referencia, _colonia, _localidad,
+            _municipio, _estado, _pais, _codigoPostal, _telefono, _correoContacto,
+            new LicenciasDto(_licNotarios, _licObras, _licComercio, _licIne));
+
+        var (exito, error) = await Empresas.GuardarAsync(peticion);
+
+        _guardando = false;
+
+        if (error is not null)
+        {
+            _error = error;
+            return;
+        }
+
+        // Se relee lo que el servidor guardó de verdad: si normalizó el nombre, el campo
+        // tiene que mostrar el resultado, no lo que el usuario tecleó.
+        _empresa = exito!.Empresa;
+        _nombre = exito.Empresa.NombreFiscal;
+        _vistaPrevia = NombreFiscal.Normalizar(_nombre);
+        _guardado = true;
+    }
+}

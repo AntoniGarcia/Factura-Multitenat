@@ -1,0 +1,70 @@
+@*
+    El patrón repetido en §5, §7 y §9 del documento funcional: buscar, dar de alta, exportar.
+    Editar y desactivar van en cada renglón de TablaDatos, no aquí: son acciones sobre UN
+    registro, no sobre el catálogo completo.
+*@
+
+<div class="barra-herramientas-catalogo">
+    <MudTextField T="string"
+                   Placeholder="Buscar…"
+                   Value="@Texto"
+                   ValueChanged="AlBuscar"
+                   Adornment="Adornment.Start"
+                   AdornmentIcon="@Icons.Material.Filled.Search"
+                   Immediate="true"
+                   DebounceInterval="300"
+                   Class="barra-herramientas-buscador" />
+
+    <span class="separador-flexible"></span>
+
+    @if (SoloActivos.HasValue)
+    {
+        <MudCheckBox T="bool"
+                      Value="@SoloActivos.Value"
+                      ValueChanged="@(v => SoloActivosCambiado.InvokeAsync(v))"
+                      Label="Solo activos" />
+    }
+
+    @if (OnExportar.HasDelegate)
+    {
+        <MudIconButton Icon="@Icons.Material.Filled.Download" OnClick="OnExportar" title="Exportar a CSV" />
+    }
+
+    @if (OnNuevo.HasDelegate)
+    {
+        <MudButton Variant="Variant.Filled" Color="Color.Primary" StartIcon="@Icons.Material.Filled.Add" OnClick="OnNuevo">
+            @TextoNuevo
+        </MudButton>
+    }
+</div>
+
+@code {
+    [Parameter]
+    public string Texto { get; set; } = string.Empty;
+
+    /// <summary>Se dispara con debounce de 300 ms, el mismo de BuscadorCatalogo (CLAUDE.md §7).</summary>
+    [Parameter]
+    public EventCallback<string> TextoCambiado { get; set; }
+
+    /// <summary>Nulo si el catálogo no distingue activos/inactivos y el filtro no debe mostrarse.</summary>
+    [Parameter]
+    public bool? SoloActivos { get; set; }
+
+    [Parameter]
+    public EventCallback<bool> SoloActivosCambiado { get; set; }
+
+    [Parameter]
+    public string TextoNuevo { get; set; } = "Nuevo";
+
+    [Parameter]
+    public EventCallback OnNuevo { get; set; }
+
+    [Parameter]
+    public EventCallback OnExportar { get; set; }
+
+    private Task AlBuscar(string texto)
+    {
+        Texto = texto;
+        return TextoCambiado.InvokeAsync(texto);
+    }
+}

@@ -1,0 +1,108 @@
+/*
+  Hace que MudBlazor lea las variables semánticas en vez de traer su propia paleta.
+
+  MudBlazor no expone un mecanismo para pasarle "usa estos hexadecimales" desde C# sin
+  escribirlos ahí como literales, que es justo lo que CLAUDE.md §8 prohíbe. Lo que sí hace
+  —se comprobó leyendo su hoja de estilos compilada, no de memoria— es construir cada
+  componente sobre sus propias variables CSS (--mud-palette-primary, --mud-palette-surface,
+  etc.). Así que en vez de configurar un MudTheme en C# con colores, se sobreescriben esas
+  variables para que apunten a las nuestras. Nunca hay un color literal: solo var() de un
+  lado y var() del otro.
+
+  Esto también evita pelear dos sistemas de tema a la vez: MudBlazor trae su propio
+  interruptor claro/oscuro (la clase .mud-theme-dark), pero como todo aquí ya lee de
+  variables ligadas al atributo data-tema, ese interruptor de MudBlazor no se usa nunca.
+
+  Import: después de variables.css y antes de app.css, para que las reglas de aquí puedan
+  referenciar var(--acento) etc. y app.css pueda, si hace falta, ajustar algo encima.
+*/
+
+:root {
+    --mud-palette-background: var(--fondo);
+    --mud-palette-background-gray: var(--fondo);
+    --mud-palette-surface: var(--superficie);
+    --mud-palette-appbar-background: var(--superficie);
+    --mud-palette-appbar-text: var(--texto);
+    --mud-palette-drawer-background: var(--superficie);
+    --mud-palette-drawer-text: var(--texto);
+    --mud-palette-drawer-icon: var(--texto-suave);
+
+    --mud-palette-primary: var(--acento);
+    --mud-palette-primary-rgb: var(--acento-rgb);
+    --mud-palette-primary-text: var(--texto-inverso);
+    --mud-palette-primary-hover: rgba(var(--acento-rgb), 0.9);
+    --mud-palette-primary-darken: var(--acento);
+    --mud-palette-primary-lighten: var(--acento-suave);
+
+    /* Sin colores "secundario" ni "terciario" propios: CLAUDE.md §8 no define una segunda
+       marca, así que reutilizan el acento en vez de inventar un color que nadie pidió. */
+    --mud-palette-secondary: var(--acento);
+    --mud-palette-secondary-rgb: var(--acento-rgb);
+    --mud-palette-secondary-text: var(--texto-inverso);
+    --mud-palette-tertiary: var(--acento);
+    --mud-palette-tertiary-rgb: var(--acento-rgb);
+    --mud-palette-tertiary-text: var(--texto-inverso);
+
+    --mud-palette-text-primary: var(--texto);
+    --mud-palette-text-primary-rgb: var(--texto-rgb);
+    --mud-palette-text-secondary: var(--texto-suave);
+    --mud-palette-text-disabled: var(--texto-suave);
+
+    --mud-palette-divider: var(--borde);
+    --mud-palette-divider-light: var(--borde);
+    --mud-palette-lines-default: var(--borde);
+    --mud-palette-lines-inputs: var(--borde-fuerte);
+    --mud-palette-table-lines: var(--borde);
+    --mud-palette-table-hover: var(--acento-suave);
+    --mud-palette-table-striped: var(--acento-suave);
+
+    --mud-palette-action-default: var(--texto-suave);
+    --mud-palette-action-default-hover: var(--acento-suave);
+    --mud-palette-action-disabled: var(--borde-fuerte);
+    --mud-palette-action-disabled-background: var(--borde);
+
+    --mud-palette-error: var(--estado-error);
+    --mud-palette-error-rgb: var(--estado-error-rgb);
+    --mud-palette-error-text: var(--texto-inverso);
+    --mud-palette-error-darken: var(--estado-error);
+    --mud-palette-error-hover: rgba(var(--estado-error-rgb), 0.9);
+    --mud-palette-error-lighten: rgba(var(--estado-error-rgb), 0.15);
+
+    --mud-palette-warning: var(--estado-advertencia);
+    --mud-palette-warning-rgb: var(--estado-advertencia-rgb);
+    --mud-palette-warning-text: var(--texto-inverso);
+    --mud-palette-warning-darken: var(--estado-advertencia);
+    --mud-palette-warning-hover: rgba(var(--estado-advertencia-rgb), 0.9);
+    --mud-palette-warning-lighten: rgba(var(--estado-advertencia-rgb), 0.15);
+
+    --mud-palette-success: var(--estado-timbrada);
+    --mud-palette-success-rgb: var(--estado-timbrada-rgb);
+    --mud-palette-success-text: var(--texto-inverso);
+    --mud-palette-success-darken: var(--estado-timbrada);
+    --mud-palette-success-hover: rgba(var(--estado-timbrada-rgb), 0.9);
+    --mud-palette-success-lighten: rgba(var(--estado-timbrada-rgb), 0.15);
+
+    /* MudBlazor no tiene un cuarto color de estado para "info" que corresponda a un
+       estatus de comprobante; se le asigna el borrador porque semánticamente ambos son
+       "neutral, todavía sin resolver". */
+    --mud-palette-info: var(--estado-borrador);
+    --mud-palette-info-rgb: var(--estado-borrador-rgb);
+    --mud-palette-info-text: var(--texto-inverso);
+    --mud-palette-info-darken: var(--estado-borrador);
+    --mud-palette-info-hover: rgba(var(--estado-borrador-rgb), 0.9);
+    --mud-palette-info-lighten: rgba(var(--estado-borrador-rgb), 0.15);
+
+    --mud-default-borderradius: var(--radio);
+}
+
+/* Filas de tabla a 40px y controles a 36px en todo, también dentro de MudBlazor
+   (CLAUDE.md §8). Se fija aquí y no por componente para que nadie tenga que acordarse. */
+.mud-table-cell,
+.mud-table-row {
+    height: var(--alto-fila-tabla);
+}
+
+.mud-input-control .mud-input,
+.mud-button-root {
+    min-height: var(--alto-control);
+}

@@ -1,0 +1,73 @@
+@*
+    Fecha con el huso horario del lugar de expedición (CLAUDE.md §5): la base guarda todo en
+    UTC, y este campo es el único lugar donde esa fecha se convierte a la hora local para
+    mostrarse o capturarse. Quien use el componente pasa el huso de la empresa activa —hoy
+    ninguna página lo hace todavía, porque la empresa emisora es la fase 4— en vez de que el
+    componente lo adivine.
+*@
+
+<MudDatePicker Label="@Label"
+                Date="@ComoFechaLocal()"
+                DateChanged="AlCambiar"
+                Culture="@CulturaEsMx"
+                Class="cifra-tabular"
+                Required="@Requerido"
+                Disabled="@Deshabilitado" />
+
+@code {
+    private static readonly System.Globalization.CultureInfo CulturaEsMx = new("es-MX");
+
+    [Parameter]
+    public string Label { get; set; } = "Fecha";
+
+    /// <summary>Momento en UTC, tal como se guarda en la base.</summary>
+    [Parameter]
+    public DateTime? ValorUtc { get; set; }
+
+    [Parameter]
+    public EventCallback<DateTime?> ValorUtcCambiado { get; set; }
+
+    /// <summary>
+    /// Id de huso horario (el mismo formato que guarda <c>Empresa.ZonaHoraria</c>). Por
+    /// omisión, el del área central de México, para que el campo sea usable antes de que la
+    /// fase 4 conecte la empresa emisora de verdad.
+    /// </summary>
+    [Parameter]
+    public string ZonaHoraria { get; set; } = "Central Standard Time (Mexico)";
+
+    [Parameter]
+    public bool Requerido { get; set; }
+
+    [Parameter]
+    public bool Deshabilitado { get; set; }
+
+    private DateTime? ComoFechaLocal()
+        => ValorUtc is { } utc ? ConvertirDesdeUtc(utc).Date : null;
+
+    private async Task AlCambiar(DateTime? fechaLocal)
+    {
+        ValorUtc = fechaLocal is { } local ? ConvertirAUtc(local) : null;
+        await ValorUtcCambiado.InvokeAsync(ValorUtc);
+    }
+
+    private DateTime ConvertirDesdeUtc(DateTime utc)
+        => TimeZoneInfo.ConvertTimeFromUtc(DateTime.SpecifyKind(utc, DateTimeKind.Utc), Huso());
+
+    private DateTime ConvertirAUtc(DateTime local)
+        => TimeZoneInfo.ConvertTimeToUtc(DateTime.SpecifyKind(local, DateTimeKind.Unspecified), Huso());
+
+    private TimeZoneInfo Huso()
+    {
+        try
+        {
+            return TimeZoneInfo.FindSystemTimeZoneById(ZonaHoraria);
+        }
+        catch (TimeZoneNotFoundException)
+        {
+            // El navegador puede no traer la base de husos de Windows completa. Antes que
+            // reventar el campo, se cae a UTC: la fecha se ve corrida, pero el campo sigue
+            // funcionando y el dato de fondo no se pierde.
+            return TimeZoneInfo.Utc;
+        }
+    }
+}

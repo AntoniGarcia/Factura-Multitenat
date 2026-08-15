@@ -1,0 +1,104 @@
+@page "/productos"
+@attribute [Authorize]
+@inject ServicioDeProductos Productos
+@inject NavigationManager Navegacion
+@inject IServicioDeConfirmacion Confirmacion
+
+<PageTitle>Productos y servicios</PageTitle>
+<TituloDePagina Texto="Productos y servicios" />
+
+<PanelErrores Problema="_error" />
+
+<BarraHerramientasCatalogo Texto="@_texto"
+                           TextoCambiado="AlBuscar"
+                           SoloActivos="_soloActivos"
+                           SoloActivosCambiado="AlFiltrarActivos"
+                           TextoNuevo="Nuevo producto"
+                           OnNuevo="@(() => Navegacion.NavigateTo("/productos/nuevo"))"
+                           OnExportar="Exportar" />
+
+<div class="acciones-formulario">
+    <MudButton Variant="Variant.Outlined" StartIcon="@Icons.Material.Filled.UploadFile"
+               OnClick="@(() => Navegacion.NavigateTo("/productos/importar"))">
+        Importar desde CSV
+    </MudButton>
+</div>
+
+<TablaDatos T="ProductoEnListaDto"
+            @ref="_tabla"
+            Columnas="_columnas"
+            CargarPagina="CargarAsync"
+            TextoSinDatos="No hay productos que coincidan." />
+
+@code {
+    private TablaDatos<ProductoEnListaDto>? _tabla;
+    private DetalleProblema? _error;
+    private string _texto = string.Empty;
+    private bool _soloActivos = true;
+
+    private IReadOnlyList<ColumnaDeTabla<ProductoEnListaDto>> _columnas = [];
+
+    protected override void OnInitialized() => _columnas =
+    [
+        new("Código", p => @<span class="cifra-tabular">@p.CodigoInterno</span>, ClaveOrden: "codigo", Tabular: true),
+        new("Descripción", p => @<text>@p.Descripcion</text>, ClaveOrden: "descripcion"),
+        new("Unidad", p => @<text>@p.UnidadTexto</text>),
+        new("Precio", p => @<span class="cifra-tabular">@p.ValorUnitario.ToString("N2")</span>, ClaveOrden: "precio", Tabular: true),
+        new("Peso kg", p => @<span class="cifra-tabular">@(p.PesoKg?.ToString("N3") ?? "—")</span>, Tabular: true),
+        new("Clave SAT", p => @<span class="cifra-tabular">@p.ClaveProdServ</span>, Tabular: true),
+        new("Estado", p => @<span class="indicador-estado indicador-estado-@(p.Activo ? "timbrada" : "borrador")">
+                                @(p.Activo ? "Activo" : "Inactivo")
+                            </span>),
+        new("", p => @<div class="acciones-renglon">
+                          <MudButton Size="Size.Small" OnClick="@(() => Navegacion.NavigateTo($"/productos/{p.Id}"))">Editar</MudButton>
+                          <MudButton Size="Size.Small" OnClick="@(() => CambiarActivo(p))">
+                              @(p.Activo ? "Desactivar" : "Reactivar")
+                          </MudButton>
+                      </div>)
+    ];
+
+    private async Task<ResultadoDePagina<ProductoEnListaDto>> CargarAsync(PeticionDePagina peticion, CancellationToken ct)
+    {
+        var pagina = await Productos.ListarAsync(
+            _texto, _soloActivos, peticion.Pagina, peticion.TamanoPagina,
+            peticion.ClaveOrden, peticion.Descendente, ct);
+
+        return new ResultadoDePagina<ProductoEnListaDto>(pagina.Elementos, pagina.Total);
+    }
+
+    private async Task AlBuscar(string texto)
+    {
+        _texto = texto;
+        await RecargarAsync();
+    }
+
+    private async Task AlFiltrarActivos(bool soloActivos)
+    {
+        _soloActivos = soloActivos;
+        await RecargarAsync();
+    }
+
+    private Task RecargarAsync() => _tabla?.RecargarAsync() ?? Task.CompletedTask;
+
+    private async Task CambiarActivo(ProductoEnListaDto producto)
+    {
+        if (producto.Activo)
+        {
+            var confirmado = await Confirmacion.ConfirmarAsync(
+                "Desactivar producto",
+                $"«{producto.Descripcion}» dejará de aparecer al facturar. Los comprobantes ya emitidos no se tocan.",
+                "Desactivar");
+
+            if (!confirmado) return;
+        }
+
+        var (_, error) = await Productos.CambiarActivoAsync(producto.Id, !producto.Activo);
+
+        _error = error;
+
+        if (error is null) await RecargarAsync();
+    }
+
+    private void Exportar()
+        => Navegacion.NavigateTo(ServicioDeProductos.RutaDeExportacion(_soloActivos), forceLoad: true);
+}
