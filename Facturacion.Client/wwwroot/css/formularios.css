@@ -237,3 +237,21 @@
     min-width: 10rem;
     max-width: 14rem;
 }
+
+/* ── Tablero ───────────────────────────────────────────────────────────────── */
+
+/*
+  Variante de .aviso-caducidad para lo que ya pasó de advertencia a impedimento: sin
+  certificado, certificado caducado, membresía vencida o cero timbres. Solo cambia el
+  color de la barra lateral; el resto lo hereda, para que las dos variantes se lean como
+  la misma familia y no como dos componentes distintos.
+*/
+.aviso-critico {
+    border-left-color: var(--estado-error);
+}
+
+.accesos-rapidos {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+}

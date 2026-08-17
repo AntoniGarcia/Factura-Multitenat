@@ -42,6 +42,19 @@ public static partial class PoliticaDeContenido
         "default-src 'self'; " +
         "script-src 'self' 'wasm-unsafe-eval'{0}; " +
         "style-src 'self'; " +
+
+        // La única excepción a «nada de unsafe-*» además de wasm-unsafe-eval, y la más
+        // acotada que permite la especificación: MudBlazor escribe atributos style="" en
+        // línea —posición de menús flotantes, ancho de barras de progreso— y con solo
+        // style-src 'self' el navegador los descarta y los componentes salen mal colocados.
+        //
+        // Es una directiva aparte y no 'unsafe-inline' dentro de style-src a propósito:
+        // style-src-attr cubre nada más el atributo, así que un bloque <style> inyectado
+        // sigue bloqueado. Un atributo de estilo no ejecuta script; el riesgo residual
+        // sería exfiltrar con url(), y para eso haría falta inyección de HTML, que Razor
+        // escapa por omisión.
+        //
+        // Pendiente: no se comprobó quitándola (docs/REPASO-SEGURIDAD.md).
         "style-src-attr 'unsafe-inline'; " +
         "img-src 'self' data:; " +
         "font-src 'self'; " +
