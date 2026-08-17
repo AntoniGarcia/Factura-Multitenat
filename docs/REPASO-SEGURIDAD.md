@@ -16,7 +16,7 @@ que nada de lo que aquí se afirma cubre emisión, timbrado ni salidas.
 | # | Punto | Veredicto |
 |---|---|---|
 | 1 | Ningún endpoint recibe `empresaId` del cliente | ✅ correcto |
-| 2 | Query filter cubre toda entidad de empresa; `IgnoreQueryFilters` justificado | ⚠️ **1 corregido** |
+| 2 | Query filter cubre toda entidad de empresa; `IgnoreQueryFilters` justificado | ⚠️ **2 corregidos** |
 | 3 | Todo endpoint que muta tiene su política de permiso | ✅ correcto |
 | 4 | Logs sin RFC completos, contraseñas, tokens ni certificados | ✅ correcto |
 | 5 | Archivos inaccesibles sin autorización y sin adivinar la ruta | ✅ correcto |
@@ -29,6 +29,7 @@ que nada de lo que aquí se afirma cubre emisión, timbrado ni salidas.
 | Hallazgo | Gravedad | Estado |
 |---|---|---|
 | El artefacto de publicación se llevaba la llave maestra de Data Protection | **Alta** | ✅ corregido |
+| `ProductoImpuesto` sin filtro de empresa — lo dio por bueno este mismo repaso (§2.3) | Media | ✅ corregido |
 | Sin configuración de proxy inverso, HSTS no se emite y la redirección a HTTPS puede ciclar | Media | ⛔ pendiente, necesita decisión |
 | El plazo de aviso de membresía está duplicado entre servidor y Client | Baja | ⚠️ parcial |
 
@@ -78,7 +79,51 @@ ahí: la autorización es el token mismo, se busca por el SHA-256 de un valor al
 bits y no se acepta ningún otro criterio de búsqueda, así que saltarse el filtro no abre la
 tenencia.
 
-### 2.3 · Umbral de aviso duplicado — **parcial**
+### 2.3 · `ProductoImpuesto` fuera del filtro global — **corregido, y este repaso lo había dado por bueno**
+
+**Cómo apareció.** No en este repaso: en el log de arranque, *después* de cerrar la fase 9,
+al verificar por qué no se podía levantar el servidor. EF lo venía avisando en cada arranque:
+
+> `Entity 'Producto' has a global query filter defined and is the required end of a`
+> `relationship with the entity 'ProductoImpuesto'.`
+
+**Qué falló en el método.** Para el punto 2 enumeré las entidades que *implementan*
+`IEntidadDeEmpresa` y comprobé que el filtro se les aplicara. Nunca pregunté lo contrario:
+qué tablas con datos de empresa **no** implementan la interfaz. Verificar lo que está en la
+lista no dice nada sobre lo que nunca entró en ella.
+
+Cruzando los 31 `DbSet` sin filtro contra sus exclusiones documentadas, 30 estaban
+justificados —catálogos del SAT, `Cuenta`, `Empresa`, `UsuarioEmpresa`,
+`UsuarioEmpresaPermiso`, `RefreshToken`, `Membresia`—. `ProductoImpuesto` era el único con
+datos de empresa, sin filtro y sin exclusión escrita.
+
+**No hubo fuga.** Los tres accesos del código eran seguros: las lecturas entran por
+`Include(p => p.Impuestos)` desde `Productos`, que sí filtra, y los dos usos directos del
+`DbSet` son escrituras sobre entidades ya cargadas por una consulta filtrada.
+
+Lo que sí había era una puerta abierta: `AppDbContext.ProductosImpuestos` es público y sin
+filtro, así que `baseDeDatos.ProductosImpuestos.Where(...)` devolvía renglones de todas las
+empresas en silencio. Y la mitad B va a leer impuestos de producto para calcular
+comprobantes: es exactamente el uso que caía en la trampa.
+
+**Corrección.** `ProductoImpuesto` implementa `IEntidadDeEmpresa` y gana columna `EmpresaId`
+(migración `A_EmpresaEnProductoImpuesto`). Con eso lo cubren solos el filtro global y el
+sellado del interceptor, sin que nadie tenga que acordarse de nada — que es la regla de
+CLAUDE.md §5.
+
+La migración va en tres pasos, y el orden importa: la columna se agrega **nullable**, se
+rellena desde el producto padre y solo entonces se vuelve obligatoria. Agregarla directamente
+como `NOT NULL` habría dejado todos los renglones existentes en `Guid.Empty`, y el filtro
+global los habría escondido: los impuestos de cada producto ya capturado habrían desaparecido
+de la aplicación **sin un solo error**.
+
+**Verificado**, y no solo aplicando la migración sobre una tabla vacía —que no prueba nada—:
+creé productos con impuestos en las dos empresas, revertí la migración, la volví a aplicar y
+comprobé que los tres renglones tomaran el `EmpresaId` de su producto padre, ninguno en
+`Guid.Empty`. Después, por la API: la Llantera ve su único impuesto y la Cementera los dos
+suyos. El aviso de EF desapareció del arranque.
+
+### 2.4 · Umbral de aviso duplicado — **parcial**
 
 `ServicioDeCompras.EstaPorVencer` fija el aviso de membresía en 30 días, y
 `Paginas/Timbres/BolsaDeTimbres.razor` tiene **su propia copia** de esa regla en el
@@ -110,11 +155,19 @@ claim vía `IContextoEmpresa`.
 
 ### Punto 2 · Cobertura del query filter
 
+> Este apartado decía que el punto estaba limpio. **Estaba incompleto**: se le escapó
+> `ProductoImpuesto`, que apareció después en el log de arranque. Ver §2.3, incluido por qué
+> el método de revisión no podía encontrarlo.
+
 `FiltroDeEmpresa` recorre el modelo y aplica el filtro a toda entidad que implemente
-`IEntidadDeEmpresa` (13) o `IEntidadDeEmpresaOpcional` (1: `RegistroBitacora`). Nadie tiene
-que acordarse de filtrar: basta implementar la interfaz. **Falla cerrado** — sin empresa
-activa el parámetro va nulo, la comparación en SQL Server queda en desconocido y no se
-devuelve ningún renglón.
+`IEntidadDeEmpresa` (14 tras la corrección de §2.3) o `IEntidadDeEmpresaOpcional` (1:
+`RegistroBitacora`). Nadie tiene que acordarse de filtrar: basta implementar la interfaz.
+**Falla cerrado** — sin empresa activa el parámetro va nulo, la comparación en SQL Server
+queda en desconocido y no se devuelve ningún renglón.
+
+La comprobación que sirve no es recorrer las entidades que implementan la interfaz, sino
+**cruzar todos los `DbSet` contra las exclusiones documentadas** y exigir que cada uno sin
+filtro tenga su motivo por escrito. Hecho así, quedan 30 sin filtro y los 30 justificados.
 
 Las exclusiones están decididas y escritas: tablas de Identity, `Cuenta`, `Empresa`,
 `UsuarioEmpresa`, `UsuarioEmpresaPermiso`, `RefreshToken`, `Permiso` y los catálogos del SAT.
@@ -242,7 +295,7 @@ Cuando se decida dónde se despliega, hay que añadir `UseForwardedHeaders` **co
 
 ### 5.2 · Copia del umbral de 30 días en `BolsaDeTimbres.razor`
 
-Ver 2.3. El tablero ya no la duplica; la pantalla de la bolsa sí.
+Ver 2.4. El tablero ya no la duplica; la pantalla de la bolsa sí.
 
 ### 5.3 · Lo que este repaso no cubre
 
