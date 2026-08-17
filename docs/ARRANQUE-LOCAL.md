@@ -46,6 +46,9 @@ Abre la copia y ajusta:
   permisos. La contraseña necesita **12 caracteres o más**, con mayúscula, minúscula y
   dígito; si es más corta, Identity la rechaza y el sembrado no crea al usuario. Si borras
   las dos claves, el sembrado no corre.
+- **`Correo`** — opcional en `Development`. Sin `Correo:Servidor`, las invitaciones de
+  usuario no se envían: se escriben en el log de la consola, y de ahí se copia el enlace
+  para aceptarlas. Fuera de `Development` es obligatorio y el servidor no arranca sin él.
 
 ---
 
@@ -166,6 +169,20 @@ del operador del SaaS, no del inquilino: por eso vive en la consola y no en un e
 no la cumple, el sembrado no llega a crear al usuario. Tras varios intentos fallidos el
 bloqueo por IP entra en juego y crece con cada tanda; espera o reinicia el servidor, que lo
 guarda en memoria.
+
+**La contraseña del sembrado dejó de servir de un día para otro** — alguien la cambió desde
+**Mi perfil**. El sembrado es idempotente (`if (await baseDeDatos.Cuentas.AnyAsync()) return;`),
+así que a partir de ese momento manda la base y editar `appsettings.Development.json` ya no
+cambia nada. Se comprueba en la bitácora:
+
+```sql
+SELECT Accion, MomentoUtc FROM Bitacora WHERE Accion = 'contrasena_cambiada' ORDER BY MomentoUtc DESC;
+```
+
+Para volver al valor del archivo hay que borrar la base `FacturacionDev` y dejar que el
+sembrado corra otra vez — con el costo de recargar los catálogos del SAT (paso 5). Por eso
+conviene **no** usar la cuenta del sembrado para probar el cambio de contraseña: para eso
+está la cuenta de un invitado.
 
 **El ejecutable está bloqueado al compilar** — hay un `dotnet run` vivo. Ciérralo antes de
 compilar.

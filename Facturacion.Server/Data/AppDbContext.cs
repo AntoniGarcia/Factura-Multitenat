@@ -37,6 +37,7 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> opciones, IConte
     public DbSet<UsuarioEmpresa> UsuariosEmpresas => Set<UsuarioEmpresa>();
     public DbSet<Permiso> Permisos => Set<Permiso>();
     public DbSet<UsuarioEmpresaPermiso> UsuariosEmpresasPermisos => Set<UsuarioEmpresaPermiso>();
+    public DbSet<Invitacion> Invitaciones => Set<Invitacion>();
     public DbSet<RefreshToken> RefreshTokens => Set<RefreshToken>();
     public DbSet<ClaveIdempotencia> ClavesIdempotencia => Set<ClaveIdempotencia>();
     public DbSet<RegistroBitacora> Bitacora => Set<RegistroBitacora>();

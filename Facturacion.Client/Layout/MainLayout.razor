@@ -84,7 +84,11 @@
             return;
         }
 
-        _timbresDisponibles = await IndicadorTimbres.ObtenerDisponiblesAsync();
+        // Sin sesión no hay token que adjuntar: pedirlo igual solo produce un 401 que
+        // revienta el layout entero, no solo la tarjeta de saldo (se veía al recargar una
+        // página sin [Authorize], donde este layout monta antes de que haya nadie autenticado).
+        if (Sesion.HaySesion)
+            _timbresDisponibles = await IndicadorTimbres.ObtenerDisponiblesAsync();
     }
 
     public void Dispose()

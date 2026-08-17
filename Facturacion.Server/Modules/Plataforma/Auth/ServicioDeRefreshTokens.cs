@@ -127,9 +127,37 @@ public sealed class ServicioDeRefreshTokens(
         return vivos.Count;
     }
 
+    /// <summary>
+    /// Revoca <b>todas</b> las familias vivas de un usuario, sin importar en qué empresa las
+    /// abrió. Es lo que exige la fase 8 al desactivarlo: "de inmediato" para el refresh, con
+    /// el access token ya emitido siguiendo vivo hasta sus quince minutos porque es sin estado
+    /// y no hay forma de revocarlo antes.
+    /// </summary>
+    public async Task<int> InvalidarTodasLasFamiliasDelUsuarioAsync(Guid usuarioId, string motivo, CancellationToken ct)
+    {
+        var familias = await baseDeDatos.RefreshTokens
+            .Where(t => t.UsuarioId == usuarioId && t.RevocadoUtc == null)
+            .Select(t => t.FamiliaId)
+            .Distinct()
+            .ToListAsync(ct);
+
+        var total = 0;
+        foreach (var familiaId in familias)
+            total += await InvalidarFamiliaAsync(familiaId, motivo, ct);
+
+        return total;
+    }
+
     /// <summary>SHA-256 en base64. El token en claro nunca toca la base.</summary>
     public static string Hash(string enClaro)
         => Convert.ToBase64String(SHA256.HashData(Encoding.UTF8.GetBytes(enClaro)));
+
+    /// <summary>
+    /// Token aleatorio de 32 bytes, igual de fuerte que un refresh token. Lo reutiliza
+    /// <c>ServicioDeInvitaciones</c>: es el mismo problema —un secreto de un solo uso que
+    /// nunca se guarda en claro—, no hace falta un generador distinto.
+    /// </summary>
+    public static string GenerarToken() => Base64UrlEncoder(RandomNumberGenerator.GetBytes(32));
 
     private RefreshEmitido Crear(
         Guid usuarioId, Guid familiaId, DateTime expiraUtc, string? ip, string? agente, Guid? empresaActivaId)

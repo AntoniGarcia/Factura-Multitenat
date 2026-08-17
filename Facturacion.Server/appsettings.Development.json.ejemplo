@@ -24,5 +24,16 @@
   "Sembrado": {
     "Correo": "contador@ejemplo.mx",
     "Contrasena": "PonUnaContrasena123"
+  },
+
+  "//Correo": "Opcional en Development: sin 'Servidor', las invitaciones se escriben en el log de la consola en vez de enviarse de verdad. Fuera de Development es obligatorio.",
+  "Correo": {
+    "Servidor": "",
+    "Puerto": 587,
+    "Usuario": "",
+    "Contrasena": "",
+    "RemitenteCorreo": "no-responder@tudominio.mx",
+    "RemitenteNombre": "Sistema de facturación",
+    "UsarTls": true
   }
 }

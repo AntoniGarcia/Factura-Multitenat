@@ -1,0 +1,188 @@
+@page "/usuarios"
+@attribute [Authorize(Policy = Permisos.AdministrarUsuarios)]
+@using Facturacion.Client.Componentes.Comunes
+@using Facturacion.Client.Servicios.Plataforma
+@using Facturacion.Shared.Comun
+@using Facturacion.Shared.Plataforma
+@inject ServicioDeUsuarios Usuarios
+@inject IDialogService Dialogos
+@inject IServicioDeConfirmacion Confirmacion
+@inject NavigationManager Navegacion
+
+<PageTitle>Usuarios</PageTitle>
+<TituloDePagina Texto="Usuarios" />
+
+<PanelErrores Problema="_error" />
+
+@if (_datos is null)
+{
+    <p>Cargando…</p>
+}
+else
+{
+    <div class="resumen-importacion">
+        <span class="indicador-estado indicador-estado-@(_enElLimite ? "cancelada" : "timbrada")">
+            @(_datos.Usuarios.Count(u => u.Activo) + _datos.Invitaciones.Count(i => i.Estado == "pendiente")) de @_datos.LimitePorEmpresa usuarios
+        </span>
+    </div>
+
+    <div class="acciones-formulario">
+        <MudButton Variant="Variant.Filled" Color="Color.Primary" StartIcon="@Icons.Material.Filled.PersonAdd"
+                   OnClick="@(() => Navegacion.NavigateTo("/usuarios/invitar"))" Disabled="@_enElLimite">
+            Invitar usuario
+        </MudButton>
+    </div>
+    @if (_enElLimite)
+    {
+        <p class="seccion-ayuda">
+            Ya llegaste al máximo de @_datos.LimitePorEmpresa. Para agregar más, contacta a soporte.
+        </p>
+    }
+
+    <h2 class="seccion-titulo">Con acceso</h2>
+
+    <MudSimpleTable Dense="true" Hover="true">
+        <thead>
+            <tr>
+                <th>Nombre</th>
+                <th>Correo</th>
+                <th>Permisos</th>
+                <th>Estado</th>
+                <th></th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var usuario in _datos.Usuarios)
+            {
+                <tr>
+                    <td>@usuario.Nombre @(usuario.EsUsuarioActual ? "(tú)" : "")</td>
+                    <td>@usuario.Correo</td>
+                    <td>@Etiquetas(usuario.Permisos)</td>
+                    <td>
+                        <span class="indicador-estado indicador-estado-@(usuario.Activo ? "timbrada" : "borrador")">
+                            @(usuario.Activo ? "Activo" : "Inactivo")
+                        </span>
+                    </td>
+                    <td>
+                        <div class="acciones-renglon">
+                            <MudButton Size="Size.Small" OnClick="@(() => EditarPermisos(usuario))">Permisos</MudButton>
+                            @if (!usuario.EsUsuarioActual)
+                            {
+                                <MudButton Size="Size.Small" OnClick="@(() => CambiarActivo(usuario))">
+                                    @(usuario.Activo ? "Desactivar" : "Reactivar")
+                                </MudButton>
+                            }
+                        </div>
+                    </td>
+                </tr>
+            }
+        </tbody>
+    </MudSimpleTable>
+
+    @if (_datos.Invitaciones.Count > 0)
+    {
+        <h2 class="seccion-titulo">Invitaciones</h2>
+
+        <MudSimpleTable Dense="true" Hover="true">
+            <thead>
+                <tr>
+                    <th>Correo</th>
+                    <th>Nombre</th>
+                    <th>Permisos</th>
+                    <th class="cifra-tabular">Vence</th>
+                    <th>Estado</th>
+                    <th></th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var invitacion in _datos.Invitaciones)
+                {
+                    <tr>
+                        <td>@invitacion.Correo</td>
+                        <td>@invitacion.Nombre</td>
+                        <td>@Etiquetas(invitacion.Permisos)</td>
+                        <td class="cifra-tabular">@invitacion.ExpiraUtc.ToLocalTime().ToString("dd/MM/yyyy HH:mm")</td>
+                        <td>
+                            <span class="indicador-estado indicador-estado-@(invitacion.Estado == "pendiente" ? "advertencia" : "cancelada")">
+                                @(invitacion.Estado == "pendiente" ? "Pendiente" : "Vencida")
+                            </span>
+                        </td>
+                        <td>
+                            <div class="acciones-renglon">
+                                <MudButton Size="Size.Small" OnClick="@(() => Reenviar(invitacion))">Reenviar</MudButton>
+                                <MudButton Size="Size.Small" OnClick="@(() => Revocar(invitacion))">Revocar</MudButton>
+                            </div>
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </MudSimpleTable>
+    }
+}
+
+@code {
+    private UsuariosDeLaEmpresaDto? _datos;
+    private DetalleProblema? _error;
+
+    private bool _enElLimite =>
+        _datos is not null &&
+        _datos.Usuarios.Count(u => u.Activo) + _datos.Invitaciones.Count(i => i.Estado == "pendiente") >= _datos.LimitePorEmpresa;
+
+    protected override Task OnInitializedAsync() => CargarAsync();
+
+    private async Task CargarAsync() => _datos = await Usuarios.ListarAsync();
+
+    private static string Etiquetas(IReadOnlyList<string> permisos)
+        => permisos.Count == 0 ? "—" : string.Join(", ", permisos.Select(Permisos.EtiquetaCorta));
+
+    private async Task EditarPermisos(UsuarioDeEmpresaDto usuario)
+    {
+        var parametros = new DialogParameters<EditarPermisosDialogo>
+        {
+            { x => x.UsuarioId, usuario.UsuarioId },
+            { x => x.NombreUsuario, usuario.Nombre },
+            { x => x.PermisosActuales, usuario.Permisos }
+        };
+
+        var referencia = await Dialogos.ShowAsync<EditarPermisosDialogo>("Editar permisos", parametros);
+        var resultado = await referencia.Result;
+
+        if (resultado is { Canceled: false }) await CargarAsync();
+    }
+
+    private async Task CambiarActivo(UsuarioDeEmpresaDto usuario)
+    {
+        if (usuario.Activo)
+        {
+            var confirmado = await Confirmacion.ConfirmarAsync(
+                "Desactivar usuario",
+                $"«{usuario.Nombre}» ya no podrá iniciar sesión con acceso a esta empresa. " +
+                "Su acceso se corta en un máximo de quince minutos, cuando expire el que ya tenía abierto.",
+                "Desactivar", esPeligrosa: true);
+
+            if (!confirmado) return;
+        }
+
+        var (_, error) = await Usuarios.CambiarActivoAsync(usuario.UsuarioId, !usuario.Activo);
+        _error = error;
+
+        if (error is null) await CargarAsync();
+    }
+
+    private async Task Reenviar(InvitacionDto invitacion)
+    {
+        _error = await Usuarios.ReenviarAsync(invitacion.Id);
+        if (_error is null) await CargarAsync();
+    }
+
+    private async Task Revocar(InvitacionDto invitacion)
+    {
+        var confirmado = await Confirmacion.ConfirmarAsync(
+            "Revocar invitación", $"«{invitacion.Correo}» ya no podrá aceptarla.", "Revocar", esPeligrosa: true);
+
+        if (!confirmado) return;
+
+        _error = await Usuarios.RevocarAsync(invitacion.Id);
+        if (_error is null) await CargarAsync();
+    }
+}
