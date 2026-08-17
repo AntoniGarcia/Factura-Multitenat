@@ -60,9 +60,29 @@ public sealed class Producto : IEntidadDeEmpresa
 /// casos comunes como atajos. Que la captura sea simple no obliga a que el modelo sea pobre.
 /// </para>
 /// </summary>
-public sealed class ProductoImpuesto
+public sealed class ProductoImpuesto : IEntidadDeEmpresa
 {
     public Guid Id { get; set; }
+
+    /// <summary>
+    /// Redundante con la del producto padre, y a propósito.
+    ///
+    /// <para>
+    /// Sin ella esta tabla quedaba fuera del filtro global —lo advertía EF en cada arranque—
+    /// y <c>AppDbContext.ProductosImpuestos</c> devolvía renglones de todas las empresas a
+    /// quien lo consultara directo. Las lecturas de la mitad A entran por
+    /// <c>Include(p =&gt; p.Impuestos)</c> desde <c>Productos</c>, que sí filtra, así que no
+    /// hubo fuga; pero la puerta estaba abierta y la mitad B lee impuestos de producto para
+    /// calcular comprobantes.
+    /// </para>
+    ///
+    /// <para>
+    /// Con la columna, el filtro global y el sellado del interceptor la cubren solos, como a
+    /// cualquier otra tabla de empresa (CLAUDE.md §5). Se detectó en la verificación
+    /// posterior a la fase 9; ver <c>docs/REPASO-SEGURIDAD.md</c>.
+    /// </para>
+    /// </summary>
+    public Guid EmpresaId { get; set; }
 
     public Guid ProductoId { get; set; }
 
