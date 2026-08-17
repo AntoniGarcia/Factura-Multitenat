@@ -61,6 +61,9 @@ public static class PlataformaModule
         servicios.AddScoped<ServicioDeRefreshTokens>();
         servicios.AddScoped<ServicioDeAutenticacion>();
 
+        servicios.AddOptions<OpcionesDeSoporte>().Bind(configuracion.GetSection(OpcionesDeSoporte.Seccion));
+        servicios.AddScoped<ServicioDeInvitaciones>();
+
         servicios.AddScoped<IServicioCatalogosSat, ServicioCatalogosSat>();
 
         servicios.AddScoped<ServicioDeEmpresa>();
@@ -153,6 +156,7 @@ public static class PlataformaModule
         aplicacion.MapClientes();
         aplicacion.MapProductos();
         aplicacion.MapTimbres();
+        aplicacion.MapUsuarios();
 
         return aplicacion;
     }

@@ -65,6 +65,18 @@ public static class AccionesDeBitacora
     public const string TimbreConsumido = "timbre_consumido";
     public const string TimbreDevuelto = "timbre_devuelto";
     public const string ReservaAbandonada = "reserva_de_timbre_abandonada";
+
+    // ── Usuarios e invitaciones (fase 8) ───────────────────────────────────────────────
+    public const string UsuarioInvitado = "usuario_invitado";
+    public const string AccesoOtorgadoDirecto = "acceso_otorgado_directo";
+    public const string InvitacionReenviada = "invitacion_reenviada";
+    public const string InvitacionRevocada = "invitacion_revocada";
+    public const string InvitacionAceptada = "invitacion_aceptada";
+    public const string PermisosActualizados = "permisos_actualizados";
+    public const string UsuarioDesactivado = "usuario_desactivado";
+    public const string UsuarioReactivado = "usuario_reactivado";
+    public const string PerfilActualizado = "perfil_actualizado";
+    public const string ContrasenaCambiada = "contrasena_cambiada";
 }
 
 /// <summary>Entidades sobre las que registra la bitácora.</summary>
@@ -81,4 +93,8 @@ public static class EntidadesDeBitacora
     public const string Producto = "Producto";
     public const string CompraTimbres = "CompraTimbres";
     public const string ReservaTimbre = "ReservaTimbre";
+    public const string Usuario = "Usuario";
+    public const string UsuarioEmpresa = "UsuarioEmpresa";
+    public const string Invitacion = "Invitacion";
+    public const string Perfil = "Perfil";
 }

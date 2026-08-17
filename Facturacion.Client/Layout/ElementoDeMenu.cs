@@ -22,6 +22,7 @@ public static class MenuPrincipal
         new("/clientes", "Clientes", "groups", Permiso: null),
         new("/productos", "Productos", "inventory", Permiso: null),
         new("/timbres", "Timbres", "confirmation_number", Permisos.ComprarTimbres),
+        new("/usuarios", "Usuarios", "people", Permisos.AdministrarUsuarios),
         new("/empresa", "Empresa", "business", Permisos.ConfigurarEmpresa),
         new("/empresa/series", "Series de folios", "tag", Permisos.ConfigurarEmpresa),
         new("/empresa/certificados", "Certificados", "verified_user", Permisos.ConfigurarEmpresa),

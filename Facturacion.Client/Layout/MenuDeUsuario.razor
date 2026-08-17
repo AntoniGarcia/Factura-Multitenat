@@ -13,6 +13,10 @@
          Icon="@Icons.Material.Filled.AccountCircle"
          AnchorOrigin="Origin.BottomRight"
          AriaLabel="Menú de usuario">
+    <MudMenuItem OnClick="@(() => Navegacion.NavigateTo("/perfil"))">
+        <MudIcon Icon="@Icons.Material.Filled.Person" Size="Size.Small" />
+        Mi perfil
+    </MudMenuItem>
     @if (Instalacion.PuedeInstalarse)
     {
         <MudMenuItem OnClick="Instalar">

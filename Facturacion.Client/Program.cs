@@ -24,6 +24,8 @@ builder.Services.AddScoped<ServicioDeEmpresa>();
 builder.Services.AddScoped<ServicioDeClientes>();
 builder.Services.AddScoped<ServicioDeProductos>();
 builder.Services.AddScoped<ServicioDeTimbres>();
+builder.Services.AddScoped<ServicioDeUsuarios>();
+builder.Services.AddScoped<ServicioDePerfil>();
 
 // El mismo objeto atiende las dos cosas: la barra superior lo ve como IIndicadorDeTimbres y
 // las pantallas de timbres como ServicioDeTimbres. Se resuelve del contenedor y no se

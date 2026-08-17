@@ -22,7 +22,7 @@ var constructor = WebApplication.CreateBuilder(args);
 
 constructor.AgregarRegistro();
 
-constructor.Services.AddInfraestructura(constructor.Configuration);
+constructor.Services.AddInfraestructura(constructor.Configuration, constructor.Environment);
 constructor.Services.AddPlataforma(constructor.Configuration);
 constructor.Services.AddDocumentos(constructor.Configuration);
 

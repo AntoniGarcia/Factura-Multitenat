@@ -1,0 +1,37 @@
+@using Facturacion.Shared.Comun
+
+@*
+    Las seis casillas de permiso, reutilizadas en invitar y en editar accesos (fase 8). Por
+    permiso, nunca por rol (CLAUDE.md §4): no hay ningún atajo de "todo" ni "administrador".
+*@
+
+<div class="rejilla-campos">
+    @foreach (var clave in Permisos.Todos)
+    {
+        <MudCheckBox T="bool"
+                      Value="@Value.Contains(clave)"
+                      ValueChanged="@(marcado => Cambiar(clave, marcado))"
+                      Label="@Permisos.EtiquetaCorta(clave)"
+                      Disabled="@Deshabilitado" />
+    }
+</div>
+
+@code {
+    [Parameter, EditorRequired]
+    public List<string> Value { get; set; } = [];
+
+    [Parameter]
+    public EventCallback<List<string>> ValueChanged { get; set; }
+
+    [Parameter]
+    public bool Deshabilitado { get; set; }
+
+    private Task Cambiar(string clave, bool marcado)
+    {
+        List<string> nuevo = marcado
+            ? Value.Contains(clave) ? Value : [.. Value, clave]
+            : [.. Value.Where(p => p != clave)];
+
+        return ValueChanged.InvokeAsync(nuevo);
+    }
+}

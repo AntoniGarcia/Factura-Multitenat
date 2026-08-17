@@ -49,4 +49,20 @@ public static class Permisos
         : throw new ArgumentOutOfRangeException(nameof(clave), clave, "Permiso desconocido.");
 
     public static bool EsValido(string clave) => DesdeCadenas.ContainsKey(clave);
+
+    // Etiqueta corta para casillas de captura (fase 8). La descripción larga de la tabla
+    // Permisos, sembrada desde aquí mismo, es para quien consulta la base; esta es para
+    // quien arma el formulario de invitación y no necesita el Client pidiéndole el catálogo
+    // al servidor solo para dibujar seis casillas fijas.
+    private static readonly Dictionary<string, string> Etiquetas = new()
+    {
+        [Timbrar] = "Timbrar",
+        [Cancelar] = "Cancelar",
+        [AdministrarUsuarios] = "Administrar usuarios",
+        [ComprarTimbres] = "Comprar timbres",
+        [VerReportes] = "Ver reportes",
+        [ConfigurarEmpresa] = "Configurar empresa"
+    };
+
+    public static string EtiquetaCorta(string clave) => Etiquetas.GetValueOrDefault(clave, clave);
 }

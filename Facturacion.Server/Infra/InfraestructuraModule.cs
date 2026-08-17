@@ -3,6 +3,7 @@ using System.Security.Cryptography.X509Certificates;
 using Facturacion.Server.Data;
 using Facturacion.Server.Infra.Almacen;
 using Facturacion.Server.Infra.Bitacora;
+using Facturacion.Server.Infra.Correo;
 using Facturacion.Server.Infra.Errores;
 using Facturacion.Server.Infra.Idempotencia;
 using Facturacion.Server.Infra.Seguridad;
@@ -21,7 +22,7 @@ namespace Facturacion.Server.Infra;
 public static class InfraestructuraModule
 {
     public static IServiceCollection AddInfraestructura(
-        this IServiceCollection servicios, IConfiguration configuracion)
+        this IServiceCollection servicios, IConfiguration configuracion, IHostEnvironment entorno)
     {
         servicios.AddHttpContextAccessor();
 
@@ -40,6 +41,7 @@ public static class InfraestructuraModule
         servicios.AddScoped<IServicioDeBitacora, ServicioDeBitacora>();
 
         servicios.AgregarAlmacenCifrado(configuracion);
+        servicios.AgregarCorreo(configuracion, entorno);
 
         servicios.AddMemoryCache();
         servicios.AddSingleton<IControlDeIntentos, ControlDeIntentos>();
@@ -144,6 +146,34 @@ public static class InfraestructuraModule
 
         servicios.AddSingleton<IAlmacenDeArchivos, AlmacenDeArchivos>();
         servicios.AddSingleton<IProtectorDeSecretos, ProtectorDeSecretos>();
+
+        return servicios;
+    }
+
+    /// <summary>
+    /// El remitente es del SaaS, nunca del cliente (CLAUDE.md §6). Sin <c>Correo:Servidor</c>
+    /// fuera de <c>Development</c> no se arranca, igual que sin clave de firma del JWT: una
+    /// invitación o un aviso de factura que nunca sale es un defecto que hay que ver el día
+    /// del despliegue, no el día que un usuario se queja de no recibir nada.
+    /// </summary>
+    private static IServiceCollection AgregarCorreo(
+        this IServiceCollection servicios, IConfiguration configuracion, IHostEnvironment entorno)
+    {
+        servicios.AddOptions<OpcionesDeCorreo>()
+            .Bind(configuracion.GetSection(OpcionesDeCorreo.Seccion))
+            .ValidateOnStart();
+
+        var servidorConfigurado = !string.IsNullOrWhiteSpace(
+            configuracion[$"{OpcionesDeCorreo.Seccion}:{nameof(OpcionesDeCorreo.Servidor)}"]);
+
+        if (!servidorConfigurado && !entorno.IsDevelopment())
+            throw new InvalidOperationException(
+                "Falta 'Correo:Servidor'. Se configura en variables de entorno; nunca en el repositorio.");
+
+        if (servidorConfigurado)
+            servicios.AddScoped<IServicioDeCorreo, ServicioDeCorreoSmtp>();
+        else
+            servicios.AddScoped<IServicioDeCorreo, ServicioDeCorreoConsola>();
 
         return servicios;
     }

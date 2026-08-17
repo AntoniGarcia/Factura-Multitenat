@@ -1,0 +1,51 @@
+@using Facturacion.Client.Componentes.Comunes
+@using Facturacion.Client.Servicios.Plataforma
+@using Facturacion.Shared.Comun
+@inject ServicioDeUsuarios Usuarios
+
+<MudDialog>
+    <DialogContent>
+        <p class="seccion-ayuda">Permisos de @NombreUsuario en esta empresa.</p>
+
+        <PanelErrores Problema="_error" />
+
+        <SelectorDePermisos @bind-Value="_permisos" Deshabilitado="@_guardando" />
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="Cancelar">Cancelar</MudButton>
+        <MudButton Color="Color.Primary" Variant="Variant.Filled" OnClick="Guardar" Disabled="@_guardando">
+            @(_guardando ? "Guardando…" : "Guardar")
+        </MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter]
+    private IMudDialogInstance Dialogo { get; set; } = default!;
+
+    [Parameter, EditorRequired]
+    public Guid UsuarioId { get; set; }
+
+    [Parameter, EditorRequired]
+    public string NombreUsuario { get; set; } = string.Empty;
+
+    [Parameter, EditorRequired]
+    public IReadOnlyList<string> PermisosActuales { get; set; } = [];
+
+    private List<string> _permisos = [];
+    private DetalleProblema? _error;
+    private bool _guardando;
+
+    protected override void OnInitialized() => _permisos = [.. PermisosActuales];
+
+    private async Task Guardar()
+    {
+        _guardando = true;
+        _error = await Usuarios.ActualizarPermisosAsync(UsuarioId, _permisos);
+        _guardando = false;
+
+        if (_error is null) Dialogo.Close(DialogResult.Ok(true));
+    }
+
+    private void Cancelar() => Dialogo.Cancel();
+}

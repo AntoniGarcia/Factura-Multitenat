@@ -1,0 +1,78 @@
+@page "/usuarios/invitar"
+@attribute [Authorize(Policy = Permisos.AdministrarUsuarios)]
+@using Facturacion.Client.Componentes.Comunes
+@using Facturacion.Client.Servicios.Plataforma
+@using Facturacion.Shared.Comun
+@using Facturacion.Shared.Plataforma
+@inject ServicioDeUsuarios Usuarios
+@inject NavigationManager Navegacion
+
+<PageTitle>Invitar usuario</PageTitle>
+<TituloDePagina Texto="Invitar usuario" />
+
+<PanelErrores Problema="_error" />
+
+@if (_resultado is null)
+{
+    <p class="seccion-ayuda">
+        Cada empresa admite hasta tres usuarios: tú más dos auxiliares. Si el correo ya tiene
+        cuenta en tu cuenta, le das acceso de una vez; si no, le llega un correo para que fije
+        su contraseña.
+    </p>
+
+    <EditForm Model="this" OnValidSubmit="Invitar">
+        <div class="rejilla-campos">
+            <MudTextField @bind-Value="_correo" Label="Correo" Immediate="true" InputType="InputType.Email" MaxLength="254" />
+            <MudTextField @bind-Value="_nombre" Label="Nombre" Immediate="true" MaxLength="128" />
+        </div>
+
+        <h2 class="seccion-titulo">Permisos</h2>
+        <SelectorDePermisos @bind-Value="_permisos" />
+
+        <div class="acciones-formulario">
+            <MudButton Variant="Variant.Filled" Color="Color.Primary" ButtonType="ButtonType.Submit" Disabled="@_enviando">
+                @(_enviando ? "Enviando…" : "Invitar")
+            </MudButton>
+            <MudButton Variant="Variant.Text" OnClick="@(() => Navegacion.NavigateTo("/usuarios"))">Cancelar</MudButton>
+        </div>
+    </EditForm>
+}
+else
+{
+    <p class="mensaje-exito" role="status">@_resultado.Mensaje</p>
+
+    <div class="acciones-formulario">
+        <MudButton Variant="Variant.Filled" OnClick="@(() => Navegacion.NavigateTo("/usuarios"))">Ver usuarios</MudButton>
+        <MudButton Variant="Variant.Text" OnClick="Limpiar">Invitar a otro</MudButton>
+    </div>
+}
+
+@code {
+    private string _correo = string.Empty;
+    private string _nombre = string.Empty;
+    private List<string> _permisos = [];
+    private RespuestaInvitar? _resultado;
+    private DetalleProblema? _error;
+    private bool _enviando;
+
+    private async Task Invitar()
+    {
+        _enviando = true;
+        _error = null;
+
+        var (exito, error) = await Usuarios.InvitarAsync(new PeticionInvitarUsuario(_correo, _nombre, _permisos));
+
+        _error = error;
+        _resultado = exito;
+        _enviando = false;
+    }
+
+    private void Limpiar()
+    {
+        _correo = string.Empty;
+        _nombre = string.Empty;
+        _permisos = [];
+        _resultado = null;
+        _error = null;
+    }
+}

@@ -1,0 +1,114 @@
+@page "/perfil"
+@attribute [Authorize]
+@using Facturacion.Client.Componentes.Comunes
+@using Facturacion.Client.Layout
+@using Facturacion.Client.Servicios.Plataforma
+@using Facturacion.Shared.Comun
+@inject ServicioDePerfil Perfil
+@inject ServicioDeTema Tema
+
+<PageTitle>Mi perfil</PageTitle>
+<TituloDePagina Texto="Mi perfil" />
+
+@if (_cargando)
+{
+    <p>Cargando…</p>
+}
+else
+{
+    <h2 class="seccion-titulo">Datos</h2>
+
+    <PanelErrores Problema="_errorNombre" />
+
+    <div class="rejilla-campos">
+        <MudTextField @bind-Value="_nombre" Label="Nombre" Immediate="true" MaxLength="128" />
+        <MudTextField Value="@_correo" Label="Correo" ReadOnly="true" HelperText="El correo no se puede cambiar desde aquí." />
+    </div>
+
+    <div class="acciones-formulario">
+        <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="GuardarNombre" Disabled="@_guardandoNombre">
+            @(_guardandoNombre ? "Guardando…" : "Guardar nombre")
+        </MudButton>
+        @if (_nombreGuardado)
+        {
+            <span class="mensaje-exito" role="status">Guardado.</span>
+        }
+    </div>
+
+    <h2 class="seccion-titulo">Tema</h2>
+    <p class="seccion-ayuda">Se guarda en tu perfil: aparece igual en cualquier equipo donde inicies sesión.</p>
+    <SelectorDeTema />
+
+    <h2 class="seccion-titulo">Contraseña</h2>
+
+    <PanelErrores Problema="_errorContrasena" />
+
+    <div class="rejilla-campos">
+        <MudTextField @bind-Value="_contrasenaActual" Label="Contraseña actual" InputType="InputType.Password" />
+        <MudTextField @bind-Value="_contrasenaNueva" Label="Contraseña nueva" InputType="InputType.Password" />
+        <MudTextField @bind-Value="_confirmar" Label="Confirmar contraseña nueva" InputType="InputType.Password" />
+    </div>
+
+    @if (_confirmar.Length > 0 && _contrasenaNueva != _confirmar)
+    {
+        <p class="texto-error">Las contraseñas no coinciden.</p>
+    }
+
+    <div class="acciones-formulario">
+        <MudButton Variant="Variant.Filled" OnClick="CambiarContrasena"
+                   Disabled="@(_cambiandoContrasena || _contrasenaNueva.Length == 0 || _contrasenaNueva != _confirmar)">
+            @(_cambiandoContrasena ? "Cambiando…" : "Cambiar contraseña")
+        </MudButton>
+        @if (_contrasenaCambiada)
+        {
+            <span class="mensaje-exito" role="status">Contraseña actualizada.</span>
+        }
+    </div>
+}
+
+@code {
+    private bool _cargando = true, _guardandoNombre, _cambiandoContrasena, _nombreGuardado, _contrasenaCambiada;
+    private string _nombre = string.Empty;
+    private string _correo = string.Empty;
+    private string _contrasenaActual = string.Empty;
+    private string _contrasenaNueva = string.Empty;
+    private string _confirmar = string.Empty;
+    private DetalleProblema? _errorNombre;
+    private DetalleProblema? _errorContrasena;
+
+    protected override async Task OnInitializedAsync()
+    {
+        var perfil = await Perfil.ObtenerAsync();
+
+        if (perfil is not null)
+        {
+            _nombre = perfil.Nombre;
+            _correo = perfil.Correo;
+        }
+
+        _cargando = false;
+    }
+
+    private async Task GuardarNombre()
+    {
+        _guardandoNombre = true;
+        _nombreGuardado = false;
+        _errorNombre = await Perfil.ActualizarNombreAsync(_nombre);
+        _guardandoNombre = false;
+        _nombreGuardado = _errorNombre is null;
+    }
+
+    private async Task CambiarContrasena()
+    {
+        _cambiandoContrasena = true;
+        _contrasenaCambiada = false;
+        _errorContrasena = await Perfil.CambiarContrasenaAsync(_contrasenaActual, _contrasenaNueva);
+        _cambiandoContrasena = false;
+
+        if (_errorContrasena is null)
+        {
+            _contrasenaCambiada = true;
+            _contrasenaActual = _contrasenaNueva = _confirmar = string.Empty;
+        }
+    }
+}
