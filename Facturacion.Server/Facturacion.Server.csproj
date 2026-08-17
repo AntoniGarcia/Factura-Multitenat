@@ -28,6 +28,22 @@
   </ItemGroup>
 
   <!--
+    appsettings.Development.json NO se publica. El SDK copia todos los appsettings.*.json al
+    publicado por omisión, y este archivo lleva en claro la llave maestra de Data Protection
+    —con la que se descifran los CSD—, la clave de firma de los JWT y la contraseña del
+    sembrado. Que ASP.NET Core solo lo *lea* en Development no ayuda: el secreto igual viaja
+    dentro del artefacto, y cualquiera que lo tenga se lleva las llaves privadas de todos los
+    certificados cargados.
+
+    Se detectó en el repaso de seguridad de la fase 9 publicando de verdad y abriendo el
+    resultado, no leyendo el csproj (docs/REPASO-SEGURIDAD.md). En un despliegue la
+    configuración va por variables de entorno; ver docs/DESPLIEGUE.md.
+  -->
+  <ItemGroup>
+    <Content Update="appsettings.Development.json" CopyToPublishDirectory="Never" />
+  </ItemGroup>
+
+  <!--
     Bug del SDK sin corregir a la fecha (dotnet/runtime#121993, dotnet/aspnetcore#64199):
     al publicar el Server, el Client referenciado nunca ejecuta la fase de "publish" que
     resuelve los marcadores #[.{fingerprint}] de wwwroot/index.html —solo se ejecuta al

@@ -1,0 +1,112 @@
+@page "/"
+@attribute [Authorize]
+@inject ServicioDeTablero Tablero
+
+@*
+    Tablero de la mitad A. El conteo de comprobantes por estatus no está aquí a propósito:
+    se lee por IResumenDocumentos, que es de la mitad B y todavía no tiene implementación.
+    Antes que enseñar un recuadro en ceros —que se lee como «hoy no facturaste», no como
+    «esto aún no existe»— se omite. El enganche está en ServicioDeTablero, del servidor.
+*@
+
+<PageTitle>Inicio</PageTitle>
+<TituloDePagina Texto="Inicio" />
+
+@if (_datos is null)
+{
+    <p>Cargando…</p>
+}
+else
+{
+    @* Primero lo que impide facturar, después las cifras. Un contador que abre la
+       aplicación necesita ver el estorbo antes que el saldo. *@
+
+    @if (_datos.Certificado is { HayActivo: false })
+    {
+        <div class="aviso-caducidad aviso-critico">
+            <p>
+                Esta empresa no tiene ningún certificado de sello digital. Sin él no se puede timbrar.
+                <a href="empresa/certificados">Cargar certificado</a>
+            </p>
+        </div>
+    }
+    else if (_datos.Certificado is { PorCaducar: true } certificado)
+    {
+        <div class="aviso-caducidad @(certificado.DiasParaCaducar < 0 ? "aviso-critico" : "")">
+            <p>
+                @(certificado.DiasParaCaducar < 0
+                    ? $"El certificado de sello digital caducó hace {-certificado.DiasParaCaducar} días y ya no permite timbrar."
+                    : $"El certificado de sello digital caduca en {certificado.DiasParaCaducar} días.")
+                <a href="empresa/certificados">Ver certificados</a>
+            </p>
+        </div>
+    }
+
+    @if (_datos.MembresiaEnAviso && _datos.Membresia is { } membresia)
+    {
+        <div class="aviso-caducidad @(membresia.DiasParaVencer < 0 ? "aviso-critico" : "")">
+            <p>
+                @(membresia.DiasParaVencer < 0
+                    ? $"La membresía venció hace {-membresia.DiasParaVencer} días."
+                    : $"La membresía vence en {membresia.DiasParaVencer} días.")
+            </p>
+        </div>
+    }
+
+    @if (_datos.Timbres.Disponibles < _datos.UmbralAvisoTimbres)
+    {
+        <div class="aviso-caducidad @(_datos.Timbres.Disponibles == 0 ? "aviso-critico" : "")">
+            <p>
+                @(_datos.Timbres.Disponibles == 0
+                    ? "No quedan timbres disponibles."
+                    : $"Quedan {_datos.Timbres.Disponibles} timbres.")
+                <SiTienePermiso Permiso="@Permisos.ComprarTimbres">
+                    <a href="timbres">Comprar timbres</a>
+                </SiTienePermiso>
+            </p>
+        </div>
+    }
+
+    <h2 class="seccion-titulo">Timbres</h2>
+
+    <div class="tarjetas-saldo">
+        <div class="tarjeta-saldo">
+            <span class="tarjeta-saldo-cifra cifra-tabular">@_datos.Timbres.Disponibles</span>
+            <span class="tarjeta-saldo-etiqueta">Disponibles</span>
+        </div>
+        <div class="tarjeta-saldo">
+            <span class="tarjeta-saldo-cifra cifra-tabular">@_datos.Timbres.Reservados</span>
+            <span class="tarjeta-saldo-etiqueta">Reservados</span>
+        </div>
+        @if (_datos.Membresia is { } vigente)
+        {
+            <div class="tarjeta-saldo">
+                <span class="tarjeta-saldo-cifra cifra-tabular">@vigente.DiasParaVencer</span>
+                <span class="tarjeta-saldo-etiqueta">Días de membresía</span>
+            </div>
+        }
+    </div>
+
+    <h2 class="seccion-titulo">Accesos rápidos</h2>
+
+    <div class="accesos-rapidos">
+        <MudButton Variant="Variant.Outlined" StartIcon="@Icons.Material.Filled.Groups"
+                   Href="clientes">Clientes</MudButton>
+        <MudButton Variant="Variant.Outlined" StartIcon="@Icons.Material.Filled.Inventory"
+                   Href="productos">Productos</MudButton>
+        <SiTienePermiso Permiso="@Permisos.ComprarTimbres">
+            <MudButton Variant="Variant.Outlined" StartIcon="@Icons.Material.Filled.ConfirmationNumber"
+                       Href="timbres">Timbres</MudButton>
+        </SiTienePermiso>
+        <SiTienePermiso Permiso="@Permisos.ConfigurarEmpresa">
+            <MudButton Variant="Variant.Outlined" StartIcon="@Icons.Material.Filled.Business"
+                       Href="empresa">Empresa</MudButton>
+        </SiTienePermiso>
+    </div>
+}
+
+@code {
+    private TableroDto? _datos;
+
+    protected override async Task OnInitializedAsync() => _datos = await Tablero.ObtenerAsync();
+}

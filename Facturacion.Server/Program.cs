@@ -1,5 +1,6 @@
 using Facturacion.Server.Infra;
 using Facturacion.Server.Infra.Almacen;
+using Facturacion.Server.Infra.Integracion;
 using Facturacion.Server.Infra.Registro;
 using Facturacion.Server.Modules.Documentos;
 using Facturacion.Server.Modules.Plataforma;
@@ -53,6 +54,11 @@ if (args is ["--acreditar-compra", var compraId])
     Environment.ExitCode = await AcreditacionDeCompraCli.Acreditar(aplicacion.Services, compraId);
     return;
 }
+
+// Antes de atender la primera petición: si un doble de prueba quedó registrado fuera de
+// Development, aquí revienta. Un doble que llega a producción no se nota — el sistema
+// responde y los datos son inventados (fase 9).
+aplicacion.VerificarContratos();
 
 aplicacion.UsePipelineDeInfraestructura();
 

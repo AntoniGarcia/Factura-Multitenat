@@ -466,6 +466,14 @@ public sealed class ServicioDeInvitaciones(
     {
         var hash = ServicioDeRefreshTokens.Hash(token);
 
+        // IgnoreQueryFilters justificado: aceptar una invitación es anónimo. Quien llega por
+        // el enlace del correo todavía no tiene sesión, así que no hay empresa activa y el
+        // filtro global no devolvería ningún renglón.
+        //
+        // Saltarse el filtro no abre la tenencia porque la autorización aquí es el token
+        // mismo: se busca por el SHA-256 de un valor aleatorio de 256 bits que solo está en
+        // ese correo. No se acepta ningún otro criterio —ni el correo ni el id— justamente
+        // para que adivinar no sirva de nada.
         var invitacion = await baseDeDatos.Invitaciones
             .IgnoreQueryFilters()
             .FirstOrDefaultAsync(i => i.HashToken == hash, ct);

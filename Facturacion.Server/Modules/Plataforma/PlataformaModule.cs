@@ -9,6 +9,7 @@ using Facturacion.Server.Modules.Plataforma.Clientes;
 using Facturacion.Server.Modules.Plataforma.Empresas;
 using Facturacion.Server.Modules.Plataforma.Folios;
 using Facturacion.Server.Modules.Plataforma.Productos;
+using Facturacion.Server.Modules.Plataforma.Tablero;
 using Facturacion.Server.Modules.Plataforma.Timbres;
 using Facturacion.Server.Modules.Plataforma.Usuarios;
 using Facturacion.Shared.Contratos;
@@ -80,12 +81,16 @@ public static class PlataformaModule
         servicios.AddScoped<ServicioDeCompras>();
         servicios.AddScoped<FiltroDeIdempotencia>();
 
+        servicios.AddScoped<ServicioDeTablero>();
+
         // Devuelve los timbres de los timbrados que murieron a la mitad. Sin él, cada
         // reserva sin resolver congela un timbre pagado para siempre.
         servicios.AddHostedService<BarridoDeReservasDeTimbre>();
 
-        // Las tres implementaciones que la mitad B consume por contrato (REPARTO-EQUIPO.md §5).
-        // En cuanto la fase 4 cierra, puede quitar sus dobles y quedarse con estas.
+        // Las implementaciones que la mitad B consume por contrato (REPARTO-EQUIPO.md §5).
+        // Son seis; la séptima, IResumenDocumentos, va en sentido contrario: la escribe la
+        // mitad B y la consume el tablero. VerificacionDeContratos comprueba al arrancar que
+        // esta lista siga completa.
         servicios.AddScoped<IServicioEmpresaEmisora, ServicioEmpresaEmisora>();
         servicios.AddScoped<IProveedorCsdParaTimbrado, ProveedorCsdParaTimbrado>();
         servicios.AddScoped<IServicioFolios, ServicioDeFolios>();
@@ -157,6 +162,7 @@ public static class PlataformaModule
         aplicacion.MapProductos();
         aplicacion.MapTimbres();
         aplicacion.MapUsuarios();
+        aplicacion.MapTablero();
 
         return aplicacion;
     }
