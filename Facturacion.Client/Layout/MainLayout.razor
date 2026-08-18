@@ -33,17 +33,28 @@
 
     <div class="cuerpo">
         <nav class="menu-lateral" aria-label="Secciones del sistema">
-            <ul>
-                @foreach (var elemento in MenuPrincipal.Elementos.Where(EsVisible))
+            @* Se agrupa por encabezado conservando el orden declarado en MenuPrincipal: el
+               grupo sin título es el trabajo diario y va primero. Un grupo cuyas entradas
+               esconde el permiso no pinta su encabezado, para no dejar títulos huérfanos. *@
+            @foreach (var grupo in MenuPrincipal.Elementos.Where(EsVisible).GroupBy(e => e.Grupo))
+            {
+                @if (grupo.Key is { } titulo)
                 {
-                    <li>
-                        <NavLink href="@elemento.Ruta" Match="NavLinkMatch.All">
-                            <MudIcon Icon="@elemento.Icono" Size="Size.Small" />
-                            <span>@elemento.Etiqueta</span>
-                        </NavLink>
-                    </li>
+                    <h2 class="menu-grupo">@titulo</h2>
                 }
-            </ul>
+
+                <ul>
+                    @foreach (var elemento in grupo)
+                    {
+                        <li>
+                            <NavLink href="@elemento.Ruta" Match="NavLinkMatch.All">
+                                <MudIcon Icon="@elemento.Icono" Size="Size.Small" />
+                                <span>@elemento.Etiqueta</span>
+                            </NavLink>
+                        </li>
+                    }
+                </ul>
+            }
         </nav>
 
         @* El @key es la fuga de datos entre empresas resuelta: al cambiar de empresa, Blazor

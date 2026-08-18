@@ -4,24 +4,27 @@ using Facturacion.Server.Infra.Tenencia;
 using Facturacion.Server.Modules.Plataforma.Empresas;
 using Facturacion.Server.Modules.Plataforma.Timbres;
 using Facturacion.Shared.Comun;
+using Facturacion.Shared.Contratos;
 using Facturacion.Shared.Plataforma;
 
 namespace Facturacion.Server.Modules.Plataforma.Tablero;
 
 /// <summary>
-/// Arma el tablero de inicio a partir de lo que ya existe en la mitad A.
+/// Arma el tablero de inicio.
 ///
-/// <para><b>Lo que este tablero no trae</b></para>
-/// El conteo de comprobantes por estatus es de la mitad B y se lee por
-/// <c>IResumenDocumentos</c>, que todavía no tiene implementación. No se inventa ni se
-/// rellena con ceros: un cero se lee como «hoy no facturaste», que es una afirmación
-/// distinta de «esto aún no existe». Cuando la mitad B registre su implementación, el
-/// enganche es este servicio.
+/// <para><b>El conteo de comprobantes es opcional a propósito</b></para>
+/// Lo aporta <c>IResumenDocumentos</c>, el único contrato que va de la mitad B hacia la A.
+/// Se resuelve como <c>IResumenDocumentos?</c> y no como dependencia obligatoria: mientras
+/// la mitad B no lo registre, el recuadro simplemente no se pinta. Rellenarlo con ceros
+/// sería peor que omitirlo — un cero se lee como «este mes no facturaste», que es una
+/// afirmación distinta de «esto aún no existe».
 /// </summary>
 public sealed class ServicioDeTablero(
     ServicioDeCompras compras,
     ServicioDeCsd csd,
-    IContextoEmpresaInterno contexto)
+    IContextoEmpresaInterno contexto,
+    HusoDeEmpresa huso,
+    IResumenDocumentos? documentos = null)
 {
     /// <summary>
     /// Timbres restantes a partir de los cuales se avisa. Lo fija la fase 9 del prompt.
@@ -48,8 +51,47 @@ public sealed class ServicioDeTablero(
                       && (ServicioDeCompras.EstaPorVencer(membresia)
                           || membresia.Estado == EstadosDeMembresia.Vencida);
 
-        return new TableroDto(saldo, UmbralAvisoTimbres, await CertificadoAsync(ct), membresia, enAviso);
+        return new TableroDto(
+            saldo, UmbralAvisoTimbres, await CertificadoAsync(ct), membresia, enAviso,
+            await DocumentosAsync(ct));
     }
+
+    /// <summary>
+    /// Comprobantes del mes en curso, en el huso de la empresa: «agosto» tiene que ser el
+    /// agosto del contador, no el de UTC (ver <see cref="HusoDeEmpresa"/>).
+    /// </summary>
+    private async Task<ResumenDelMesDto?> DocumentosAsync(CancellationToken ct)
+    {
+        if (documentos is null) return null;
+
+        var (desde, hasta) = await huso.MesEnCursoAsync(ct);
+        var resumen = await documentos.ObtenerAsync(desde, hasta, ct);
+
+        // Se enumeran los seis estatus y no solo los que trajeron comprobantes: el contrato
+        // permite omitir los que van en cero, y una rejilla que cambia de columnas según el
+        // mes es ilegible. Un cero aquí no miente —el periodo se está midiendo de verdad—,
+        // que es justo lo contrario del recuadro que la fase 9 se negó a pintar.
+        var conteo = Enum.GetValues<EstatusComprobante>()
+            .Select(e => new ConteoPorEstatusDto(
+                e.ACadena(),
+                Etiqueta(e),
+                resumen.ConteoPorEstatus.TryGetValue(e, out var cuenta) ? cuenta : 0))
+            .ToArray();
+
+        return new ResumenDelMesDto(
+            desde, hasta, conteo, resumen.ImporteTimbrado, resumen.ImporteCancelado);
+    }
+
+    private static string Etiqueta(EstatusComprobante estatus) => estatus switch
+    {
+        EstatusComprobante.Borrador => "Borradores",
+        EstatusComprobante.Timbrando => "Timbrando",
+        EstatusComprobante.Timbrado => "Timbrados",
+        EstatusComprobante.Error => "Con error",
+        EstatusComprobante.Cancelado => "Cancelados",
+        EstatusComprobante.EnCancelacion => "En cancelación",
+        _ => estatus.ACadena()
+    };
 
     /// <summary>
     /// Solo para quien tiene <c>configurar_empresa</c>. Es el mismo permiso que exige

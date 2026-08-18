@@ -87,6 +87,28 @@ else
         }
     </div>
 
+    @if (_datos.Documentos is { } documentos)
+    {
+        <h2 class="seccion-titulo">
+            Comprobantes de @Mes(documentos.Desde)
+        </h2>
+
+        <div class="tarjetas-saldo">
+            @foreach (var renglon in documentos.ConteoPorEstatus)
+            {
+                <div class="tarjeta-saldo">
+                    <span class="tarjeta-saldo-cifra cifra-tabular">@renglon.Cuenta</span>
+                    <span class="tarjeta-saldo-etiqueta">@renglon.Etiqueta</span>
+                </div>
+            }
+        </div>
+
+        <p class="seccion-ayuda cifra-tabular">
+            Timbrado @documentos.ImporteTimbrado.ToString("C2") ·
+            cancelado @documentos.ImporteCancelado.ToString("C2")
+        </p>
+    }
+
     <h2 class="seccion-titulo">Accesos rápidos</h2>
 
     <div class="accesos-rapidos">
@@ -109,4 +131,8 @@ else
     private TableroDto? _datos;
 
     protected override async Task OnInitializedAsync() => _datos = await Tablero.ObtenerAsync();
+
+    // El periodo lo decide el servidor, en el huso de la empresa; aquí solo se nombra.
+    private static string Mes(DateOnly desde)
+        => desde.ToString("MMMM 'de' yyyy", new System.Globalization.CultureInfo("es-MX"));
 }

@@ -37,6 +37,19 @@
     <PackageVersion Include="System.Security.Cryptography.Xml" Version="10.0.11" />
   </ItemGroup>
 
+  <!-- Representación impresa del CFDI (fase B5).
+
+       QuestPDF va bajo licencia Community, que es gratuita SOLO mientras la facturación
+       anual del producto quede por debajo de un millón de dólares. Por encima de eso hay
+       que comprar licencia comercial. Está anotado aquí y no en un correo porque el día que
+       el SaaS crezca, esta línea es lo único que va a recordarlo.
+
+       QRCoder es MIT, sin condiciones ni topes. -->
+  <ItemGroup>
+    <PackageVersion Include="QuestPDF" Version="2025.7.0" />
+    <PackageVersion Include="QRCoder" Version="1.6.0" />
+  </ItemGroup>
+
   <ItemGroup>
     <PackageVersion Include="Serilog" Version="4.4.0" />
     <PackageVersion Include="Serilog.AspNetCore" Version="10.0.0" />

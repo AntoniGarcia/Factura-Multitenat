@@ -45,9 +45,33 @@ public sealed record AvisoCertificadoDto(
 /// pantalla de la bolsa, y una tercera copia acabaría avisando en un plazo distinto que las
 /// otras dos.
 /// </param>
+/// <param name="Documentos">
+/// Comprobantes del mes en curso. <c>null</c> si la mitad B todavía no tiene registrada su
+/// implementación de <c>IResumenDocumentos</c>: entonces el recuadro no se pinta, en vez de
+/// enseñar ceros que se leerían como «este mes no facturaste».
+/// </param>
 public sealed record TableroDto(
     SaldoTimbresDto Timbres,
     int UmbralAvisoTimbres,
     AvisoCertificadoDto? Certificado,
     MembresiaDto? Membresia,
-    bool MembresiaEnAviso);
+    bool MembresiaEnAviso,
+    ResumenDelMesDto? Documentos);
+
+/// <summary>
+/// Conteo de comprobantes del periodo, aplanado para el tablero.
+/// </summary>
+/// <param name="ConteoPorEstatus">
+/// Clave y cifra ya listas para pintar, en el orden en que conviene leerlas. Se aplana aquí
+/// y no se manda el diccionario del contrato porque el Client no tiene por qué conocer el
+/// enum de estatus ni decidir su orden de presentación.
+/// </param>
+public sealed record ResumenDelMesDto(
+    DateOnly Desde,
+    DateOnly Hasta,
+    IReadOnlyList<ConteoPorEstatusDto> ConteoPorEstatus,
+    decimal ImporteTimbrado,
+    decimal ImporteCancelado);
+
+/// <param name="Estatus">Clave del estatus, tal como viaja en el resto del sistema.</param>
+public sealed record ConteoPorEstatusDto(string Estatus, string Etiqueta, int Cuenta);

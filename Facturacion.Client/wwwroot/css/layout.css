@@ -77,6 +77,20 @@ html, body {
     gap: 0.125rem;
 }
 
+/*
+  Rótulo de grupo del menú. Es un encabezado, no un desplegable: separa sin esconder, así
+  que llegar a «Certificados» sigue costando un clic y no dos.
+*/
+.menu-grupo {
+    margin: 0.75rem 0 0;
+    padding: 0 0.75rem;
+    font-size: 0.6875rem;
+    font-weight: 500;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    color: var(--texto-suave);
+}
+
 .menu-lateral a {
     display: flex;
     align-items: center;
@@ -140,6 +154,23 @@ html, body {
         border-right: none;
         border-top: 1px solid var(--borde);
         z-index: 10;
+    }
+
+    /*
+      En la barra inferior los grupos se aplanan en una sola fila desplazable: el rótulo
+      estorba y apilar un <ul> por grupo haría crecer la barra hasta comerse la pantalla.
+      Nada queda inalcanzable —se desplaza—, que es lo que se perdería ocultando los grupos
+      que no son de uso diario.
+    */
+    .menu-grupo {
+        display: none;
+    }
+
+    .menu-lateral {
+        display: flex;
+        flex-direction: row;
+        overflow-x: auto;
+        overflow-y: hidden;
     }
 
     .menu-lateral ul {

@@ -31,6 +31,10 @@ public static class InfraestructuraModule
         servicios.AddScoped<IContextoEmpresaInterno, ContextoEmpresaHttp>();
         servicios.AddScoped<IContextoEmpresa>(sp => sp.GetRequiredService<IContextoEmpresaInterno>());
 
+        // Por petición, no transitorio: memoriza el huso de la empresa para no volver a
+        // consultarlo en cada corte de fechas de la misma pantalla.
+        servicios.AddScoped<HusoDeEmpresa>();
+
         // AddDbContext y no AddDbContextPool: el contexto captura la empresa activa al
         // construirse, y un contexto reciclado del pool podría arrastrar la empresa de la
         // petición anterior.
