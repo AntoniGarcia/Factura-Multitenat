@@ -143,6 +143,36 @@ Los catálogos se versionan y el Client valida la versión contra el servidor al
 
 ---
 
+## 5.1 Esquemas y XSLT del SAT (obligatorio para timbrar)
+
+Aparte de los catálogos, el timbrado necesita los artefactos con los que se **valida** y se
+**sella** el CFDI. Sin ellos el servidor arranca y todo lo demás funciona, pero generar un
+XML falla con `esquemas-sat-incompletos`.
+
+Van en la misma carpeta que los catálogos (`EsquemasSat:Ruta`, por omisión `CatalogosSAT`):
+
+| Archivo | Dónde va | Para qué |
+|---|---|---|
+| `cfdv40.xsd` | raíz | esquema del CFDI 4.0 |
+| `tdCFDI.xsd` | raíz | tipos que importa el anterior |
+| `catCFDI.xsd` | raíz | enumeraciones de catálogo (~6 MB) |
+| `cadenaoriginal_4_0.xslt` | raíz | cadena original |
+| los 33 XSLT de complemento | subcarpeta `xslt/` | los incluye el anterior |
+
+**Los 33 no son opcionales.** `cadenaoriginal_4_0.xslt` los incluye por URL absoluta —Carta
+Porte, Comercio Exterior, Nómina, INE y los demás—, y sin todos presentes la transformación
+no compila, aunque el MVP no emita ninguno de esos complementos.
+
+El sistema **no sale a internet** a buscarlos: un resolutor local los mapea desde el disco.
+Es deliberado — una llamada de red dentro del sellado pondría al portal del SAT en el camino
+crítico de cada timbrado.
+
+Si falta uno, el error dice cuál y de dónde sale. Nunca se sustituye por un documento vacío:
+eso produciría cadenas originales incompletas y, con ellas, sellos inválidos que solo se
+descubren cuando el PAC rechaza.
+
+---
+
 ## 6. Publicar y arrancar
 
 ```bash
@@ -240,6 +270,7 @@ decidida.
 - [ ] Clave maestra generada, respaldada fuera del servidor, y llavero en disco persistente
 - [ ] `dotnet ef database update` aplicado
 - [ ] Catálogos del SAT cargados y visibles con su versión
+- [ ] Esquemas y XSLT del SAT en su carpeta, incluidos los 33 XSLT de complemento (§5.1)
 - [ ] El log dice `0 servidos por un doble`
 - [ ] `content-encoding: br` comprobado con `curl` contra el dominio real
 - [ ] Si hay proxy inverso: §9 leído y decidido

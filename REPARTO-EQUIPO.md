@@ -77,6 +77,20 @@ contra contratos, no contra implementaciones.
 
 ## 3. Quién toma qué
 
+> **Absorción activada el 17 de agosto de 2026.** Luis toma también la mitad B. La
+> cláusula de contingencia de §6 fijaba el 15 de octubre como punto de control; se
+> adelantó por decisión, no por incumplimiento de esa fecha.
+>
+> Consecuencia práctica: quedan unas quince semanas al 5 de diciembre, más del doble de
+> las siete que suponía el plan de emergencia de `PROMPT-FASES-B.md`. Los recortes que
+> ese plan propone —bloquear `PPD`, cancelación manual, correo manual— **no están
+> decididos**; se decidirán con el avance real, no por adelantado.
+>
+> El reparto por mitades se conserva en este documento tal como se acordó. No es
+> arqueología: la frontera de `Shared/Contratos/` sigue congelada y la dependencia sigue
+> siendo unidireccional, que es lo que permitiría volver a repartir el trabajo si entra
+> alguien más.
+
 ### Mitad A — Plataforma, identidad y catálogos → **Luis**
 
 | Módulo | Referencia en `UI_Funcional.md` |

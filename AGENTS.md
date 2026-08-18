@@ -28,13 +28,29 @@ y se emite una factura rápida.
 
 ## 2. Mi mitad del proyecto
 
-Trabajo la **mitad A — Plataforma, identidad y catálogos**, definida en
+**Desde el 17 de agosto de 2026 trabajo las dos mitades.** La mitad A —plataforma,
+identidad y catálogos— quedó terminada en la fase 9, y decidí absorber también la
+**mitad B** —emisión, motor de impuestos, timbrado, PAC, XML, PDF, correo, listado de
+documentos, cancelación y complemento de pagos—. Las dos están definidas en
 `REPARTO-EQUIPO.md` §3.
 
-**Nunca escribas código de la mitad B** (emisión, motor de impuestos, timbrado, PAC,
-XML, PDF, correo, listado de documentos, cancelación, complemento de pagos). Puedes
-leer sus archivos para entender el contrato; no los editas. Si una tarea que te pido
-cruza esa frontera, **detente y dímelo** en vez de improvisar.
+El plan de la mitad B está en `PROMPT-FASES-B.md`, y su sección «Si Luis absorbe esta
+mitad» da el orden mínimo. Ojo: ese orden y sus recortes están calculados para absorber
+el **15 de octubre** con siete semanas. La absorción se adelantó, así que hay cerca de
+quince semanas hasta el 5 de diciembre y esos recortes no están decididos todavía.
+
+Lo que **sigue** vigente de la frontera, aunque ya no separe a dos personas:
+
+- `Facturacion.Shared/Contratos/` **está congelada**. Cambiar una firma o un DTO de ahí
+  exige acuerdo explícito y un commit dedicado que no traiga ningún otro cambio
+  (`Contratos/LEEME.md`). Que ahora las dos mitades sean mías no es motivo para
+  aflojarla: es lo que mantiene el diseño desacoplado y lo que permitiría repartir otra
+  vez el trabajo.
+- La mitad B **consume** lo que produce la A, nunca al revés. Si algo de Documentos
+  necesita un cambio en Plataforma, es señal de que el contrato quedó corto: **dímelo**
+  en vez de resolverlo cruzando la frontera por dentro.
+- Nada de dobles de prueba de los contratos de la mitad A: ya tienen implementación
+  real. `VerificacionDeContratos` tumba el arranque si un doble llega a producción.
 
 ---
 
