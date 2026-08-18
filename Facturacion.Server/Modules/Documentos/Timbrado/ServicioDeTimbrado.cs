@@ -82,13 +82,15 @@ public sealed class ServicioDeTimbrado(
                 return sellado.Error;
             }
 
-            // El sello se guarda ANTES de enviar, no al confirmar. Si el proceso muere a
-            // mitad de la llamada, la conciliación recupera el comprobante horas después y
-            // para entonces ya no hay forma de recalcularlo: el XML se selló con la fecha y
-            // el folio de este momento. Sin él, el PDF no puede armar el QR, que lleva los
-            // últimos ocho caracteres del sello del CFDI.
+            // El sello y el XML se guardan ANTES de enviar, no al confirmar. Si el proceso
+            // muere a mitad de la llamada, la conciliación recupera el comprobante horas
+            // después y para entonces ya no hay forma de recalcularlos: el XML se selló con la
+            // fecha y el folio de este momento, y con el CSD que estuviera activo entonces.
+            // Sin el sello el PDF no puede armar el QR —lleva sus últimos ocho caracteres— y
+            // sin el XML la conciliación no tiene qué reenviar para preguntar.
             comprobante.SelloCfd = sellado.Valor.Sello;
             comprobante.NoCertificadoEmisor = sellado.Valor.NoCertificado;
+            intento.XmlEnviado = sellado.Valor.Xml;
             await baseDeDatos.SaveChangesAsync(ct);
 
             respuesta = await EnviarConReintentosAsync(pac, sellado.Valor.Xml, intento.ClaveIdempotencia!, ct);

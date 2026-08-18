@@ -26,6 +26,14 @@
     "Contrasena": "PonUnaContrasena123"
   },
 
+  "//Pac": "Proveedor de timbrado (SW sapien). Opcional en Development: sin credenciales el sistema arranca y todo funciona salvo timbrar. Fuera de Development es obligatorio. Sandbox: https://services.test.sw.com.mx con la cuenta de pruebas. Producción: https://services.sw.com.mx con la cuenta de contrato — son cuentas distintas.",
+  "Pac": {
+    "UrlBase": "https://services.test.sw.com.mx",
+    "Usuario": "",
+    "Contrasena": "",
+    "TiempoDeEsperaSegundos": 60
+  },
+
   "//Correo": "Opcional en Development: sin 'Servidor', las invitaciones se escriben en el log de la consola en vez de enviarse de verdad. Fuera de Development es obligatorio.",
   "Correo": {
     "Servidor": "",

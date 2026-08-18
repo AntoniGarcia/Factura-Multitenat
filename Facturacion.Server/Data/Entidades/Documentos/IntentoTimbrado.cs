@@ -44,6 +44,17 @@ public sealed class IntentoTimbrado : IEntidadDeEmpresa
     /// </summary>
     public string? ClaveIdempotencia { get; set; }
 
+    /// <summary>
+    /// El XML sellado tal como salió hacia el PAC.
+    ///
+    /// <para><b>Por qué se guarda y no se vuelve a generar</b></para>
+    /// La conciliación pregunta reenviando este mismo documento con la misma clave. Regenerarlo
+    /// desde el comprobante daría un XML <b>distinto</b> si entre el envío y la conciliación
+    /// cambió el CSD activo de la empresa —una renovación de certificado basta—, y lo que hay
+    /// que reenviar es lo que se mandó, no algo parecido.
+    /// </summary>
+    public string? XmlEnviado { get; set; }
+
     /// <summary>Código de error del PAC, tal cual lo devolvió.</summary>
     public string? CodigoError { get; set; }
 

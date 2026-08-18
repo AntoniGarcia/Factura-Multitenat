@@ -25,7 +25,7 @@ constructor.AgregarRegistro();
 
 constructor.Services.AddInfraestructura(constructor.Configuration, constructor.Environment);
 constructor.Services.AddPlataforma(constructor.Configuration);
-constructor.Services.AddDocumentos(constructor.Configuration);
+constructor.Services.AddDocumentos(constructor.Configuration, constructor.Environment);
 
 var aplicacion = constructor.Build();
 

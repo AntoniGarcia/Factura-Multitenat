@@ -1,5 +1,6 @@
 using Facturacion.Server.Data;
 using Facturacion.Server.Data.Entidades.Documentos;
+using Facturacion.Server.Infra.Almacen;
 using Facturacion.Server.Infra.Bitacora;
 using Facturacion.Server.Infra.Tenencia;
 using Facturacion.Server.Modules.Documentos.Pac;
@@ -38,6 +39,7 @@ public sealed class ConciliacionDeTimbrados(
     IConfiguration configuracion,
     ILoggerFactory fabricaDeRegistros,
     IHttpContextAccessor accesor,
+    IAlmacenDeArchivos almacen,
     ILogger<ConciliacionDeTimbrados> registro) : BackgroundService
 {
     private static readonly TimeSpan Intervalo = TimeSpan.FromMinutes(5);
@@ -80,7 +82,7 @@ public sealed class ConciliacionDeTimbrados(
             .IgnoreQueryFilters()
             .AsNoTracking()
             .Where(i => i.Resultado == ResultadosDeIntento.EnVuelo && i.IniciadoUtc < limite)
-            .Select(i => new { i.Id, i.EmpresaId, i.ComprobanteId, i.ClaveIdempotencia })
+            .Select(i => new { i.Id, i.EmpresaId, i.ComprobanteId, i.ClaveIdempotencia, i.XmlEnviado })
             .Take(100)
             .ToListAsync(ct);
 
@@ -111,9 +113,22 @@ public sealed class ConciliacionDeTimbrados(
                 continue;
             }
 
+            // Sin el XML tampoco se puede preguntar: el PAC deduplica por clave, pero la clave
+            // viaja junto al comprobante, no sola. Solo puede pasar si el proceso murió entre
+            // apartar el intento y guardar el XML, y en esa ventana el comprobante ni siquiera
+            // llegó a salir — pero eso no se puede afirmar desde aquí, así que se marca para
+            // revisión en vez de darlo por no timbrado.
+            if (string.IsNullOrEmpty(pendiente.XmlEnviado))
+            {
+                registro.LogError(
+                    "El intento {Intento} no guardó el XML enviado; no hay con qué preguntarle al PAC. " +
+                    "Requiere revisión manual.", pendiente.Id);
+                continue;
+            }
+
             try
             {
-                var respuesta = await pac.ConsultarAsync(pendiente.ClaveIdempotencia, ct);
+                var respuesta = await pac.ConsultarAsync(pendiente.XmlEnviado, pendiente.ClaveIdempotencia, ct);
                 await AplicarAsync(pendiente.EmpresaId, pendiente.ComprobanteId, pendiente.Id, respuesta, ct);
             }
             catch (Exception ex)
@@ -157,6 +172,7 @@ public sealed class ConciliacionDeTimbrados(
             baseDeDatos,
             new ServicioDeFolios(baseDeDatos, tenencia, bitacora),
             new ServicioDeTimbres(baseDeDatos, tenencia, bitacora),
+            almacen,
             fabricaDeRegistros.CreateLogger<CierreDeTimbrado>());
 
         if (respuesta.Resultado == ResultadoDePac.Timbrado)

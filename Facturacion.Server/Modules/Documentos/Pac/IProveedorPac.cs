@@ -55,6 +55,14 @@ public interface IProveedorPac
     /// <summary>
     /// Pregunta qué pasó con una clave que se mandó y no se sabe cómo terminó. Es lo que
     /// saca del limbo a los comprobantes que quedaron en <c>timbrando</c> tras un corte.
+    ///
+    /// <para><b>Por qué recibe el XML si solo va a preguntar</b></para>
+    /// Los PAC del mercado no exponen «dime qué pasó con esta clave»: deduplican por un
+    /// identificador que se manda <b>junto con el comprobante</b>. Preguntar es, en la
+    /// práctica, reenviar el mismo XML con la misma clave y leer si contestan un timbre nuevo
+    /// o el que ya existía. Sin el XML no hay nada que reenviar, y el comprobante se queda en
+    /// el limbo para siempre.
     /// </summary>
-    Task<RespuestaDePac> ConsultarAsync(string claveIdempotencia, CancellationToken ct);
+    /// <param name="xml">El mismo XML sellado que se envió en el intento original.</param>
+    Task<RespuestaDePac> ConsultarAsync(string xml, string claveIdempotencia, CancellationToken ct);
 }

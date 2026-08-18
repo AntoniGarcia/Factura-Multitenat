@@ -1,5 +1,7 @@
+using System.Text;
 using Facturacion.Server.Data;
 using Facturacion.Server.Data.Entidades.Documentos;
+using Facturacion.Server.Infra.Almacen;
 using Facturacion.Server.Modules.Documentos.Pac;
 using Facturacion.Shared.Comun;
 using Facturacion.Shared.Contratos;
@@ -21,12 +23,18 @@ public sealed class CierreDeTimbrado(
     AppDbContext baseDeDatos,
     IServicioFolios folios,
     IServicioTimbres timbres,
+    IAlmacenDeArchivos almacen,
     ILogger<CierreDeTimbrado> registro)
 {
     /// <summary>Cierra bien. Es la única ruta que consume el timbre y confirma el folio.</summary>
     public async Task ConfirmarAsync(
         Comprobante comprobante, IntentoTimbrado intento, RespuestaDePac respuesta, CancellationToken ct)
     {
+        // Fuera de la transacción y antes de abrirla: escribir en disco es E/S lenta, y
+        // hacerlo con la transacción abierta la alarga sin motivo. Si el guardado falla, el
+        // comprobante no se marca timbrado y la conciliación lo vuelve a intentar.
+        var rutaXml = await GuardarXmlAsync(comprobante, respuesta, ct);
+
         await using var transaccion = await baseDeDatos.Database.BeginTransactionAsync(ct);
 
         comprobante.Estatus = EstatusComprobante.Timbrado.ACadena();
@@ -35,6 +43,7 @@ public sealed class CierreDeTimbrado(
         comprobante.NoCertificadoSat = respuesta.NoCertificadoSat;
         comprobante.SelloSat = respuesta.SelloSat;
         comprobante.CadenaOriginalSat = respuesta.CadenaOriginalSat;
+        comprobante.RutaXml = rutaXml ?? comprobante.RutaXml;
         comprobante.ModificadoUtc = DateTime.UtcNow;
 
         Cerrar(intento, ResultadosDeIntento.Timbrado, null, null);
@@ -80,6 +89,33 @@ public sealed class CierreDeTimbrado(
 
         registro.LogWarning(
             "Comprobante {Comprobante} quedó en error: {Codigo} {Mensaje}", comprobante.Id, codigo, mensaje);
+    }
+
+    /// <summary>
+    /// Guarda el CFDI timbrado en el almacén cifrado, fuera de <c>wwwroot</c> (CLAUDE.md §4).
+    /// Es el archivo que el usuario descarga y el que vale ante el SAT.
+    ///
+    /// <para>
+    /// Devuelve <c>null</c> cuando el PAC no mandó el XML. Pasa en un caso concreto y legítimo:
+    /// la conciliación descubre que el comprobante ya estaba timbrado, y el PAC contesta el
+    /// UUID del timbre previo sin volver a mandar el documento. El comprobante queda timbrado
+    /// y correcto —que es lo que importa— pero sin XML descargable hasta recuperarlo del PAC.
+    /// </para>
+    /// </summary>
+    private async Task<string?> GuardarXmlAsync(
+        Comprobante comprobante, RespuestaDePac respuesta, CancellationToken ct)
+    {
+        if (respuesta.XmlTimbrado is not { Length: > 0 } xml)
+        {
+            registro.LogWarning(
+                "El comprobante {Comprobante} se timbró pero el PAC no devolvió el XML. Queda sin archivo " +
+                "descargable; hay que recuperarlo del PAC.", comprobante.Id);
+
+            return null;
+        }
+
+        return await almacen.GuardarAsync(
+            comprobante.EmpresaId, CategoriasDeArchivo.XmlTimbrado, Encoding.UTF8.GetBytes(xml), ct);
     }
 
     private static void Cerrar(IntentoTimbrado intento, string resultado, string? codigo, string? mensaje)

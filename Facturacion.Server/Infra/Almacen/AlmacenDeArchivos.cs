@@ -98,4 +98,7 @@ public static class CategoriasDeArchivo
     public const string Logo = "logo";
     public const string CertificadoCer = "csd-cer";
     public const string LlavePrivadaKey = "csd-key";
+
+    /// <summary>El CFDI ya timbrado, tal como lo devolvió el PAC. Es el que descarga el usuario.</summary>
+    public const string XmlTimbrado = "xml-timbrado";
 }

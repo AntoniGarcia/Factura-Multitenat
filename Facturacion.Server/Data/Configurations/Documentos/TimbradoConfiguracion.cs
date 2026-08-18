@@ -17,6 +17,10 @@ public sealed class IntentoTimbradoConfiguracion : IEntityTypeConfiguration<Inte
         constructor.Property(i => i.CodigoError).HasMaxLength(32);
         constructor.Property(i => i.MensajeError).HasMaxLength(2000);
 
+        // Sin tope: un CFDI con muchos conceptos pasa de sobra cualquier límite razonable, y
+        // truncarlo dejaría un XML que ya no se puede reenviar a conciliar.
+        constructor.Property(i => i.XmlEnviado).HasColumnType("nvarchar(max)");
+
         constructor.HasIndex(i => new { i.ComprobanteId, i.Numero })
             .IsUnique()
             .HasDatabaseName("IX_IntentosTimbrado_NumeroPorComprobante");
