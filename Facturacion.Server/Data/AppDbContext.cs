@@ -1,3 +1,4 @@
+using Facturacion.Server.Data.Entidades.Documentos;
 using Facturacion.Server.Data.Entidades.Plataforma;
 using Facturacion.Server.Data.Entidades.Plataforma.Catalogos;
 using Facturacion.Server.Infra.Tenencia;
@@ -80,7 +81,12 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> opciones, IConte
     public DbSet<SatCodigoPostal> SatCodigosPostales => Set<SatCodigoPostal>();
 
     // ── DbSet de la mitad B — documentos, timbrado y salidas ────────────────────────────
-    // (los agrega el módulo de documentos)
+    public DbSet<Comprobante> Comprobantes => Set<Comprobante>();
+    public DbSet<Concepto> Conceptos => Set<Concepto>();
+    public DbSet<ImpuestoConcepto> ConceptosImpuestos => Set<ImpuestoConcepto>();
+    public DbSet<ComprobanteRelacionado> ComprobantesRelacionados => Set<ComprobanteRelacionado>();
+    public DbSet<IntentoTimbrado> IntentosTimbrado => Set<IntentoTimbrado>();
+    public DbSet<SolicitudCancelacion> SolicitudesCancelacion => Set<SolicitudCancelacion>();
 
     protected override void OnModelCreating(ModelBuilder constructor)
     {
