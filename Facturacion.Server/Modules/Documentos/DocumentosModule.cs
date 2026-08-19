@@ -1,3 +1,6 @@
+using Facturacion.Server.Modules.Documentos.Cancelacion;
+using Facturacion.Server.Modules.Documentos.Emision;
+using Facturacion.Server.Modules.Documentos.Pagos;
 using Facturacion.Server.Modules.Documentos.Pac;
 using Facturacion.Server.Modules.Documentos.Salidas;
 using Facturacion.Server.Modules.Documentos.Timbrado;
@@ -41,6 +44,9 @@ public static class DocumentosModule
 
         servicios.AddScoped<CierreDeTimbrado>();
         servicios.AddScoped<ServicioDeTimbrado>();
+        servicios.AddScoped<Emision.ServicioDeEmision>();
+        servicios.AddScoped<ServicioDeCancelacion>();
+        servicios.AddScoped<ServicioDePagos>();
 
         servicios.AgregarPac(configuracion, entorno);
 
@@ -95,7 +101,10 @@ public static class DocumentosModule
 
     public static WebApplication MapDocumentos(this WebApplication aplicacion)
     {
+        aplicacion.MapEmision();
         aplicacion.MapTimbrado();
+        aplicacion.MapCancelacion();
+        aplicacion.MapPagos();
 
         return aplicacion;
     }

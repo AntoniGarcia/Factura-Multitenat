@@ -87,6 +87,9 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> opciones, IConte
     public DbSet<ComprobanteRelacionado> ComprobantesRelacionados => Set<ComprobanteRelacionado>();
     public DbSet<IntentoTimbrado> IntentosTimbrado => Set<IntentoTimbrado>();
     public DbSet<SolicitudCancelacion> SolicitudesCancelacion => Set<SolicitudCancelacion>();
+    public DbSet<Pago> Pagos => Set<Pago>();
+    public DbSet<DocumentoPagado> PagosDocumentos => Set<DocumentoPagado>();
+    public DbSet<ImpuestoDocumentoPagado> PagosDocumentosImpuestos => Set<ImpuestoDocumentoPagado>();
 
     protected override void OnModelCreating(ModelBuilder constructor)
     {

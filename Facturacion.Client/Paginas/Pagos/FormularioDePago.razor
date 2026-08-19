@@ -1,0 +1,449 @@
+@page "/pagos/nuevo"
+@page "/pagos/{Id:guid}"
+@attribute [Authorize(Policy = Permisos.Timbrar)]
+@using Facturacion.Client.Servicios.Documentos
+@using Facturacion.Client.Servicios.Plataforma
+@using Facturacion.Shared.Comun
+@using Facturacion.Shared.Documentos
+@using Facturacion.Shared.Plataforma
+@inject ServicioDePagos Pagos
+@inject ServicioDeEmision Emision
+@inject ServicioDeCatalogos Catalogos
+@inject NavigationManager Navegacion
+
+<PageTitle>@(EsNuevo ? "Nuevo pago" : "Pago")</PageTitle>
+<TituloDePagina Texto="@(EsNuevo ? "Nuevo pago" : "Pago")" />
+
+<PanelErrores Problema="_error" />
+
+@if (_aviso is not null)
+{
+    <div class="aviso-documentos" role="status">@_aviso</div>
+}
+
+@if (_pago is null)
+{
+    <p class="tabla-datos-estado">Cargando…</p>
+}
+else
+{
+    <MudTabs Elevation="0" ApplyEffectsToContainer="true" Class="pestanas-pago">
+        <MudTabPanel Text="General">
+            <section class="seccion-formulario">
+                <h2>Datos del pago</h2>
+
+                <div class="rejilla-formulario">
+                    <MudTextField T="string" Label="Folio" Value="@FolioMostrado" ReadOnly="true"
+                                  Class="cifra-tabular" />
+
+                    <MudTextField T="string" Label="No. de operación" @bind-Value="_numOperacion"
+                                  Disabled="@(!EsEditable)"
+                                  HelperText="Referencia de la transferencia, cheque o autorización." />
+
+                    <CampoFecha Label="Fecha del pago" ValorUtc="_fechaPagoUtc"
+                                ValorUtcCambiado="@(v => _fechaPagoUtc = v ?? DateTime.UtcNow)"
+                                Deshabilitado="@(!EsEditable)" />
+
+                    <MudSelect T="string" Label="Forma de pago" @bind-Value="_formaDePago"
+                               Disabled="@(!EsEditable)" Required="true">
+                        @foreach (var forma in Catalogos.Obtener("c_FormaPago"))
+                        {
+                            <MudSelectItem T="string" Value="@forma.Clave">@forma.Clave — @forma.Descripcion</MudSelectItem>
+                        }
+                    </MudSelect>
+
+                    <MudSelect T="string" Label="Moneda" @bind-Value="_moneda" Disabled="@(!EsEditable)">
+                        @foreach (var moneda in Catalogos.Obtener("c_Moneda"))
+                        {
+                            <MudSelectItem T="string" Value="@moneda.Clave">@moneda.Clave — @moneda.Descripcion</MudSelectItem>
+                        }
+                    </MudSelect>
+
+                    <MudNumericField T="decimal?" Label="Tipo de cambio" @bind-Value="_tipoCambio"
+                                     Disabled="@(!EsEditable || _moneda == "MXN")"
+                                     HelperText="@(_moneda == "MXN" ? "No aplica en pesos." : "Obligatorio fuera de MXN.")"
+                                     Format="F6" Class="cifra-tabular" />
+
+                    <MudNumericField T="decimal" Label="Importe del pago" @bind-Value="_monto"
+                                     Disabled="@(!EsEditable)" Format="F2" Class="cifra-tabular"
+                                     HelperText="Tiene que cuadrar con lo repartido entre las facturas." />
+                </div>
+            </section>
+
+            <section class="seccion-formulario">
+                <h2>Cliente</h2>
+
+                <div class="rejilla-formulario">
+                    @if (EsEditable)
+                    {
+                        <BuscadorDeCliente Valor="_cliente" ValorCambiado="AlElegirCliente" Requerido="true" />
+                    }
+
+                    <MudTextField T="string" Label="R.F.C." Value="@_pago.ReceptorRfc" ReadOnly="true"
+                                  Class="cifra-tabular" />
+                    <MudTextField T="string" Label="Nombre" Value="@_pago.ReceptorNombre" ReadOnly="true" />
+                </div>
+            </section>
+
+            <section class="seccion-formulario">
+                <h2>Facturas que se pagan</h2>
+                <p class="ayuda-seccion">
+                    Solo aparecen facturas timbradas con método de pago PPD. El saldo y la parcialidad
+                    los resuelve el servidor: son los que valen.
+                </p>
+
+                @if (EsEditable)
+                {
+                    <div class="rejilla-consulta-pago">
+                        <MudTextField T="string" Label="Serie" @bind-Value="_serieBusqueda" Class="cifra-tabular" />
+                        <MudNumericField T="int" Label="Folio" @bind-Value="_folioBusqueda" Class="cifra-tabular" />
+                        <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="Consultar">
+                            Consultar
+                        </MudButton>
+                    </div>
+
+                    @if (_encontrado is { } encontrado)
+                    {
+                        <div class="resultado-consulta-pago">
+                            <span>
+                                <strong class="cifra-tabular">@encontrado.Serie-@encontrado.Folio</strong>
+                                — saldo <strong class="cifra-tabular">@encontrado.SaldoPendiente.ToString("N2")</strong>
+                                @encontrado.Moneda, parcialidad @encontrado.NumParcialidad
+                            </span>
+                            <MudNumericField T="decimal" Label="Importe a pagar" @bind-Value="_importeAPagar"
+                                             Format="F2" Class="cifra-tabular" />
+                            <MudButton Variant="Variant.Filled" OnClick="Agregar">Agregar</MudButton>
+                        </div>
+                    }
+                }
+
+                @if (_renglones.Count == 0)
+                {
+                    <p class="tabla-datos-estado">Todavía no se agregó ninguna factura.</p>
+                }
+                else
+                {
+                    <MudSimpleTable Dense="true" Striped="true">
+                        <thead>
+                            <tr>
+                                <th>Folio fiscal</th>
+                                <th>Serie-folio</th>
+                                <th>Moneda</th>
+                                <th>Parcialidad</th>
+                                <th>Saldo anterior</th>
+                                <th>Importe pagado</th>
+                                <th>Saldo insoluto</th>
+                                <th></th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var renglon in _renglones)
+                            {
+                                <tr>
+                                    <td class="cifra-tabular">@renglon.IdDocumento</td>
+                                    <td class="cifra-tabular">@renglon.Serie-@renglon.Folio</td>
+                                    <td>@renglon.Moneda</td>
+                                    <td class="cifra-tabular">@renglon.NumParcialidad</td>
+                                    <td class="cifra-tabular">@renglon.SaldoAnterior.ToString("N2")</td>
+                                    <td class="cifra-tabular">@renglon.ImpPagado.ToString("N2")</td>
+                                    <td class="cifra-tabular">@((renglon.SaldoAnterior - renglon.ImpPagado).ToString("N2"))</td>
+                                    <td>
+                                        @if (EsEditable)
+                                        {
+                                            <MudButton Size="Size.Small" Color="Color.Error"
+                                                       OnClick="@(() => _renglones.Remove(renglon))">
+                                                Quitar
+                                            </MudButton>
+                                        }
+                                    </td>
+                                </tr>
+                            }
+                        </tbody>
+                    </MudSimpleTable>
+
+                    <p class="resumen-pago @(CuadraElPago ? "" : "resumen-pago-descuadrado")">
+                        Repartido <strong class="cifra-tabular">@Repartido.ToString("N2")</strong>
+                        de <strong class="cifra-tabular">@_monto.ToString("N2")</strong>.
+                        @if (!CuadraElPago)
+                        {
+                            <text>No cuadra: el SAT rechaza el complemento así.</text>
+                        }
+                    </p>
+                }
+            </section>
+        </MudTabPanel>
+
+        <MudTabPanel Text="Bancos">
+            <section class="seccion-formulario">
+                <h2>Banco ordenante</h2>
+                <p class="ayuda-seccion">
+                    @if (ExigeBanco)
+                    {
+                        <text>Con la forma de pago elegida, el SAT exige las dos cuentas.</text>
+                    }
+                    else
+                    {
+                        <text>Opcionales con esta forma de pago.</text>
+                    }
+                </p>
+
+                <div class="rejilla-formulario">
+                    <MudTextField T="string" Label="R.F.C. del banco ordenante" @bind-Value="_rfcOrdenante"
+                                  Disabled="@(!EsEditable)" Class="cifra-tabular" />
+                    <MudTextField T="string" Label="Banco extranjero" @bind-Value="_bancoOrdenanteExtranjero"
+                                  Disabled="@(!EsEditable)"
+                                  HelperText="Solo si el ordenante no tiene R.F.C. mexicano." />
+                    <MudTextField T="string" Label="Cuenta ordenante" @bind-Value="_ctaOrdenante"
+                                  Disabled="@(!EsEditable)" Class="cifra-tabular"
+                                  Required="@ExigeBanco" />
+                </div>
+
+                <h2>Banco beneficiario</h2>
+
+                <div class="rejilla-formulario">
+                    <MudTextField T="string" Label="R.F.C. del banco beneficiario" @bind-Value="_rfcBeneficiario"
+                                  Disabled="@(!EsEditable)" Class="cifra-tabular" />
+                    <MudTextField T="string" Label="Cuenta beneficiaria" @bind-Value="_ctaBeneficiario"
+                                  Disabled="@(!EsEditable)" Class="cifra-tabular"
+                                  Required="@ExigeBanco" />
+                </div>
+            </section>
+        </MudTabPanel>
+    </MudTabs>
+
+    @if (EsEditable)
+    {
+        <div class="acciones-formulario">
+            <MudButton OnClick="Guardar" Disabled="@_trabajando">Guardar borrador</MudButton>
+            <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="Timbrar" Disabled="@_trabajando">
+                Generar pago
+            </MudButton>
+            <MudButton OnClick="@(() => Navegacion.NavigateTo("/documentos"))">Cancelar</MudButton>
+        </div>
+    }
+}
+
+@code {
+    /// <summary>Formas de pago electrónicas: con ellas §28 exige los datos bancarios.</summary>
+    private static readonly string[] FormasQueExigenBanco = ["02", "03", "04", "05", "28", "29"];
+
+    [Parameter]
+    public Guid? Id { get; set; }
+
+    private PagoDto? _pago;
+    private DetalleProblema? _error;
+    private string? _aviso;
+    private bool _trabajando;
+
+    private ClienteEnListaDto? _cliente;
+    private Guid? _clienteId;
+
+    private DateTime _fechaPagoUtc = DateTime.UtcNow;
+    private string _formaDePago = "03";
+    private string _moneda = "MXN";
+    private decimal? _tipoCambio;
+    private decimal _monto;
+    private string? _numOperacion;
+
+    private string? _rfcOrdenante;
+    private string? _bancoOrdenanteExtranjero;
+    private string? _ctaOrdenante;
+    private string? _rfcBeneficiario;
+    private string? _ctaBeneficiario;
+
+    private string _serieBusqueda = string.Empty;
+    private int _folioBusqueda;
+    private DocumentoPorPagarDto? _encontrado;
+    private decimal _importeAPagar;
+
+    private readonly List<Renglon> _renglones = [];
+
+    private sealed record Renglon(
+        Guid IdDocumento, string? Serie, string? Folio, string Moneda,
+        int NumParcialidad, decimal SaldoAnterior, decimal ImpPagado);
+
+    private bool EsNuevo => Id is null;
+
+    private bool EsEditable => _pago?.Estatus is "borrador" or "error";
+
+    private bool ExigeBanco => FormasQueExigenBanco.Contains(_formaDePago);
+
+    private decimal Repartido => _renglones.Sum(r => r.ImpPagado);
+
+    private bool CuadraElPago => Math.Round(Repartido, 2) == Math.Round(_monto, 2);
+
+    private string FolioMostrado => _pago?.Folio is { } folio
+        ? $"{_pago.Serie}-{folio}"
+        : "Se asigna al timbrar";
+
+    protected override async Task OnParametersSetAsync()
+    {
+        _pago = Id is { } id
+            ? await Pagos.ObtenerAsync(id)
+            : await Pagos.CrearBorradorAsync();
+
+        if (_pago is null) return;
+
+        // Al abrir uno existente se recupera lo capturado; al crear uno nuevo, los campos se
+        // quedan con sus valores por omisión.
+        if (_pago.Documentos.Count > 0 || _pago.FormaDePagoP is not null) Rehidratar(_pago);
+
+        if (EsNuevo && _pago is { } creado) Navegacion.NavigateTo($"/pagos/{creado.Id}", replace: true);
+    }
+
+    private void Rehidratar(PagoDto pago)
+    {
+        _clienteId = pago.ClienteId;
+        _fechaPagoUtc = pago.FechaPagoUtc;
+        _formaDePago = pago.FormaDePagoP ?? "03";
+        _moneda = pago.MonedaP;
+        _tipoCambio = pago.TipoCambioP;
+        _monto = pago.Monto;
+        _numOperacion = pago.NumOperacion;
+        _rfcOrdenante = pago.RfcEmisorCtaOrd;
+        _bancoOrdenanteExtranjero = pago.NomBancoOrdExt;
+        _ctaOrdenante = pago.CtaOrdenante;
+        _rfcBeneficiario = pago.RfcEmisorCtaBen;
+        _ctaBeneficiario = pago.CtaBeneficiario;
+
+        _renglones.Clear();
+        _renglones.AddRange(pago.Documentos.Select(d => new Renglon(
+            d.IdDocumento, d.Serie, d.Folio, d.MonedaDR, d.NumParcialidad, d.ImpSaldoAnt, d.ImpPagado)));
+    }
+
+    private void AlElegirCliente(ClienteEnListaDto? cliente)
+    {
+        _cliente = cliente;
+        _clienteId = cliente?.Id;
+    }
+
+    private async Task Consultar()
+    {
+        _error = null;
+        _aviso = null;
+        _encontrado = null;
+
+        if (string.IsNullOrWhiteSpace(_serieBusqueda) || _folioBusqueda <= 0)
+        {
+            _aviso = "Escribe la serie y el folio de la factura que se está pagando.";
+            return;
+        }
+
+        var (encontrado, error) = await Pagos.ConsultarSaldoAsync(_serieBusqueda.Trim(), _folioBusqueda);
+
+        _error = error;
+        _encontrado = encontrado;
+
+        // Se propone saldar la factura completa, que es lo más común; el usuario lo baja si
+        // el abono es parcial.
+        if (encontrado is not null) _importeAPagar = encontrado.SaldoPendiente;
+    }
+
+    private void Agregar()
+    {
+        if (_encontrado is not { } encontrado) return;
+
+        if (_renglones.Any(r => r.IdDocumento == encontrado.IdDocumento))
+        {
+            _aviso = "Esa factura ya está en la lista.";
+            return;
+        }
+
+        if (_importeAPagar <= 0 || _importeAPagar > encontrado.SaldoPendiente)
+        {
+            _aviso = $"El importe tiene que estar entre 0 y {encontrado.SaldoPendiente:N2}.";
+            return;
+        }
+
+        _renglones.Add(new Renglon(
+            encontrado.IdDocumento, encontrado.Serie, encontrado.Folio, encontrado.Moneda,
+            encontrado.NumParcialidad, encontrado.SaldoPendiente, _importeAPagar));
+
+        // Cuando es el primer renglón, el importe del pago casi siempre es ese: se propone
+        // para ahorrar teclear, y queda editable.
+        if (_renglones.Count == 1 && _monto == 0) _monto = _importeAPagar;
+
+        _encontrado = null;
+        _importeAPagar = 0;
+        _aviso = null;
+    }
+
+    private async Task<bool> GuardarInternoAsync()
+    {
+        if (_pago is not { } pago) return false;
+
+        if (_clienteId is not { } clienteId)
+        {
+            _aviso = "Elige el cliente al que corresponde el pago.";
+            return false;
+        }
+
+        var peticion = new PeticionGuardarPago(
+            clienteId,
+            _fechaPagoUtc,
+            _formaDePago,
+            _moneda,
+            _tipoCambio,
+            _monto,
+            _numOperacion,
+            _rfcOrdenante,
+            _bancoOrdenanteExtranjero,
+            _ctaOrdenante,
+            _rfcBeneficiario,
+            _ctaBeneficiario,
+            [.. _renglones.Select(r => new RenglonDePagoDto(r.IdDocumento, r.ImpPagado))]);
+
+        var (guardado, error) = await Pagos.GuardarAsync(pago.Id, peticion);
+
+        _error = error;
+
+        if (guardado is null) return false;
+
+        _pago = guardado;
+        Rehidratar(guardado);
+
+        return true;
+    }
+
+    private async Task Guardar()
+    {
+        _trabajando = true;
+        _aviso = null;
+
+        try
+        {
+            if (await GuardarInternoAsync()) _aviso = "Borrador guardado.";
+        }
+        finally
+        {
+            _trabajando = false;
+        }
+    }
+
+    private async Task Timbrar()
+    {
+        _trabajando = true;
+        _aviso = null;
+
+        try
+        {
+            if (!await GuardarInternoAsync()) return;
+
+            // Clave nueva por intento real del usuario, igual que en la emisión: es lo que
+            // impide que un doble clic gaste dos timbres.
+            var (timbrado, error) = await Emision.TimbrarAsync(_pago!.Id, Guid.NewGuid().ToString("N"));
+
+            _error = error;
+
+            if (timbrado is not null)
+            {
+                _aviso = $"Pago timbrado. Folio fiscal {timbrado.Uuid}.";
+                _pago = await Pagos.ObtenerAsync(_pago.Id) ?? _pago;
+            }
+        }
+        finally
+        {
+            _trabajando = false;
+        }
+    }
+}

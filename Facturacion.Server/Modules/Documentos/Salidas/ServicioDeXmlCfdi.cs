@@ -43,15 +43,31 @@ public sealed class ServicioDeXmlCfdi(
 {
     public async Task<Resultado<CfdiSellado>> GenerarAsync(Comprobante comprobante, CancellationToken ct)
     {
-        if (comprobante.Conceptos.Count == 0)
-            return ErrorNegocio.Regla("comprobante-sin-conceptos", "El comprobante no tiene conceptos.");
+        var esPago = comprobante.TipoDeComprobante == TiposDeComprobante.Pago;
 
-        var decimales = await DecimalesDeMonedaAsync(comprobante.Moneda, ct);
+        // Un CFDI de pago no guarda conceptos: lleva uno fijo que sintetiza el generador. Lo
+        // que no puede faltarle es el pago en sí.
+        if (esPago)
+        {
+            if (comprobante.Pagos.Count == 0)
+                return ErrorNegocio.Regla("pago-sin-datos", "El comprobante de pago no tiene ningún pago.");
+        }
+        else if (comprobante.Conceptos.Count == 0)
+        {
+            return ErrorNegocio.Regla("comprobante-sin-conceptos", "El comprobante no tiene conceptos.");
+        }
+
+        // La raíz de un pago va en XXX, que no tiene decimales. Los importes que sí llevan
+        // dinero viven dentro del complemento y usan la moneda del pago: tomar los decimales
+        // de XXX escribiría «1160» donde debe decir «1160.00».
+        var monedaDeImportes = esPago ? comprobante.Pagos[0].MonedaP : comprobante.Moneda;
+
+        var decimales = await DecimalesDeMonedaAsync(monedaDeImportes, ct);
 
         if (decimales is null)
             return ErrorNegocio.Validacion(
                 "moneda-desconocida",
-                $"La moneda {comprobante.Moneda} no está en el catálogo del SAT. ¿Se cargaron los catálogos?");
+                $"La moneda {monedaDeImportes} no está en el catálogo del SAT. ¿Se cargaron los catálogos?");
 
         var material = await csd.ObtenerAsync(ct);
 

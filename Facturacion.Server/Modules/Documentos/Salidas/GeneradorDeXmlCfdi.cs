@@ -50,6 +50,12 @@ public sealed class GeneradorDeXmlCfdi
 
     public XDocument Generar(Comprobante comprobante, DatosDeEmision datos)
     {
+        // Un CFDI de pago no se parece a una factura: importes en cero, moneda XXX, sin nodo
+        // Impuestos y con todo el dinero dentro del complemento. Se bifurca aquí y no se
+        // intenta parametrizar el camino de abajo, porque casi ninguna de sus reglas aplica.
+        if (comprobante.TipoDeComprobante == TiposDeComprobante.Pago)
+            return GeneradorDeXmlPago.Generar(comprobante, datos);
+
         var d = datos.Decimales;
 
         // Paso único de redondeo. Todo lo que viene después suma estas cifras.

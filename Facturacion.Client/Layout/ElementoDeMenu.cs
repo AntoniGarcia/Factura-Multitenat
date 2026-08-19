@@ -47,6 +47,9 @@ public static class MenuPrincipal
     [
         // ── Diario: sin encabezado, siempre a la vista ──────────────────────────────────
         new("/", "Inicio", "home", Permiso: null),
+        new("/facturas/nueva", "Nueva factura", "receipt_long", Permisos.Timbrar),
+        new("/pagos/nuevo", "Nuevo pago", "payments", Permisos.Timbrar),
+        new("/documentos", "Documentos", "description", Permisos.Timbrar),
         new("/clientes", "Clientes", "groups", Permiso: null),
         new("/productos", "Productos", "inventory", Permiso: null),
 

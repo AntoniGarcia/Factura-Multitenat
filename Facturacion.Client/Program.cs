@@ -1,4 +1,5 @@
 using Facturacion.Client;
+using Facturacion.Client.Servicios.Documentos;
 using Facturacion.Client.Servicios.Plataforma;
 using Facturacion.Shared.Comun;
 using Microsoft.AspNetCore.Components.Authorization;
@@ -27,6 +28,10 @@ builder.Services.AddScoped<ServicioDeTimbres>();
 builder.Services.AddScoped<ServicioDeUsuarios>();
 builder.Services.AddScoped<ServicioDePerfil>();
 builder.Services.AddScoped<ServicioDeTablero>();
+builder.Services.AddScoped<ServicioDeEmision>();
+builder.Services.AddScoped<ServicioDeListado>();
+builder.Services.AddScoped<ServicioDeCancelacion>();
+builder.Services.AddScoped<ServicioDePagos>();
 
 // El mismo objeto atiende las dos cosas: la barra superior lo ve como IIndicadorDeTimbres y
 // las pantallas de timbres como ServicioDeTimbres. Se resuelve del contenedor y no se

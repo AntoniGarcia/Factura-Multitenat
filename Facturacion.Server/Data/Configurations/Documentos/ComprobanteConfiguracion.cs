@@ -22,6 +22,7 @@ public sealed class ComprobanteConfiguracion : IEntityTypeConfiguration<Comproba
         constructor.Property(c => c.MetodoPago).HasMaxLength(3);
         constructor.Property(c => c.Exportacion).HasMaxLength(2);
         constructor.Property(c => c.CondicionesDePago).HasMaxLength(1000);
+        constructor.Property(c => c.Observaciones).HasMaxLength(2000);
 
         constructor.Property(c => c.EmisorRfc).HasMaxLength(13);
         constructor.Property(c => c.EmisorNombre).HasMaxLength(254);
@@ -31,7 +32,10 @@ public sealed class ComprobanteConfiguracion : IEntityTypeConfiguration<Comproba
         constructor.Property(c => c.ReceptorNombre).HasMaxLength(254);
         constructor.Property(c => c.ReceptorRegimenFiscal).HasMaxLength(3);
         constructor.Property(c => c.ReceptorDomicilioFiscal).HasMaxLength(5);
-        constructor.Property(c => c.ReceptorUsoCfdi).HasMaxLength(3);
+        // Cuatro y no tres: casi todas las claves de c_UsoCFDI son de tres caracteres, pero
+        // CP01 (pagos) y CN01 (nómina) son de cuatro. Estaba en tres desde B0 y lo destapó el
+        // complemento de pagos, que siempre usa CP01; el catálogo de clientes ya la tenía bien.
+        constructor.Property(c => c.ReceptorUsoCfdi).HasMaxLength(4);
 
         constructor.Property(c => c.GlobalPeriodicidad).HasMaxLength(2);
         constructor.Property(c => c.GlobalMeses).HasMaxLength(2);

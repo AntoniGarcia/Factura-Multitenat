@@ -166,4 +166,10 @@ public sealed class Comprobante : IEntidadDeEmpresa
     public List<ComprobanteRelacionado> Relacionados { get; set; } = [];
 
     public List<IntentoTimbrado> Intentos { get; set; } = [];
+
+    /// <summary>
+    /// Solo tiene contenido cuando <see cref="TipoDeComprobante"/> es <c>P</c>: es el
+    /// complemento de pagos. En una factura va vacía.
+    /// </summary>
+    public List<Pago> Pagos { get; set; } = [];
 }

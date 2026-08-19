@@ -116,6 +116,8 @@ public sealed class ServicioDeTimbrado(
         var comprobante = await baseDeDatos.Comprobantes
             .Include(c => c.Conceptos).ThenInclude(x => x.Impuestos)
             .Include(c => c.Relacionados)
+            // Vacío salvo en los CFDI de pago, donde es todo el contenido del comprobante.
+            .Include(c => c.Pagos).ThenInclude(p => p.Documentos).ThenInclude(d => d.Impuestos)
             .FirstOrDefaultAsync(c => c.Id == comprobanteId, ct);
 
         if (comprobante is null)
