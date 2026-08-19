@@ -23,6 +23,54 @@ public enum ResultadoDePac
     NoEncontrado
 }
 
+/// <summary>Cómo terminó una solicitud de cancelación.</summary>
+public enum ResultadoDeCancelacion
+{
+    /// <summary>El SAT la canceló. Definitivo.</summary>
+    Cancelado,
+
+    /// <summary>
+    /// Aceptada, pero el receptor tiene que autorizarla. El comprobante <b>sigue siendo
+    /// fiscalmente válido</b> hasta que acepte o se venza el plazo de tres días hábiles.
+    /// </summary>
+    EnEsperaDelReceptor,
+
+    /// <summary>
+    /// El SAT o el PAC la rechazaron: motivo que no aplica, comprobante no cancelable, fuera
+    /// de plazo. Reintentar igual no sirve.
+    /// </summary>
+    Rechazado,
+
+    /// <summary>
+    /// No se supo qué pasó. Igual que en el timbrado, <b>nunca</b> se trata como rechazo: la
+    /// cancelación pudo haber entrado, y darla por fallida dejaría vigente un comprobante que
+    /// el SAT ya canceló.
+    /// </summary>
+    ErrorDeComunicacion
+}
+
+/// <summary>Lo que dice el SAT de un comprobante ya emitido (§30 del documento funcional).</summary>
+/// <param name="EstadoCfdi">«Vigente», «Cancelado» o «No Encontrado», tal como lo nombra el SAT.</param>
+/// <param name="EsCancelable">
+/// «Cancelable sin aceptación», «Cancelable con aceptación» o «No cancelable». Es lo que
+/// decide si cancelar será inmediato o quedará esperando al receptor.
+/// </param>
+/// <param name="EstatusCancelacion">Nulo mientras no haya una solicitud en curso.</param>
+public sealed record EstatusSatDePac(
+    bool Consultado,
+    string? EstadoCfdi = null,
+    string? EsCancelable = null,
+    string? EstatusCancelacion = null,
+    string? CodigoEstatus = null,
+    string? Mensaje = null);
+
+/// <summary>Lo que devuelve el PAC al cancelar, ya normalizado.</summary>
+public sealed record RespuestaDeCancelacion(
+    ResultadoDeCancelacion Resultado,
+    string? CodigoRespuesta = null,
+    string? Mensaje = null,
+    string? Acuse = null);
+
 /// <summary>Lo que devuelve el PAC, ya normalizado.</summary>
 public sealed record RespuestaDePac(
     ResultadoDePac Resultado,
@@ -65,4 +113,47 @@ public interface IProveedorPac
     /// </summary>
     /// <param name="xml">El mismo XML sellado que se envió en el intento original.</param>
     Task<RespuestaDePac> ConsultarAsync(string xml, string claveIdempotencia, CancellationToken ct);
+
+    /// <summary>
+    /// Pide al SAT la cancelación de un comprobante ya timbrado.
+    ///
+    /// <para>
+    /// Va firmada con el CSD del emisor: el SAT no acepta que un tercero cancele por él. Por eso
+    /// recibe el certificado en claro, y por eso el material nunca se registra ni se serializa
+    /// (CLAUDE.md §4).
+    /// </para>
+    /// </summary>
+    /// <param name="datos">
+    /// Ya validados por quien llama: el UUID sustituto es obligatorio con el motivo <c>01</c> y
+    /// va nulo en los demás.
+    /// </param>
+    /// <param name="ct">Token de cancelación de la petición, no de la cancelación fiscal.</param>
+    Task<RespuestaDeCancelacion> CancelarAsync(DatosDeCancelacion datos, CancellationToken ct);
+
+    /// <summary>
+    /// Pregunta al SAT el estado de un comprobante. Es el botón «Verificar estatus SAT» de §30
+    /// y, además, lo único que saca de <c>en_cancelacion</c> a un comprobante cuya solicitud se
+    /// quedó sin respuesta.
+    /// </summary>
+    Task<EstatusSatDePac> ConsultarEstatusAsync(DatosDeConsultaSat datos, CancellationToken ct);
 }
+
+/// <summary>Todo lo que el PAC necesita para cancelar. El CSD solo existe en memoria.</summary>
+public sealed record DatosDeCancelacion(
+    Guid Uuid,
+    string RfcEmisor,
+    string Motivo,
+    Guid? UuidSustituye,
+    byte[] CertificadoCer,
+    byte[] LlavePrivadaKey,
+    string ContrasenaLlave);
+
+/// <summary>
+/// Lo que el SAT exige para responder por un comprobante. Pide el total además del UUID
+/// porque su servicio valida que quien pregunta conozca el comprobante.
+/// </summary>
+public sealed record DatosDeConsultaSat(
+    Guid Uuid,
+    string RfcEmisor,
+    string RfcReceptor,
+    decimal Total);

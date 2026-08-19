@@ -1,0 +1,88 @@
+@using Facturacion.Shared.Documentos
+
+@*
+    Los cuatro motivos de cancelación del SAT. El 01 exige el folio fiscal del comprobante que
+    lo sustituye y los otros tres lo prohíben, así que el campo aparece y desaparece con el
+    motivo en vez de estar siempre visible y deshabilitado: un campo permanentemente gris
+    invita a preguntarse qué falta para llenarlo.
+
+    Aquí no se valida de verdad. Esto solo evita el viaje de ida y vuelta obvio; quien decide
+    es el servidor, siempre (CLAUDE.md §3).
+*@
+
+<MudDialog>
+    <DialogContent>
+        <p class="dialogo-cancelacion-aviso">
+            Cancelar un comprobante es irreversible y queda registrado ante el SAT.
+            @if (!string.IsNullOrEmpty(Folio))
+            {
+                <text>Vas a cancelar <strong class="cifra-tabular">@Folio</strong>.</text>
+            }
+        </p>
+
+        <MudSelect T="string"
+                   Label="Motivo de cancelación"
+                   @bind-Value="_motivo"
+                   Required="true">
+            @foreach (var (clave, texto) in Motivos)
+            {
+                <MudSelectItem T="string" Value="@clave">@clave — @texto</MudSelectItem>
+            }
+        </MudSelect>
+
+        @if (_motivo == MotivoConSustituto)
+        {
+            <MudTextField T="string"
+                          Label="Folio fiscal del comprobante que lo sustituye"
+                          @bind-Value="_uuidSustituye"
+                          Class="cifra-tabular"
+                          Immediate="true"
+                          Placeholder="00000000-0000-0000-0000-000000000000"
+                          HelperText="El UUID del CFDI que emitiste para reemplazar a este."
+                          Error="@(_uuidSustituye.Length > 0 && !UuidEsValido)"
+                          ErrorText="Eso no tiene forma de folio fiscal." />
+        }
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="@(() => Dialogo.Cancel())">Volver</MudButton>
+        <MudButton Color="Color.Error" Variant="Variant.Filled" Disabled="@(!SePuedeConfirmar)" OnClick="Confirmar">
+            Cancelar comprobante
+        </MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    private const string MotivoConSustituto = "01";
+
+    /// <summary>
+    /// Los textos son los del SAT, acortados a lo que distingue un motivo de otro. El catálogo
+    /// vive aquí y no en <c>c_</c> nada: son cuatro valores fijos del anexo 20, no un catálogo
+    /// descargable (CLAUDE.md §7).
+    /// </summary>
+    private static readonly (string Clave, string Texto)[] Motivos =
+    [
+        ("01", "Comprobante emitido con errores con relación"),
+        ("02", "Comprobante emitido con errores sin relación"),
+        ("03", "No se llevó a cabo la operación"),
+        ("04", "Operación nominativa relacionada en una factura global")
+    ];
+
+    [CascadingParameter]
+    private IMudDialogInstance Dialogo { get; set; } = default!;
+
+    /// <summary>Serie y folio del comprobante, solo para que el usuario confirme cuál es.</summary>
+    [Parameter]
+    public string? Folio { get; set; }
+
+    private string _motivo = "02";
+    private string _uuidSustituye = string.Empty;
+
+    private bool UuidEsValido => Guid.TryParse(_uuidSustituye, out _);
+
+    private bool SePuedeConfirmar => _motivo != MotivoConSustituto || UuidEsValido;
+
+    private void Confirmar()
+        => Dialogo.Close(DialogResult.Ok(new PeticionDeCancelacion(
+            _motivo,
+            _motivo == MotivoConSustituto && UuidEsValido ? Guid.Parse(_uuidSustituye) : null)));
+}

@@ -74,6 +74,198 @@ public sealed partial class ProveedorPacSwSapien(
     public Task<RespuestaDePac> ConsultarAsync(string xml, string claveIdempotencia, CancellationToken ct)
         => EnviarAsync(xml, claveIdempotencia, ct);
 
+    // ── Cancelación ─────────────────────────────────────────────────────────────────────
+
+    /// <summary>
+    /// Cancela mandando el CSD en el cuerpo, no usando el que SW guarde en su portal: el
+    /// certificado de cada empresa vive cifrado en este sistema (CLAUDE.md §4) y subirlo al
+    /// portal del PAC sería sacarlo de ahí.
+    ///
+    /// <para><b>Interpretación conservadora a propósito</b></para>
+    /// Solo se da por cancelado lo que el SAT confirma como tal. Cualquier respuesta que no se
+    /// entienda cae en <see cref="ResultadoDeCancelacion.ErrorDeComunicacion"/> y no en
+    /// rechazo: dar por fallida una cancelación que sí entró dejaría vigente en el sistema un
+    /// comprobante que el SAT ya canceló, y eso se descubre en una auditoría, no antes.
+    /// </para>
+    /// </summary>
+    public async Task<RespuestaDeCancelacion> CancelarAsync(DatosDeCancelacion datos, CancellationToken ct)
+    {
+        var cuerpo = new Dictionary<string, string>
+        {
+            ["uuid"] = datos.Uuid.ToString(),
+            ["rfc"] = datos.RfcEmisor,
+            ["motivo"] = datos.Motivo,
+            ["b64Cer"] = Convert.ToBase64String(datos.CertificadoCer),
+            ["b64Key"] = Convert.ToBase64String(datos.LlavePrivadaKey),
+            ["password"] = datos.ContrasenaLlave
+        };
+
+        // El SAT rechaza el folio de sustitución en cualquier motivo que no sea el 01, así que
+        // ni siquiera se manda la clave vacía.
+        if (datos.UuidSustituye is { } sustituye)
+            cuerpo["folioSustitucion"] = sustituye.ToString();
+
+        var respuesta = await PedirAsync(HttpMethod.Post, "/cfdi33/cancel/csd", cuerpo, ct);
+
+        if (respuesta is null)
+            return new RespuestaDeCancelacion(
+                ResultadoDeCancelacion.ErrorDeComunicacion, Mensaje: "No se pudo alcanzar al PAC para cancelar.");
+
+        var (sobre, codigoHttp) = respuesta.Value;
+        var codigo = CodigoDelMensaje(sobre?.Message);
+        var detalle = sobre?.MessageDetail ?? sobre?.Message ?? $"El PAC contestó {codigoHttp}.";
+
+        if (!EsExito(sobre?.Status))
+        {
+            if (codigoHttp >= 500)
+            {
+                registro.LogWarning("El PAC falló al cancelar con {Codigo}: {Detalle}", codigoHttp, detalle);
+                return new RespuestaDeCancelacion(ResultadoDeCancelacion.ErrorDeComunicacion, codigo, detalle);
+            }
+
+            registro.LogWarning("El PAC rechazó la cancelación: {Codigo} {Detalle}", codigo, detalle);
+            return new RespuestaDeCancelacion(ResultadoDeCancelacion.Rechazado, codigo, detalle);
+        }
+
+        // El acuse trae el veredicto real. SW responde 200 tanto cuando el SAT cancela como
+        // cuando solo registra la solicitud y deja el comprobante esperando al receptor: leer
+        // únicamente el código HTTP daría por cancelado algo que todavía es válido.
+        var estatus = sobre?.Data?.EstatusCancelacion ?? sobre?.Data?.EstatusUuid;
+
+        return ClasificarCancelacion(estatus, codigo, detalle, sobre?.Data?.Acuse);
+    }
+
+    /// <inheritdoc />
+    public async Task<EstatusSatDePac> ConsultarEstatusAsync(DatosDeConsultaSat datos, CancellationToken ct)
+    {
+        var cuerpo = new Dictionary<string, string>
+        {
+            ["uuid"] = datos.Uuid.ToString(),
+            ["rfcEmisor"] = datos.RfcEmisor,
+            ["rfcReceptor"] = datos.RfcReceptor,
+            // El SAT compara este total contra el suyo con los decimales del comprobante.
+            ["total"] = datos.Total.ToString("0.######", CultureInfo.InvariantCulture)
+        };
+
+        var respuesta = await PedirAsync(HttpMethod.Post, "/cfdi33/status", cuerpo, ct);
+
+        if (respuesta is null)
+            return new EstatusSatDePac(Consultado: false, Mensaje: "No se pudo alcanzar al PAC.");
+
+        var (sobre, codigoHttp) = respuesta.Value;
+
+        if (!EsExito(sobre?.Status) || sobre?.Data is null)
+        {
+            var detalle = sobre?.MessageDetail ?? sobre?.Message ?? $"El PAC contestó {codigoHttp}.";
+            registro.LogWarning("No se pudo consultar el estatus ante el SAT: {Detalle}", detalle);
+
+            return new EstatusSatDePac(Consultado: false, Mensaje: detalle);
+        }
+
+        return new EstatusSatDePac(
+            Consultado: true,
+            EstadoCfdi: sobre.Data.Estado,
+            EsCancelable: sobre.Data.EsCancelable,
+            EstatusCancelacion: sobre.Data.EstatusCancelacion,
+            CodigoEstatus: sobre.Data.CodigoEstatus);
+    }
+
+    /// <summary>
+    /// Traduce el texto del acuse del SAT. Se compara sin distinguir mayúsculas ni acentos
+    /// porque ese texto lo redacta el SAT y ha cambiado de forma entre versiones; lo estable
+    /// es la palabra clave, no la frase completa.
+    /// </summary>
+    private RespuestaDeCancelacion ClasificarCancelacion(
+        string? estatus, string? codigo, string? detalle, string? acuse)
+    {
+        var texto = (estatus ?? string.Empty).ToUpperInvariant();
+
+        if (texto.Contains("PLAZO VENCIDO", StringComparison.Ordinal))
+            return new RespuestaDeCancelacion(ResultadoDeCancelacion.Rechazado, codigo,
+                "El plazo para cancelar este comprobante ya venció.", acuse);
+
+        if (texto.Contains("RECHAZAD", StringComparison.Ordinal))
+            return new RespuestaDeCancelacion(ResultadoDeCancelacion.Rechazado, codigo,
+                "El receptor rechazó la cancelación.", acuse);
+
+        // «En proceso» es la respuesta cuando el comprobante es cancelable *con* aceptación:
+        // la solicitud quedó registrada y el receptor tiene tres días hábiles para contestar.
+        if (texto.Contains("EN PROCESO", StringComparison.Ordinal))
+            return new RespuestaDeCancelacion(ResultadoDeCancelacion.EnEsperaDelReceptor, codigo, detalle, acuse);
+
+        if (texto.Contains("CANCELADO", StringComparison.Ordinal))
+            return new RespuestaDeCancelacion(ResultadoDeCancelacion.Cancelado, codigo, detalle, acuse);
+
+        // Respuesta con éxito HTTP pero sin un estatus que se reconozca. No se inventa un
+        // veredicto: se deja sin resolver para que la consulta de estatus lo aclare.
+        registro.LogWarning(
+            "El PAC aceptó la cancelación pero devolvió un estatus que no se reconoce: «{Estatus}».", estatus);
+
+        return new RespuestaDeCancelacion(
+            ResultadoDeCancelacion.ErrorDeComunicacion, codigo,
+            "El PAC respondió algo que no se pudo interpretar. Verifica el estatus ante el SAT.", acuse);
+    }
+
+    /// <summary>
+    /// El envío común de cancelación y consulta: autentica, manda JSON y devuelve el sobre ya
+    /// deserializado junto con el código HTTP. Devuelve <c>null</c> cuando no se pudo hablar
+    /// con el PAC en absoluto.
+    /// </summary>
+    private async Task<(SobreDeSw? Sobre, int CodigoHttp)?> PedirAsync(
+        HttpMethod metodo, string ruta, Dictionary<string, string> cuerpo, CancellationToken ct)
+    {
+        for (var vuelta = 0; vuelta < 2; vuelta++)
+        {
+            var token = await ObtenerTokenAsync(forzarRenovacion: vuelta > 0, ct);
+
+            if (token is null) return null;
+
+            using var peticion = new HttpRequestMessage(metodo, ruta)
+            {
+                Content = JsonContent.Create(cuerpo, options: Json)
+            };
+
+            peticion.Headers.Authorization = new AuthenticationHeaderValue("Bearer", token);
+
+            HttpResponseMessage respuesta;
+
+            try
+            {
+                respuesta = await fabrica.CreateClient(ClienteHttp).SendAsync(peticion, ct);
+            }
+            catch (Exception ex) when (ex is HttpRequestException or TaskCanceledException && !ct.IsCancellationRequested)
+            {
+                registro.LogWarning(ex, "No se pudo alcanzar al PAC en {Ruta}.", ruta);
+                return null;
+            }
+
+            using (respuesta)
+            {
+                if (respuesta.StatusCode == HttpStatusCode.Unauthorized && vuelta == 0) continue;
+
+                var texto = await respuesta.Content.ReadAsStringAsync(ct);
+
+                try
+                {
+                    return (JsonSerializer.Deserialize<SobreDeSw>(texto, Json), (int)respuesta.StatusCode);
+                }
+                catch (JsonException ex)
+                {
+                    registro.LogWarning(
+                        ex, "El PAC contestó algo que no es JSON en {Ruta} con código {Codigo}.",
+                        ruta, (int)respuesta.StatusCode);
+
+                    return (null, (int)respuesta.StatusCode);
+                }
+            }
+        }
+
+        return null;
+    }
+
+    private static bool EsExito(string? estado)
+        => string.Equals(estado, "success", StringComparison.OrdinalIgnoreCase);
+
     // ── Timbrado ────────────────────────────────────────────────────────────────────────
 
     private async Task<RespuestaDePac> EnviarAsync(string xml, string clave, CancellationToken ct)
@@ -343,9 +535,30 @@ public sealed partial class ProveedorPacSwSapien(
 
     // ── Forma de las respuestas de SW ───────────────────────────────────────────────────
 
-    private sealed record SobreDeSw(DatosDeTimbrado? Data, string? Status, string? Message, string? MessageDetail);
+    private sealed record SobreDeSw(DatosDeSw? Data, string? Status, string? Message, string? MessageDetail);
 
-    private sealed record DatosDeTimbrado(string? Cfdi, string? CadenaOriginalSAT);
+    /// <summary>
+    /// Un solo tipo para las tres respuestas —timbrado, cancelación y consulta— porque SW
+    /// devuelve el mismo sobre y solo cambia qué campos vienen llenos. Todos son opcionales:
+    /// leer un campo que esta respuesta no trae debe dar nulo, no reventar.
+    ///
+    /// <para>
+    /// <b>Los nombres de los campos de cancelación y consulta están sin verificar contra el
+    /// sandbox.</b> Se dedujeron de la documentación de SW y no se han ejercitado: esta empresa
+    /// no tiene CSD ni comprobantes timbrados con los que probar. Si alguno no coincide, el
+    /// campo llega nulo y la respuesta cae en «no se pudo interpretar» —nunca en un veredicto
+    /// inventado—, que es justo lo que hay que ver para corregirlo.
+    /// </para>
+    /// </summary>
+    private sealed record DatosDeSw(
+        string? Cfdi,
+        string? CadenaOriginalSAT,
+        string? Acuse,
+        string? EstatusCancelacion,
+        string? EstatusUuid,
+        string? Estado,
+        string? EsCancelable,
+        string? CodigoEstatus);
 
     private sealed record SobreDeAutenticacion(DatosDeAutenticacion? Data, string? Status);
 
