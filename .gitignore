@@ -508,3 +508,12 @@ almacenamiento/
 
 # Configuración local de Claude Code: es de la máquina, no del proyecto.
 .claude/settings.local.json
+
+# Capturas de referencia del sistema de escritorio anterior. No son código y pesan 2.2 MB;
+# su inventario de campos está en docs/AUDITORIA-2026-08-19.md §B, que sustituye a las
+# imágenes: leerlas cuesta más que consultar la tabla.
+/Sistema anterior/
+
+# Bóveda de Obsidian que se coló en la carpeta del proyecto. No es código ni documentación;
+# marcada para borrarse (docs/AUDITORIA-2026-08-19.md §E1).
+/Sistema de Facturacion/
