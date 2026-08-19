@@ -20,6 +20,20 @@ public sealed class ServicioDeSeries(AppDbContext baseDeDatos, IServicioDeBitaco
             .Select(s => new SerieDto(s.Id, s.Prefijo, s.FolioInicial, s.FolioActual, s.TipoComprobante, s.Activa))
             .ToListAsync(ct);
 
+    /// <summary>
+    /// Series activas para elegir al emitir. Sin <c>FolioActual</c> y sin exigir
+    /// <c>configurar_empresa</c>: cualquiera con sesión que vaya a timbrar necesita ver esto,
+    /// y enseñarle cuánto lleva emitido cada serie no le hace falta para elegir una.
+    /// </summary>
+    public async Task<IReadOnlyList<SerieParaEmisionDto>> ListarActivasAsync(
+        string tipoComprobante, CancellationToken ct)
+        => await baseDeDatos.Series
+            .AsNoTracking()
+            .Where(s => s.Activa && s.TipoComprobante == tipoComprobante)
+            .OrderBy(s => s.Prefijo)
+            .Select(s => new SerieParaEmisionDto(s.Id, s.Prefijo, s.TipoComprobante))
+            .ToListAsync(ct);
+
     public async Task<Resultado<SerieDto>> CrearAsync(PeticionGuardarSerie peticion, CancellationToken ct)
     {
         var error = await ValidarAsync(peticion, serieExistente: null, ct);

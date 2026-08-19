@@ -67,6 +67,12 @@ public sealed class ServicioDeEmpresa(IHttpClientFactory fabrica)
     public async Task<IReadOnlyList<SerieDto>> ListarSeriesAsync(CancellationToken ct = default)
         => await Cliente.GetFromJsonAsync<IReadOnlyList<SerieDto>>("api/series", ct) ?? [];
 
+    /// <summary>Series activas para elegir al emitir, sin folio actual. Solo exige sesión.</summary>
+    public async Task<IReadOnlyList<SerieParaEmisionDto>> ListarSeriesActivasAsync(
+        string tipoComprobante, CancellationToken ct = default)
+        => await Cliente.GetFromJsonAsync<IReadOnlyList<SerieParaEmisionDto>>(
+            $"api/series/activas?tipoComprobante={Uri.EscapeDataString(tipoComprobante)}", ct) ?? [];
+
     public async Task<(SerieDto? Exito, DetalleProblema? Error)> CrearSerieAsync(
         PeticionGuardarSerie peticion, CancellationToken ct = default)
     {

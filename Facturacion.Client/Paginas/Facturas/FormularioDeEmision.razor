@@ -1,0 +1,542 @@
+@page "/facturas/nueva"
+@page "/facturas/{Id:guid}"
+@attribute [Authorize(Policy = Permisos.Timbrar)]
+@using Facturacion.Client.Servicios.Documentos
+@using Facturacion.Client.Servicios.Plataforma
+@using Facturacion.Shared.Comun
+@using Facturacion.Shared.Documentos
+@using Facturacion.Shared.Plataforma
+@inject ServicioDeEmision Emision
+@inject ServicioDeClientes Clientes
+@inject ServicioDeProductos Productos
+@inject ServicioDeEmpresa Empresa
+@inject ServicioDeCatalogos Catalogos
+@inject NavigationManager Navegacion
+
+<PageTitle>@(EsNuevo ? "Nueva factura" : "Factura")</PageTitle>
+<TituloDePagina Texto="@TituloDeLaPantalla" />
+
+<PanelErrores Problema="_error" />
+
+@if (_cargando)
+{
+    <p>Cargando…</p>
+}
+else if (_comprobante is null)
+{
+    <p>No se encontró ese comprobante.</p>
+}
+else if (!EsEditable)
+{
+    <div class="aviso-normalizacion" role="status">
+        <p><strong>Comprobante @EtiquetaDeEstatus.</strong></p>
+        @if (_comprobante.Uuid is { } uuid)
+        {
+            <p>
+                Folio <span class="cifra-tabular">@_comprobante.Serie-@_comprobante.Folio</span> —
+                UUID <span class="cifra-tabular">@uuid</span>
+            </p>
+        }
+    </div>
+    <div class="acciones-formulario">
+        <MudButton Variant="Variant.Filled" OnClick="@(() => Navegacion.NavigateTo("/facturas/nueva"))">
+            Nueva factura
+        </MudButton>
+        <MudButton Variant="Variant.Text" OnClick="@(() => Navegacion.NavigateTo("/"))">Ir al inicio</MudButton>
+    </div>
+}
+else
+{
+    <MudTabs>
+        <MudTabPanel Text="Detalle">
+            <h2 class="seccion-titulo">General</h2>
+            <div class="rejilla-campos">
+                <MudTextField T="string" Value="@("Factura")" Label="Tipo de documento" ReadOnly="true" />
+                <MudTextField T="string" Value="@FolioMostrado" Label="Folio" ReadOnly="true" Class="cifra-tabular" />
+
+                <MudSelect T="string" @bind-Value="_moneda" Label="Moneda">
+                    @foreach (var m in Catalogos.Obtener("c_Moneda"))
+                    {
+                        <MudSelectItem T="string" Value="@m.Clave">@m.Clave — @m.Descripcion</MudSelectItem>
+                    }
+                </MudSelect>
+
+                <CampoMoneda Valor="@(_tipoCambio ?? 0)" ValorCambiado="v => _tipoCambio = v"
+                              Label="Tipo de cambio" Deshabilitado="@(_moneda == "MXN")"
+                              Requerido="@(_moneda != "MXN")" />
+
+                <MudSelect T="Guid?" Value="@(_serie?.Id)" ValueChanged="AlCambiarSerie" Label="Serie">
+                    @foreach (var s in _seriesActivas)
+                    {
+                        <MudSelectItem T="Guid?" Value="@((Guid?)s.Id)">@s.Prefijo</MudSelectItem>
+                    }
+                </MudSelect>
+            </div>
+
+            <h2 class="seccion-titulo">Datos del cliente</h2>
+            <div class="rejilla-campos">
+                <BuscadorDeCliente Valor="@_cliente" ValorCambiado="AlElegirClienteAsync" Requerido="true" />
+                <MudTextField T="string" Value="@(_cliente?.Rfc)" Label="R.F.C." ReadOnly="true" Class="cifra-tabular" />
+                <MudTextField T="string" Value="@(_cliente?.Nombre)" Label="Nombre" ReadOnly="true" />
+                <MudTextField T="string" Value="@(_cliente?.DomicilioFiscalCp)" Label="Domicilio fiscal (CP)" ReadOnly="true" Class="cifra-tabular" />
+
+                <MudSelect T="string" @bind-Value="_metodoPago" Label="Método de pago" Clearable="true">
+                    @foreach (var m in Catalogos.Obtener("c_MetodoPago"))
+                    {
+                        <MudSelectItem T="string" Value="@m.Clave">@m.Clave — @m.Descripcion</MudSelectItem>
+                    }
+                </MudSelect>
+
+                <MudSelect T="string" @bind-Value="_formaPago" Label="Forma de pago" Clearable="true">
+                    @foreach (var f in Catalogos.Obtener("c_FormaPago"))
+                    {
+                        <MudSelectItem T="string" Value="@f.Clave">@f.Clave — @f.Descripcion</MudSelectItem>
+                    }
+                </MudSelect>
+
+                <MudSelect T="string" @bind-Value="_usoCfdi" Label="Uso de CFDI">
+                    @foreach (var u in Catalogos.Obtener("c_UsoCFDI"))
+                    {
+                        <MudSelectItem T="string" Value="@u.Clave">@u.Clave — @u.Descripcion</MudSelectItem>
+                    }
+                </MudSelect>
+            </div>
+
+            <h2 class="seccion-titulo">Conceptos</h2>
+            <p class="seccion-ayuda">
+                Cada renglón se resuelve desde el catálogo de productos: código, unidad, descripción, precio e
+                impuestos vienen de ahí. Solo la cantidad y el descuento se capturan aquí.
+            </p>
+
+            <MudSimpleTable Dense="true" Hover="true" Class="tabla-impuestos">
+                <thead>
+                    <tr>
+                        <th>Código</th>
+                        <th>Descripción</th>
+                        <th>Unidad</th>
+                        <th class="cifra-tabular">Cantidad</th>
+                        <th class="cifra-tabular">Precio unit.</th>
+                        <th class="cifra-tabular">Descuento</th>
+                        <th class="cifra-tabular">Importe</th>
+                        <th></th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @for (var i = 0; i < _renglones.Count; i++)
+                    {
+                        var indice = i;
+                        var renglon = _renglones[indice];
+
+                        <tr>
+                            <td colspan="8">
+                                @if (string.IsNullOrEmpty(renglon.ClaveProdServ))
+                                {
+                                    <BuscadorDeProducto Valor="null" ValorCambiado="p => AlElegirProductoAsync(indice, p)" />
+                                }
+                                else
+                                {
+                                    <div class="rejilla-campos" style="grid-template-columns: 6rem 1fr 6rem 7rem 8rem 8rem 8rem 2.5rem; align-items: center; margin-bottom: 0;">
+                                        <span class="cifra-tabular">@renglon.ClaveProdServ</span>
+                                        <span>@renglon.Descripcion</span>
+                                        <span>@renglon.UnidadTexto</span>
+                                        <MudNumericField T="decimal" Value="@renglon.Cantidad" ValueChanged="v => renglon.Cantidad = v"
+                                                          Format="N2" Min="0.000001m" Class="cifra-tabular" />
+                                        <span class="cifra-tabular">@renglon.ValorUnitario.ToString("N2")</span>
+                                        <MudNumericField T="decimal" Value="@renglon.Descuento" ValueChanged="v => renglon.Descuento = v"
+                                                          Format="N2" Min="0" Class="cifra-tabular" />
+                                        <span class="cifra-tabular">@renglon.Importe.ToString("N2")</span>
+                                        <MudIconButton Icon="@Icons.Material.Filled.Delete" Size="Size.Small"
+                                                       OnClick="@(() => _renglones.RemoveAt(indice))" />
+                                    </div>
+                                }
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </MudSimpleTable>
+
+            <MudButton Variant="Variant.Text" StartIcon="@Icons.Material.Filled.Add"
+                       OnClick="@(() => _renglones.Add(new RenglonConcepto()))">
+                Agregar renglón
+            </MudButton>
+
+            <h2 class="seccion-titulo">Totales</h2>
+            <div class="rejilla-campos">
+                <MudTextField T="string" Label="Subtotal" Value="@_comprobante.SubTotal.ToString("N2")" ReadOnly="true" Class="cifra-tabular" />
+                <MudTextField T="string" Label="Descuento" Value="@_comprobante.Descuento.ToString("N2")" ReadOnly="true" Class="cifra-tabular" />
+                <MudTextField T="string" Label="Impuestos trasladados" Value="@_comprobante.TotalImpuestosTrasladados.ToString("N2")" ReadOnly="true" Class="cifra-tabular" />
+                <MudTextField T="string" Label="Impuestos retenidos" Value="@_comprobante.TotalImpuestosRetenidos.ToString("N2")" ReadOnly="true" Class="cifra-tabular" />
+                <MudTextField T="string" Label="Total" Value="@_comprobante.Total.ToString("N2")" ReadOnly="true" Class="cifra-tabular" />
+            </div>
+            <p class="seccion-ayuda">Se recalculan al guardar.</p>
+
+            <div class="rejilla-campos">
+                <MudTextField @bind-Value="_condicionesDePago" Label="Condiciones de pago" MaxLength="1000" />
+            </div>
+            <MudTextField @bind-Value="_observaciones" Label="Observaciones" Lines="3" MaxLength="2000" />
+        </MudTabPanel>
+
+        <MudTabPanel Text="CFDI relacionados">
+            <p class="seccion-ayuda">Opcional: solo si esta factura corrige, sustituye o se relaciona con otra ya timbrada.</p>
+
+            <div class="rejilla-campos">
+                <MudSelect T="string" @bind-Value="_tipoRelacion" Label="Tipo de relación" Clearable="true">
+                    @foreach (var t in Catalogos.Obtener("c_TipoRelacion"))
+                    {
+                        <MudSelectItem T="string" Value="@t.Clave">@t.Clave — @t.Descripcion</MudSelectItem>
+                    }
+                </MudSelect>
+                <MudTextField @bind-Value="_serieRelacionado" Label="Serie" MaxLength="25" />
+                <MudNumericField T="int?" @bind-Value="_folioRelacionado" Label="Folio" />
+            </div>
+
+            <MudButton Variant="Variant.Text" OnClick="AgregarRelacionadoAsync" Disabled="@(!PuedeAgregarRelacionado)">
+                Agregar
+            </MudButton>
+
+            @if (_relacionados.Count > 0)
+            {
+                <MudSimpleTable Dense="true" Class="tabla-impuestos">
+                    <thead>
+                        <tr><th>Serie</th><th>Folio</th><th>UUID</th><th></th></tr>
+                    </thead>
+                    <tbody>
+                        @for (var i = 0; i < _relacionados.Count; i++)
+                        {
+                            var indice = i;
+                            var r = _relacionados[indice];
+                            <tr>
+                                <td>@r.Serie</td>
+                                <td class="cifra-tabular">@r.Folio</td>
+                                <td class="cifra-tabular">@r.UuidRelacionado</td>
+                                <td>
+                                    <MudIconButton Icon="@Icons.Material.Filled.Delete" Size="Size.Small"
+                                                   OnClick="@(() => _relacionados.RemoveAt(indice))" />
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </MudSimpleTable>
+            }
+        </MudTabPanel>
+
+        <MudTabPanel Text="Información global" Disabled="@(!EsPublicoEnGeneral)">
+            @if (!EsPublicoEnGeneral)
+            {
+                <p class="seccion-ayuda">Solo aplica cuando el cliente es «Público en general» (RFC XAXX010101000).</p>
+            }
+            else
+            {
+                <div class="rejilla-campos">
+                    <MudSelect T="string" @bind-Value="_globalPeriodicidad" Label="Periodicidad" Required="true">
+                        @foreach (var p in Catalogos.Obtener("c_Periodicidad"))
+                        {
+                            <MudSelectItem T="string" Value="@p.Clave">@p.Clave — @p.Descripcion</MudSelectItem>
+                        }
+                    </MudSelect>
+                    <MudSelect T="string" @bind-Value="_globalMeses" Label="Mes" Required="true">
+                        @foreach (var m in Catalogos.Obtener("c_Meses"))
+                        {
+                            <MudSelectItem T="string" Value="@m.Clave">@m.Clave — @m.Descripcion</MudSelectItem>
+                        }
+                    </MudSelect>
+                    <MudNumericField T="int?" @bind-Value="_globalAnio" Label="Año" Required="true" />
+                </div>
+            }
+        </MudTabPanel>
+    </MudTabs>
+
+    <div class="acciones-formulario">
+        <MudButton Variant="Variant.Outlined" OnClick="GuardarAsync" Disabled="@(_guardando || _generando)">
+            @(_guardando ? "Guardando…" : "Guardar borrador")
+        </MudButton>
+        <MudButton ButtonType="ButtonType.Submit" Variant="Variant.Filled" Color="Color.Primary"
+                   OnClick="GenerarFacturaAsync" Disabled="@(_guardando || _generando || _renglones.Count == 0)">
+            @(_generando ? "Generando…" : "Generar factura")
+        </MudButton>
+        <MudButton Variant="Variant.Text" OnClick="@(() => Navegacion.NavigateTo("/"))">Cancelar</MudButton>
+    </div>
+}
+
+@code {
+    private const string RfcPublicoEnGeneral = "XAXX010101000";
+
+    [Parameter]
+    public Guid? Id { get; set; }
+
+    private bool EsNuevo => Id is null;
+
+    private ComprobanteDto? _comprobante;
+    private bool _cargando = true;
+    private bool _guardando;
+    private bool _generando;
+    private DetalleProblema? _error;
+
+    // Cabecera
+    private string _moneda = "MXN";
+    private decimal? _tipoCambio;
+    private SerieParaEmisionDto? _serie;
+    private IReadOnlyList<SerieParaEmisionDto> _seriesActivas = [];
+
+    // Cliente
+    private ClienteEnListaDto? _cliente;
+    private string? _usoCfdi, _metodoPago, _formaPago;
+
+    // Conceptos
+    private readonly List<RenglonConcepto> _renglones = [];
+
+    // Pie
+    private string? _observaciones, _condicionesDePago;
+
+    // CFDI relacionados
+    private string? _tipoRelacion;
+    private string _serieRelacionado = string.Empty;
+    private int? _folioRelacionado;
+    private readonly List<ComprobanteRelacionadoDto> _relacionados = [];
+
+    // Información global
+    private string? _globalPeriodicidad, _globalMeses;
+    private int? _globalAnio = DateTime.UtcNow.Year;
+
+    private bool EsEditable => _comprobante is { Estatus: "borrador" or "error" };
+
+    private bool EsPublicoEnGeneral => _cliente?.Rfc == RfcPublicoEnGeneral;
+
+    private bool PuedeAgregarRelacionado =>
+        !string.IsNullOrWhiteSpace(_tipoRelacion) &&
+        !string.IsNullOrWhiteSpace(_serieRelacionado) &&
+        _folioRelacionado is > 0;
+
+    private string TituloDeLaPantalla => _comprobante switch
+    {
+        null => "Nueva factura",
+        { Folio: { } folio, Serie: { } serie } => $"Factura {serie}-{folio}",
+        _ => "Nueva factura"
+    };
+
+    private string FolioMostrado => _comprobante is { Folio: { } f, Serie: { } s } ? $"{s}-{f}" : "Se asigna al timbrar";
+
+    private string EtiquetaDeEstatus => _comprobante?.Estatus switch
+    {
+        "timbrado" => "timbrado",
+        "timbrando" => "en proceso de timbrado",
+        "cancelado" => "cancelado",
+        "en_cancelacion" => "en proceso de cancelación",
+        _ => _comprobante?.Estatus ?? string.Empty
+    };
+
+    protected override async Task OnParametersSetAsync()
+    {
+        _cargando = true;
+        _error = null;
+
+        if (EsNuevo)
+        {
+            // Se crea aquí, no al dar clic en "Guardar": el comprobante ES el borrador desde
+            // el primer momento (ver ServicioDeEmision), y la URL con el id real es lo que
+            // permite recargar la página sin perderlo.
+            var nuevo = await Emision.CrearBorradorAsync();
+            Navegacion.NavigateTo($"/facturas/{nuevo.Id}", replace: true);
+            return;
+        }
+
+        _seriesActivas = await Empresa.ListarSeriesActivasAsync("I");
+
+        var comprobante = await Emision.ObtenerAsync(Id!.Value);
+        _comprobante = comprobante;
+
+        if (comprobante is not null)
+        {
+            _moneda = comprobante.Moneda;
+            _tipoCambio = comprobante.TipoCambio;
+            _serie = _seriesActivas.FirstOrDefault();
+            _metodoPago = comprobante.MetodoPago;
+            _formaPago = comprobante.FormaPago;
+            _usoCfdi = comprobante.ReceptorUsoCfdi;
+            _observaciones = comprobante.Observaciones;
+            _condicionesDePago = comprobante.CondicionesDePago;
+            _globalPeriodicidad = comprobante.GlobalPeriodicidad;
+            _globalMeses = comprobante.GlobalMeses;
+            _globalAnio = comprobante.GlobalAnio ?? DateTime.UtcNow.Year;
+
+            if (comprobante.ClienteId is { } clienteId)
+            {
+                var cliente = await Clientes.ObtenerAsync(clienteId);
+
+                if (cliente is not null)
+                {
+                    _cliente = new ClienteEnListaDto(
+                        cliente.Id, cliente.ClaveInterna, cliente.Rfc, cliente.Nombre,
+                        cliente.RegimenFiscal, cliente.DomicilioFiscalCp, cliente.CorreoPrincipal, cliente.Activo);
+                }
+            }
+
+            _renglones.Clear();
+            foreach (var concepto in comprobante.Conceptos)
+            {
+                _renglones.Add(new RenglonConcepto
+                {
+                    ProductoId = concepto.ProductoId,
+                    ClaveProdServ = concepto.ClaveProdServ,
+                    ClaveUnidad = concepto.ClaveUnidad,
+                    UnidadTexto = concepto.UnidadTexto,
+                    Descripcion = concepto.Descripcion,
+                    ObjetoImp = concepto.ObjetoImp,
+                    ValorUnitario = concepto.ValorUnitario,
+                    Cantidad = concepto.Cantidad,
+                    Descuento = concepto.Descuento,
+                    Impuestos = concepto.Impuestos
+                });
+            }
+
+            _relacionados.Clear();
+            _relacionados.AddRange(comprobante.Relacionados);
+        }
+
+        _cargando = false;
+    }
+
+    private void AlCambiarSerie(Guid? serieId)
+        => _serie = _seriesActivas.FirstOrDefault(s => s.Id == serieId);
+
+    private async Task AlElegirClienteAsync(ClienteEnListaDto? seleccion)
+    {
+        _cliente = seleccion;
+
+        if (seleccion is null) return;
+
+        // La lupa solo trae lo que se ve en la lista; método y forma de pago preferidos no
+        // vienen ahí, así que se resuelve el cliente completo para precargarlos (§12.2).
+        var completo = await Clientes.ObtenerAsync(seleccion.Id);
+
+        if (completo is null) return;
+
+        _usoCfdi = completo.UsoCfdiPreferido;
+        _metodoPago = completo.MetodoPagoPreferido;
+        _formaPago = completo.FormaPagoPreferida;
+    }
+
+    private async Task AlElegirProductoAsync(int indice, ProductoEnListaDto? seleccion)
+    {
+        if (seleccion is null) return;
+
+        var producto = await Productos.ObtenerAsync(seleccion.Id);
+        if (producto is null) return;
+
+        var renglon = _renglones[indice];
+
+        renglon.ProductoId = producto.Id;
+        renglon.ClaveProdServ = producto.ClaveProdServ;
+        renglon.ClaveUnidad = producto.ClaveUnidad;
+        renglon.UnidadTexto = producto.UnidadTexto;
+        renglon.Descripcion = producto.Descripcion;
+        renglon.ObjetoImp = producto.ObjetoImp;
+        renglon.ValorUnitario = producto.ValorUnitario;
+        renglon.Impuestos = [.. producto.Impuestos.Select(i =>
+            new ImpuestoDeConceptoDto(i.Impuesto, i.TipoFactor, i.TasaOCuota, i.EsRetencion))];
+    }
+
+    private async Task AgregarRelacionadoAsync()
+    {
+        if (!PuedeAgregarRelacionado) return;
+
+        var (resuelto, error) = await Emision.ResolverRelacionadoAsync(_serieRelacionado, _folioRelacionado!.Value);
+
+        if (error is not null)
+        {
+            _error = error;
+            return;
+        }
+
+        _error = null;
+        _relacionados.Add(new ComprobanteRelacionadoDto(
+            null, _tipoRelacion!, resuelto!.Uuid, resuelto.Serie, resuelto.Folio));
+
+        _serieRelacionado = string.Empty;
+        _folioRelacionado = null;
+        _tipoRelacion = null;
+    }
+
+    private async Task<bool> GuardarAsync()
+    {
+        if (_comprobante is null) return false;
+
+        _guardando = true;
+        _error = null;
+
+        var peticion = new PeticionGuardarBorrador(
+            "I",
+            _serie?.Id,
+            _moneda,
+            _moneda == "MXN" ? null : _tipoCambio,
+            _formaPago,
+            _metodoPago,
+            "01",
+            _condicionesDePago,
+            _observaciones,
+            _cliente?.Id,
+            _usoCfdi,
+            EsPublicoEnGeneral ? _globalPeriodicidad : null,
+            EsPublicoEnGeneral ? _globalMeses : null,
+            EsPublicoEnGeneral ? _globalAnio : null,
+            [.. _renglones.Where(r => r.ProductoId is not null).Select((r, i) => new ConceptoDto(
+                null, i + 1, r.ProductoId, r.ClaveProdServ!, r.ClaveUnidad!, r.UnidadTexto, null,
+                r.Descripcion!, r.Cantidad, r.ValorUnitario, r.Importe, r.Descuento, r.ObjetoImp!, r.Impuestos))],
+            _relacionados);
+
+        var (exito, error) = await Emision.GuardarAsync(_comprobante.Id, peticion);
+
+        _guardando = false;
+
+        if (error is not null)
+        {
+            _error = error;
+            return false;
+        }
+
+        _comprobante = exito;
+        return true;
+    }
+
+    private async Task GenerarFacturaAsync()
+    {
+        if (_comprobante is null) return;
+
+        if (!await GuardarAsync()) return;
+
+        _generando = true;
+        _error = null;
+
+        // Clave nueva por cada clic real del usuario: si el navegador reintenta la misma
+        // petición HTTP, es el filtro de idempotencia del servidor el que la detiene, no esto.
+        var (exito, error) = await Emision.TimbrarAsync(_comprobante!.Id, Guid.NewGuid().ToString("N"));
+
+        _generando = false;
+
+        if (error is not null)
+        {
+            _error = error;
+            return;
+        }
+
+        // Se vuelve a pedir el comprobante completo: la respuesta de timbrar solo trae el
+        // resumen, y la pantalla de solo lectura necesita el resto (receptor, conceptos).
+        _comprobante = await Emision.ObtenerAsync(exito!.ComprobanteId);
+    }
+
+    private sealed class RenglonConcepto
+    {
+        public Guid? ProductoId { get; set; }
+        public string? ClaveProdServ { get; set; }
+        public string? ClaveUnidad { get; set; }
+        public string? UnidadTexto { get; set; }
+        public string? Descripcion { get; set; }
+        public string? ObjetoImp { get; set; }
+        public decimal ValorUnitario { get; set; }
+        public decimal Cantidad { get; set; } = 1;
+        public decimal Descuento { get; set; }
+        public IReadOnlyList<ImpuestoDeConceptoDto> Impuestos { get; set; } = [];
+
+        public decimal Importe => Math.Round(Cantidad * ValorUnitario - Descuento, 2);
+    }
+}

@@ -1,0 +1,50 @@
+@using Facturacion.Shared.Plataforma
+@using Facturacion.Client.Servicios.Plataforma
+@inject ServicioDeClientes Clientes
+
+@*
+    La "Clave" del cliente de §12.2, resuelta por búsqueda y no de tecleo libre (CLAUDE.md
+    §7 / §31). Mismo patrón que BuscadorCatalogo, pero contra /api/clientes en vez del
+    catálogo del SAT: son entidades de la empresa, no claves del SAT.
+*@
+
+<MudAutocomplete T="ClienteEnListaDto"
+                  Label="Cliente"
+                  Value="@Valor"
+                  ValueChanged="@(v => ValorCambiado.InvokeAsync(v))"
+                  SearchFunc="Buscar"
+                  ToStringFunc="@Formatear"
+                  MinCharacters="3"
+                  DebounceInterval="300"
+                  ResetValueOnEmptyText="true"
+                  CoerceText="false"
+                  Clearable="true"
+                  Required="@Requerido"
+                  Placeholder="Escribe RFC, nombre o clave…">
+    <ItemTemplate Context="cliente">
+        <span class="cifra-tabular buscador-catalogo-clave">@cliente.ClaveInterna</span>
+        <span class="buscador-catalogo-descripcion">@cliente.Nombre — @cliente.Rfc</span>
+    </ItemTemplate>
+</MudAutocomplete>
+
+@code {
+    [Parameter]
+    public ClienteEnListaDto? Valor { get; set; }
+
+    [Parameter]
+    public EventCallback<ClienteEnListaDto?> ValorCambiado { get; set; }
+
+    [Parameter]
+    public bool Requerido { get; set; }
+
+    private async Task<IEnumerable<ClienteEnListaDto>> Buscar(string texto, CancellationToken ct)
+    {
+        if (string.IsNullOrWhiteSpace(texto) || texto.Length < 3) return [];
+
+        var pagina = await Clientes.ListarAsync(texto, soloActivos: true, 0, 25, null, false, ct);
+        return pagina.Elementos;
+    }
+
+    private static string Formatear(ClienteEnListaDto? cliente)
+        => cliente is null ? string.Empty : $"{cliente.ClaveInterna} — {cliente.Nombre}";
+}

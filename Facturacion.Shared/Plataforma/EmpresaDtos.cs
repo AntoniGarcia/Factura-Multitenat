@@ -107,6 +107,16 @@ public sealed record SerieDto(
     string TipoComprobante,
     bool Activa);
 
+/// <summary>
+/// Una serie tal como la ve quien va a emitir, no quien la administra: sin
+/// <see cref="SerieDto.FolioActual"/>, que revela cuánto ha facturado la empresa y que
+/// CLAUDE.md §5 reserva para la administración.
+/// </summary>
+public sealed record SerieParaEmisionDto(
+    Guid Id,
+    string Prefijo,
+    string TipoComprobante);
+
 /// <summary>Alta y edición de una serie. El folio actual no se edita: lo mueve solo la reserva.</summary>
 public sealed record PeticionGuardarSerie(
     string Prefijo,

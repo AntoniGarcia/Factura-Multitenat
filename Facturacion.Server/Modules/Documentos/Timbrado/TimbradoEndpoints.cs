@@ -1,17 +1,9 @@
 using Facturacion.Server.Infra.Errores;
 using Facturacion.Server.Infra.Idempotencia;
 using Facturacion.Shared.Comun;
+using Facturacion.Shared.Documentos;
 
 namespace Facturacion.Server.Modules.Documentos.Timbrado;
-
-/// <summary>Lo que se le devuelve al cliente cuando un comprobante queda timbrado.</summary>
-public sealed record RespuestaDeTimbrado(
-    Guid ComprobanteId,
-    Guid? Uuid,
-    string? Serie,
-    int? Folio,
-    DateTime? FechaTimbradoUtc,
-    string Estatus);
 
 /// <summary>
 /// Timbrar es la operación con más consecuencias del sistema: gasta un timbre, consume un
@@ -49,7 +41,7 @@ public static class TimbradoEndpoints
 
         var comprobante = resultado.Valor;
 
-        return Results.Ok(new RespuestaDeTimbrado(
+        return Results.Ok(new RespuestaDeTimbradoDto(
             comprobante.Id,
             comprobante.Uuid,
             comprobante.Serie,

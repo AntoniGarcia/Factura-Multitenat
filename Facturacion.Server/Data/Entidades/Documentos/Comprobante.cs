@@ -74,6 +74,9 @@ public sealed class Comprobante : IEntidadDeEmpresa
     /// <summary>Condiciones de pago en texto libre, tal como las capturó el usuario.</summary>
     public string? CondicionesDePago { get; set; }
 
+    /// <summary>Notas internas del pie del formulario (§12.4). No viaja al XML del SAT.</summary>
+    public string? Observaciones { get; set; }
+
     // ── Emisor, congelado ────────────────────────────────────────────────────────────
 
     public required string EmisorRfc { get; set; }
