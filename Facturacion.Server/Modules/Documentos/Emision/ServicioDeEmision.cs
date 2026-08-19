@@ -412,7 +412,7 @@ public sealed class ServicioDeEmision(
             .FirstOrDefaultAsync(c => c.Id == id, ct);
 
     private static ComprobanteDto ADto(Comprobante c) => new(
-        c.Id, c.Estatus, c.TipoDeComprobante, c.Serie, c.Folio,
+        c.Id, c.Estatus, c.TipoDeComprobante, c.SerieId, c.Serie, c.Folio,
         c.Moneda, c.TipoCambio, c.FormaPago, c.MetodoPago, c.Exportacion, c.CondicionesDePago,
         c.Observaciones,
         c.ClienteId,

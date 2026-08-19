@@ -349,7 +349,11 @@ else
         {
             _moneda = comprobante.Moneda;
             _tipoCambio = comprobante.TipoCambio;
-            _serie = _seriesActivas.FirstOrDefault();
+            // La que el borrador traía, no la primera de la lista: con FAC y HON dadas de alta,
+            // tomar la primera convertía un borrador de honorarios en factura al recargar, sin
+            // decir nada. Si la serie guardada ya no está activa queda nulo y hay que elegir
+            // otra a mano, que es preferible a timbrar con una que nadie escogió.
+            _serie = _seriesActivas.FirstOrDefault(s => s.Id == comprobante.SerieId);
             _metodoPago = comprobante.MetodoPago;
             _formaPago = comprobante.FormaPago;
             _usoCfdi = comprobante.ReceptorUsoCfdi;
@@ -461,6 +465,17 @@ else
     {
         if (_comprobante is null) return false;
 
+        // Antes se filtraban con .Where(r => r.ProductoId is not null) y desaparecían sin
+        // mensaje. El servidor rechaza igual estos renglones —ResolverConceptosAsync—, así que
+        // esto no es la validación que cuenta: es decirlo antes del viaje y señalando cuál.
+        var sinProducto = _renglones.FindIndex(r => r.ProductoId is null);
+
+        if (sinProducto >= 0)
+        {
+            _error = ProblemaLocal($"El renglón {sinProducto + 1} no tiene un producto elegido.");
+            return false;
+        }
+
         _guardando = true;
         _error = null;
 
@@ -479,7 +494,7 @@ else
             EsPublicoEnGeneral ? _globalPeriodicidad : null,
             EsPublicoEnGeneral ? _globalMeses : null,
             EsPublicoEnGeneral ? _globalAnio : null,
-            [.. _renglones.Where(r => r.ProductoId is not null).Select((r, i) => new ConceptoDto(
+            [.. _renglones.Select((r, i) => new ConceptoDto(
                 null, i + 1, r.ProductoId, r.ClaveProdServ!, r.ClaveUnidad!, r.UnidadTexto, null,
                 r.Descripcion!, r.Cantidad, r.ValorUnitario, r.Importe, r.Descuento, r.ObjetoImp!, r.Impuestos))],
             _relacionados);
@@ -524,6 +539,20 @@ else
         _comprobante = await Emision.ObtenerAsync(exito!.ComprobanteId);
     }
 
+    /// <summary>
+    /// Un Problem Details armado en el navegador, para lo que se detecta antes de llamar al
+    /// servidor. Va sin <c>traceId</c> a propósito: no hubo petición, así que no hay nada que
+    /// buscar en el log, y <c>PanelErrores</c> oculta esa línea cuando viene vacía.
+    /// </summary>
+    private static DetalleProblema ProblemaLocal(string detalle) => new(
+        "urn:facturacion:error:captura-incompleta",
+        "Falta algo en la captura",
+        400,
+        detalle,
+        null,
+        string.Empty,
+        null);
+
     private sealed class RenglonConcepto
     {
         public Guid? ProductoId { get; set; }
@@ -537,6 +566,18 @@ else
         public decimal Descuento { get; set; }
         public IReadOnlyList<ImpuestoDeConceptoDto> Impuestos { get; set; } = [];
 
-        public decimal Importe => Math.Round(Cantidad * ValorUnitario - Descuento, 2);
+        /// <summary>
+        /// <c>Importe = Cantidad × ValorUnitario</c>, sin restar el descuento: en CFDI 4.0 el
+        /// descuento es un atributo aparte del concepto y tiene su propia columna. Restarlo aquí
+        /// hacía que la pantalla mostrara una cifra y el XML llevara otra.
+        ///
+        /// <para>
+        /// Seis decimales y redondeo bancario para que dé exactamente lo mismo que
+        /// <c>MotorDeImpuestos</c>, que es quien manda: el servidor recalcula este importe al
+        /// guardar y es el suyo el que acaba en el XML. Las dos constantes están duplicadas
+        /// porque el motor vive en el Server y todavía no lo alcanza el Client.
+        /// </para>
+        /// </summary>
+        public decimal Importe => Math.Round(Cantidad * ValorUnitario, 6, MidpointRounding.ToEven);
     }
 }

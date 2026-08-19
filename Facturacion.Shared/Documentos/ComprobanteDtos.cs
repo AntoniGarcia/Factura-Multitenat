@@ -8,10 +8,16 @@ namespace Facturacion.Shared.Documentos;
 /// llega de solo lectura— porque es la misma entidad la que pasa por los dos estados
 /// (CLAUDE.md §5, inmutabilidad: se congela, no se duplica en otra forma).
 /// </summary>
+/// <param name="SerieId">
+/// La serie elegida, que no es lo mismo que <paramref name="Serie"/>: el prefijo se copia al
+/// timbrar y hasta entonces va nulo, así que sin este identificador el formulario no tiene de
+/// dónde recuperar lo que el borrador traía guardado.
+/// </param>
 public sealed record ComprobanteDto(
     Guid Id,
     string Estatus,
     string TipoDeComprobante,
+    Guid? SerieId,
     string? Serie,
     int? Folio,
     string Moneda,
