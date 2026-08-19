@@ -54,6 +54,9 @@ public static class DocumentosModule
         // un corte de red deja facturas en un limbo del que nadie las saca.
         servicios.AddHostedService<ConciliacionDeTimbrados>();
 
+        // Recoge los borradores que deja atrás abrir «Nueva factura» y cerrar la pantalla.
+        servicios.AddHostedService<BarridoDeBorradoresHuerfanos>();
+
         return servicios;
     }
 
