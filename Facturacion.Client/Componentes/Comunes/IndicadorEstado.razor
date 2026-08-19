@@ -9,7 +9,7 @@
 *@
 
 <span class="indicador-estado indicador-estado-@Clase()">
-    @Texto()
+    @Nombre(Estatus)
 </span>
 
 @code {
@@ -27,7 +27,12 @@
         _ => "borrador"
     };
 
-    private string Texto() => Estatus switch
+    /// <summary>
+    /// El nombre que ve el usuario. Público y estático porque los filtros por estatus —el del
+    /// listado de documentos, por ejemplo— tienen que ofrecer exactamente las mismas palabras
+    /// que luego aparecen en la píldora de cada renglón.
+    /// </summary>
+    public static string Nombre(EstatusComprobante estatus) => estatus switch
     {
         EstatusComprobante.Borrador => "Borrador",
         EstatusComprobante.Timbrando => "Timbrando",
@@ -35,6 +40,6 @@
         EstatusComprobante.Error => "Error",
         EstatusComprobante.Cancelado => "Cancelada",
         EstatusComprobante.EnCancelacion => "En cancelación",
-        _ => Estatus.ToString()
+        _ => estatus.ToString()
     };
 }

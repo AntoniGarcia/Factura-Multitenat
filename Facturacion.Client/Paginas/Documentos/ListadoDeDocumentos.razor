@@ -1,0 +1,223 @@
+@page "/documentos"
+@attribute [Authorize(Policy = Permisos.Timbrar)]
+@using Facturacion.Client.Servicios.Documentos
+@using Facturacion.Shared.Comun
+@using Facturacion.Shared.Documentos
+@inject ServicioDeListado Listado
+@inject ServicioDeCancelacion Cancelacion
+@inject NavigationManager Navegacion
+@inject IDialogService Dialogos
+
+<PageTitle>Documentos</PageTitle>
+<TituloDePagina Texto="Documentos" />
+
+<PanelErrores Problema="_error" />
+
+@if (_aviso is not null)
+{
+    <div class="aviso-documentos" role="status">@_aviso</div>
+}
+
+<div class="filtros-documentos">
+    <MudTextField T="string"
+                  Label="Buscar"
+                  Value="_texto"
+                  ValueChanged="AlBuscar"
+                  DebounceInterval="300"
+                  Immediate="true"
+                  Clearable="true"
+                  Placeholder="RFC, nombre o folio…" />
+
+    <MudSelect T="EstatusComprobante?"
+               Label="Estatus"
+               Value="_estatus"
+               ValueChanged="AlFiltrarEstatus"
+               Clearable="true">
+        <MudSelectItem T="EstatusComprobante?" Value="@(null)">Todos</MudSelectItem>
+        @foreach (var estatus in Estatus)
+        {
+            <MudSelectItem T="EstatusComprobante?" Value="@estatus">@IndicadorEstado.Nombre(estatus)</MudSelectItem>
+        }
+    </MudSelect>
+
+    <CampoFecha Label="Desde" ValorUtc="_desdeUtc" ValorUtcCambiado="AlCambiarDesde" />
+    <CampoFecha Label="Hasta" ValorUtc="_hastaUtc" ValorUtcCambiado="AlCambiarHasta" />
+</div>
+
+<TablaDatos T="ComprobanteEnListaDto"
+            @ref="_tabla"
+            Columnas="_columnas"
+            CargarPagina="CargarAsync"
+            TextoSinDatos="No hay documentos que coincidan." />
+
+@code {
+    private static readonly EstatusComprobante[] Estatus = Enum.GetValues<EstatusComprobante>();
+
+    private TablaDatos<ComprobanteEnListaDto>? _tabla;
+    private DetalleProblema? _error;
+    private string? _aviso;
+    private string _texto = string.Empty;
+    private EstatusComprobante? _estatus;
+
+    // El rango que pide §1.1 del documento funcional: del inicio del año en curso a hoy.
+    private DateTime? _desdeUtc = InicioDelAnio();
+    private DateTime? _hastaUtc = DateTime.UtcNow;
+
+    private IReadOnlyList<ColumnaDeTabla<ComprobanteEnListaDto>> _columnas = [];
+
+    protected override void OnInitialized() => _columnas =
+    [
+        new("Folio", d => @<span class="cifra-tabular">@Folio(d)</span>, ClaveOrden: "folio", Tabular: true),
+        new("Fecha", d => @<span class="cifra-tabular">@d.FechaEmisionUtc.ToLocalTime().ToString("dd/MM/yyyy")</span>,
+            ClaveOrden: "fecha", Tabular: true),
+        new("RFC", d => @<span class="cifra-tabular">@d.ReceptorRfc</span>, Tabular: true),
+        new("Receptor", d => @<text>@d.ReceptorNombre</text>, ClaveOrden: "receptor"),
+        new("Total", d => @<span class="cifra-tabular">@d.Total.ToString("N2")</span>, ClaveOrden: "total", Tabular: true),
+        new("Estatus", d => @<IndicadorEstado Estatus="d.Estatus" />),
+        new("", d => @<div class="acciones-renglon">
+                          <MudButton Size="Size.Small" OnClick="@(() => Navegacion.NavigateTo($"/facturas/{d.Id}"))">
+                              Abrir
+                          </MudButton>
+
+                          @* Cancelar solo lo timbrado; verificar, cualquier cosa que tenga
+                             folio fiscal, que es lo único que el SAT conoce. *@
+                          <SiTienePermiso Permiso="@Permisos.Cancelar">
+                              @if (d.Estatus == EstatusComprobante.Timbrado)
+                              {
+                                  <MudButton Size="Size.Small" Color="Color.Error" OnClick="@(() => Cancelar(d))">
+                                      Cancelar
+                                  </MudButton>
+                              }
+
+                              @if (d.Uuid is not null)
+                              {
+                                  <MudButton Size="Size.Small" OnClick="@(() => VerificarAnteSat(d))">
+                                      Verificar SAT
+                                  </MudButton>
+                              }
+                          </SiTienePermiso>
+                      </div>)
+    ];
+
+    /// <summary>
+    /// Un borrador todavía no tiene folio y no debe aparentar tenerlo (CLAUDE.md §5): el folio
+    /// se asigna al timbrar.
+    /// </summary>
+    private static string Folio(ComprobanteEnListaDto documento)
+        => documento.Folio is { } folio
+            ? string.IsNullOrEmpty(documento.Serie) ? folio.ToString() : $"{documento.Serie}-{folio}"
+            : "—";
+
+    private static DateTime InicioDelAnio()
+    {
+        var hoy = DateTime.Now;
+        return new DateTime(hoy.Year, 1, 1, 0, 0, 0, DateTimeKind.Local).ToUniversalTime();
+    }
+
+    private async Task<ResultadoDePagina<ComprobanteEnListaDto>> CargarAsync(
+        PeticionDePagina peticion, CancellationToken ct)
+    {
+        var (pagina, error) = await Listado.ListarAsync(
+            _texto, _estatus, _desdeUtc, FinDelRango(),
+            peticion.Pagina, peticion.TamanoPagina, peticion.ClaveOrden, peticion.Descendente, ct);
+
+        _error = error;
+
+        return pagina is null
+            ? ResultadoDePagina<ComprobanteEnListaDto>.Vacio
+            : new ResultadoDePagina<ComprobanteEnListaDto>(pagina.Elementos, pagina.Total);
+    }
+
+    /// <summary>
+    /// El servidor corta con «menor que», así que el día elegido entra completo sumándole uno.
+    /// Sin esto, filtrar «hasta hoy» dejaría fuera todo lo emitido hoy.
+    /// </summary>
+    private DateTime? FinDelRango()
+        => _hastaUtc is { } hasta ? hasta.ToLocalTime().Date.AddDays(1).ToUniversalTime() : null;
+
+    private async Task AlBuscar(string texto)
+    {
+        _texto = texto ?? string.Empty;
+        await RecargarAsync();
+    }
+
+    private async Task AlFiltrarEstatus(EstatusComprobante? estatus)
+    {
+        _estatus = estatus;
+        await RecargarAsync();
+    }
+
+    private async Task AlCambiarDesde(DateTime? valorUtc)
+    {
+        _desdeUtc = valorUtc;
+        await RecargarAsync();
+    }
+
+    private async Task AlCambiarHasta(DateTime? valorUtc)
+    {
+        _hastaUtc = valorUtc;
+        await RecargarAsync();
+    }
+
+    private Task RecargarAsync() => _tabla?.RecargarAsync() ?? Task.CompletedTask;
+
+    // ── Cancelación (B8) ────────────────────────────────────────────────────────────────
+
+    private async Task Cancelar(ComprobanteEnListaDto documento)
+    {
+        var parametros = new DialogParameters<DialogoDeCancelacion>
+        {
+            { x => x.Folio, Folio(documento) }
+        };
+
+        var referencia = await Dialogos.ShowAsync<DialogoDeCancelacion>(
+            "Cancelar comprobante", parametros, new DialogOptions { CloseOnEscapeKey = true });
+
+        var resultado = await referencia.Result;
+
+        if (resultado is not { Canceled: false, Data: PeticionDeCancelacion peticion }) return;
+
+        _error = null;
+
+        // Clave nueva por cada intento real del usuario: protege del doble clic sin impedir
+        // que vuelva a intentarlo a propósito si la primera vez falló.
+        var (exito, error) = await Cancelacion.CancelarAsync(
+            documento.Id, peticion, Guid.NewGuid().ToString("N"));
+
+        _error = error;
+
+        if (exito is not null) _aviso = MensajeDe(exito);
+
+        await RecargarAsync();
+    }
+
+    private async Task VerificarAnteSat(ComprobanteEnListaDto documento)
+    {
+        _error = null;
+
+        var (estatus, error) = await Cancelacion.ConsultarEstatusAsync(documento.Id);
+
+        _error = error;
+
+        if (estatus is not null)
+            _aviso = $"El SAT reporta: {estatus.EstadoCfdi ?? "sin dato"}. " +
+                     $"{estatus.EsCancelable ?? "Sin información de cancelabilidad"}.";
+
+        await RecargarAsync();
+    }
+
+    /// <summary>
+    /// Una cancelación con aceptación del receptor no termina al pulsar el botón, y decir
+    /// «cancelada» ahí sería mentir: el comprobante sigue siendo válido hasta que el otro
+    /// conteste.
+    /// </summary>
+    private static string MensajeDe(ResultadoDeCancelacionDto resultado)
+        => resultado.EstadoSolicitud switch
+        {
+            "cancelada" => "El SAT canceló el comprobante.",
+            "en_espera_del_receptor" =>
+                "El SAT registró la solicitud. El comprobante sigue vigente hasta que el receptor " +
+                "la acepte o se venza el plazo de tres días hábiles.",
+            _ => "La solicitud quedó registrada. Usa «Verificar SAT» para conocer su desenlace."
+        };
+}
