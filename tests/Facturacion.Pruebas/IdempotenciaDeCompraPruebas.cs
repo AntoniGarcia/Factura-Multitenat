@@ -150,7 +150,7 @@ public sealed class IdempotenciaDeCompraPruebas : IAsyncLifetime
         Assert.Contains("idempotency-key-reutilizada", segunda.Cuerpo);
     }
 
-    /// <summary>Sin el encabezado no se ejecuta nada: CLAUDE.md §4 lo hace obligatorio.</summary>
+    /// <summary>Sin el encabezado no se ejecuta nada: ARQUITECTURA.md §4 lo hace obligatorio.</summary>
     [Fact]
     public async Task Sin_el_encabezado_la_peticion_se_rechaza()
     {

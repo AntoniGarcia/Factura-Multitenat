@@ -34,7 +34,7 @@ public sealed class ServicioDeEmision(
     /// <summary>Único tipo de comprobante de esta fase: factura de ingreso estándar.</summary>
     private const string TipoFactura = "I";
 
-    /// <summary>Sin objeto de exportación: fuera del alcance del MVP (CLAUDE.md §6).</summary>
+    /// <summary>Sin objeto de exportación: fuera del alcance del MVP (ARQUITECTURA.md §6).</summary>
     private const string SinExportacion = "01";
 
     public async Task<ComprobanteDto> CrearBorradorAsync(CancellationToken ct)
@@ -121,7 +121,7 @@ public sealed class ServicioDeEmision(
     }
 
     /// <summary>
-    /// Solo para un borrador nunca timbrado (CLAUDE.md §5, la única excepción a «nada se
+    /// Solo para un borrador nunca timbrado (ARQUITECTURA.md §5, la única excepción a «nada se
     /// borra»). Uno en <c>error</c> ya tomó folio: descartarlo dejaría un hueco sin explicación
     /// en la numeración, así que se descarta re-timbrando o dejándolo ahí, nunca borrándolo.
     /// </summary>
@@ -162,7 +162,7 @@ public sealed class ServicioDeEmision(
 
     /// <summary>
     /// El listado de documentos de §1 del documento funcional. No filtra por empresa: de eso
-    /// se encarga el filtro global de EF Core desde el claim (CLAUDE.md §5).
+    /// se encarga el filtro global de EF Core desde el claim (ARQUITECTURA.md §5).
     /// </summary>
     /// <param name="busca">
     /// RFC o nombre del receptor. Si el texto es un número se interpreta además como folio,
@@ -172,15 +172,30 @@ public sealed class ServicioDeEmision(
     /// <param name="hastaUtc">
     /// Fin del rango, <b>exclusivo</b> y ya en UTC. Quien llama traduce el día que eligió el
     /// usuario a instantes UTC: la columna guarda momentos, no fechas, y la tabla los muestra
-    /// en la hora del lugar de expedición (CLAUDE.md §5). Si el corte se hiciera aquí sobre
+    /// en la hora del lugar de expedición (ARQUITECTURA.md §5). Si el corte se hiciera aquí sobre
     /// la fecha en UTC, una factura de las 8 de la noche aparecería fuera del día en que se
     /// emitió.
     /// </param>
+    /// <param name="clienteId">
+    /// Receptor exacto. Filtra por la llave y no por el nombre congelado: si el cliente
+    /// cambió de razón social, sus facturas viejas llevan el nombre anterior y buscarlas
+    /// por texto las dejaría fuera.
+    /// </param>
+    /// <param name="tipoComprobante">
+    /// Clave de <c>c_TipoDeComprobante</c>: <c>I</c> ingreso, <c>P</c> pago. Nulo trae todo.
+    /// </param>
     public async Task<PaginaDeComprobantes> ListarAsync(
-        string? busca, EstatusComprobante? estatus, DateTime? desdeUtc, DateTime? hastaUtc,
+        string? busca, EstatusComprobante? estatus, Guid? clienteId, string? tipoComprobante,
+        DateTime? desdeUtc, DateTime? hastaUtc,
         int pagina, int tamano, string? orden, bool descendente, CancellationToken ct)
     {
         var consulta = baseDeDatos.Comprobantes.AsNoTracking();
+
+        if (clienteId is { } cliente)
+            consulta = consulta.Where(c => c.ClienteId == cliente);
+
+        if (!string.IsNullOrWhiteSpace(tipoComprobante))
+            consulta = consulta.Where(c => c.TipoDeComprobante == tipoComprobante);
 
         if (estatus is { } valor)
         {
@@ -321,7 +336,7 @@ public sealed class ServicioDeEmision(
         comprobante.ReceptorDomicilioFiscal = receptor?.DomicilioFiscalCp ?? string.Empty;
         comprobante.ReceptorUsoCfdi = peticion.ReceptorUsoCfdi ?? string.Empty;
 
-        // Información Global solo aplica al RFC genérico nacional (CLAUDE.md §7); en
+        // Información Global solo aplica al RFC genérico nacional (ARQUITECTURA.md §7); en
         // cualquier otro caso no se emite el nodo, así que ni se guardan los campos.
         var esPublicoEnGeneral = receptor?.Rfc == "XAXX010101000";
 

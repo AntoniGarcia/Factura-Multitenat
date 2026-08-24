@@ -1,3 +1,4 @@
+using System.Globalization;
 using Facturacion.Client;
 using Facturacion.Client.Servicios.Documentos;
 using Facturacion.Client.Servicios.Plataforma;
@@ -6,6 +7,18 @@ using Microsoft.AspNetCore.Components.Authorization;
 using Microsoft.AspNetCore.Components.Web;
 using Microsoft.AspNetCore.Components.WebAssembly.Hosting;
 using MudBlazor.Services;
+
+// Cultura fija, no la del navegador. En WebAssembly, CurrentCulture sale de la
+// configuración de idioma del equipo: un navegador en español de España formateaba los
+// precios de los timbres en euros. Con la fecha pasa lo mismo y se nota menos: en inglés
+// 03/10 es 10 de marzo y aquí 3 de octubre, y una factura mal fechada no salta a la vista.
+// Un sistema de CFDI mexicano no puede dejar que el idioma del navegador decida eso.
+//
+// Funciona porque Directory.Build.props tiene InvariantGlobalization en false: con la
+// globalización invariante, "C" no tendría de dónde sacar el símbolo y saldría un ¤.
+var mexico = new CultureInfo("es-MX");
+CultureInfo.DefaultThreadCurrentCulture = mexico;
+CultureInfo.DefaultThreadCurrentUICulture = mexico;
 
 var builder = WebAssemblyHostBuilder.CreateDefault(args);
 builder.RootComponents.Add<App>("#app");
@@ -45,7 +58,7 @@ builder.Services.AddSingleton<ServicioDeInstalacion>();
 
 // Las mismas seis políticas que el Server, desde la misma lista: el Client las necesita para
 // enrutar y para ocultar lo que no aplica. Es comodidad visual, NO protección — el Server
-// rechaza igual la operación aunque alguien llegue a la ruta a mano (CLAUDE.md §4).
+// rechaza igual la operación aunque alguien llegue a la ruta a mano (ARQUITECTURA.md §4).
 builder.Services.AddAuthorizationCore(opciones =>
 {
     foreach (var permiso in Permisos.Todos)
@@ -57,7 +70,7 @@ builder.Services.AddScoped<AuthenticationStateProvider, ProveedorEstadoAutentica
 builder.Services.AddTransient<ManejadorDeAutenticacion>();
 
 // MudBlazor no trae paleta propia aquí: lee las variables de mudblazor-tema.css, que a su
-// vez apuntan a las nuestras (CLAUDE.md §8). Ver ese archivo para el porqué.
+// vez apuntan a las nuestras (ARQUITECTURA.md §8). Ver ese archivo para el porqué.
 builder.Services.AddMudServices();
 
 // Cliente desnudo: lo usa el propio circuito de identidad. Sin el manejador, para que un

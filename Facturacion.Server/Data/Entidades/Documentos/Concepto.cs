@@ -3,7 +3,7 @@ namespace Facturacion.Server.Data.Entidades.Documentos;
 /// <summary>
 /// Un renglón del comprobante. Como el resto de la mitad B, guarda copias y no referencias:
 /// la descripción y las claves del SAT que van al XML son las que se capturaron, no las que
-/// el producto tenga hoy en el catálogo (CLAUDE.md §5).
+/// el producto tenga hoy en el catálogo (ARQUITECTURA.md §5).
 ///
 /// <para>
 /// Lleva <c>EmpresaId</c> aunque su padre ya lo tenga. Es deliberado: sin la columna, la

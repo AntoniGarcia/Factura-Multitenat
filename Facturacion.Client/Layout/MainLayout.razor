@@ -6,7 +6,7 @@
 @inject NavigationManager Navegacion
 
 @*
-    El único MainLayout del sistema (CLAUDE.md §8). Las páginas aportan solo el contenido
+    El único MainLayout del sistema (ARQUITECTURA.md §8). Las páginas aportan solo el contenido
     del área principal: nunca su propio encabezado, su propia barra ni su propio esqueleto.
 *@
 
@@ -16,6 +16,12 @@
 
 <div class="cascaron">
     <header class="barra-superior">
+        <button type="button" class="boton-colapso" @onclick="AlternarMenu"
+                aria-expanded="@(!_menuColapsado)" aria-controls="menu-lateral"
+                title="@(_menuColapsado ? "Expandir el menú" : "Encoger el menú")">
+            <MudIcon Icon="@Icons.Material.Filled.Menu" Size="Size.Small" />
+        </button>
+
         <span class="barra-superior-marca">Sistema de facturación</span>
 
         <SelectorDeEmpresa />
@@ -31,30 +37,47 @@
         <MenuDeUsuario />
     </header>
 
-    <div class="cuerpo">
-        <nav class="menu-lateral" aria-label="Secciones del sistema">
+    <div class="cuerpo @(_menuColapsado ? "menu-colapsado" : null)">
+        <nav id="menu-lateral" class="menu-lateral" aria-label="Secciones del sistema">
+            @* A nombre de quién se está facturando ahora mismo. El selector de empresa NO
+               vive aquí —está en la barra superior y en ningún otro lugar (ARQUITECTURA.md §8)—:
+               esto solo lo recuerda, que en multiempresa es la diferencia entre timbrar
+               con la llantera o con la cementera sin darse cuenta. *@
+            @if (EmpresaActiva is { } empresa)
+            {
+                <div class="menu-marca" title="@empresa.NombreFiscal">
+                    <span class="menu-marca-iniciales">@Iniciales(empresa.NombreFiscal)</span>
+                    <div class="menu-marca-texto">
+                        <div class="menu-marca-nombre">@empresa.NombreFiscal</div>
+                        <div class="menu-marca-rfc cifra-tabular">@empresa.Rfc</div>
+                    </div>
+                </div>
+            }
+
             @* Se agrupa por encabezado conservando el orden declarado en MenuPrincipal: el
                grupo sin título es el trabajo diario y va primero. Un grupo cuyas entradas
                esconde el permiso no pinta su encabezado, para no dejar títulos huérfanos. *@
-            @foreach (var grupo in MenuPrincipal.Elementos.Where(EsVisible).GroupBy(e => e.Grupo))
-            {
-                @if (grupo.Key is { } titulo)
+            <div class="menu-navegacion">
+                @foreach (var grupo in MenuPrincipal.Elementos.Where(EsVisible).GroupBy(e => e.Grupo))
                 {
-                    <h2 class="menu-grupo">@titulo</h2>
-                }
-
-                <ul>
-                    @foreach (var elemento in grupo)
+                    @if (grupo.Key is { } titulo)
                     {
-                        <li>
-                            <NavLink href="@elemento.Ruta" Match="NavLinkMatch.All">
-                                <MudIcon Icon="@elemento.Icono" Size="Size.Small" />
-                                <span>@elemento.Etiqueta</span>
-                            </NavLink>
-                        </li>
+                        <h2 class="menu-grupo">@titulo</h2>
                     }
-                </ul>
-            }
+
+                    <ul>
+                        @foreach (var elemento in grupo)
+                        {
+                            <li>
+                                <NavLink href="@elemento.Ruta" Match="NavLinkMatch.All" title="@elemento.Etiqueta">
+                                    <MudIcon Icon="@elemento.Icono" Size="Size.Small" />
+                                    <span>@elemento.Etiqueta</span>
+                                </NavLink>
+                            </li>
+                        }
+                    </ul>
+                }
+            </div>
         </nav>
 
         @* El @key es la fuga de datos entre empresas resuelta: al cambiar de empresa, Blazor
@@ -65,9 +88,20 @@
             {
                 <h1>@Encabezado.Titulo</h1>
             }
-            @if (Sesion.Sesion is { Empresas.Count: 0 })
+            @if (Sesion.Sesion is { Empresas.Count: 0 } && !EnAltaDeEmpresa)
             {
-                <p>Tu usuario todavía no tiene acceso a ninguna empresa. Pide a tu administrador que te agregue.</p>
+                @* Antes esto era un callejón sin salida: quien se registra llega aquí con cero
+                   empresas y no tiene administrador a quien pedirle nada, porque el
+                   administrador es él. *@
+                <p>Todavía no tienes ninguna empresa emisora. Da de alta la primera para empezar a facturar.</p>
+
+                <div class="acciones-formulario">
+                    <MudButton Variant="Variant.Filled" Color="Color.Primary"
+                               StartIcon="@Icons.Material.Filled.Add"
+                               OnClick="@(() => Navegacion.NavigateTo("/empresa/nueva"))">
+                        Dar de alta mi empresa
+                    </MudButton>
+                </div>
             }
             else
             {
@@ -79,6 +113,47 @@
 
 @code {
     private int? _timbresDisponibles;
+
+    /// <summary>
+    /// Menú encogido a riel de iconos. Vive en memoria y vuelve a expandirse al recargar:
+    /// las preferencias de este sistema viven en el perfil del servidor, no en el navegador
+    /// (ver el tema), y guardarla ahí pide un campo y su migración. Se decide aparte.
+    /// </summary>
+    private bool _menuColapsado;
+
+    private EmpresaDisponibleDto? EmpresaActiva
+        => Sesion.Sesion is { EmpresaActivaId: { } id } sesion
+            ? sesion.Empresas.FirstOrDefault(e => e.Id == id)
+            : null;
+
+    private void AlternarMenu() => _menuColapsado = !_menuColapsado;
+
+    /// <summary>
+    /// La única pantalla que se puede ver sin tener ninguna empresa. Sin esta excepción el
+    /// aviso de "no tienes empresa" taparía justo la página que sirve para dejar de no
+    /// tenerla, y el botón no llevaría a ningún lado.
+    /// </summary>
+    private bool EnAltaDeEmpresa =>
+        Navegacion.ToBaseRelativePath(Navegacion.Uri).TrimEnd('/')
+            .StartsWith("empresa/nueva", StringComparison.OrdinalIgnoreCase);
+
+    /// <summary>
+    /// Hasta dos iniciales del nombre fiscal, para el cuadro de la marca. Se salta las
+    /// palabras cortas —«de», «y», «la»— porque «GRUPO ALFA DE OCCIDENTE» debe dar «GA» y
+    /// no «GD».
+    /// </summary>
+    private static string Iniciales(string nombreFiscal)
+    {
+        var palabras = nombreFiscal
+            .Split(' ', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+            .Where(p => p.Length > 2)
+            .Take(2)
+            .ToArray();
+
+        return palabras.Length == 0
+            ? nombreFiscal.Length > 0 ? nombreFiscal[..1].ToUpperInvariant() : "?"
+            : string.Concat(palabras.Select(p => char.ToUpperInvariant(p[0])));
+    }
 
     protected override async Task OnInitializedAsync()
     {

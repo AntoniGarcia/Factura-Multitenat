@@ -9,7 +9,7 @@ public interface IBusquedaDeCatalogo
     Task<IReadOnlyList<ClaveSatDto>> BuscarAsync(string catalogo, string texto, CancellationToken ct);
 }
 
-/// <summary>Llama a <c>GET /api/catalogos/{catalogo}/buscar</c> (CLAUDE.md §7).</summary>
+/// <summary>Llama a <c>GET /api/catalogos/{catalogo}/buscar</c> (ARQUITECTURA.md §7).</summary>
 public sealed class BusquedaDeCatalogo(IHttpClientFactory fabrica) : IBusquedaDeCatalogo
 {
     public async Task<IReadOnlyList<ClaveSatDto>> BuscarAsync(string catalogo, string texto, CancellationToken ct)

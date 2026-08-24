@@ -14,7 +14,7 @@ public sealed class PaqueteConfiguracion : IEntityTypeConfiguration<Paquete>
 
         constructor.Property(p => p.Nombre).HasMaxLength(100);
 
-        // Los tres importes con la precisión de CLAUDE.md §5. El precio por timbre la
+        // Los tres importes con la precisión de ARQUITECTURA.md §5. El precio por timbre la
         // necesita de verdad: 1800.00 entre 1000 timbres da 1.80 exacto, pero un paquete de
         // 750 a 1350.00 da 1.8 periódico y con dos decimales se pierde.
         constructor.Property(p => p.PrecioPorTimbre).HasPrecision(18, 6);

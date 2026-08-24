@@ -1,4 +1,5 @@
 using Facturacion.Server.Modules.Documentos.Cancelacion;
+using Facturacion.Server.Modules.Documentos.Dobles;
 using Facturacion.Server.Modules.Documentos.Emision;
 using Facturacion.Server.Modules.Documentos.Pagos;
 using Facturacion.Server.Modules.Documentos.Pac;
@@ -21,6 +22,19 @@ public static class DocumentosModule
     public static IServiceCollection AddDocumentos(
         this IServiceCollection servicios, IConfiguration configuracion, IHostEnvironment entorno)
     {
+        // Dobles de prueba (REPARTO-EQUIPO.md §7): solo en Development para que B pueda probar
+        // sin esperar a que A termine sus módulos. Sin estos, B queda bloqueado desde octubre.
+        if (entorno.IsDevelopment())
+        {
+            servicios.AddScoped<IServicioCatalogosSat, DobleServicioCatalogosSat>();
+            servicios.AddScoped<IServicioClientes, DobleServicioClientes>();
+            servicios.AddScoped<IServicioProductos, DobleServicioProductos>();
+            servicios.AddScoped<IServicioEmpresaEmisora, DobleServicioEmpresaEmisora>();
+            servicios.AddScoped<IServicioFolios, DobleServicioFolios>();
+            servicios.AddScoped<IServicioTimbres, DobleServicioTimbres>();
+            servicios.AddScoped<IProveedorCsdParaTimbrado, DobleProveedorCsdParaTimbrado>();
+        }
+
         // Implementación real, no un doble: lee comprobantes de verdad. Es el único contrato
         // que va de B hacia A —lo consume el tablero— y hasta la fase B0 no existía, así que
         // la verificación de arranque lo reportaba como ausente en cada arranque.

@@ -5,7 +5,7 @@ namespace Facturacion.Server.Infra.Registro;
 
 /// <summary>
 /// Enmascara las propiedades estructuradas de cada evento de registro: RFC, contraseñas,
-/// tokens y contenido de certificados no llegan al log (CLAUDE.md §4).
+/// tokens y contenido de certificados no llegan al log (ARQUITECTURA.md §4).
 /// <para>
 /// Recorre también estructuras, listas y diccionarios, porque un objeto registrado con
 /// <c>{@Peticion}</c> esconde sus campos sensibles un nivel más abajo.

@@ -13,7 +13,7 @@ public sealed class UsuarioEmpresaConfiguracion : IEntityTypeConfiguration<Usuar
         constructor.HasKey(ue => new { ue.UsuarioId, ue.EmpresaId });
 
         // Restrict en todas las llaves: en este sistema nada se borra físicamente
-        // (CLAUDE.md §5), así que un borrado en cascada solo puede ser un accidente.
+        // (ARQUITECTURA.md §5), así que un borrado en cascada solo puede ser un accidente.
         constructor.HasOne(ue => ue.Usuario)
             .WithMany(u => u.Empresas)
             .HasForeignKey(ue => ue.UsuarioId)

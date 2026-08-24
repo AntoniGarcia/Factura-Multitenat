@@ -5,7 +5,7 @@ namespace Facturacion.Server.Data.Entidades.Plataforma;
 /// <c>EmpresaId</c> ni entra al filtro global.
 ///
 /// <para><b>El precio vive aquí y solo aquí</b></para>
-/// CLAUDE.md §4 lo dice sin margen: los precios los devuelve el servidor y el cliente solo
+/// ARQUITECTURA.md §4 lo dice sin margen: los precios los devuelve el servidor y el cliente solo
 /// manda el id del paquete. Un precio que viaja desde el navegador es un precio que el
 /// usuario puede editar. Nada en la petición de compra puede influir en lo que se cobra.
 /// </summary>

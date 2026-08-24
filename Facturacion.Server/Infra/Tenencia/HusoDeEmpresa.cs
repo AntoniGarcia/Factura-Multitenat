@@ -8,7 +8,7 @@ namespace Facturacion.Server.Infra.Tenencia;
 ///
 /// <para><b>Por qué esto existe en vez de usar <c>DateTime.UtcNow</c> y ya</b></para>
 /// La base guarda todo en UTC y se muestra en el huso del lugar de expedición
-/// (CLAUDE.md §5). México va seis horas detrás, así que entre las 18:00 y la medianoche
+/// (ARQUITECTURA.md §5). México va seis horas detrás, así que entre las 18:00 y la medianoche
 /// locales el «hoy» de UTC ya es mañana. Un corte mensual hecho con la fecha UTC mete las
 /// facturas de la tarde del día 31 en el mes siguiente, y el reporte no cuadra contra la
 /// contabilidad del contador — que es el único cuadre que importa.

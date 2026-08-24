@@ -15,7 +15,7 @@ namespace Facturacion.Server.Infra.Seguridad;
 ///
 /// <para>
 /// Las salidas eran tres: aflojar la CSP con <c>'unsafe-inline'</c>, apagar el huellado de
-/// assets, o autorizar ese script concreto por su hash. CLAUDE.md §4 descarta la primera
+/// assets, o autorizar ese script concreto por su hash. ARQUITECTURA.md §4 descarta la primera
 /// —<c>wasm-unsafe-eval</c> es lo único que se concede—, y la segunda resultó imposible: ni
 /// <c>StaticWebAssetFingerprintingEnabled</c> ni <c>StaticWebAssetsFingerprintContent</c>
 /// desactivan el huellado de los archivos del framework. Queda la tercera.
@@ -29,7 +29,7 @@ namespace Facturacion.Server.Infra.Seguridad;
 /// resuelto, y el arranque lanzaba <c>InvalidOperationException</c> antes de poder escuchar
 /// una sola petición. Se descubrió publicando de verdad y corriendo el binario publicado,
 /// no leyendo el código: "no des por hecho que funciona porque el proyecto compila"
-/// (CLAUDE.md §9).
+/// (ARQUITECTURA.md §9).
 /// <para>
 /// La solución robusta —en <see cref="CabecerasDeSeguridad"/>— calcula el hash de los bytes
 /// que de verdad se van a mandar por el cable en la primera respuesta HTML, sin importar

@@ -34,7 +34,8 @@ public static class PerfilEndpoints
             ? Results.NotFound()
             : Results.Ok(new PerfilDto(
                 usuario.Nombre, usuario.Email ?? string.Empty,
-                Temas.EsValido(usuario.TemaPreferido) ? usuario.TemaPreferido! : Temas.Claro));
+                Temas.EsValido(usuario.TemaPreferido) ? usuario.TemaPreferido! : Temas.Claro,
+                PuedeCambiarContrasena: !usuario.CreadoPorAdministrador));
     }
 
     private static async Task<IResult> ActualizarNombre(
@@ -91,6 +92,17 @@ public static class PerfilEndpoints
         var usuario = await usuarios.FindByIdAsync(id.ToString());
 
         if (usuario is null) return Results.NotFound();
+
+        // Se rechaza aquí y no solo escondiendo el formulario: ocultar un botón no es
+        // proteger (ARQUITECTURA.md §4). Sin esta comprobación, un POST a mano bastaría para que
+        // el usuario se sacara de encima al administrador que le administra el acceso.
+        if (usuario.CreadoPorAdministrador)
+            return Results.ValidationProblem(
+                new Dictionary<string, string[]>
+                {
+                    ["contrasena"] = ["Tu contraseña la administra quien te dio de alta. Pídele que la cambie."]
+                },
+                title: "No puedes cambiar tu contraseña");
 
         var resultado = await usuarios.ChangePasswordAsync(usuario, peticion.ContrasenaActual, peticion.ContrasenaNueva);
 

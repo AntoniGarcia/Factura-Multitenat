@@ -3,7 +3,7 @@ using Microsoft.AspNetCore.Components;
 namespace Facturacion.Client.Componentes.Comunes;
 
 /// <summary>Una columna de <see cref="TablaDatos{T}"/>.</summary>
-/// <param name="Encabezado">Texto del encabezado, en sentence case (CLAUDE.md §8).</param>
+/// <param name="Encabezado">Texto del encabezado, en sentence case (ARQUITECTURA.md §8).</param>
 /// <param name="Contenido">Cómo pintar la celda para un renglón.</param>
 /// <param name="ClaveOrden">
 /// Clave que el servidor entiende para ordenar por esta columna. Nula si la columna no se
@@ -11,7 +11,7 @@ namespace Facturacion.Client.Componentes.Comunes;
 /// </param>
 /// <param name="Tabular">
 /// Verdadero si el contenido es RFC, UUID, folio o importe: se pinta con
-/// <c>--tipografia-monoespaciada</c> y cifras tabulares (CLAUDE.md §8).
+/// <c>--tipografia-monoespaciada</c> y cifras tabulares (ARQUITECTURA.md §8).
 /// </param>
 public sealed record ColumnaDeTabla<T>(
     string Encabezado,

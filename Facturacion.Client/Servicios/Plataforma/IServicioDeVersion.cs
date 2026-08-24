@@ -8,7 +8,7 @@ namespace Facturacion.Client.Servicios.Plataforma;
 /// Compara la versión con la que se compiló este WebAssembly contra la que el servidor
 /// dice tener ahora mismo. Un catálogo del SAT cacheado y viejo produce comprobantes mal
 /// emitidos: por eso <c>GuardaDeVersion</c> fuerza la recarga en cuanto difieren
-/// (CLAUDE.md §4).
+/// (ARQUITECTURA.md §4).
 /// </summary>
 public interface IServicioDeVersion
 {

@@ -24,7 +24,7 @@ public sealed class OpcionesDeJwt
     [Required, MinLength(32)]
     public string ClaveDeFirma { get; set; } = string.Empty;
 
-    /// <summary>Vida del access token. CLAUDE.md §4 la fija en 15 minutos.</summary>
+    /// <summary>Vida del access token. ARQUITECTURA.md §4 la fija en 15 minutos.</summary>
     [Range(1, 15)]
     public int MinutosDeVida { get; set; } = 15;
 

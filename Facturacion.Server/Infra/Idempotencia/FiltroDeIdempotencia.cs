@@ -11,7 +11,7 @@ using Microsoft.EntityFrameworkCore;
 namespace Facturacion.Server.Infra.Idempotencia;
 
 /// <summary>
-/// Hace cumplir el <c>Idempotency-Key</c> de CLAUDE.md §4 en las operaciones que cobran.
+/// Hace cumplir el <c>Idempotency-Key</c> de ARQUITECTURA.md §4 en las operaciones que cobran.
 ///
 /// <para><b>La clave se reclama ANTES de ejecutar</b></para>
 /// El orden es lo único que hace que esto funcione. Si se ejecutara primero y se guardara
@@ -39,7 +39,7 @@ public sealed class FiltroDeIdempotencia(
     /// <summary>Tope de la columna en <c>ClaveIdempotenciaConfiguracion</c>.</summary>
     private const int LargoMaximoClave = 128;
 
-    /// <summary>Ventana de CLAUDE.md §4. La purga por horas borra lo que la rebasa.</summary>
+    /// <summary>Ventana de ARQUITECTURA.md §4. La purga por horas borra lo que la rebasa.</summary>
     private static readonly TimeSpan Ventana = TimeSpan.FromHours(24);
 
     /// <summary>Estado que marca «reclamada pero todavía sin respuesta».</summary>

@@ -3,7 +3,7 @@ namespace Facturacion.Server.Data.Entidades.Plataforma.Catalogos;
 /// <summary>
 /// Catálogo <c>c_CodigoPostal</c> (~95,700 códigos, repartido en dos hojas en el archivo del
 /// SAT). Es el que valida <c>DomicilioFiscalReceptor</c>, obligatorio en CFDI 4.0
-/// (CLAUDE.md §7).
+/// (ARQUITECTURA.md §7).
 /// <para>
 /// No guarda el nombre de la localidad: el archivo del SAT trae ese catálogo aparte
 /// (<c>C_Localidad</c>) pero nada en el alcance de esta fase necesita mostrarlo —es relevante

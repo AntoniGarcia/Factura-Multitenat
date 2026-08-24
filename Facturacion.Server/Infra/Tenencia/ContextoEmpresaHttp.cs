@@ -6,7 +6,7 @@ namespace Facturacion.Server.Infra.Tenencia;
 /// <summary>
 /// Lee la empresa activa, el usuario y los permisos de los claims del access token.
 /// Es la única fuente de la tenencia: ningún endpoint recibe un identificador de empresa
-/// por ruta, query o cuerpo (CLAUDE.md §4).
+/// por ruta, query o cuerpo (ARQUITECTURA.md §4).
 /// </summary>
 public sealed class ContextoEmpresaHttp(IHttpContextAccessor accesor) : IContextoEmpresaInterno
 {

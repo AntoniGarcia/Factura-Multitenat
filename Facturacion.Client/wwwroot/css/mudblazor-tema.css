@@ -106,3 +106,37 @@
 .mud-button-root {
     min-height: var(--alto-control);
 }
+
+/*
+  Encabezado de tabla del rediseño: rótulo chico en versalitas sobre el gris de fondo, para
+  que la fila de títulos no compita con los datos. Va aquí, en el puente, y no en cada
+  pantalla: TablaDatos monta un MudTable y todos los listados del sistema pasan por él.
+*/
+.mud-table-head .mud-table-cell {
+    height: var(--alto-fila-tabla);
+    padding: 0 0.5rem;
+    background: var(--fondo);
+    border-bottom: 1px solid var(--borde);
+    color: var(--texto-suave);
+    font-size: var(--etiqueta-tam);
+    font-weight: var(--peso-etiqueta);
+    letter-spacing: var(--etiqueta-espaciado);
+    text-transform: uppercase;
+}
+
+/* El rótulo ordenable hereda el color del encabezado: sin esto MudBlazor le pone el suyo
+   y la columna por la que se ordena se ve de otro color que las demás. */
+.mud-table-head .mud-table-cell .mud-button-root.mud-table-sort-label {
+    color: inherit;
+    font: inherit;
+    letter-spacing: inherit;
+}
+
+.mud-table-body .mud-table-cell {
+    padding: 0 0.5rem;
+    border-bottom: 1px solid var(--borde);
+}
+
+.mud-table-body .mud-table-row:last-child .mud-table-cell {
+    border-bottom: none;
+}

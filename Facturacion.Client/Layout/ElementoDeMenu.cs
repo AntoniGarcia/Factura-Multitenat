@@ -24,7 +24,7 @@ public sealed record ElementoDeMenu(string Ruta, string Etiqueta, string Icono, 
 ///
 /// <para>
 /// Son <b>encabezados</b>, no menús desplegables anidados. Un árbol de desplegables dentro de
-/// desplegables es lo que peor sobrevive al paso a barra inferior en móvil (CLAUDE.md §8), y
+/// desplegables es lo que peor sobrevive al paso a barra inferior en móvil (ARQUITECTURA.md §8), y
 /// obliga a dos clics para llegar a donde antes se llegaba con uno.
 /// </para>
 ///
@@ -32,7 +32,7 @@ public sealed record ElementoDeMenu(string Ruta, string Etiqueta, string Icono, 
 /// Aquí <b>solo</b> aparece lo que existe y funciona. Nada de entradas apagadas de módulos
 /// que llegarán: un menú lleno de opciones muertas enseña al usuario a desconfiar de lo que
 /// ve. Los módulos de la fase 2 —Cotizaciones, Notaría, Constructoras, Comercio Exterior,
-/// Carta Porte, Addendas— entran cuando se construyan (CLAUDE.md §6).
+/// Carta Porte, Addendas— entran cuando se construyan (ARQUITECTURA.md §6).
 /// </para>
 /// </summary>
 public static class MenuPrincipal
@@ -47,8 +47,10 @@ public static class MenuPrincipal
     [
         // ── Diario: sin encabezado, siempre a la vista ──────────────────────────────────
         new("/", "Inicio", "home", Permiso: null),
-        new("/facturas/nueva", "Nueva factura", "receipt_long", Permisos.Timbrar),
-        new("/pagos/nuevo", "Nuevo pago", "payments", Permisos.Timbrar),
+        // Emitir no tiene entrada propia: se entra por «Documentos», que es donde se ve lo
+        // que ya se emitió, y desde ahí se crea. Tener «Nueva factura» y «Documentos» como
+        // hermanas obligaba a elegir entre dos puertas al mismo cuarto antes de saber
+        // cuál de las dos se quería.
         new("/documentos", "Documentos", "description", Permisos.Timbrar),
         new("/clientes", "Clientes", "groups", Permiso: null),
         new("/productos", "Productos", "inventory", Permiso: null),

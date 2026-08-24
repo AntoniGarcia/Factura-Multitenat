@@ -238,7 +238,7 @@ namespace Facturacion.Server.Migrations
 
             // ── Reserva de folios ────────────────────────────────────────────────────────
             //
-            // CLAUDE.md §5: el folio se aparta con UPDATE ... WITH (UPDLOCK) dentro de una
+            // ARQUITECTURA.md §5: el folio se aparta con UPDATE ... WITH (UPDLOCK) dentro de una
             // transacción corta, nunca con SELECT MAX(Folio)+1. Va como script en la
             // migración y no como código C# que lo cree al arrancar, para que el esquema de
             // la base sea reproducible desde las migraciones y nada más.
@@ -249,7 +249,7 @@ namespace Facturacion.Server.Migrations
             // ventana en la que dos peticiones leen el mismo número.
             //
             // Por qué recibe @EmpresaId: la empresa viene del claim del token, nunca del
-            // cliente (CLAUDE.md §4). El procedimiento la exige en el WHERE, así que una
+            // cliente (ARQUITECTURA.md §4). El procedimiento la exige en el WHERE, así que una
             // serie de otra empresa sencillamente no coincide y no entrega folio.
             migrationBuilder.Sql("""
                 CREATE OR ALTER PROCEDURE dbo.ReservarFolio

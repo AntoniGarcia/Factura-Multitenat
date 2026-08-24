@@ -6,7 +6,7 @@ namespace Facturacion.Server.Infra.Almacen;
 /// <summary>
 /// <c>dotnet run -- --generar-llave-maestra</c>. Imprime un certificado nuevo en base 64
 /// para <c>Almacen:LlaveMaestraPfx</c>, que es lo que protege el llavero de Data Protection
-/// y, con él, los CSD guardados (CLAUDE.md §4).
+/// y, con él, los CSD guardados (ARQUITECTURA.md §4).
 /// <para>
 /// Existe como comando y no como generación automática al arrancar a propósito: una clave
 /// maestra que la aplicación se inventa sola y guarda junto a lo que protege no protege de

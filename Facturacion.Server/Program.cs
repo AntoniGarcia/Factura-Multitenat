@@ -29,7 +29,7 @@ constructor.Services.AddDocumentos(constructor.Configuration, constructor.Enviro
 
 var aplicacion = constructor.Build();
 
-// Comando de carga de catálogos del SAT (CLAUDE.md §7): no levanta el servidor, solo usa el
+// Comando de carga de catálogos del SAT (ARQUITECTURA.md §7): no levanta el servidor, solo usa el
 // contenedor de dependencias ya armado para llegar a la base. La lógica vive en
 // CargaDeCatalogosCli, no aquí.
 // Con un tercer argumento se recarga solo ese catálogo; sin él, los veintiuno.

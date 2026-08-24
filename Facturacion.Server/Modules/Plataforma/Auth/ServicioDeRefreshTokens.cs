@@ -12,7 +12,7 @@ namespace Facturacion.Server.Modules.Plataforma.Auth;
 public sealed record RefreshEmitido(string EnClaro, RefreshToken Registro);
 
 /// <summary>
-/// Rotación de refresh tokens con detección de reutilización (CLAUDE.md §4).
+/// Rotación de refresh tokens con detección de reutilización (ARQUITECTURA.md §4).
 ///
 /// <para><b>Cómo funciona</b></para>
 /// Cada sesión es una familia. Cada canje invalida el token usado y emite otro de la misma
@@ -154,7 +154,7 @@ public sealed class ServicioDeRefreshTokens(
 
     /// <summary>
     /// Token aleatorio de 32 bytes, igual de fuerte que un refresh token. Lo reutiliza
-    /// <c>ServicioDeInvitaciones</c>: es el mismo problema —un secreto de un solo uso que
+    /// el token de refresco: es el mismo problema —un secreto de un solo uso que
     /// nunca se guarda en claro—, no hace falta un generador distinto.
     /// </summary>
     public static string GenerarToken() => Base64UrlEncoder(RandomNumberGenerator.GetBytes(32));

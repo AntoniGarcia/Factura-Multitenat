@@ -3,7 +3,7 @@ using System.Text.Json.Serialization;
 namespace Facturacion.Shared.Comun;
 
 /// <summary>
-/// Estatus de un comprobante. Son exactamente estos seis y ninguno más (CLAUDE.md §5).
+/// Estatus de un comprobante. Son exactamente estos seis y ninguno más (ARQUITECTURA.md §5).
 /// Vive en <c>Comun/</c>, carpeta de la mitad A, pero lo consume la mitad B en todo momento:
 /// modificar este enum es en la práctica un cambio de contrato y exige acuerdo de los dos.
 /// </summary>
@@ -30,7 +30,7 @@ public enum EstatusComprobante
 }
 
 /// <summary>
-/// Conversión a la cadena exacta de CLAUDE.md §5, para lo que no pasa por JSON:
+/// Conversión a la cadena exacta de ARQUITECTURA.md §5, para lo que no pasa por JSON:
 /// columnas de la base, filtros de consulta y bitácora.
 /// </summary>
 public static class EstatusComprobanteExtensiones

@@ -31,7 +31,7 @@ public static class TimbresEndpoints
         grupo.MapGet("/movimientos/exportar", ExportarMovimientos).RequireAuthorization(Permisos.ComprarTimbres);
 
         // El único que cobra, y el único con filtro de idempotencia. Sin él, un doble clic o
-        // un reintento del navegador dejarían dos compras del mismo paquete (CLAUDE.md §4).
+        // un reintento del navegador dejarían dos compras del mismo paquete (ARQUITECTURA.md §4).
         grupo.MapPost("/comprar", Comprar)
             .RequireAuthorization(Permisos.ComprarTimbres)
             .AddEndpointFilter<FiltroDeIdempotencia>();

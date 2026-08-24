@@ -1,0 +1,68 @@
+@using Facturacion.Client.Componentes.Comunes
+@using Facturacion.Client.Servicios.Plataforma
+@using Facturacion.Shared.Comun
+@inject ServicioDeUsuarios Usuarios
+
+<MudDialog>
+    <DialogContent>
+        <p class="seccion-ayuda">
+            Contraseña nueva para @NombreUsuario. No hace falta la anterior: esto sirve
+            justamente para cuando se olvidó.
+        </p>
+
+        @* Se avisa antes de guardar, no después: cerrar las sesiones abiertas es lo que
+           hace útil este botón cuando alguien deja la empresa, pero si el motivo es un
+           simple olvido, conviene saber que va a tener que volver a entrar. *@
+        <p class="seccion-ayuda">
+            Al guardar se cierran todas sus sesiones abiertas y tendrá que entrar de nuevo
+            con la contraseña nueva. Comunícasela tú.
+        </p>
+
+        <PanelErrores Problema="_error" />
+
+        <MudTextField @bind-Value="_contrasena" Label="Contraseña nueva" Immediate="true"
+                      InputType="@(_ver ? InputType.Text : InputType.Password)"
+                      Adornment="Adornment.End"
+                      AdornmentIcon="@(_ver ? Icons.Material.Filled.VisibilityOff : Icons.Material.Filled.Visibility)"
+                      OnAdornmentClick="@(() => _ver = !_ver)"
+                      MaxLength="128" Disabled="@_guardando" />
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="Cancelar">Cancelar</MudButton>
+        <MudButton Color="Color.Primary" Variant="Variant.Filled" OnClick="Guardar"
+                   Disabled="@(_guardando || string.IsNullOrWhiteSpace(_contrasena))">
+            @(_guardando ? "Guardando…" : "Cambiar contraseña")
+        </MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter]
+    private IMudDialogInstance Dialogo { get; set; } = default!;
+
+    [Parameter, EditorRequired]
+    public Guid UsuarioId { get; set; }
+
+    [Parameter, EditorRequired]
+    public string NombreUsuario { get; set; } = string.Empty;
+
+    private string _contrasena = string.Empty;
+    private bool _ver;
+    private DetalleProblema? _error;
+    private bool _guardando;
+
+    private async Task Guardar()
+    {
+        _guardando = true;
+        _error = await Usuarios.CambiarContrasenaAsync(UsuarioId, _contrasena);
+        _guardando = false;
+
+        if (_error is not null) return;
+
+        // No se queda en memoria después de usarla.
+        _contrasena = string.Empty;
+        Dialogo.Close(DialogResult.Ok(true));
+    }
+
+    private void Cancelar() => Dialogo.Cancel();
+}

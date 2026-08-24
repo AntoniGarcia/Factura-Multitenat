@@ -2,7 +2,7 @@ namespace Facturacion.Server.Data.Entidades.Plataforma;
 
 /// <summary>
 /// Respuesta guardada de una petición con <c>Idempotency-Key</c>. Ante una repetición se
-/// devuelve exactamente la misma respuesta durante 24 horas (CLAUDE.md §4).
+/// devuelve exactamente la misma respuesta durante 24 horas (ARQUITECTURA.md §4).
 /// <para>
 /// Lleva <c>EmpresaId</c> y sí entra al filtro global: la clave de una empresa no puede
 /// colisionar con la de otra ni devolverle su respuesta.

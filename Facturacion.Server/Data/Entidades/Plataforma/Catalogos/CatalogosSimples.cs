@@ -16,7 +16,7 @@ public interface ISatCatalogoSimple
 
 /// <summary>
 /// Los catálogos del SAT cuya única información, además de la clave y la descripción, es su
-/// vigencia. Cada uno es su propia tabla —CLAUDE.md §7 pide justo eso, no una tabla
+/// vigencia. Cada uno es su propia tabla —ARQUITECTURA.md §7 pide justo eso, no una tabla
 /// clave-valor genérica— pero como no tienen columnas propias que los distingan, viven
 /// juntos en un solo archivo en vez de repetir la misma forma ocho veces.
 /// <para>

@@ -5,7 +5,7 @@ namespace Facturacion.Server.Infra.Almacen;
 
 /// <summary>
 /// Guarda y recupera archivos de empresa <b>cifrados y fuera de <c>wwwroot</c></b>
-/// (CLAUDE.md §4): logos, certificados y llaves privadas.
+/// (ARQUITECTURA.md §4): logos, certificados y llaves privadas.
 ///
 /// <para><b>El cifrado va atado a la empresa, no solo a la aplicación</b></para>
 /// El protector se deriva de la empresa dueña del archivo, así que un blob de la llantera

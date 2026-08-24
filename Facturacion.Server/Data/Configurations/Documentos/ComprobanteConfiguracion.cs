@@ -41,7 +41,7 @@ public sealed class ComprobanteConfiguracion : IEntityTypeConfiguration<Comproba
         constructor.Property(c => c.GlobalMeses).HasMaxLength(2);
 
         // Dinero a seis decimales, cálculo y almacenamiento; la presentación redondea a dos
-        // (CLAUDE.md §5). El tipo de cambio también: el SAT admite hasta seis.
+        // (ARQUITECTURA.md §5). El tipo de cambio también: el SAT admite hasta seis.
         constructor.Property(c => c.TipoCambio).HasPrecision(18, 6);
         constructor.Property(c => c.SubTotal).HasPrecision(18, 6);
         constructor.Property(c => c.Descuento).HasPrecision(18, 6);
@@ -60,7 +60,7 @@ public sealed class ComprobanteConfiguracion : IEntityTypeConfiguration<Comproba
 
         // Cascada hacia los hijos: conceptos, relacionados e intentos no tienen vida propia
         // fuera de su comprobante. Solo se ejerce al borrar un borrador nunca timbrado, que
-        // es la única excepción a «nada se borra» (CLAUDE.md §5).
+        // es la única excepción a «nada se borra» (ARQUITECTURA.md §5).
         constructor.HasMany(c => c.Conceptos)
             .WithOne(x => x.Comprobante)
             .HasForeignKey(x => x.ComprobanteId)

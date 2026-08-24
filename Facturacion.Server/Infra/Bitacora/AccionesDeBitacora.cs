@@ -29,7 +29,7 @@ public static class AccionesDeBitacora
 
     /// <summary>
     /// Entrega de la llave privada al módulo de timbrado. Se registra <b>cada</b> llamada:
-    /// es el único rastro de quién pidió el material del sello y cuándo (CLAUDE.md §4).
+    /// es el único rastro de quién pidió el material del sello y cuándo (ARQUITECTURA.md §4).
     /// </summary>
     public const string CsdEntregadoParaTimbrar = "csd_entregado_para_timbrar";
 
@@ -40,7 +40,7 @@ public static class AccionesDeBitacora
 
     /// <summary>
     /// Folio apartado que no llegó a usarse. Es lo que justifica un hueco en la numeración
-    /// ante una revisión; el folio no se recicla (CLAUDE.md §5).
+    /// ante una revisión; el folio no se recicla (ARQUITECTURA.md §5).
     /// </summary>
     public const string FolioAbandonado = "folio_abandonado";
 
@@ -66,12 +66,16 @@ public static class AccionesDeBitacora
     public const string TimbreDevuelto = "timbre_devuelto";
     public const string ReservaAbandonada = "reserva_de_timbre_abandonada";
 
-    // ── Usuarios e invitaciones (fase 8) ───────────────────────────────────────────────
-    public const string UsuarioInvitado = "usuario_invitado";
+    // ── Usuarios ───────────────────────────────────────────────────────────────────────
+    // Las cinco acciones de invitación se eliminaron con el sistema de invitaciones. Los
+    // renglones de bitácora que ya las llevan se quedan como están: la bitácora es un
+    // registro histórico y reescribirla para que cuadre con el código de hoy sería
+    // exactamente lo que una bitácora no debe permitir.
+    public const string CuentaRegistrada = "cuenta_registrada";
+    public const string UsuarioCreado = "usuario_creado";
+    public const string EmpresaCreada = "empresa_creada";
     public const string AccesoOtorgadoDirecto = "acceso_otorgado_directo";
-    public const string InvitacionReenviada = "invitacion_reenviada";
-    public const string InvitacionRevocada = "invitacion_revocada";
-    public const string InvitacionAceptada = "invitacion_aceptada";
+    public const string CorreoCambiado = "correo_cambiado";
     public const string PermisosActualizados = "permisos_actualizados";
     public const string UsuarioDesactivado = "usuario_desactivado";
     public const string UsuarioReactivado = "usuario_reactivado";
@@ -95,6 +99,5 @@ public static class EntidadesDeBitacora
     public const string ReservaTimbre = "ReservaTimbre";
     public const string Usuario = "Usuario";
     public const string UsuarioEmpresa = "UsuarioEmpresa";
-    public const string Invitacion = "Invitacion";
     public const string Perfil = "Perfil";
 }

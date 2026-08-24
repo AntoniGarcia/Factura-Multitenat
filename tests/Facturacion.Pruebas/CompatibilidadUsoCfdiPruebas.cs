@@ -10,7 +10,7 @@ namespace Facturacion.Pruebas;
 /// La prueba obligatoria de la fase 3 (PROMPT-FASES-A.md): que
 /// <see cref="ServicioCatalogosSat.EsUsoCfdiCompatibleAsync"/> acierte en al menos seis
 /// combinaciones de régimen y uso, incluyendo 616 + S01 del público en general
-/// (CLAUDE.md §7).
+/// (ARQUITECTURA.md §7).
 /// <para>
 /// Los datos que siembra son reales, tomados del archivo del SAT cargado en desarrollo
 /// —no inventados—: <c>c_UsoCFDI</c> trae su propia matriz de compatibilidad en la columna
@@ -63,7 +63,7 @@ public sealed class CompatibilidadUsoCfdiPruebas : IAsyncLifetime
     }
 
     [Theory]
-    // El caso exigido por CLAUDE.md §7: público en general.
+    // El caso exigido por ARQUITECTURA.md §7: público en general.
     [InlineData("S01", "616", false, true)]
     [InlineData("G01", "601", true, true)]
     [InlineData("D01", "605", false, true)]

@@ -6,43 +6,47 @@
 .indicador-estado {
     display: inline-flex;
     align-items: center;
-    height: 22px;
-    padding: 0 0.5rem;
-    border-radius: var(--radio);
-    border: 1px solid transparent;
-    font-size: 0.75rem;
-    font-weight: 500;
-    color: var(--texto-inverso);
+    padding: 0.125rem 0.5rem;
+    /* Radio completo y no --radio: la píldora tiene que distinguirse de un botón y de una
+       celda de un vistazo, y la forma lo hace antes que el color. */
+    border-radius: 9999px;
+    font-size: 0.6875rem;
+    font-weight: var(--peso-titulo);
     white-space: nowrap;
 }
 
-/* El borde se pinta con --borde-fuerte y no con el color del propio estado: en el tema
-   oscuro, "cancelada" contra la superficie apenas pasa 2.5:1, por debajo del 3:1 de
-   contraste no textual que pide la 1.4.11. --borde-fuerte sí pasa 3:1 en los tres temas
-   (ver variables.css) y es lo que mantiene la píldora distinguible del fondo. */
+/*
+  Texto de color sobre un tinte del 10 % del mismo color, no bloque sólido.
+
+  El sólido de antes obligaba a un borde con --borde-fuerte porque la píldora entera
+  competía con la superficie (1.4.11, 3:1). Con el tinte el problema cambia de sitio: lo
+  que hay que leer es el texto contra el tinte (1.4.3, 4.5:1), y por eso el color del
+  texto lo pone cada tema en --estado-*-texto, calculado y verificado en variables.css.
+  El fondo sí es el mismo tono en los tres temas.
+*/
 .indicador-estado-timbrada {
-    background: var(--estado-timbrada);
-    border-color: var(--borde-fuerte);
+    background: rgba(var(--estado-timbrada-rgb), 0.1);
+    color: var(--estado-timbrada-texto);
 }
 
 .indicador-estado-borrador {
-    background: var(--estado-borrador);
-    border-color: var(--borde-fuerte);
+    background: rgba(var(--estado-borrador-rgb), 0.1);
+    color: var(--estado-borrador-texto);
 }
 
 .indicador-estado-cancelada {
-    background: var(--estado-cancelada);
-    border-color: var(--borde-fuerte);
+    background: rgba(var(--estado-cancelada-rgb), 0.1);
+    color: var(--estado-cancelada-texto);
 }
 
 .indicador-estado-advertencia {
-    background: var(--estado-advertencia);
-    border-color: var(--borde-fuerte);
+    background: rgba(var(--estado-advertencia-rgb), 0.1);
+    color: var(--estado-advertencia-texto);
 }
 
 .indicador-estado-error {
-    background: var(--estado-error);
-    border-color: var(--borde-fuerte);
+    background: rgba(var(--estado-error-rgb), 0.1);
+    color: var(--estado-cancelada-texto);
 }
 
 .buscador-catalogo-clave {
@@ -86,7 +90,17 @@
     margin-bottom: 1rem;
 }
 
-.filtros-documentos > * {
+/* Las acciones se empujan al extremo y no se estiran como los filtros: un botón de
+   ancho variable según lo que quepa al lado es lo que hace que la barra se vea desordenada
+   al cambiar el tamaño de la ventana. */
+.acciones-listado {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    margin-left: auto;
+}
+
+.filtros-documentos > *:not(.acciones-listado) {
     flex: 1 1 12rem;
     max-width: 16rem;
 }

@@ -16,10 +16,21 @@ public static class AuthEndpoints
         var grupo = rutas.MapGroup("/api/auth").WithTags("Autenticación");
 
         grupo.MapPost("/iniciar-sesion", IniciarSesion).AllowAnonymous();
+        grupo.MapPost("/registro", Registrar).AllowAnonymous();
         grupo.MapPost("/refresh", Refrescar).AllowAnonymous();
         grupo.MapPost("/cerrar-sesion", CerrarSesion).AllowAnonymous();
         grupo.MapPost("/cambiar-empresa", CambiarEmpresa).RequireAuthorization();
         grupo.MapGet("/sesion", ObtenerSesion).RequireAuthorization();
+    }
+
+    private static async Task<IResult> Registrar(
+        PeticionRegistro peticion, ServicioDeRegistro registro, HttpContext contexto, CancellationToken ct)
+    {
+        var resultado = await registro.RegistrarAsync(peticion, Ip(contexto), ct);
+
+        return resultado.EsFallo
+            ? resultado.Error!.AResultado(contexto)
+            : Results.Ok(resultado.Valor);
     }
 
     private static async Task<IResult> IniciarSesion(

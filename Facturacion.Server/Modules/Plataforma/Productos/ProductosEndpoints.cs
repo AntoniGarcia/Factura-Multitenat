@@ -42,10 +42,10 @@ public static class ProductosEndpoints
 
     private static async Task<IResult> Listar(
         ServicioDeProductos productos, CancellationToken ct,
-        string? texto = null, bool soloActivos = true,
+        string? texto = null, bool? activos = true,
         int pagina = 0, int tamano = 25, string? orden = null, bool descendente = false)
         => Results.Ok(await productos.ListarAsync(
-            texto, soloActivos, Math.Max(pagina, 0), Math.Clamp(tamano, 1, 100), orden, descendente, ct));
+            texto, activos, Math.Max(pagina, 0), Math.Clamp(tamano, 1, 100), orden, descendente, ct));
 
     private static async Task<IResult> Obtener(Guid id, ServicioDeProductos productos, CancellationToken ct)
     {
@@ -118,9 +118,9 @@ public static class ProductosEndpoints
     }
 
     private static async Task<IResult> Exportar(
-        ServicioDeProductos productos, CancellationToken ct, bool soloActivos = true)
+        ServicioDeProductos productos, CancellationToken ct, bool? activos = true)
     {
-        var lista = await productos.ListarParaExportarAsync(soloActivos, ct);
+        var lista = await productos.ListarParaExportarAsync(activos, ct);
 
         var csv = new StringBuilder();
         csv.AppendLine(string.Join(',',

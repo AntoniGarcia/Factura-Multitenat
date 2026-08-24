@@ -1822,63 +1822,6 @@ namespace Facturacion.Server.Migrations
                     b.ToTable("Empresas", (string)null);
                 });
 
-            modelBuilder.Entity("Facturacion.Server.Data.Entidades.Plataforma.Invitacion", b =>
-                {
-                    b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("uniqueidentifier");
-
-                    b.Property<DateTime?>("AceptadaUtc")
-                        .HasColumnType("datetime2");
-
-                    b.Property<string>("Correo")
-                        .IsRequired()
-                        .HasMaxLength(254)
-                        .HasColumnType("nvarchar(254)");
-
-                    b.Property<Guid>("CreadaPorUsuarioId")
-                        .HasColumnType("uniqueidentifier");
-
-                    b.Property<DateTime>("CreadaUtc")
-                        .HasColumnType("datetime2");
-
-                    b.Property<Guid>("EmpresaId")
-                        .HasColumnType("uniqueidentifier");
-
-                    b.Property<DateTime>("ExpiraUtc")
-                        .HasColumnType("datetime2");
-
-                    b.Property<string>("HashToken")
-                        .IsRequired()
-                        .HasMaxLength(64)
-                        .HasColumnType("nvarchar(64)");
-
-                    b.Property<string>("Nombre")
-                        .IsRequired()
-                        .HasMaxLength(128)
-                        .HasColumnType("nvarchar(128)");
-
-                    b.Property<string>("PermisosClaves")
-                        .IsRequired()
-                        .HasMaxLength(256)
-                        .HasColumnType("nvarchar(256)");
-
-                    b.Property<DateTime?>("RevocadaUtc")
-                        .HasColumnType("datetime2");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("HashToken")
-                        .IsUnique();
-
-                    b.HasIndex("EmpresaId", "Correo")
-                        .IsUnique()
-                        .HasDatabaseName("IX_Invitaciones_PendientePorCorreoYEmpresa")
-                        .HasFilter("[AceptadaUtc] IS NULL AND [RevocadaUtc] IS NULL");
-
-                    b.ToTable("Invitaciones", (string)null);
-                });
-
             modelBuilder.Entity("Facturacion.Server.Data.Entidades.Plataforma.Membresia", b =>
                 {
                     b.Property<Guid>("Id")
@@ -2049,7 +1992,7 @@ namespace Facturacion.Server.Migrations
                         new
                         {
                             Clave = "administrar_usuarios",
-                            Descripcion = "Invitar usuarios y asignar permisos"
+                            Descripcion = "Dar de alta usuarios y asignar permisos"
                         },
                         new
                         {
@@ -2421,6 +2364,9 @@ namespace Facturacion.Server.Migrations
                     b.Property<string>("ConcurrencyStamp")
                         .IsConcurrencyToken()
                         .HasColumnType("nvarchar(max)");
+
+                    b.Property<bool>("CreadoPorAdministrador")
+                        .HasColumnType("bit");
 
                     b.Property<Guid>("CuentaId")
                         .HasColumnType("uniqueidentifier");

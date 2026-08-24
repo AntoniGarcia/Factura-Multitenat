@@ -43,6 +43,8 @@
     --acento: #1B3A6B;
     --acento-rgb: 27, 58, 107;
     --acento-suave: #E8EDF5;
+    /* Fondo del menú lateral: separa la navegación del contenido sin una línea más. */
+    --superficie-menu: #F2F3FC;
     --estado-timbrada: #1E7A45;
     --estado-timbrada-rgb: 30, 122, 69;
     --estado-borrador: #6B7280;
@@ -52,11 +54,68 @@
     --estado-advertencia-rgb: 181, 71, 8;
     --estado-error: #B42318;
     --estado-error-rgb: 180, 35, 24;
+    --estado-cancelada-rgb: 180, 35, 24;
+
+    /* ── Texto de las píldoras de estado ─────────────────────────────────────────────
+       La píldora dejó de ser un bloque de color sólido y pasó a ser texto de color sobre
+       un tinte del 10 % del mismo color. Eso mueve el problema de contraste: ya no es la
+       píldora contra la superficie (1.4.11, 3:1), es el texto contra el tinte (1.4.3,
+       4.5:1). Calculado con la fórmula de WCAG para los tres temas, no a ojo; donde el
+       color del estado no llegaba, se ajustó lo mínimo para pasar:
+
+         claro   borrador 4.27 -> #666D7A (4.60)
+         oscuro  los cuatro fallaban entre 2.41 y 3.08; se aclararon
+         cálido  timbrada 4.37, borrador 4.03, advertencia 4.41; se oscurecieron
+
+       El tinte de fondo NO cambia por tema: es el color original del estado, que es lo
+       que le permite al contador reconocer "cancelada" por el tono sin releer. */
+    --estado-timbrada-texto: #1E7A45;
+    --estado-borrador-texto: #666D7A;
+    --estado-cancelada-texto: #B42318;
+    --estado-advertencia-texto: #B54708;
+
     --foco: var(--acento);
 
     --radio: 6px;
     --alto-fila-tabla: 40px;
     --alto-control: 36px;
+
+    /* ── Escala tipográfica (rediseño 2026) ──────────────────────────────────────────
+       Antes cada componente elegía su tamaño a mano y no había dos títulos iguales.
+       Los títulos usan peso 600, que es un peso nuevo: CLAUDE.md §8 fijó 400 y 500 para
+       la interfaz, y el 600 se auto-aloja igual que los otros dos (tipografia.css). */
+    --peso-titulo: 600;
+    --peso-etiqueta: 500;
+
+    --titulo-lg-tam: 1.5rem;
+    --titulo-lg-alto: 2rem;
+    --titulo-lg-espaciado: -0.02em;
+
+    --titulo-md-tam: 1.125rem;
+    --titulo-md-alto: 1.5rem;
+
+    --cuerpo-md-tam: 0.875rem;
+    --cuerpo-md-alto: 1.25rem;
+
+    --cuerpo-sm-tam: 0.8125rem;
+    --cuerpo-sm-alto: 1.125rem;
+
+    /* Rótulo de dato: el texto chico que va encima de un valor o en el encabezado de una
+       columna. Va en versalitas y con separación entre letras, que es lo que lo distingue
+       del cuerpo sin necesidad de otro color. */
+    --etiqueta-tam: 0.75rem;
+    --etiqueta-alto: 1rem;
+    --etiqueta-espaciado: 0.05em;
+
+    --mono-tam: 0.8125rem;
+    --mono-alto: 1rem;
+
+    /* ── Medidas de estructura ───────────────────────────────────────────────────────
+       Estaban repartidas como literales en layout.css. Aquí se pueden cambiar una vez. */
+    --margen-pagina: 24px;
+    --gutter: 16px;
+    --alto-barra: 52px;
+    --ancho-menu: 200px;
 }
 
 /* Oscuro ergonómico: grises y azules profundos, jamás negro puro (CLAUDE.md §8). */
@@ -73,6 +132,11 @@
     --acento: #376FBE;
     --acento-rgb: 55, 111, 190;
     --acento-suave: #1F3550;
+    --superficie-menu: #1F2833;
+    --estado-timbrada-texto: #28A35C;
+    --estado-borrador-texto: #888E9B;
+    --estado-cancelada-texto: #E85A50;
+    --estado-advertencia-texto: #F05E0B;
     /* Los estados de comprobante y el error se conservan: ya pasan 4.5:1 con texto
        blanco encima en cualquier tema, y mantener el mismo tono es lo que le permite al
        contador reconocer "cancelada" de un vistazo sin reaprenderlo por tema. */
@@ -92,4 +156,9 @@
     --acento: #1B3A6B;
     --acento-rgb: 27, 58, 107;
     --acento-suave: #E8EDF5;
+    --superficie-menu: #F7F2E8;
+    --estado-timbrada-texto: #1D7643;
+    --estado-borrador-texto: #626875;
+    --estado-cancelada-texto: #B42318;
+    --estado-advertencia-texto: #B04508;
 }

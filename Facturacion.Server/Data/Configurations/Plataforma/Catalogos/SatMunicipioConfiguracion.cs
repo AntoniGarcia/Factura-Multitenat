@@ -6,7 +6,7 @@ namespace Facturacion.Server.Data.Configurations.Plataforma.Catalogos;
 
 /// <summary>
 /// El índice de texto completo sobre <c>Descripcion</c> se crea con SQL crudo en la
-/// migración: es uno de los dos catálogos que pide CLAUDE.md §7 para la búsqueda de código
+/// migración: es uno de los dos catálogos que pide ARQUITECTURA.md §7 para la búsqueda de código
 /// postal por nombre de municipio.
 /// <para>
 /// Sin llave foránea hacia <see cref="SatCodigoPostal"/> ni hacia <see cref="SatEstado"/>:

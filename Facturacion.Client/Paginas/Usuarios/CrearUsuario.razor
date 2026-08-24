@@ -1,4 +1,4 @@
-@page "/usuarios/invitar"
+@page "/usuarios/nuevo"
 @attribute [Authorize(Policy = Permisos.AdministrarUsuarios)]
 @using Facturacion.Client.Componentes.Comunes
 @using Facturacion.Client.Servicios.Plataforma
@@ -7,8 +7,8 @@
 @inject ServicioDeUsuarios Usuarios
 @inject NavigationManager Navegacion
 
-<PageTitle>Invitar usuario</PageTitle>
-<TituloDePagina Texto="Invitar usuario" />
+<PageTitle>Nuevo usuario</PageTitle>
+<TituloDePagina Texto="Nuevo usuario" />
 
 <PanelErrores Problema="_error" />
 
@@ -16,22 +16,36 @@
 {
     <p class="seccion-ayuda">
         Cada empresa admite hasta tres usuarios: tú más dos auxiliares. Si el correo ya tiene
-        cuenta en tu cuenta, le das acceso de una vez; si no, le llega un correo para que fije
-        su contraseña.
+        cuenta aquí, le das acceso a esta empresa sin tocar su contraseña.
     </p>
 
-    <EditForm Model="this" OnValidSubmit="Invitar">
+    <EditForm Model="this" OnValidSubmit="Crear">
         <div class="rejilla-campos">
             <MudTextField @bind-Value="_correo" Label="Correo" Immediate="true" InputType="InputType.Email" MaxLength="254" />
             <MudTextField @bind-Value="_nombre" Label="Nombre" Immediate="true" MaxLength="128" />
+            <MudTextField @bind-Value="_contrasena" Label="Contraseña" Immediate="true"
+                          InputType="@(_verContrasena ? InputType.Text : InputType.Password)"
+                          Adornment="Adornment.End"
+                          AdornmentIcon="@(_verContrasena ? Icons.Material.Filled.VisibilityOff : Icons.Material.Filled.Visibility)"
+                          OnAdornmentClick="@(() => _verContrasena = !_verContrasena)"
+                          MaxLength="128" />
         </div>
+
+        @* Se dice aquí y no en un aviso al final: quien está tecleando la contraseña tiene
+           que saber, antes de teclearla, que va a ser él quien se la comunique al usuario y
+           quien la cambie cuando haga falta. *@
+        <p class="seccion-ayuda">
+            La contraseña la fijas tú y se la comunicas al usuario por fuera del sistema. Él no
+            podrá cambiarla desde su perfil: si la olvida, se la cambias tú desde el listado de
+            usuarios, con el botón «Contraseña».
+        </p>
 
         <h2 class="seccion-titulo">Permisos</h2>
         <SelectorDePermisos @bind-Value="_permisos" />
 
         <div class="acciones-formulario">
             <MudButton Variant="Variant.Filled" Color="Color.Primary" ButtonType="ButtonType.Submit" Disabled="@_enviando">
-                @(_enviando ? "Enviando…" : "Invitar")
+                @(_enviando ? "Guardando…" : "Crear usuario")
             </MudButton>
             <MudButton Variant="Variant.Text" OnClick="@(() => Navegacion.NavigateTo("/usuarios"))">Cancelar</MudButton>
         </div>
@@ -43,34 +57,43 @@ else
 
     <div class="acciones-formulario">
         <MudButton Variant="Variant.Filled" OnClick="@(() => Navegacion.NavigateTo("/usuarios"))">Ver usuarios</MudButton>
-        <MudButton Variant="Variant.Text" OnClick="Limpiar">Invitar a otro</MudButton>
+        <MudButton Variant="Variant.Text" OnClick="Limpiar">Crear otro</MudButton>
     </div>
 }
 
 @code {
     private string _correo = string.Empty;
     private string _nombre = string.Empty;
+    private string _contrasena = string.Empty;
+    private bool _verContrasena;
     private List<string> _permisos = [];
-    private RespuestaInvitar? _resultado;
+    private RespuestaCrearUsuario? _resultado;
     private DetalleProblema? _error;
     private bool _enviando;
 
-    private async Task Invitar()
+    private async Task Crear()
     {
         _enviando = true;
         _error = null;
 
-        var (exito, error) = await Usuarios.InvitarAsync(new PeticionInvitarUsuario(_correo, _nombre, _permisos));
+        var (exito, error) = await Usuarios.CrearAsync(
+            new PeticionCrearUsuario(_correo, _nombre, _contrasena, _permisos));
 
         _error = error;
         _resultado = exito;
         _enviando = false;
+
+        // La contraseña no se queda en memoria más de lo necesario: si el alta salió bien, la
+        // pantalla ya no la necesita para nada.
+        if (exito is not null) _contrasena = string.Empty;
     }
 
     private void Limpiar()
     {
         _correo = string.Empty;
         _nombre = string.Empty;
+        _contrasena = string.Empty;
+        _verContrasena = false;
         _permisos = [];
         _resultado = null;
         _error = null;

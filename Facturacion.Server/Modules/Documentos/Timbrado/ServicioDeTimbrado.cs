@@ -14,7 +14,7 @@ namespace Facturacion.Server.Modules.Documentos.Timbrado;
 /// <para><b>Por qué tres y no uno</b></para>
 /// El PAC puede tardar treinta segundos. Una transacción de base de datos abierta ese tiempo
 /// bloquea renglones y tumba el sistema entero bajo carga, así que la llamada al PAC ocurre
-/// <b>fuera de toda transacción</b> (CLAUDE.md §5). Eso obliga a partir la operación:
+/// <b>fuera de toda transacción</b> (ARQUITECTURA.md §5). Eso obliga a partir la operación:
 ///
 /// <list type="number">
 ///   <item><description>
@@ -133,7 +133,7 @@ public sealed class ServicioDeTimbrado(
         await using var transaccion = await baseDeDatos.Database.BeginTransactionAsync(ct);
 
         // El folio solo se toma una vez. Si el comprobante ya trae uno de un intento fallido
-        // anterior, se conserva: CLAUDE.md §5 prohíbe reciclarlo, así que tampoco se pide
+        // anterior, se conserva: ARQUITECTURA.md §5 prohíbe reciclarlo, así que tampoco se pide
         // otro — se reintenta con el mismo.
         FolioReservadoDto? folio = null;
 

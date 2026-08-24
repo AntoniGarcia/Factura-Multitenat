@@ -5,9 +5,13 @@ using Facturacion.Shared.Plataforma;
 namespace Facturacion.Server.Modules.Plataforma.Usuarios;
 
 /// <summary>
-/// Usuarios e invitaciones de la empresa activa. Todo bajo <c>administrar_usuarios</c>
-/// (PROMPT-FASES-A §8); el perfil propio vive aparte, en <see cref="PerfilEndpoints"/>, sin
-/// ese permiso.
+/// Usuarios de la empresa activa. Todo bajo <c>administrar_usuarios</c>; el perfil propio
+/// vive aparte, en <see cref="PerfilEndpoints"/>, sin ese permiso.
+///
+/// <para>
+/// Ya no hay grupo anónimo: el de <c>/api/invitaciones</c> existía para que alguien sin
+/// cuenta pudiera aceptar una invitación, y ese camino se eliminó.
+/// </para>
 /// </summary>
 public static class UsuariosEndpoints
 {
@@ -18,70 +22,55 @@ public static class UsuariosEndpoints
             .RequireAuthorization(Permisos.AdministrarUsuarios);
 
         grupo.MapGet("/", Listar);
-        grupo.MapPost("/invitar", Invitar);
-        grupo.MapPost("/invitaciones/{id:guid}/reenviar", Reenviar);
-        grupo.MapPost("/invitaciones/{id:guid}/revocar", Revocar);
+        grupo.MapPost("/", Crear);
+        grupo.MapPut("/{usuarioId:guid}/correo", CambiarCorreo);
+        grupo.MapPut("/{usuarioId:guid}/contrasena", CambiarContrasena);
         grupo.MapPut("/{usuarioId:guid}/permisos", ActualizarPermisos);
         grupo.MapPost("/{usuarioId:guid}/activo", CambiarActivo);
-
-        // Sin sesión: quien acepta una invitación todavía no tiene cuenta.
-        var publico = rutas.MapGroup("/api/invitaciones").WithTags("Invitaciones").AllowAnonymous();
-
-        publico.MapGet("/{token}", ObtenerPublica);
-        publico.MapPost("/aceptar", Aceptar);
     }
 
-    private static async Task<IResult> Listar(ServicioDeInvitaciones invitaciones, CancellationToken ct)
-        => Results.Ok(await invitaciones.ListarAsync(ct));
+    private static async Task<IResult> Listar(ServicioDeUsuarios usuarios, CancellationToken ct)
+        => Results.Ok(await usuarios.ListarAsync(ct));
 
-    private static async Task<IResult> Invitar(
-        PeticionInvitarUsuario peticion, ServicioDeInvitaciones invitaciones, HttpContext contexto, CancellationToken ct)
+    private static async Task<IResult> Crear(
+        PeticionCrearUsuario peticion, ServicioDeUsuarios usuarios, HttpContext contexto, CancellationToken ct)
     {
-        var resultado = await invitaciones.InvitarAsync(peticion, ct);
+        var resultado = await usuarios.CrearAsync(peticion, ct);
 
         return resultado.EsFallo
             ? resultado.Error!.AResultado(contexto)
             : Results.Ok(resultado.Valor);
     }
 
-    private static async Task<IResult> Reenviar(Guid id, ServicioDeInvitaciones invitaciones, HttpContext contexto, CancellationToken ct)
+    private static async Task<IResult> CambiarCorreo(
+        Guid usuarioId, PeticionCambiarCorreoUsuario peticion, ServicioDeUsuarios usuarios,
+        HttpContext contexto, CancellationToken ct)
     {
-        var resultado = await invitaciones.ReenviarAsync(id, ct);
+        var resultado = await usuarios.CambiarCorreoAsync(usuarioId, peticion.Correo, ct);
         return resultado.EsFallo ? resultado.Error!.AResultado(contexto) : Results.NoContent();
     }
 
-    private static async Task<IResult> Revocar(Guid id, ServicioDeInvitaciones invitaciones, HttpContext contexto, CancellationToken ct)
+    private static async Task<IResult> CambiarContrasena(
+        Guid usuarioId, PeticionCambiarContrasenaUsuario peticion, ServicioDeUsuarios usuarios,
+        HttpContext contexto, CancellationToken ct)
     {
-        var resultado = await invitaciones.RevocarAsync(id, ct);
+        var resultado = await usuarios.CambiarContrasenaAsync(usuarioId, peticion.Contrasena, ct);
         return resultado.EsFallo ? resultado.Error!.AResultado(contexto) : Results.NoContent();
     }
 
     private static async Task<IResult> ActualizarPermisos(
-        Guid usuarioId, PeticionActualizarPermisos peticion, ServicioDeInvitaciones invitaciones,
+        Guid usuarioId, PeticionActualizarPermisos peticion, ServicioDeUsuarios usuarios,
         HttpContext contexto, CancellationToken ct)
     {
-        var resultado = await invitaciones.ActualizarPermisosAsync(usuarioId, peticion.Permisos, ct);
+        var resultado = await usuarios.ActualizarPermisosAsync(usuarioId, peticion.Permisos, ct);
         return resultado.EsFallo ? resultado.Error!.AResultado(contexto) : Results.NoContent();
     }
 
     private static async Task<IResult> CambiarActivo(
-        Guid usuarioId, PeticionCambiarActivoUsuario peticion, ServicioDeInvitaciones invitaciones,
+        Guid usuarioId, PeticionCambiarActivoUsuario peticion, ServicioDeUsuarios usuarios,
         HttpContext contexto, CancellationToken ct)
     {
-        var resultado = await invitaciones.CambiarActivoAsync(usuarioId, peticion.Activo, ct);
+        var resultado = await usuarios.CambiarActivoAsync(usuarioId, peticion.Activo, ct);
         return resultado.EsFallo ? resultado.Error!.AResultado(contexto) : Results.Ok(resultado.Valor);
-    }
-
-    private static async Task<IResult> ObtenerPublica(string token, ServicioDeInvitaciones invitaciones, CancellationToken ct)
-    {
-        var invitacion = await invitaciones.ObtenerPublicaAsync(token, ct);
-        return invitacion is null ? Results.NotFound() : Results.Ok(invitacion);
-    }
-
-    private static async Task<IResult> Aceptar(
-        PeticionAceptarInvitacion peticion, ServicioDeInvitaciones invitaciones, HttpContext contexto, CancellationToken ct)
-    {
-        var resultado = await invitaciones.AceptarAsync(peticion, ct);
-        return resultado.EsFallo ? resultado.Error!.AResultado(contexto) : Results.NoContent();
     }
 }

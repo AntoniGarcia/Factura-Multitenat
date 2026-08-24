@@ -22,7 +22,7 @@ namespace Facturacion.Server.Modules.Documentos.Pagos;
 /// <para><b>Lo que sí se congela</b></para>
 /// Dentro del <c>DocumentoPagado</c>, el saldo anterior, lo pagado y el insoluto se guardan tal
 /// como estaban al emitir: eso es lo que el SAT selló y no puede cambiar aunque después entren
-/// más pagos (CLAUDE.md §5).
+/// más pagos (ARQUITECTURA.md §5).
 /// </summary>
 public sealed class ServicioDePagos(
     AppDbContext baseDeDatos,
@@ -31,7 +31,7 @@ public sealed class ServicioDePagos(
     IServicioClientes clientes,
     ILogger<ServicioDePagos> registro)
 {
-    /// <summary>Sin objeto de exportación: fuera del alcance del MVP (CLAUDE.md §6).</summary>
+    /// <summary>Sin objeto de exportación: fuera del alcance del MVP (ARQUITECTURA.md §6).</summary>
     private const string SinExportacion = "01";
 
     /// <summary>La raíz de un CFDI de pago va sin moneda; el dinero vive en el complemento.</summary>

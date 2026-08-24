@@ -5,6 +5,7 @@
 @using Facturacion.Shared.Comun
 @using Facturacion.Shared.Plataforma
 @inject ServicioDeSesion Sesion
+@inject ServicioDeCatalogos Catalogos
 @inject NavigationManager Navegacion
 
 <PageTitle>Iniciar sesión</PageTitle>
@@ -34,6 +35,10 @@
             @(_enviando ? "Entrando…" : "Entrar")
         </button>
     </EditForm>
+
+    <p class="acceso-alterno">
+        ¿No tienes cuenta? <a href="/registro">Crea una</a>
+    </p>
 </section>
 
 @code {
@@ -59,6 +64,17 @@
         _enviando = false;
 
         if (_problema is not null) return;
+
+        // Los catálogos precargables se piden aquí, no solo en PuertaDeArranque.
+        //
+        // La puerta corre UNA vez, al montar la aplicación, y se salta los catálogos si en
+        // ese momento no había sesión —tiene razón: responderían 401—. Pero entrar por este
+        // formulario no recarga la página: la puerta ya corrió y no vuelve a correr, así que
+        // sin esta llamada la caché se quedaba vacía para toda la sesión y los desplegables
+        // de forma de pago, método de pago y uso de CFDI salían sin una sola opción.
+        //
+        // Si algún día aparece otra forma de iniciar sesión, tiene que hacer lo mismo.
+        await Catalogos.InicializarAsync();
 
         // Con una sola empresa el token ya salió con ella activa; con varias hay que elegir.
         Navegacion.NavigateTo(Sesion.Sesion?.EmpresaActivaId is null ? "/seleccionar-empresa" : "/");

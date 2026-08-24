@@ -3,7 +3,7 @@ namespace Facturacion.Server.Data.Entidades.Plataforma;
 /// <summary>
 /// Serie de folios de una empresa. <see cref="FolioActual"/> es el último folio entregado;
 /// el siguiente sale de sumarle uno <b>dentro del procedimiento almacenado</b>, con bloqueo
-/// de renglón. Nunca con <c>SELECT MAX(Folio)+1</c> (CLAUDE.md §5).
+/// de renglón. Nunca con <c>SELECT MAX(Folio)+1</c> (ARQUITECTURA.md §5).
 /// <para>
 /// Ninguna parte del código de la aplicación debe escribir <see cref="FolioActual"/>: si se
 /// pudiera actualizar desde C#, dos peticiones simultáneas entregarían el mismo folio y el

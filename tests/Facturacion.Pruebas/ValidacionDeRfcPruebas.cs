@@ -3,7 +3,7 @@ using Facturacion.Shared.Comun;
 namespace Facturacion.Pruebas;
 
 /// <summary>
-/// La prueba obligatoria de la fase 5 (CLAUDE.md §6 y PROMPT-FASES-A.md): validación de RFC
+/// La prueba obligatoria de la fase 5 (ARQUITECTURA.md §6 y PROMPT-FASES-A.md): validación de RFC
 /// y dígito verificador.
 ///
 /// <para><b>De dónde salen los RFC «válidos»</b></para>

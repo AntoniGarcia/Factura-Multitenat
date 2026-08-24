@@ -11,8 +11,9 @@
 
 <BarraHerramientasCatalogo Texto="@_texto"
                            TextoCambiado="AlBuscar"
-                           SoloActivos="_soloActivos"
-                           SoloActivosCambiado="AlFiltrarActivos"
+                           MuestraEstatus="true"
+                           Activos="_activos"
+                           ActivosCambiado="AlFiltrarActivos"
                            TextoNuevo="Nuevo cliente"
                            OnNuevo="@(() => Navegacion.NavigateTo("/clientes/nuevo"))"
                            OnExportar="Exportar" />
@@ -27,7 +28,7 @@
     private TablaDatos<ClienteEnListaDto>? _tabla;
     private DetalleProblema? _error;
     private string _texto = string.Empty;
-    private bool _soloActivos = true;
+    private bool? _activos = true;
 
     private IReadOnlyList<ColumnaDeTabla<ClienteEnListaDto>> _columnas = [];
 
@@ -53,7 +54,7 @@
     private async Task<ResultadoDePagina<ClienteEnListaDto>> CargarAsync(PeticionDePagina peticion, CancellationToken ct)
     {
         var pagina = await Clientes.ListarAsync(
-            _texto, _soloActivos, peticion.Pagina, peticion.TamanoPagina,
+            _texto, _activos, peticion.Pagina, peticion.TamanoPagina,
             peticion.ClaveOrden, peticion.Descendente, ct);
 
         return new ResultadoDePagina<ClienteEnListaDto>(pagina.Elementos, pagina.Total);
@@ -65,9 +66,9 @@
         await RecargarAsync();
     }
 
-    private async Task AlFiltrarActivos(bool soloActivos)
+    private async Task AlFiltrarActivos(bool? activos)
     {
-        _soloActivos = soloActivos;
+        _activos = activos;
         await RecargarAsync();
     }
 
@@ -98,5 +99,5 @@
     }
 
     private void Exportar()
-        => Navegacion.NavigateTo(ServicioDeClientes.RutaDeExportacion(_soloActivos), forceLoad: true);
+        => Navegacion.NavigateTo(ServicioDeClientes.RutaDeExportacion(_activos), forceLoad: true);
 }

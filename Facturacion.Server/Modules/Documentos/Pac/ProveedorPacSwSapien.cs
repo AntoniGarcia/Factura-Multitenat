@@ -59,7 +59,7 @@ public sealed partial class ProveedorPacSwSapien(
     /// <summary>
     /// El SAT expresa <c>FechaTimbrado</c> en la hora del centro de México, sin desfase en el
     /// texto. Sin esta conversión el comprobante quedaría seis horas corrido en una base que
-    /// guarda todo en UTC (CLAUDE.md §5).
+    /// guarda todo en UTC (ARQUITECTURA.md §5).
     /// </summary>
     private static readonly TimeZoneInfo HusoDelSat = ResolverHusoDelSat();
 
@@ -78,7 +78,7 @@ public sealed partial class ProveedorPacSwSapien(
 
     /// <summary>
     /// Cancela mandando el CSD en el cuerpo, no usando el que SW guarde en su portal: el
-    /// certificado de cada empresa vive cifrado en este sistema (CLAUDE.md §4) y subirlo al
+    /// certificado de cada empresa vive cifrado en este sistema (ARQUITECTURA.md §4) y subirlo al
     /// portal del PAC sería sacarlo de ahí.
     ///
     /// <para><b>Interpretación conservadora a propósito</b></para>
@@ -429,7 +429,7 @@ public sealed partial class ProveedorPacSwSapien(
             if (!respuesta.IsSuccessStatusCode || sobre?.Data?.Token is not { Length: > 0 } token)
             {
                 // Sin el mensaje del PAC: puede traer de vuelta el usuario, y las credenciales
-                // no se registran ni en un error (CLAUDE.md §4).
+                // no se registran ni en un error (ARQUITECTURA.md §4).
                 registro.LogError(
                     "No se pudo autenticar con el PAC. Código {Codigo}. Revisa las credenciales de 'Pac'.",
                     (int)respuesta.StatusCode);

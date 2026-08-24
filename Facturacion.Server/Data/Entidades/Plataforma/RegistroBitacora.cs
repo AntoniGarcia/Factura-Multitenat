@@ -2,7 +2,7 @@ namespace Facturacion.Server.Data.Entidades.Plataforma;
 
 /// <summary>
 /// Bitácora: toda operación que cambie datos fiscales o de facturación deja aquí quién,
-/// en qué empresa, cuándo, y los valores anterior y nuevo (CLAUDE.md §5).
+/// en qué empresa, cuándo, y los valores anterior y nuevo (ARQUITECTURA.md §5).
 /// <para>
 /// La empresa es opcional porque hay eventos de alcance de cuenta —inicio de sesión,
 /// rotación de token, alta de empresa— que ocurren antes de que exista empresa activa.

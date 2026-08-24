@@ -1,7 +1,7 @@
 namespace Facturacion.Server.Infra.Correo;
 
 /// <summary>
-/// El remitente es del SaaS, no del cliente (CLAUDE.md §6): no se guarda configuración SMTP
+/// El remitente es del SaaS, no del cliente (ARQUITECTURA.md §6): no se guarda configuración SMTP
 /// por empresa, todo sale de esta única cuenta con dominio verificado.
 /// <para>
 /// Sin <see cref="Servidor"/> configurado, el registro de infraestructura decide qué

@@ -18,7 +18,7 @@ namespace Facturacion.Server.Data;
 /// </para>
 /// <para>
 /// Deriva de <see cref="IdentityUserContext{TUser, TKey}"/> y no de <c>IdentityDbContext</c>:
-/// esa otra clase base trae las tablas de roles, y CLAUDE.md §4 prohíbe autorizar por rol.
+/// esa otra clase base trae las tablas de roles, y ARQUITECTURA.md §4 prohíbe autorizar por rol.
 /// Al no existir como tablas, la prohibición la impone el esquema y no la buena voluntad.
 /// </para>
 /// </summary>
@@ -38,7 +38,6 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> opciones, IConte
     public DbSet<UsuarioEmpresa> UsuariosEmpresas => Set<UsuarioEmpresa>();
     public DbSet<Permiso> Permisos => Set<Permiso>();
     public DbSet<UsuarioEmpresaPermiso> UsuariosEmpresasPermisos => Set<UsuarioEmpresaPermiso>();
-    public DbSet<Invitacion> Invitaciones => Set<Invitacion>();
     public DbSet<RefreshToken> RefreshTokens => Set<RefreshToken>();
     public DbSet<ClaveIdempotencia> ClavesIdempotencia => Set<ClaveIdempotencia>();
     public DbSet<RegistroBitacora> Bitacora => Set<RegistroBitacora>();
@@ -56,7 +55,7 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> opciones, IConte
     public DbSet<ReservaTimbre> ReservasTimbre => Set<ReservaTimbre>();
     public DbSet<CompraTimbres> ComprasTimbres => Set<CompraTimbres>();
 
-    // ── Catálogos del SAT — sin EmpresaId, fuera del filtro de empresa (CLAUDE.md §5) ───
+    // ── Catálogos del SAT — sin EmpresaId, fuera del filtro de empresa (ARQUITECTURA.md §5) ───
     public DbSet<CatalogoVersion> CatalogoVersiones => Set<CatalogoVersion>();
     public DbSet<SatFormaPago> SatFormasPago => Set<SatFormaPago>();
     public DbSet<SatExportacion> SatExportaciones => Set<SatExportacion>();

@@ -6,7 +6,7 @@ using Microsoft.Net.Http.Headers;
 namespace Facturacion.Server.Infra.Seguridad;
 
 /// <summary>
-/// Cabeceras de seguridad en todas las respuestas (CLAUDE.md §4).
+/// Cabeceras de seguridad en todas las respuestas (ARQUITECTURA.md §4).
 ///
 /// <para><b>Por qué mira el cuerpo del HTML</b></para>
 /// La CSP tiene que autorizar por hash el <c>importmap</c> en línea que el SDK de Blazor

@@ -1,0 +1,80 @@
+@page "/registro"
+@layout LayoutDeAcceso
+@using Facturacion.Client.Componentes.Comunes
+@using Facturacion.Client.Servicios.Plataforma
+@using Facturacion.Shared.Comun
+@using Facturacion.Shared.Plataforma
+@inject ServicioDeSesion Sesion
+@inject NavigationManager Navegacion
+
+<PageTitle>Crear cuenta</PageTitle>
+
+<section class="tarjeta-acceso">
+    @if (_mensaje is null)
+    {
+        <h1>Crear cuenta</h1>
+
+        <p class="seccion-ayuda">
+            Te mandamos tu contraseña por correo. Al entrar podrás cambiarla y dar de alta la
+            empresa con la que vas a facturar.
+        </p>
+
+        <EditForm Model="_datos" OnValidSubmit="Registrar" FormName="registro">
+            <div class="campo">
+                <label for="correo">Correo</label>
+                <InputText id="correo" @bind-Value="_datos.Correo" type="email" autocomplete="email" />
+            </div>
+
+            <div class="campo">
+                <label for="nombre">Tu nombre</label>
+                <InputText id="nombre" @bind-Value="_datos.Nombre" autocomplete="name" />
+            </div>
+
+            <PanelErrores Problema="_problema" />
+
+            <button type="submit" disabled="@_enviando">
+                @(_enviando ? "Creando…" : "Crear cuenta")
+            </button>
+        </EditForm>
+
+        <p class="acceso-alterno">
+            ¿Ya tienes cuenta? <a href="/iniciar-sesion">Inicia sesión</a>
+        </p>
+    }
+    else
+    {
+        <h1>Revisa tu correo</h1>
+        <p role="status">@_mensaje</p>
+
+        <p class="acceso-alterno">
+            Cuando tengas la contraseña, <a href="/iniciar-sesion">inicia sesión</a>.
+        </p>
+    }
+</section>
+
+@code {
+    private sealed class Datos
+    {
+        public string Correo { get; set; } = string.Empty;
+        public string Nombre { get; set; } = string.Empty;
+    }
+
+    private readonly Datos _datos = new();
+    private DetalleProblema? _problema;
+    private string? _mensaje;
+    private bool _enviando;
+
+    private async Task Registrar()
+    {
+        _enviando = true;
+        _problema = null;
+
+        var (exito, error) = await Sesion.RegistrarAsync(new PeticionRegistro(_datos.Correo, _datos.Nombre));
+
+        _problema = error;
+        // El mensaje viene del servidor y es el mismo exista o no el correo: la pantalla no
+        // debe poder usarse para averiguar quién tiene cuenta aquí.
+        _mensaje = exito?.Mensaje;
+        _enviando = false;
+    }
+}

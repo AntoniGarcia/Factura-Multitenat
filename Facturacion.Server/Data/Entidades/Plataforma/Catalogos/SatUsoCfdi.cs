@@ -4,7 +4,7 @@ namespace Facturacion.Server.Data.Entidades.Plataforma.Catalogos;
 /// Catálogo <c>c_UsoCFDI</c>, con la matriz de compatibilidad que trae el propio archivo del
 /// SAT: la columna "Régimen Fiscal Receptor" lista, separadas por coma, las claves de
 /// <see cref="SatRegimenFiscal"/> con las que ese uso es válido. Es la validación que más
-/// timbrados salva (CLAUDE.md §7) y viene lista para usarse, no hay que reconstruirla a mano.
+/// timbrados salva (ARQUITECTURA.md §7) y viene lista para usarse, no hay que reconstruirla a mano.
 /// </summary>
 public sealed class SatUsoCfdi : ISatCatalogoSimple
 {

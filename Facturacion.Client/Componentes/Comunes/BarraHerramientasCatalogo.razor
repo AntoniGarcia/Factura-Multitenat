@@ -17,12 +17,17 @@
 
     <span class="separador-flexible"></span>
 
-    @if (SoloActivos.HasValue)
+    @if (MuestraEstatus)
     {
-        <MudCheckBox T="bool"
-                      Value="@SoloActivos.Value"
-                      ValueChanged="@(v => SoloActivosCambiado.InvokeAsync(v))"
-                      Label="Solo activos" />
+        <MudSelect T="bool?"
+                   Label="Estatus"
+                   Value="@Activos"
+                   ValueChanged="@(v => ActivosCambiado.InvokeAsync(v))"
+                   Class="barra-herramientas-estatus">
+            <MudSelectItem T="bool?" Value="@(null)">Todos</MudSelectItem>
+            <MudSelectItem T="bool?" Value="@(true)">Activos</MudSelectItem>
+            <MudSelectItem T="bool?" Value="@(false)">Inactivos</MudSelectItem>
+        </MudSelect>
     }
 
     @if (OnExportar.HasDelegate)
@@ -42,16 +47,27 @@
     [Parameter]
     public string Texto { get; set; } = string.Empty;
 
-    /// <summary>Se dispara con debounce de 300 ms, el mismo de BuscadorCatalogo (CLAUDE.md §7).</summary>
+    /// <summary>Se dispara con debounce de 300 ms, el mismo de BuscadorCatalogo (ARQUITECTURA.md §7).</summary>
     [Parameter]
     public EventCallback<string> TextoCambiado { get; set; }
 
-    /// <summary>Nulo si el catálogo no distingue activos/inactivos y el filtro no debe mostrarse.</summary>
+    /// <summary>
+    /// Si el catálogo distingue activos de inactivos. En falso el filtro no se pinta, que es
+    /// lo que necesitan los catálogos donde nada se da de baja.
+    /// </summary>
     [Parameter]
-    public bool? SoloActivos { get; set; }
+    public bool MuestraEstatus { get; set; }
+
+    /// <summary>
+    /// Estatus filtrado: <c>null</c> todos, <c>true</c> solo activos, <c>false</c> solo dados
+    /// de baja. Antes era un interruptor de dos estados y no había forma de ver únicamente
+    /// los inactivos, que es como se encuentra al que alguien desactivó sin querer.
+    /// </summary>
+    [Parameter]
+    public bool? Activos { get; set; } = true;
 
     [Parameter]
-    public EventCallback<bool> SoloActivosCambiado { get; set; }
+    public EventCallback<bool?> ActivosCambiado { get; set; }
 
     [Parameter]
     public string TextoNuevo { get; set; } = "Nuevo";

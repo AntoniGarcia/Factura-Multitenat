@@ -40,8 +40,49 @@
         }
     </MudSelect>
 
+    <MudSelect T="string"
+               Label="Tipo"
+               Value="_tipoComprobante"
+               ValueChanged="AlFiltrarTipo"
+               Clearable="true">
+        <MudSelectItem T="string" Value="@(null)">Todos</MudSelectItem>
+        <MudSelectItem T="string" Value="@("I")">Facturas</MudSelectItem>
+        <MudSelectItem T="string" Value="@("P")">Pagos</MudSelectItem>
+    </MudSelect>
+
+    <BuscadorDeCliente Valor="_cliente" ValorCambiado="AlFiltrarCliente" />
+
+    @* Los periodos de uso diario resueltos de un clic. Las dos fechas siguen ahí para el
+       rango que no cabe en ninguno de ellos, y elegir un periodo las rellena en vez de
+       esconderlas: el capturista ve exactamente qué se está consultando. *@
+    <MudSelect T="Periodo"
+               Label="Periodo"
+               Value="_periodo"
+               ValueChanged="AlFiltrarPeriodo">
+        <MudSelectItem T="Periodo" Value="Periodo.Personalizado">Personalizado</MudSelectItem>
+        <MudSelectItem T="Periodo" Value="Periodo.EsteMes">Este mes</MudSelectItem>
+        <MudSelectItem T="Periodo" Value="Periodo.MesAnterior">Mes anterior</MudSelectItem>
+        <MudSelectItem T="Periodo" Value="Periodo.UltimosTresMeses">Últimos 3 meses</MudSelectItem>
+        <MudSelectItem T="Periodo" Value="Periodo.EsteAnio">Este año</MudSelectItem>
+    </MudSelect>
+
     <CampoFecha Label="Desde" ValorUtc="_desdeUtc" ValorUtcCambiado="AlCambiarDesde" />
     <CampoFecha Label="Hasta" ValorUtc="_hastaUtc" ValorUtcCambiado="AlCambiarHasta" />
+
+    @* Las dos acciones de emisión viven aquí desde que el menú dejó de tener «Nueva
+       factura» y «Nuevo pago»: se entra por donde se ve lo emitido y se crea desde ahí. *@
+    <div class="acciones-listado">
+        <MudButton Variant="Variant.Filled" Color="Color.Primary"
+                   StartIcon="@Icons.Material.Filled.Add"
+                   OnClick="@(() => Navegacion.NavigateTo("/facturas/nueva"))">
+            Nueva factura
+        </MudButton>
+        <MudButton Variant="Variant.Outlined"
+                   StartIcon="@Icons.Material.Filled.Payments"
+                   OnClick="@(() => Navegacion.NavigateTo("/pagos/nuevo"))">
+            Nuevo pago
+        </MudButton>
+    </div>
 </div>
 
 <TablaDatos T="ComprobanteEnListaDto"
@@ -58,10 +99,19 @@
     private string? _aviso;
     private string _texto = string.Empty;
     private EstatusComprobante? _estatus;
+    private ClienteEnListaDto? _cliente;
+    private string? _tipoComprobante;
+    private Periodo _periodo = Periodo.EsteAnio;
 
     // El rango que pide §1.1 del documento funcional: del inicio del año en curso a hoy.
     private DateTime? _desdeUtc = InicioDelAnio();
     private DateTime? _hastaUtc = DateTime.UtcNow;
+
+    /// <summary>
+    /// Atajos de rango. Se traducen a las dos fechas que el endpoint ya recibía, así que el
+    /// servidor no aprende ningún concepto nuevo: un periodo es un rango con nombre.
+    /// </summary>
+    private enum Periodo { Personalizado, EsteMes, MesAnterior, UltimosTresMeses, EsteAnio }
 
     private IReadOnlyList<ColumnaDeTabla<ComprobanteEnListaDto>> _columnas = [];
 
@@ -100,7 +150,7 @@
     ];
 
     /// <summary>
-    /// Un borrador todavía no tiene folio y no debe aparentar tenerlo (CLAUDE.md §5): el folio
+    /// Un borrador todavía no tiene folio y no debe aparentar tenerlo (ARQUITECTURA.md §5): el folio
     /// se asigna al timbrar.
     /// </summary>
     private static string Folio(ComprobanteEnListaDto documento)
@@ -118,7 +168,7 @@
         PeticionDePagina peticion, CancellationToken ct)
     {
         var (pagina, error) = await Listado.ListarAsync(
-            _texto, _estatus, _desdeUtc, FinDelRango(),
+            _texto, _estatus, _cliente?.Id, _tipoComprobante, _desdeUtc, FinDelRango(),
             peticion.Pagina, peticion.TamanoPagina, peticion.ClaveOrden, peticion.Descendente, ct);
 
         _error = error;
@@ -141,21 +191,68 @@
         await RecargarAsync();
     }
 
+    private async Task AlFiltrarCliente(ClienteEnListaDto? cliente)
+    {
+        _cliente = cliente;
+        await RecargarAsync();
+    }
+
+    private async Task AlFiltrarTipo(string? tipo)
+    {
+        _tipoComprobante = string.IsNullOrWhiteSpace(tipo) ? null : tipo;
+        await RecargarAsync();
+    }
+
+    /// <summary>
+    /// Traduce el periodo elegido a las dos fechas. Se calcula en hora local y se convierte a
+    /// UTC, no al revés: «este mes» es el mes del calendario que ve el usuario, y para una
+    /// empresa al oeste del meridiano, tomar el mes en UTC correría el corte varias horas y
+    /// metería o dejaría fuera lo emitido el día primero.
+    /// </summary>
+    private async Task AlFiltrarPeriodo(Periodo periodo)
+    {
+        _periodo = periodo;
+
+        if (periodo is not Periodo.Personalizado)
+        {
+            var hoy = DateTime.Now.Date;
+
+            var (desde, hasta) = periodo switch
+            {
+                Periodo.EsteMes => (new DateTime(hoy.Year, hoy.Month, 1), hoy),
+                Periodo.MesAnterior => (
+                    new DateTime(hoy.Year, hoy.Month, 1).AddMonths(-1),
+                    new DateTime(hoy.Year, hoy.Month, 1).AddDays(-1)),
+                Periodo.UltimosTresMeses => (new DateTime(hoy.Year, hoy.Month, 1).AddMonths(-2), hoy),
+                _ => (new DateTime(hoy.Year, 1, 1), hoy)
+            };
+
+            _desdeUtc = DateTime.SpecifyKind(desde, DateTimeKind.Local).ToUniversalTime();
+            _hastaUtc = DateTime.SpecifyKind(hasta, DateTimeKind.Local).ToUniversalTime();
+        }
+
+        await RecargarAsync();
+    }
+
     private async Task AlFiltrarEstatus(EstatusComprobante? estatus)
     {
         _estatus = estatus;
         await RecargarAsync();
     }
 
+    // Tocar una fecha a mano deshace el atajo: dejar «Este mes» marcado mientras el rango
+    // ya no es este mes le mentiría al usuario sobre lo que está viendo.
     private async Task AlCambiarDesde(DateTime? valorUtc)
     {
         _desdeUtc = valorUtc;
+        _periodo = Periodo.Personalizado;
         await RecargarAsync();
     }
 
     private async Task AlCambiarHasta(DateTime? valorUtc)
     {
         _hastaUtc = valorUtc;
+        _periodo = Periodo.Personalizado;
         await RecargarAsync();
     }
 

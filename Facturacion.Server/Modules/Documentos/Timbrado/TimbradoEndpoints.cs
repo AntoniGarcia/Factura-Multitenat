@@ -10,7 +10,7 @@ namespace Facturacion.Server.Modules.Documentos.Timbrado;
 /// folio que ya no se recicla y produce un documento fiscal ante el SAT.
 ///
 /// <para><b>Por qué exige <c>Idempotency-Key</c></b></para>
-/// Es lo que pide CLAUDE.md §4 para todo <c>POST</c> que cobre o timbre, y aquí protege del
+/// Es lo que pide ARQUITECTURA.md §4 para todo <c>POST</c> que cobre o timbre, y aquí protege del
 /// error más caro y más fácil de cometer: un doble clic en «Generar factura», o el reintento
 /// automático del navegador cuando la respuesta tarda. Sin la clave, el segundo envío entra
 /// como una petición nueva y el comprobante se timbra dos veces.

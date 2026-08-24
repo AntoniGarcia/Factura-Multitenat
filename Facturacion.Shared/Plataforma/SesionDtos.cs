@@ -5,7 +5,7 @@ namespace Facturacion.Shared.Plataforma;
 /// <param name="Contrasena">Contraseña en claro; solo existe durante esta petición.</param>
 /// <param name="MantenerSesion">
 /// Cambia <b>únicamente</b> la duración de la cookie de refresh: 12 horas sin marcar,
-/// 30 días marcado. No se guarda nada más en el navegador (CLAUDE.md §4).
+/// 30 días marcado. No se guarda nada más en el navegador (ARQUITECTURA.md §4).
 /// </param>
 public sealed record PeticionInicioSesion(
     string Correo,
@@ -30,7 +30,7 @@ public sealed record EmpresaDisponibleDto(
 /// <param name="Tema">
 /// Clave de <c>Facturacion.Shared.Comun.Temas</c>. El Client la aplica al arrancar, antes
 /// de que el usuario vea nada: el tema es parte de su perfil, no una preferencia del
-/// navegador (CLAUDE.md §8).
+/// navegador (ARQUITECTURA.md §8).
 /// </param>
 public sealed record SesionDto(
     Guid UsuarioId,
@@ -46,7 +46,7 @@ public sealed record PeticionCambioTema(string Tema);
 
 /// <summary>
 /// Access token nuevo y la sesión que describe. El token vive <b>solo en memoria</b> del
-/// navegador: nunca en <c>localStorage</c> ni en <c>sessionStorage</c> (CLAUDE.md §4).
+/// navegador: nunca en <c>localStorage</c> ni en <c>sessionStorage</c> (ARQUITECTURA.md §4).
 /// El refresh token no aparece aquí porque viaja en una cookie <c>HttpOnly</c> que el
 /// JavaScript de la página no puede leer.
 /// </summary>
@@ -57,6 +57,21 @@ public sealed record RespuestaSesion(
 
 /// <summary>
 /// Cambio de empresa activa. Es el <b>único</b> lugar del sistema donde el Client envía un
-/// identificador de empresa (CLAUDE.md §4).
+/// identificador de empresa (ARQUITECTURA.md §4).
 /// </summary>
 public sealed record PeticionCambioEmpresa(Guid EmpresaId);
+
+/// <summary>
+/// Alta de una cuenta nueva desde fuera del sistema. Pide lo mínimo: quién es y dónde
+/// recibirlo. La contraseña la genera el servidor y se la manda por correo; la empresa
+/// emisora se da de alta después, ya dentro.
+/// </summary>
+public sealed record PeticionRegistro(string Correo, string Nombre);
+
+/// <summary>
+/// Respuesta del registro. <b>Es la misma tanto si la cuenta se creó como si el correo ya
+/// estaba registrado</b>: distinguirlas convertiría el registro en un detector de qué
+/// correos tienen cuenta aquí. Quien escribió el correo se entera por el correo, no por la
+/// pantalla.
+/// </summary>
+public sealed record RespuestaRegistro(string Mensaje);

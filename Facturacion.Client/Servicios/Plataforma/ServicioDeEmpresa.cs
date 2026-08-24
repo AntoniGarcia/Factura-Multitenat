@@ -6,7 +6,7 @@ namespace Facturacion.Client.Servicios.Plataforma;
 
 /// <summary>
 /// Llama a los endpoints de <c>/api/empresa</c> y <c>/api/series</c>. Ninguno recibe
-/// identificador de empresa: la empresa es la del token (CLAUDE.md §4).
+/// identificador de empresa: la empresa es la del token (ARQUITECTURA.md §4).
 /// </summary>
 public sealed class ServicioDeEmpresa(IHttpClientFactory fabrica)
 {
@@ -20,6 +20,14 @@ public sealed class ServicioDeEmpresa(IHttpClientFactory fabrica)
     {
         using var respuesta = await Cliente.PutAsJsonAsync("api/empresa", peticion, ct);
         return await LeerAsync<RespuestaGuardarEmpresa>(respuesta, ct);
+    }
+
+    /// <summary>Alta de una empresa emisora. Solo exige sesión: ver ServicioDeEmpresa.CrearAsync.</summary>
+    public async Task<(EmpresaDto? Exito, DetalleProblema? Error)> CrearAsync(
+        PeticionCrearEmpresa peticion, CancellationToken ct = default)
+    {
+        using var respuesta = await Cliente.PostAsJsonAsync("api/empresa", peticion, ct);
+        return await LeerAsync<EmpresaDto>(respuesta, ct);
     }
 
     public Task<ConfiguracionEmpresaDto?> ObtenerConfiguracionAsync(CancellationToken ct = default)

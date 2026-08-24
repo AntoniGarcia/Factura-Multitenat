@@ -3,7 +3,7 @@ namespace Facturacion.Server.Infra.Correo;
 /// <summary>
 /// Sustituto de desarrollo: escribe el correo en el log en vez de enviarlo. Se usa cuando
 /// <c>Correo:Servidor</c> no está configurado en <c>Development</c> — no hay por qué exigirle
-/// una cuenta SMTP real a quien solo está probando el circuito de invitación en su máquina.
+/// una cuenta SMTP real a quien solo está probando el circuito de correo en su máquina.
 /// <para>
 /// Nunca se registra fuera de <c>Development</c>: ver <c>InfraestructuraModule</c>.
 /// </para>

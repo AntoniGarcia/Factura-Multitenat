@@ -22,7 +22,7 @@ namespace Facturacion.Server.Modules.Documentos.Impuestos;
 /// </summary>
 public static class MotorDeImpuestos
 {
-    /// <summary>Decimales de cálculo. La presentación redondea a dos (CLAUDE.md §5).</summary>
+    /// <summary>Decimales de cálculo. La presentación redondea a dos (ARQUITECTURA.md §5).</summary>
     public const int Decimales = 6;
 
     /// <summary>

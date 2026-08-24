@@ -8,7 +8,7 @@ public interface IServicioClientes
     /// <summary>
     /// Devuelve la foto fiscal completa del receptor, lista para congelarse dentro del
     /// comprobante. No devuelve la entidad: una vez timbrado, el comprobante no puede
-    /// depender de un catálogo que cambia (CLAUDE.md §5, inmutabilidad).
+    /// depender de un catálogo que cambia (ARQUITECTURA.md §5, inmutabilidad).
     /// Devuelve <c>null</c> si el cliente no existe o no es de la empresa activa.
     /// </summary>
     Task<ReceptorFiscalDto?> ObtenerParaTimbradoAsync(Guid clienteId, CancellationToken ct);

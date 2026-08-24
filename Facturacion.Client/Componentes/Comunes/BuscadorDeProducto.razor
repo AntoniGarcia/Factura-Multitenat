@@ -4,7 +4,7 @@
 
 @*
     El "Código" de producto del renglón de conceptos (§12.3), resuelto por búsqueda
-    (CLAUDE.md §7 / §31). El renglón se autocompleta entero desde aquí: unidad, descripción,
+    (ARQUITECTURA.md §7 / §31). El renglón se autocompleta entero desde aquí: unidad, descripción,
     precio e impuestos vienen del producto, no se capturan a mano (regla de negocio de §12.3).
 *@
 
@@ -37,7 +37,7 @@
     {
         if (string.IsNullOrWhiteSpace(texto) || texto.Length < 3) return [];
 
-        var pagina = await Productos.ListarAsync(texto, soloActivos: true, 0, 25, null, false, ct);
+        var pagina = await Productos.ListarAsync(texto, activos: true, 0, 25, null, false, ct);
         return pagina.Elementos;
     }
 

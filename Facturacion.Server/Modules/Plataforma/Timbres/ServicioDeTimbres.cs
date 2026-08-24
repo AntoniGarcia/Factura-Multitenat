@@ -21,7 +21,7 @@ namespace Facturacion.Server.Modules.Plataforma.Timbres;
 /// existe.
 ///
 /// <para><b>Ninguna llamada HTTP dentro de estas transacciones</b></para>
-/// CLAUDE.md §5. La transacción que aparta el timbre abre y cierra dentro del procedimiento,
+/// ARQUITECTURA.md §5. La transacción que aparta el timbre abre y cierra dentro del procedimiento,
 /// antes de que nadie hable con el PAC. Quien timbra reserva, cuelga el teléfono con la base
 /// de datos, y solo entonces sale a la red.
 /// </summary>

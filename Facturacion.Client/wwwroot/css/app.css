@@ -112,7 +112,7 @@ button:disabled {
 
 .empresa-rfc {
     color: var(--texto-suave);
-    font-family: ui-monospace, monospace;
+    font-family: var(--tipografia-monoespaciada);
     font-size: 0.8125rem;
 }
 
@@ -143,7 +143,7 @@ button:disabled {
 }
 
 .panel-errores-traza code {
-    font-family: ui-monospace, monospace;
+    font-family: var(--tipografia-monoespaciada);
     user-select: all;
 }
 
@@ -214,4 +214,17 @@ button:disabled {
 
 .loading-progress-text:after {
     content: var(--blazor-load-percentage-text, "Cargando");
+}
+
+/* Enlace de pie de la tarjeta de acceso: el puente entre iniciar sesión y crear cuenta.
+   Va discreto a propósito: la acción principal de cada pantalla es su botón, no este. */
+.acceso-alterno {
+    margin: 1rem 0 0;
+    color: var(--texto-suave);
+    font-size: var(--cuerpo-sm-tam);
+    text-align: center;
+}
+
+.acceso-alterno a {
+    color: var(--acento);
 }

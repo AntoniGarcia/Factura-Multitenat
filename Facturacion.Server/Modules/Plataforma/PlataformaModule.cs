@@ -38,7 +38,7 @@ public static class PlataformaModule
 
         // AddIdentityCore y no AddIdentity: no queremos SignInManager, que arrastra esquemas
         // de autenticación por cookie. Identity se usa solo como almacén de usuarios, motor
-        // de hash y bloqueo por intentos; la emisión de tokens es propia (CLAUDE.md §4).
+        // de hash y bloqueo por intentos; la emisión de tokens es propia (ARQUITECTURA.md §4).
         servicios
             .AddIdentityCore<Usuario>(opciones =>
             {
@@ -63,7 +63,8 @@ public static class PlataformaModule
         servicios.AddScoped<ServicioDeAutenticacion>();
 
         servicios.AddOptions<OpcionesDeSoporte>().Bind(configuracion.GetSection(OpcionesDeSoporte.Seccion));
-        servicios.AddScoped<ServicioDeInvitaciones>();
+        servicios.AddScoped<ServicioDeUsuarios>();
+        servicios.AddScoped<Auth.ServicioDeRegistro>();
 
         servicios.AddScoped<IServicioCatalogosSat, ServicioCatalogosSat>();
 

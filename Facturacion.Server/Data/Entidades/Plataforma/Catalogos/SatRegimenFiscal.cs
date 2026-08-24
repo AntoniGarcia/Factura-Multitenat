@@ -2,7 +2,7 @@ namespace Facturacion.Server.Data.Entidades.Plataforma.Catalogos;
 
 /// <summary>
 /// Catálogo <c>c_RegimenFiscal</c>. <see cref="AplicaFisica"/>/<see cref="AplicaMoral"/> son
-/// la validación de CLAUDE.md §7: el régimen tiene que ser compatible con el tipo de persona
+/// la validación de ARQUITECTURA.md §7: el régimen tiene que ser compatible con el tipo de persona
 /// que implica la longitud del RFC.
 /// </summary>
 public sealed class SatRegimenFiscal : ISatCatalogoSimple

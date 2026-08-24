@@ -14,7 +14,7 @@ namespace Facturacion.Server.Modules.Plataforma.Clientes;
 /// al timbrar (REPARTO-EQUIPO.md §5).
 /// <para>
 /// Ninguna consulta filtra por empresa a mano: lo hace el filtro global de EF Core desde el
-/// claim (CLAUDE.md §5). Que aquí no se vea un <c>WHERE EmpresaId</c> es la señal de que
+/// claim (ARQUITECTURA.md §5). Que aquí no se vea un <c>WHERE EmpresaId</c> es la señal de que
 /// está bien hecho, no de que falte.
 /// </para>
 /// </summary>
@@ -26,7 +26,7 @@ public sealed class ServicioDeClientes(
     /// <summary>
     /// La foto fiscal para congelar en el comprobante. Devuelve el DTO del contrato, nunca
     /// la entidad: un comprobante timbrado no puede depender de un catálogo que cambia
-    /// (CLAUDE.md §5, inmutabilidad).
+    /// (ARQUITECTURA.md §5, inmutabilidad).
     /// </summary>
     public async Task<ReceptorFiscalDto?> ObtenerParaTimbradoAsync(Guid clienteId, CancellationToken ct)
     {
@@ -53,12 +53,15 @@ public sealed class ServicioDeClientes(
     }
 
     public async Task<PaginaDeClientes> ListarAsync(
-        string? texto, bool soloActivos, int pagina, int tamano, string? orden, bool descendente, CancellationToken ct)
+        string? texto, bool? activos, int pagina, int tamano, string? orden, bool descendente, CancellationToken ct)
     {
         var consulta = baseDeDatos.Clientes.AsNoTracking();
 
-        if (soloActivos)
-            consulta = consulta.Where(c => c.Activo);
+        // Tres estados y no dos: null trae todos, true solo los activos y false solo los
+        // dados de baja. Aislar los inactivos es lo que permite encontrar al cliente que
+        // alguien desactivó por error, que antes solo se podía buscar a ojo entre todos.
+        if (activos is { } valor)
+            consulta = consulta.Where(c => c.Activo == valor);
 
         if (!string.IsNullOrWhiteSpace(texto))
         {
@@ -96,11 +99,11 @@ public sealed class ServicioDeClientes(
     }
 
     /// <summary>Todos los clientes para exportar. Sin paginar: el CSV es del catálogo completo.</summary>
-    public Task<List<Cliente>> ListarParaExportarAsync(bool soloActivos, CancellationToken ct)
+    public Task<List<Cliente>> ListarParaExportarAsync(bool? activos, CancellationToken ct)
     {
         var consulta = baseDeDatos.Clientes.AsNoTracking();
 
-        if (soloActivos) consulta = consulta.Where(c => c.Activo);
+        if (activos is { } valor) consulta = consulta.Where(c => c.Activo == valor);
 
         return consulta.OrderBy(c => c.ClaveInterna).ToListAsync(ct);
     }
@@ -188,7 +191,7 @@ public sealed class ServicioDeClientes(
         return new RespuestaGuardarCliente(ADto(cliente), nombre);
     }
 
-    /// <summary>Baja lógica. Nunca borrado físico (CLAUDE.md §5).</summary>
+    /// <summary>Baja lógica. Nunca borrado físico (ARQUITECTURA.md §5).</summary>
     public async Task<Resultado<ClienteDto>> CambiarActivoAsync(Guid id, bool activo, CancellationToken ct)
     {
         var cliente = await baseDeDatos.Clientes.FirstOrDefaultAsync(c => c.Id == id, ct);

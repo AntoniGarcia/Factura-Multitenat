@@ -4,7 +4,7 @@ using Microsoft.Extensions.Options;
 
 namespace Facturacion.Server.Infra.Correo;
 
-/// <summary>Envío real por SMTP, con la cuenta propia del SaaS (CLAUDE.md §6).</summary>
+/// <summary>Envío real por SMTP, con la cuenta propia del SaaS (ARQUITECTURA.md §6).</summary>
 public sealed class ServicioDeCorreoSmtp(
     IOptions<OpcionesDeCorreo> opciones, ILogger<ServicioDeCorreoSmtp> registro) : IServicioDeCorreo
 {
@@ -41,7 +41,7 @@ public sealed class ServicioDeCorreoSmtp(
         catch (SmtpException excepcion)
         {
             // No se relanza como error de negocio: quien invita no puede corregir un SMTP
-            // caído, y la invitación ya quedó guardada. Se registra para que el operador lo vea.
+            // caído, y lo que lo disparó ya quedó guardado. Se registra para que el operador lo vea.
             registro.LogError(excepcion, "Falló el envío de correo a {Destinatario}", destinatario);
             throw;
         }

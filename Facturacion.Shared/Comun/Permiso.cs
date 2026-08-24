@@ -1,7 +1,7 @@
 namespace Facturacion.Shared.Comun;
 
 /// <summary>
-/// Los seis permisos del sistema. La autorización es por permiso, nunca por rol (CLAUDE.md §4).
+/// Los seis permisos del sistema. La autorización es por permiso, nunca por rol (ARQUITECTURA.md §4).
 /// </summary>
 public enum Permiso
 {
@@ -52,7 +52,7 @@ public static class Permisos
 
     // Etiqueta corta para casillas de captura (fase 8). La descripción larga de la tabla
     // Permisos, sembrada desde aquí mismo, es para quien consulta la base; esta es para
-    // quien arma el formulario de invitación y no necesita el Client pidiéndole el catálogo
+    // quien arma el formulario de alta de usuario y no necesita el Client pidiéndole el catálogo
     // al servidor solo para dibujar seis casillas fijas.
     private static readonly Dictionary<string, string> Etiquetas = new()
     {

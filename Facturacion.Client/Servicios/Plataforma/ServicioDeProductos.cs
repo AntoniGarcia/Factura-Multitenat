@@ -10,10 +10,13 @@ public sealed class ServicioDeProductos(IHttpClientFactory fabrica)
     private HttpClient Cliente => fabrica.CreateClient(ClientesHttp.Api);
 
     public async Task<PaginaDeProductos> ListarAsync(
-        string? texto, bool soloActivos, int pagina, int tamano,
+        string? texto, bool? activos, int pagina, int tamano,
         string? orden, bool descendente, CancellationToken ct = default)
     {
-        var url = $"api/productos?pagina={pagina}&tamano={tamano}&soloActivos={soloActivos}" +
+        // El filtro de estatus se omite de la URL cuando es "todos": un &activos= vacío
+        // lo ata el enlazador del servidor a false, que es justo lo contrario.
+        var url = $"api/productos?pagina={pagina}&tamano={tamano}" +
+                  (activos is { } a ? $"&activos={(a ? "true" : "false")}" : "") +
                   $"&descendente={descendente}" +
                   (string.IsNullOrWhiteSpace(texto) ? "" : $"&texto={Uri.EscapeDataString(texto)}") +
                   (string.IsNullOrWhiteSpace(orden) ? "" : $"&orden={Uri.EscapeDataString(orden)}");
@@ -64,8 +67,8 @@ public sealed class ServicioDeProductos(IHttpClientFactory fabrica)
         return await LeerAsync<ResultadoDeImportacion>(respuesta, ct);
     }
 
-    public static string RutaDeExportacion(bool soloActivos)
-        => $"api/productos/exportar?soloActivos={soloActivos}";
+    public static string RutaDeExportacion(bool? activos)
+        => $"api/productos/exportar" + (activos is { } a ? $"?activos={(a ? "true" : "false")}" : "");
 
     public static string RutaDePlantilla() => "api/productos/plantilla-csv";
 

@@ -6,7 +6,7 @@ namespace Facturacion.Server.Modules.Documentos.Pac;
 /// <para><b>Nunca en el repositorio</b></para>
 /// Igual que la clave de firma del JWT y la llave maestra del almacén: van en
 /// <c>appsettings.Development.json</c> —gitignoreado— en la máquina de desarrollo, y en
-/// variables de entorno en producción (CLAUDE.md §4).
+/// variables de entorno en producción (ARQUITECTURA.md §4).
 ///
 /// <para><b>Ambiente de pruebas y de producción son cuentas distintas</b></para>
 /// El sandbox de SW no comparte usuario con producción, así que cambiar de uno a otro es

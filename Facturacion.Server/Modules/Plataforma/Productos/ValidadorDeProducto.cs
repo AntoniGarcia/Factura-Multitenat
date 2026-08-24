@@ -8,7 +8,7 @@ namespace Facturacion.Server.Modules.Plataforma.Productos;
 /// <summary>
 /// Valida un producto contra los catálogos del SAT. Todo en el servidor: una clave que no
 /// existe o una tasa que el SAT no reconoce producen un comprobante rechazado, y para
-/// entonces ya se apartó un folio (CLAUDE.md §5).
+/// entonces ya se apartó un folio (ARQUITECTURA.md §5).
 /// </summary>
 public sealed class ValidadorDeProducto(AppDbContext baseDeDatos)
 {

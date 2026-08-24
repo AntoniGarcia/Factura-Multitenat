@@ -1,7 +1,7 @@
 namespace Facturacion.Shared.Comun;
 
 /// <summary>
-/// Los tres temas del sistema (CLAUDE.md §8). Las claves son las que viajan al servidor y
+/// Los tres temas del sistema (ARQUITECTURA.md §8). Las claves son las que viajan al servidor y
 /// las que el Client escribe en el atributo <c>data-tema</c> del elemento raíz.
 /// </summary>
 public static class Temas

@@ -2,7 +2,7 @@ namespace Facturacion.Server.Modules.Plataforma.Auth;
 
 /// <summary>
 /// La cookie del refresh token: <c>HttpOnly</c>, <c>Secure</c> y <c>SameSite=Strict</c>
-/// (CLAUDE.md §4). Que el Client y la API compartan origen es lo que permite
+/// (ARQUITECTURA.md §4). Que el Client y la API compartan origen es lo que permite
 /// <c>SameSite=Strict</c> sin fricción.
 /// <para>
 /// Va acotada a <c>/api/auth</c> a propósito: es la única ruta que la necesita, así que no

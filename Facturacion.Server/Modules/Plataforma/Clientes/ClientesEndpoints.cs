@@ -8,7 +8,7 @@ namespace Facturacion.Server.Modules.Plataforma.Clientes;
 
 /// <summary>
 /// Catálogo de clientes. Ningún endpoint recibe identificador de empresa: la empresa es la
-/// del claim y el filtro global de EF Core hace el resto (CLAUDE.md §4).
+/// del claim y el filtro global de EF Core hace el resto (ARQUITECTURA.md §4).
 /// <para>
 /// Basta con tener sesión para consultarlos —quien factura necesita elegir cliente— y hace
 /// falta <c>configurar_empresa</c> para modificarlos, que es el permiso bajo el que vive el
@@ -32,7 +32,7 @@ public static class ClientesEndpoints
 
     private static async Task<IResult> Listar(
         ServicioDeClientes clientes, CancellationToken ct,
-        string? texto = null, bool soloActivos = true,
+        string? texto = null, bool? activos = true,
         int pagina = 0, int tamano = 25, string? orden = null, bool descendente = false)
     {
         // Tope duro al tamaño de página: sin él, alguien pide un millón de renglones y se
@@ -41,7 +41,7 @@ public static class ClientesEndpoints
         var paginaEfectiva = Math.Max(pagina, 0);
 
         return Results.Ok(await clientes.ListarAsync(
-            texto, soloActivos, paginaEfectiva, tamanoEfectivo, orden, descendente, ct));
+            texto, activos, paginaEfectiva, tamanoEfectivo, orden, descendente, ct));
     }
 
     private static async Task<IResult> Obtener(Guid id, ServicioDeClientes clientes, CancellationToken ct)
@@ -87,9 +87,9 @@ public static class ClientesEndpoints
     /// los clientes al navegador solo para volver a escribirlos.
     /// </summary>
     private static async Task<IResult> Exportar(
-        ServicioDeClientes clientes, CancellationToken ct, bool soloActivos = true)
+        ServicioDeClientes clientes, CancellationToken ct, bool? activos = true)
     {
-        var lista = await clientes.ListarParaExportarAsync(soloActivos, ct);
+        var lista = await clientes.ListarParaExportarAsync(activos, ct);
 
         var csv = new StringBuilder();
 

@@ -9,7 +9,7 @@ namespace Facturacion.Server.Modules.Plataforma.Empresas;
 /// Lee y valida un certificado de sello digital del SAT. Todo ocurre <b>en el servidor</b>:
 /// aceptar un CSD que no corresponde al contribuyente produce comprobantes que el PAC
 /// rechaza, y el <c>Client</c> no puede validar nada de esto de forma confiable
-/// (CLAUDE.md §3).
+/// (ARQUITECTURA.md §3).
 ///
 /// <para><b>Qué se comprueba y por qué</b></para>
 /// <list type="bullet">
@@ -54,7 +54,7 @@ public static class LectorDeCsd
                     "No se puede sellar con el certificado de otro contribuyente.");
 
             // Las fechas del certificado vienen en hora local del proceso; la base guarda
-            // todo en UTC (CLAUDE.md §5).
+            // todo en UTC (ARQUITECTURA.md §5).
             var desde = certificado.NotBefore.ToUniversalTime();
             var hasta = certificado.NotAfter.ToUniversalTime();
             var ahora = DateTime.UtcNow;

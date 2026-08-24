@@ -7,7 +7,7 @@ namespace Facturacion.Server.Data.Entidades.Plataforma.Catalogos;
 /// <see cref="ClaveCodigoPostal"/>.
 /// <para>
 /// <see cref="Nombre"/> es el otro campo que la búsqueda de código postal indexa con texto
-/// completo (CLAUDE.md §7): así "Roma Norte" encuentra el 06700 sin que el capturista
+/// completo (ARQUITECTURA.md §7): así "Roma Norte" encuentra el 06700 sin que el capturista
 /// necesite saber el código de memoria.
 /// </para>
 /// </summary>

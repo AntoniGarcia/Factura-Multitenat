@@ -393,7 +393,7 @@ namespace Facturacion.Server.Migrations
                 unique: true);
 
             // Fluent API no tiene forma de expresar FULLTEXT INDEX de SQL Server (ver
-            // SatClaveProdServConfiguracion). CLAUDE.md §7 pide texto completo sobre la
+            // SatClaveProdServConfiguracion). ARQUITECTURA.md §7 pide texto completo sobre la
             // descripción de c_ClaveProdServ y sobre colonia y municipio de c_CodigoPostal;
             // 3082 es el único idioma español registrado en esta instancia
             // (sys.fulltext_languages), verificado antes de escribir esto. SatColonia y

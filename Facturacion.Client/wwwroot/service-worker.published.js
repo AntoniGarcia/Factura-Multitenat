@@ -1,5 +1,5 @@
 // Service worker de producción. Cachea SOLO el app shell —los archivos que hacen falta para
-// arrancar la aplicación sin red— y JAMÁS una respuesta de /api/ (CLAUDE.md §4). Un catálogo
+// arrancar la aplicación sin red— y JAMÁS una respuesta de /api/ (ARQUITECTURA.md §4). Un catálogo
 // del SAT cacheado y viejo produce comprobantes mal emitidos: esto no es una comodidad, es
 // una salvaguarda, y por eso la exclusión de /api/ es la primera línea de onFetch, no algo
 // que se deduce de qué patrones SÍ están en la lista de inclusión.

@@ -11,7 +11,7 @@ namespace Facturacion.Shared.Contratos;
 /// </para>
 /// <para>
 /// Todo llamado queda en la bitácora. El resultado nunca se registra en el log, nunca se
-/// serializa y nunca vuelve al cliente (CLAUDE.md §4).
+/// serializa y nunca vuelve al cliente (ARQUITECTURA.md §4).
 /// </para>
 /// </summary>
 public interface IProveedorCsdParaTimbrado

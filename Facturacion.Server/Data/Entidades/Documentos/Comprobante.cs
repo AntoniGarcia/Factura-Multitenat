@@ -5,7 +5,7 @@ namespace Facturacion.Server.Data.Entidades.Documentos;
 ///
 /// <para><b>Por qué casi todo aquí es una copia y no una llave foránea</b></para>
 /// Los datos fiscales del emisor y del receptor viven <b>dentro</b> del comprobante, no
-/// apuntados por relación (CLAUDE.md §5). Al timbrar se congelan: si el cliente cambia de
+/// apuntados por relación (ARQUITECTURA.md §5). Al timbrar se congelan: si el cliente cambia de
 /// domicilio en 2028, la factura de 2026 tiene que seguir diciendo lo que decía cuando el
 /// SAT la selló. Una llave foránea haría justo lo contrario — reflejar el dato de hoy — y
 /// convertiría cada reporte histórico en una mentira distinta cada vez que se consulta.
@@ -17,7 +17,7 @@ namespace Facturacion.Server.Data.Entidades.Documentos;
 /// </para>
 ///
 /// <para><b>Folio</b></para>
-/// Nulo hasta que se reserva, y no se enseña antes de timbrar (CLAUDE.md §5). Si el
+/// Nulo hasta que se reserva, y no se enseña antes de timbrar (ARQUITECTURA.md §5). Si el
 /// timbrado falla después de tomarlo, el comprobante queda en <c>error</c> con su folio
 /// apartado: no se recicla.
 /// </summary>
@@ -92,7 +92,7 @@ public sealed class Comprobante : IEntidadDeEmpresa
 
     public required string ReceptorRfc { get; set; }
 
-    /// <summary>Ya normalizado: mayúsculas, sin acentos y sin régimen de capital (CLAUDE.md §7).</summary>
+    /// <summary>Ya normalizado: mayúsculas, sin acentos y sin régimen de capital (ARQUITECTURA.md §7).</summary>
     public required string ReceptorNombre { get; set; }
 
     public required string ReceptorRegimenFiscal { get; set; }
@@ -149,7 +149,7 @@ public sealed class Comprobante : IEntidadDeEmpresa
 
     /// <summary>
     /// Ruta del XML timbrado dentro del almacén cifrado. Nunca en <c>wwwroot</c>: se sirve
-    /// por endpoint autorizado que valida la empresa (CLAUDE.md §4).
+    /// por endpoint autorizado que valida la empresa (ARQUITECTURA.md §4).
     /// </summary>
     public string? RutaXml { get; set; }
 

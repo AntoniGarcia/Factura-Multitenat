@@ -14,7 +14,7 @@ namespace Facturacion.Server.Modules.Documentos.Cancelacion;
 /// funcional).
 ///
 /// <para><b>Mismos tres pasos que el timbrado, y por la misma razón</b></para>
-/// La llamada al SAT tarda y no puede ocurrir dentro de una transacción (CLAUDE.md §5):
+/// La llamada al SAT tarda y no puede ocurrir dentro de una transacción (ARQUITECTURA.md §5):
 /// apartar en transacción corta, hablar con el PAC fuera de toda transacción, resolver en otra
 /// transacción corta. Ver <c>ServicioDeTimbrado</c>, que documenta el porqué a fondo.
 ///

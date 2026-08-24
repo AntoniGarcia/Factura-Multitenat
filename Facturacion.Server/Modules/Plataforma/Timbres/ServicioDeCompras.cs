@@ -14,7 +14,7 @@ namespace Facturacion.Server.Modules.Plataforma.Timbres;
 ///
 /// <para><b>El precio nunca viene del cliente</b></para>
 /// <see cref="ComprarAsync"/> recibe un identificador de paquete y nada más. Todo lo que se
-/// cobra se lee del catálogo del servidor en el momento de comprar. Es la regla de CLAUDE.md
+/// cobra se lee del catálogo del servidor en el momento de comprar. Es la regla de ARQUITECTURA.md
 /// §4 y no tiene excepciones: si el precio viajara en la petición, el usuario podría
 /// editarlo, porque el código del cliente corre en su navegador y es legible.
 /// </summary>

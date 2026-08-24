@@ -10,11 +10,11 @@ namespace Facturacion.Shared.Comun;
 /// atrapa el error real del capturista —una letra cambiada, dos dígitos volteados—, porque
 /// un RFC mal tecleado casi nunca cae en un dígito verificador correcto. Sin esta
 /// comprobación, el error se descubre hasta que el PAC rechaza el comprobante, cuando ya se
-/// apartó un folio (CLAUDE.md §5).
+/// apartó un folio (ARQUITECTURA.md §5).
 ///
 /// <para><b>Vive en Shared para que Client y Server no puedan discrepar</b></para>
 /// El <c>Client</c> la usa para avisarle al capturista mientras escribe; la que cuenta es la
-/// del servidor, que se ejecuta siempre (CLAUDE.md §3). Tener dos implementaciones sería
+/// del servidor, que se ejecuta siempre (ARQUITECTURA.md §3). Tener dos implementaciones sería
 /// tener dos verdades.
 /// </summary>
 public static class Rfc

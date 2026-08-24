@@ -12,14 +12,14 @@ namespace Facturacion.Server.Modules.Documentos;
 /// <para><b>Qué huso usan las fechas del contrato</b></para>
 /// <see cref="IResumenDocumentos.ObtenerAsync"/> recibe <c>DateOnly</c>, que no lleva huso,
 /// y los comprobantes se guardan en UTC. Se interpretan como <b>fechas de calendario en el
-/// huso del lugar de expedición de la empresa</b> (CLAUDE.md §5): «agosto» es el agosto del
+/// huso del lugar de expedición de la empresa</b> (ARQUITECTURA.md §5): «agosto» es el agosto del
 /// contador, no el de UTC. El contrato no lo dice; se decidió aquí y quedó anotado como algo
 /// que le faltaba. Los dos extremos se incluyen.
 ///
 /// <para><b>Por qué no filtra por empresa</b></para>
 /// No hace falta: <c>Comprobante</c> implementa <c>IEntidadDeEmpresa</c>, así que el filtro
 /// global ya lo acota a la empresa activa. Repetir la condición aquí sería duplicar la regla
-/// en un sitio donde nadie la mantendría (CLAUDE.md §5).
+/// en un sitio donde nadie la mantendría (ARQUITECTURA.md §5).
 /// </summary>
 public sealed class ResumenDocumentos(AppDbContext baseDeDatos, HusoDeEmpresa huso)
     : IResumenDocumentos

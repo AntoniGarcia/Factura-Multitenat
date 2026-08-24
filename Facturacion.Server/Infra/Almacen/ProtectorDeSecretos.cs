@@ -4,7 +4,7 @@ namespace Facturacion.Server.Infra.Almacen;
 
 /// <summary>
 /// Cifra y descifra secretos cortos que sí viven en la base, como la contraseña de la llave
-/// privada del CSD (CLAUDE.md §4). Igual que <see cref="IAlmacenDeArchivos"/>, el protector
+/// privada del CSD (ARQUITECTURA.md §4). Igual que <see cref="IAlmacenDeArchivos"/>, el protector
 /// va atado a la empresa: la contraseña de una empresa no se descifra en el contexto de otra.
 /// <para>
 /// El texto en claro solo existe en memoria y solo durante el sellado. Nunca se registra en

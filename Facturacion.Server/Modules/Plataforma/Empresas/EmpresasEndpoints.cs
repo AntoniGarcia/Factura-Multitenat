@@ -10,7 +10,7 @@ namespace Facturacion.Server.Modules.Plataforma.Empresas;
 /// <para>
 /// Todo el grupo exige el permiso <c>configurar_empresa</c>, salvo la lectura del logo, que
 /// la necesita cualquiera que vea una vista previa. Ningún endpoint recibe un identificador
-/// de empresa: la empresa es la del claim (CLAUDE.md §4).
+/// de empresa: la empresa es la del claim (ARQUITECTURA.md §4).
 /// </para>
 /// </summary>
 public static class EmpresasEndpoints
@@ -24,6 +24,11 @@ public static class EmpresasEndpoints
 
         grupo.MapGet("/", Obtener).RequireAuthorization(Permisos.ConfigurarEmpresa);
         grupo.MapPut("/", Guardar).RequireAuthorization(Permisos.ConfigurarEmpresa);
+
+        // Solo exige sesión: quien acaba de registrarse no tiene permisos porque no
+        // tiene empresa, y es justo la primera la que viene a crear. El servicio
+        // decide quién puede (ver ServicioDeEmpresa.CrearAsync).
+        grupo.MapPost("/", Crear).RequireAuthorization();
 
         grupo.MapGet("/configuracion", ObtenerConfiguracion).RequireAuthorization(Permisos.ConfigurarEmpresa);
         grupo.MapPut("/configuracion", GuardarConfiguracion).RequireAuthorization(Permisos.ConfigurarEmpresa);
@@ -51,6 +56,16 @@ public static class EmpresasEndpoints
     {
         var empresa = await empresas.ObtenerAsync(ct);
         return empresa is null ? Results.NotFound() : Results.Ok(empresa);
+    }
+
+    private static async Task<IResult> Crear(
+        PeticionCrearEmpresa peticion, ServicioDeEmpresa empresas, HttpContext contexto, CancellationToken ct)
+    {
+        var resultado = await empresas.CrearAsync(peticion, ct);
+
+        return resultado.EsFallo
+            ? resultado.Error!.AResultado(contexto)
+            : Results.Ok(resultado.Valor);
     }
 
     private static async Task<IResult> Guardar(

@@ -8,7 +8,7 @@ namespace Facturacion.Server.Infra.Errores;
 /// <para>
 /// El detalle interno —tipo de excepción, mensaje, pila— se registra en el log y
 /// <b>nunca</b> viaja al cliente. Lo único que cruza es el <c>traceId</c>, que es lo que el
-/// usuario le dicta a soporte para que soporte encuentre el resto (CLAUDE.md §4).
+/// usuario le dicta a soporte para que soporte encuentre el resto (ARQUITECTURA.md §4).
 /// </para>
 /// </summary>
 public sealed class MiddlewareDeExcepciones(RequestDelegate siguiente, ILogger<MiddlewareDeExcepciones> registro)
@@ -72,7 +72,7 @@ public sealed class MiddlewareDeExcepciones(RequestDelegate siguiente, ILogger<M
             contexto.Response.ContentType = TipoContenido;
 
             // Ni en el 400 se filtra el detalle interno: decir en qué byte falló el JSON no
-            // le sirve a nadie legítimo y sí describe el modelo por dentro (CLAUDE.md §4).
+            // le sirve a nadie legítimo y sí describe el modelo por dentro (ARQUITECTURA.md §4).
             var problema = peticionInvalida
                 ? new DetalleProblema(
                     Tipo: "urn:facturacion:error:peticion-invalida",

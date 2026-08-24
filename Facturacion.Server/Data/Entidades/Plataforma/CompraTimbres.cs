@@ -7,7 +7,7 @@ namespace Facturacion.Server.Data.Entidades.Plataforma;
 /// <para><b>Los datos del paquete se copian, no se referencian</b></para>
 /// <see cref="PaqueteId"/> queda para poder rastrear, pero el nombre, la cantidad y los
 /// precios se copian al comprar. Es la misma regla de inmutabilidad que rige a los
-/// comprobantes (CLAUDE.md §5): que el SaaS suba el precio del paquete mañana no puede
+/// comprobantes (ARQUITECTURA.md §5): que el SaaS suba el precio del paquete mañana no puede
 /// reescribir lo que un cliente pagó ayer.
 ///
 /// <para><b>El saldo no sube al comprar</b></para>

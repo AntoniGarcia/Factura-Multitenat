@@ -39,7 +39,7 @@ public sealed record LicenciasDto(
 
 /// <summary>
 /// Lo que el <c>Client</c> manda al guardar. No trae <c>Id</c>: la empresa es la del claim
-/// del token, nunca un identificador que llegue del navegador (CLAUDE.md §4).
+/// del token, nunca un identificador que llegue del navegador (ARQUITECTURA.md §4).
 /// </summary>
 public sealed record PeticionGuardarEmpresa(
     string NombreFiscal,
@@ -63,7 +63,7 @@ public sealed record PeticionGuardarEmpresa(
 /// <summary>
 /// Respuesta al guardar: la empresa ya guardada y qué se le cambió al nombre para cumplir
 /// con CFDI 4.0, para poder explicárselo al usuario en vez de corregirlo a escondidas
-/// (CLAUDE.md §7).
+/// (ARQUITECTURA.md §7).
 /// </summary>
 public sealed record RespuestaGuardarEmpresa(
     EmpresaDto Empresa,
@@ -79,7 +79,7 @@ public sealed record ConfiguracionEmpresaDto(
 /// <summary>
 /// Certificado de sello digital, en la única forma en la que puede salir del servidor:
 /// metadatos. Ni el <c>.cer</c>, ni el <c>.key</c>, ni la contraseña vuelven nunca al
-/// <c>Client</c> (CLAUDE.md §4).
+/// <c>Client</c> (ARQUITECTURA.md §4).
 /// </summary>
 /// <param name="DiasParaCaducar">Negativo si ya caducó.</param>
 /// <param name="PorCaducar">Verdadero si entra en la ventana de aviso configurada.</param>
@@ -97,7 +97,7 @@ public sealed record CertificadoCsdDto(
 /// <param name="FolioActual">
 /// Último folio entregado. Se muestra en la administración de series —el contador necesita
 /// saber por dónde va— pero <b>no</b> se le enseña al capturista antes de timbrar
-/// (CLAUDE.md §5).
+/// (ARQUITECTURA.md §5).
 /// </param>
 public sealed record SerieDto(
     Guid Id,
@@ -110,7 +110,7 @@ public sealed record SerieDto(
 /// <summary>
 /// Una serie tal como la ve quien va a emitir, no quien la administra: sin
 /// <see cref="SerieDto.FolioActual"/>, que revela cuánto ha facturado la empresa y que
-/// CLAUDE.md §5 reserva para la administración.
+/// ARQUITECTURA.md §5 reserva para la administración.
 /// </summary>
 public sealed record SerieParaEmisionDto(
     Guid Id,
@@ -123,3 +123,20 @@ public sealed record PeticionGuardarSerie(
     int FolioInicial,
     string TipoComprobante,
     bool Activa);
+
+/// <summary>
+/// Alta de una empresa emisora. Solo los datos sin los que no se puede timbrar; el domicilio
+/// y el resto se completan después en «Datos fiscales».
+///
+/// <para>
+/// El RFC va aquí y no en <see cref="PeticionGuardarEmpresa"/> porque se fija una sola vez:
+/// cambiarlo después convertiría a la empresa en otra, y las facturas ya emitidas llevan el
+/// anterior congelado dentro.
+/// </para>
+/// </summary>
+public sealed record PeticionCrearEmpresa(
+    string Rfc,
+    string NombreFiscal,
+    string RegimenFiscal,
+    string CodigoPostalExpedicion,
+    string ZonaHoraria);

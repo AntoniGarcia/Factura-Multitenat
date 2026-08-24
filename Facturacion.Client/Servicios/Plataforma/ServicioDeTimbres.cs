@@ -12,7 +12,7 @@ namespace Facturacion.Client.Servicios.Plataforma;
 /// esta clase trae son para pintarlos en pantalla; el que se cobra lo vuelve a leer el
 /// servidor de su propio catálogo. Este código corre en el navegador y es legible y
 /// modificable, así que nada de lo que salga de aquí puede decidir cuánto se cobra
-/// (CLAUDE.md §3 y §4).
+/// (ARQUITECTURA.md §3 y §4).
 /// </summary>
 public sealed class ServicioDeTimbres(IHttpClientFactory fabrica) : IIndicadorDeTimbres
 {
@@ -60,7 +60,7 @@ public sealed class ServicioDeTimbres(IHttpClientFactory fabrica) : IIndicadorDe
     /// <param name="claveIdempotencia">
     /// La genera la pantalla una sola vez por intención de compra y la reutiliza en cada
     /// reintento. Es lo que convierte un doble clic, o un reintento del navegador tras una
-    /// red intermitente, en una sola compra (CLAUDE.md §4).
+    /// red intermitente, en una sola compra (ARQUITECTURA.md §4).
     /// </param>
     public async Task<(CompraDto? Exito, DetalleProblema? Error)> ComprarAsync(
         Guid paqueteId, string claveIdempotencia, CancellationToken ct = default)

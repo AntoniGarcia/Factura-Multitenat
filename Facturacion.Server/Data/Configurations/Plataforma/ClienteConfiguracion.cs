@@ -48,7 +48,7 @@ public sealed class ClienteConfiguracion : IEntityTypeConfiguration<Cliente>
             .IsUnique()
             .HasDatabaseName("IX_Clientes_ClaveInternaPorEmpresa");
 
-        // CLAUDE.md §5: el RFC es único POR EMPRESA —dos empresas pueden facturarle al mismo
+        // ARQUITECTURA.md §5: el RFC es único POR EMPRESA —dos empresas pueden facturarle al mismo
         // cliente— y los dos genéricos quedan fuera del índice porque, por definición, se
         // repiten: todo el público en general comparte XAXX010101000.
         //

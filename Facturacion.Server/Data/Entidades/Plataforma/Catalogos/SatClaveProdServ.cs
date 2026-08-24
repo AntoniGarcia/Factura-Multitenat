@@ -2,7 +2,7 @@ namespace Facturacion.Server.Data.Entidades.Plataforma.Catalogos;
 
 /// <summary>
 /// Catálogo <c>c_ClaveProdServ</c> (~52,000 claves). No viaja completo al Client en ningún
-/// caso (CLAUDE.md §7); se resuelve por clave exacta o se busca por texto completo sobre
+/// caso (ARQUITECTURA.md §7); se resuelve por clave exacta o se busca por texto completo sobre
 /// <see cref="Descripcion"/>.
 /// </summary>
 public sealed class SatClaveProdServ : ISatCatalogoSimple

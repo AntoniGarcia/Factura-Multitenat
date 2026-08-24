@@ -5,7 +5,7 @@ namespace Facturacion.Shared.Contratos;
 /// de una empresa no consume los timbres de otra del mismo dueño.
 /// <para>
 /// Las tres operaciones corren en transacciones cortas. Nunca se hace una llamada HTTP
-/// dentro de ellas (CLAUDE.md §5).
+/// dentro de ellas (ARQUITECTURA.md §5).
 /// </para>
 /// </summary>
 public interface IServicioTimbres

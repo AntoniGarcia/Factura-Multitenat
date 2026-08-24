@@ -37,7 +37,7 @@ public sealed record DatosDeEmision(
 ///
 /// <para><b>Los datos salen del comprobante y de ningún otro lado</b></para>
 /// No hay una sola consulta al cliente ni a la empresa: el comprobante ya trae congelados el
-/// RFC, el nombre, el régimen y el domicilio (CLAUDE.md §5). Es lo que hace que reimprimir
+/// RFC, el nombre, el régimen y el domicilio (ARQUITECTURA.md §5). Es lo que hace que reimprimir
 /// una factura de hace dos años dé el mismo XML que dio entonces.
 /// </summary>
 public sealed class GeneradorDeXmlCfdi

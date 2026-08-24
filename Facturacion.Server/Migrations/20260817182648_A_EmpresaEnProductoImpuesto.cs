@@ -6,7 +6,7 @@ namespace Facturacion.Server.Migrations
 {
     /// <summary>
     /// <c>ProductosImpuestos</c> gana <c>EmpresaId</c> para quedar cubierta por el filtro
-    /// global de empresa, como toda tabla con datos de empresa (CLAUDE.md §5).
+    /// global de empresa, como toda tabla con datos de empresa (ARQUITECTURA.md §5).
     ///
     /// <para><b>Por qué en tres pasos y no en uno</b></para>
     /// La columna se agrega <b>nullable</b>, se rellena desde el producto padre y solo

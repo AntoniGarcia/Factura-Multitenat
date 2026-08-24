@@ -25,7 +25,7 @@ public sealed class ProductoConfiguracion : IEntityTypeConfiguration<Producto>
 
         // Los impuestos son parte del producto, no una entidad con vida propia: al reemplazar
         // la configuración fiscal se borran los renglones viejos y se escriben los nuevos.
-        // Es la única excepción razonable a «nada se borra» de CLAUDE.md §5: no son datos
+        // Es la única excepción razonable a «nada se borra» de ARQUITECTURA.md §5: no son datos
         // históricos —el histórico vive congelado dentro del comprobante— sino la
         // configuración actual del producto.
         constructor.HasMany(p => p.Impuestos)

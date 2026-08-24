@@ -11,14 +11,14 @@ using Microsoft.Net.Http.Headers;
 namespace Facturacion.Server.Modules.Plataforma.Catalogos;
 
 /// <summary>
-/// Los cuatro endpoints de consulta de catálogos del SAT (CLAUDE.md §7). Todos exigen
+/// Los cuatro endpoints de consulta de catálogos del SAT (ARQUITECTURA.md §7). Todos exigen
 /// sesión: no hay pantalla del sistema que se use sin haber iniciado sesión, y así se evita
 /// exponer sin autenticar un catálogo completo a quien sepa la URL.
 /// </summary>
 public static class CatalogosEndpoints
 {
     /// <summary>
-    /// Los catálogos chicos y estables que CLAUDE.md §7 dice que se precargan en el Client.
+    /// Los catálogos chicos y estables que ARQUITECTURA.md §7 dice que se precargan en el Client.
     /// </summary>
     private static readonly string[] Precargables =
     [

@@ -2,7 +2,7 @@ namespace Facturacion.Shared.Contratos;
 
 /// <summary>
 /// Consulta de los catálogos del SAT. Los catálogos grandes nunca se devuelven completos:
-/// se resuelven por clave exacta o por búsqueda con tope (CLAUDE.md §7).
+/// se resuelven por clave exacta o por búsqueda con tope (ARQUITECTURA.md §7).
 /// </summary>
 public interface IServicioCatalogosSat
 {

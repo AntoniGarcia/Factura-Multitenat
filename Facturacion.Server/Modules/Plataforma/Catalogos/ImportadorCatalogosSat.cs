@@ -15,7 +15,7 @@ namespace Facturacion.Server.Modules.Plataforma.Catalogos;
 /// Cada hoja del archivo del SAT trae el encabezado en una fila distinta —algunas empiezan
 /// con una fila en blanco, otras no— así que <see cref="FilaDeEncabezado"/> lo busca por
 /// texto en vez de asumir una posición. Se comprobó inspeccionando el archivo real, hoja por
-/// hoja, antes de escribir esto (CLAUDE.md §9: no dar por hecho el formato).
+/// hoja, antes de escribir esto (ARQUITECTURA.md §9: no dar por hecho el formato).
 /// <para><b>Por qué las claves numéricas se reconstruyen con ceros</b></para>
 /// El archivo del SAT no escribe todas las claves como texto: la mayoría de
 /// <c>c_ClaveProdServ</c> son celdas numéricas (Excel les quita los ceros a la izquierda que
@@ -26,7 +26,7 @@ namespace Facturacion.Server.Modules.Plataforma.Catalogos;
 /// <para><b>Por qué nada se borra</b></para>
 /// Una clave que ya no aparece en el archivo nuevo no se elimina: se marca
 /// <c>Vigente = false</c> con la fecha de hoy, porque un comprobante viejo tiene que poder
-/// seguir mostrando la descripción de una clave que el SAT retiró (CLAUDE.md §7).
+/// seguir mostrando la descripción de una clave que el SAT retiró (ARQUITECTURA.md §7).
 /// </summary>
 public sealed class ImportadorCatalogosSat(AppDbContext db)
 {
@@ -744,7 +744,7 @@ public sealed class ImportadorCatalogosSat(AppDbContext db)
     /// <summary>
     /// Compara lo leído del archivo contra lo que ya hay en la base: da de alta lo nuevo,
     /// actualiza lo que cambió, y deja lo que ya no aparece exactamente como estaba salvo
-    /// por <paramref name="retirar"/> (CLAUDE.md §7: una clave retirada no se borra).
+    /// por <paramref name="retirar"/> (ARQUITECTURA.md §7: una clave retirada no se borra).
     /// </summary>
     private async Task<int> SincronizarAsync<TClave, TEntidad>(
         DbSet<TEntidad> tabla,

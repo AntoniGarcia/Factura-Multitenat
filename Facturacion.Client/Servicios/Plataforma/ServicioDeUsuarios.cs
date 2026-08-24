@@ -4,31 +4,37 @@ using Facturacion.Shared.Plataforma;
 
 namespace Facturacion.Client.Servicios.Plataforma;
 
-/// <summary>Llama a <c>/api/usuarios</c> e <c>/api/invitaciones</c>. La empresa nunca viaja: va en el token.</summary>
+/// <summary>Llama a <c>/api/usuarios</c>. La empresa nunca viaja: va en el token.</summary>
 public sealed class ServicioDeUsuarios(IHttpClientFactory fabrica)
 {
     private HttpClient Cliente => fabrica.CreateClient(ClientesHttp.Api);
 
     public async Task<UsuariosDeLaEmpresaDto> ListarAsync(CancellationToken ct = default)
         => await Cliente.GetFromJsonAsync<UsuariosDeLaEmpresaDto>("api/usuarios", ct)
-           ?? new UsuariosDeLaEmpresaDto([], [], 3);
+           ?? new UsuariosDeLaEmpresaDto([], 3);
 
-    public async Task<(RespuestaInvitar? Exito, DetalleProblema? Error)> InvitarAsync(
-        PeticionInvitarUsuario peticion, CancellationToken ct = default)
+    public async Task<(RespuestaCrearUsuario? Exito, DetalleProblema? Error)> CrearAsync(
+        PeticionCrearUsuario peticion, CancellationToken ct = default)
     {
-        using var respuesta = await Cliente.PostAsJsonAsync("api/usuarios/invitar", peticion, ct);
-        return await LeerAsync<RespuestaInvitar>(respuesta, ct);
+        using var respuesta = await Cliente.PostAsJsonAsync("api/usuarios", peticion, ct);
+        return await LeerAsync<RespuestaCrearUsuario>(respuesta, ct);
     }
 
-    public async Task<DetalleProblema?> ReenviarAsync(Guid invitacionId, CancellationToken ct = default)
+    public async Task<DetalleProblema?> CambiarCorreoAsync(
+        Guid usuarioId, string correo, CancellationToken ct = default)
     {
-        using var respuesta = await Cliente.PostAsync($"api/usuarios/invitaciones/{invitacionId}/reenviar", content: null, ct);
+        using var respuesta = await Cliente.PutAsJsonAsync(
+            $"api/usuarios/{usuarioId}/correo", new PeticionCambiarCorreoUsuario(correo), ct);
+
         return respuesta.IsSuccessStatusCode ? null : await respuesta.Content.ReadFromJsonAsync<DetalleProblema>(ct);
     }
 
-    public async Task<DetalleProblema?> RevocarAsync(Guid invitacionId, CancellationToken ct = default)
+    public async Task<DetalleProblema?> CambiarContrasenaAsync(
+        Guid usuarioId, string contrasena, CancellationToken ct = default)
     {
-        using var respuesta = await Cliente.PostAsync($"api/usuarios/invitaciones/{invitacionId}/revocar", content: null, ct);
+        using var respuesta = await Cliente.PutAsJsonAsync(
+            $"api/usuarios/{usuarioId}/contrasena", new PeticionCambiarContrasenaUsuario(contrasena), ct);
+
         return respuesta.IsSuccessStatusCode ? null : await respuesta.Content.ReadFromJsonAsync<DetalleProblema>(ct);
     }
 
@@ -48,23 +54,6 @@ public sealed class ServicioDeUsuarios(IHttpClientFactory fabrica)
             $"api/usuarios/{usuarioId}/activo", new PeticionCambiarActivoUsuario(activo), ct);
 
         return await LeerAsync<UsuarioDeEmpresaDto>(respuesta, ct);
-    }
-
-    /// <summary>
-    /// Para la pantalla pública de aceptar. Se llega aquí sin sesión, así que un token
-    /// vencido o ya usado se ve exactamente igual que uno que nunca existió: <c>null</c>.
-    /// </summary>
-    public async Task<InvitacionPublicaDto?> ObtenerInvitacionAsync(string token, CancellationToken ct = default)
-    {
-        using var respuesta = await Cliente.GetAsync($"api/invitaciones/{Uri.EscapeDataString(token)}", ct);
-        return respuesta.IsSuccessStatusCode ? await respuesta.Content.ReadFromJsonAsync<InvitacionPublicaDto>(ct) : null;
-    }
-
-    public async Task<DetalleProblema?> AceptarInvitacionAsync(
-        PeticionAceptarInvitacion peticion, CancellationToken ct = default)
-    {
-        using var respuesta = await Cliente.PostAsJsonAsync("api/invitaciones/aceptar", peticion, ct);
-        return respuesta.IsSuccessStatusCode ? null : await respuesta.Content.ReadFromJsonAsync<DetalleProblema>(ct);
     }
 
     private static async Task<(T? Exito, DetalleProblema? Error)> LeerAsync<T>(

@@ -27,7 +27,7 @@ public interface IServicioEmpresaEmisora
 /// <param name="CodigoPostalExpedicion">Código postal del lugar de expedición.</param>
 /// <param name="ZonaHoraria">
 /// Huso del lugar de expedición. La base guarda todo en UTC; el sello del comprobante
-/// tiene que llevar la hora local del lugar de expedición (CLAUDE.md §5).
+/// tiene que llevar la hora local del lugar de expedición (ARQUITECTURA.md §5).
 /// </param>
 public sealed record EmisorFiscalDto(
     Guid EmpresaId,

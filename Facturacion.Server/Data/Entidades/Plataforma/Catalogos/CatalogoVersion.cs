@@ -1,7 +1,7 @@
 namespace Facturacion.Server.Data.Entidades.Plataforma.Catalogos;
 
 /// <summary>
-/// Versión publicada por el SAT y fecha de carga de cada catálogo (CLAUDE.md §7). Un
+/// Versión publicada por el SAT y fecha de carga de cada catálogo (ARQUITECTURA.md §7). Un
 /// renglón por catálogo, actualizado por <c>ImportadorCatalogosSat</c> cada vez que corre.
 /// </summary>
 public sealed class CatalogoVersion

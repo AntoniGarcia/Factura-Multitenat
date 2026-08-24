@@ -9,14 +9,14 @@ namespace Facturacion.Server.Modules.Documentos.Cancelacion;
 /// Cancelación ante el SAT y consulta de estatus (B8, §30 del documento funcional).
 ///
 /// <para><b>Por qué exige <c>Idempotency-Key</c> si no gasta timbre</b></para>
-/// CLAUDE.md §4 lo pide para todo <c>POST</c> que cobre o timbre. Cancelar no hace ninguna de
+/// ARQUITECTURA.md §4 lo pide para todo <c>POST</c> que cobre o timbre. Cancelar no hace ninguna de
 /// las dos, pero sí es irreversible ante el SAT y llega por el mismo camino que provoca envíos
 /// repetidos: un doble clic, o el reintento del navegador cuando la respuesta tarda. Sin la
 /// clave, el segundo envío entra como petición nueva y se topa con el comprobante ya en
 /// <c>en_cancelacion</c>, devolviendo un conflicto que confunde a quien solo hizo clic dos veces.
 ///
 /// <para><b>Van bajo <c>cancelar</c> y no bajo <c>timbrar</c></b></para>
-/// Son permisos distintos en CLAUDE.md §4 a propósito: quien captura y timbra no
+/// Son permisos distintos en ARQUITECTURA.md §4 a propósito: quien captura y timbra no
 /// necesariamente puede deshacer un documento fiscal ya emitido.
 /// </summary>
 public static class CancelacionEndpoints

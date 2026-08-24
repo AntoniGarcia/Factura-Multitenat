@@ -58,7 +58,7 @@ public sealed class ServicioCatalogosSat(AppDbContext db) : IServicioCatalogosSa
             "c_UsoCFDI" => BuscarSimpleAsync(db.SatUsosCfdi, catalogo, texto, tope, ct),
             "c_Impuesto" => BuscarSimpleAsync(db.SatImpuestos, catalogo, texto, tope, ct),
 
-            // Con índice de texto completo (CLAUDE.md §7): ~52,000 renglones no se buscan con LIKE.
+            // Con índice de texto completo (ARQUITECTURA.md §7): ~52,000 renglones no se buscan con LIKE.
             "c_ClaveProdServ" => BuscarClaveProdServAsync(texto, tope, ct),
             "c_ClaveUnidad" => BuscarClaveUnidadAsync(texto, tope, ct),
             "c_CodigoPostal" => BuscarCodigoPostalAsync(texto, tope, ct),
@@ -172,7 +172,7 @@ public sealed class ServicioCatalogosSat(AppDbContext db) : IServicioCatalogosSa
 
     /// <summary>
     /// Busca por dígitos del código postal, o por nombre de colonia o de municipio con
-    /// texto completo (CLAUDE.md §7). Cada código postal puede tener muchas colonias; el
+    /// texto completo (ARQUITECTURA.md §7). Cada código postal puede tener muchas colonias; el
     /// resultado se agrupa por código postal para no repetir el mismo CP una vez por colonia.
     /// </summary>
     private async Task<IReadOnlyList<ClaveSatDto>> BuscarCodigoPostalAsync(string texto, int tope, CancellationToken ct)
@@ -260,7 +260,7 @@ public sealed class ServicioCatalogosSat(AppDbContext db) : IServicioCatalogosSa
     /// <summary>
     /// <c>CONTAINS</c> de SQL Server no acepta texto libre sin envolver: se arma como
     /// prefijo (<c>"texto*"</c>) para que "rom" encuentre "Roma" mientras se sigue
-    /// escribiendo, igual que espera <c>BuscadorCatalogo</c> (CLAUDE.md §7).
+    /// escribiendo, igual que espera <c>BuscadorCatalogo</c> (ARQUITECTURA.md §7).
     /// </summary>
     private static string PatronDeBusquedaDeTexto(string texto)
         => $"\"{texto.Replace("\"", "")}*\"";

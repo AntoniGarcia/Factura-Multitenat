@@ -2,7 +2,7 @@ namespace Facturacion.Shared.Contratos;
 
 /// <summary>
 /// Reserva de folios de una serie. La reserva ocurre dentro de un procedimiento almacenado
-/// con bloqueo de renglón; nunca con <c>SELECT MAX(Folio)+1</c> (CLAUDE.md §5).
+/// con bloqueo de renglón; nunca con <c>SELECT MAX(Folio)+1</c> (ARQUITECTURA.md §5).
 /// </summary>
 public interface IServicioFolios
 {
@@ -25,7 +25,7 @@ public interface IServicioFolios
     /// <summary>
     /// Marca la reserva como abandonada cuando el timbrado no llegó a usarla.
     /// <para>
-    /// <b>No devuelve el folio a la serie.</b> CLAUDE.md §5 es explícito: si el timbrado
+    /// <b>No devuelve el folio a la serie.</b> ARQUITECTURA.md §5 es explícito: si el timbrado
     /// falla después de tomar folio, el comprobante queda en <c>error</c> con ese folio
     /// apartado y el folio no se recicla. Este método solo deja el registro para la
     /// bitácora y para poder explicar después el hueco en la numeración.

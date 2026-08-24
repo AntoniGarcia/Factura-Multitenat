@@ -75,7 +75,7 @@ public sealed class ServicioDeCsd(
         if (anterior is not null)
         {
             // Se conserva inactivo: los comprobantes timbrados con él llevan su número de
-            // serie dentro y tiene que poder explicarse de dónde salió (CLAUDE.md §5).
+            // serie dentro y tiene que poder explicarse de dónde salió (ARQUITECTURA.md §5).
             anterior.Activo = false;
 
             bitacora.Registrar(

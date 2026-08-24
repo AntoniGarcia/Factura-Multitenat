@@ -1,7 +1,9 @@
 /*
   El único MainLayout (CLAUDE.md §8). En escritorio: barra superior fija y menú lateral
-  fijo. En móvil (<=768px): la barra superior se reduce y el menú lateral se convierte en
-  barra inferior de pestañas, que es como se navega con el pulgar.
+  fijo, que se oculta entero al pulsar el botón de la barra para dejarle todo el ancho a la
+  tabla. En móvil (<=768px): la barra superior se reduce y el menú lateral se convierte en
+  barra inferior de pestañas, que es como se navega con el pulgar. Ahí el ocultado no
+  aplica: el menú ya no es una columna y la barra tiene que salir completa.
 */
 
 html, body {
@@ -19,16 +21,37 @@ html, body {
     display: flex;
     align-items: center;
     gap: 0.75rem;
-    height: 56px;
-    padding: 0 1rem;
+    height: var(--alto-barra);
+    padding: 0 var(--margen-pagina);
     background: var(--superficie);
     border-bottom: 1px solid var(--borde);
 }
 
 .barra-superior-marca {
-    font-weight: 500;
+    font-weight: var(--peso-titulo);
     color: var(--texto);
     white-space: nowrap;
+}
+
+/* Encoge y expande el menú. Es un botón real y no un icono decorativo: se alcanza con
+   teclado y anuncia su estado con aria-expanded desde MainLayout. */
+.boton-colapso {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: var(--alto-control);
+    height: var(--alto-control);
+    padding: 0;
+    background: none;
+    border: none;
+    border-radius: var(--radio);
+    color: var(--texto-suave);
+    cursor: pointer;
+}
+
+.boton-colapso:hover {
+    background: var(--acento-suave);
+    color: var(--acento);
 }
 
 .separador-flexible {
@@ -40,7 +63,7 @@ html, body {
     align-items: center;
     gap: 0.25rem;
     color: var(--texto-suave);
-    font-size: 0.875rem;
+    font-size: var(--cuerpo-sm-tam);
 }
 
 /* SelectorDeEmpresa y MenuDeUsuario usan los parámetros Label/Icon del propio MudMenu, sin
@@ -50,7 +73,7 @@ html, body {
    botón que arma MudMenu ya llegan de mudblazor-tema.css. */
 .selector-empresa-unica {
     color: var(--texto-suave);
-    font-size: 0.875rem;
+    font-size: var(--cuerpo-sm-tam);
     white-space: nowrap;
 }
 
@@ -62,10 +85,66 @@ html, body {
 
 .menu-lateral {
     flex: 0 0 auto;
-    width: 220px;
-    background: var(--superficie);
+    display: flex;
+    flex-direction: column;
+    width: var(--ancho-menu);
+    background: var(--superficie-menu);
     border-right: 1px solid var(--borde);
+    overflow-x: hidden;
     overflow-y: auto;
+}
+
+/* Bloque de marca: iniciales, nombre y RFC de la empresa activa. No sustituye al selector
+   de empresa —ese vive en la barra superior y en ningún otro lugar (CLAUDE.md §8)—: solo
+   recuerda sin ambigüedad a nombre de quién se está facturando ahora mismo. */
+.menu-marca {
+    display: flex;
+    align-items: center;
+    gap: 0.625rem;
+    padding: 0.875rem 0.75rem;
+    border-bottom: 1px solid var(--borde);
+}
+
+.menu-marca-iniciales {
+    flex: 0 0 auto;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 2rem;
+    height: 2rem;
+    border-radius: var(--radio);
+    background: var(--acento);
+    color: var(--texto-inverso);
+    font-size: var(--etiqueta-tam);
+    font-weight: var(--peso-titulo);
+}
+
+.menu-marca-texto {
+    min-width: 0;
+}
+
+.menu-marca-nombre {
+    overflow: hidden;
+    font-size: var(--cuerpo-sm-tam);
+    font-weight: var(--peso-titulo);
+    color: var(--texto);
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.menu-marca-rfc {
+    font-size: var(--etiqueta-tam);
+    color: var(--texto-suave);
+}
+
+.menu-navegacion {
+    flex: 1 1 auto;
+}
+
+/* «Configuración» anclada abajo: se usa poco y no tiene por qué competir con lo diario. */
+.menu-pie {
+    flex: 0 0 auto;
+    border-top: 1px solid var(--borde);
 }
 
 .menu-lateral ul {
@@ -84,9 +163,9 @@ html, body {
 .menu-grupo {
     margin: 0.75rem 0 0;
     padding: 0 0.75rem;
-    font-size: 0.6875rem;
-    font-weight: 500;
-    letter-spacing: 0.04em;
+    font-size: var(--etiqueta-tam);
+    font-weight: var(--peso-etiqueta);
+    letter-spacing: var(--etiqueta-espaciado);
     text-transform: uppercase;
     color: var(--texto-suave);
 }
@@ -100,7 +179,8 @@ html, body {
     border-radius: var(--radio);
     color: var(--texto);
     text-decoration: none;
-    font-size: 0.875rem;
+    font-size: var(--cuerpo-sm-tam);
+    white-space: nowrap;
 }
 
 .menu-lateral a:hover {
@@ -112,24 +192,47 @@ html, body {
 .menu-lateral a.active {
     background: var(--acento-suave);
     color: var(--acento);
-    font-weight: 500;
+    font-weight: var(--peso-titulo);
+}
+
+/* ── Menú colapsado ──────────────────────────────────────────────────────────────────
+   Se oculta entero, no se encoge a una franja de iconos. La franja de 56px que había antes
+   seguía comiendo ancho y dejaba media interfaz a la vista: en una herramienta de tablas
+   anchas, encoger el menú se hace para recuperar ese ancho, no para conservar los iconos.
+
+   display:none y no un ancho cero: con ancho cero el menú sigue en el árbol de foco y
+   tabular desde la barra superior entraría en enlaces que nadie puede ver. */
+.cuerpo.menu-colapsado .menu-lateral {
+    display: none;
 }
 
 .area-principal {
     flex: 1 1 auto;
     overflow-y: auto;
-    padding: 1.5rem;
+    padding: var(--margen-pagina);
 }
 
 .area-principal h1 {
     margin: 0 0 1rem;
-    font-size: 1.125rem;
-    font-weight: 500;
+    font-size: var(--titulo-lg-tam);
+    line-height: var(--titulo-lg-alto);
+    font-weight: var(--peso-titulo);
+    letter-spacing: var(--titulo-lg-espaciado);
     color: var(--texto);
 }
 
 @media (max-width: 768px) {
+    .barra-superior {
+        padding: 0 1rem;
+    }
+
     .barra-superior-marca {
+        display: none;
+    }
+
+    /* En móvil el menú es una barra de pestañas: no hay columna que encoger, así que el
+       botón de colapso no tendría nada que hacer. */
+    .boton-colapso {
         display: none;
     }
 
@@ -144,33 +247,42 @@ html, body {
         padding-bottom: calc(var(--alto-control) * 2);
     }
 
-    .menu-lateral {
-        order: 1;
-        width: 100%;
-        position: fixed;
-        left: 0;
-        right: 0;
-        bottom: 0;
-        border-right: none;
-        border-top: 1px solid var(--borde);
-        z-index: 10;
-    }
-
     /*
       En la barra inferior los grupos se aplanan en una sola fila desplazable: el rótulo
       estorba y apilar un <ul> por grupo haría crecer la barra hasta comerse la pantalla.
       Nada queda inalcanzable —se desplaza—, que es lo que se perdería ocultando los grupos
       que no son de uso diario.
     */
-    .menu-grupo {
+    .menu-grupo,
+    .menu-marca {
         display: none;
     }
 
-    .menu-lateral {
+    /* El colapso no aplica aquí: si el usuario dejó el menú encogido en el escritorio y
+       luego angosta la ventana, la barra inferior debe salir completa igual. */
+    .cuerpo.menu-colapsado .menu-lateral {
+        width: 100%;
+    }
+
+    .menu-lateral,
+    .cuerpo.menu-colapsado .menu-lateral {
+        order: 1;
+        width: 100%;
+        position: fixed;
+        left: 0;
+        right: 0;
+        bottom: 0;
         display: flex;
         flex-direction: row;
+        border-right: none;
+        border-top: 1px solid var(--borde);
         overflow-x: auto;
         overflow-y: hidden;
+        z-index: 10;
+    }
+
+    .menu-pie {
+        border-top: none;
     }
 
     .menu-lateral ul {
@@ -179,11 +291,12 @@ html, body {
         padding: 0.25rem;
     }
 
-    .menu-lateral a {
+    .menu-lateral a,
+    .cuerpo.menu-colapsado .menu-lateral a {
         flex-direction: column;
         gap: 0.125rem;
         height: auto;
         padding: 0.375rem 0.5rem;
-        font-size: 0.6875rem;
+        font-size: var(--etiqueta-tam);
     }
 }

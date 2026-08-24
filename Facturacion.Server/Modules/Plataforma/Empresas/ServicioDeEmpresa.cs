@@ -12,7 +12,7 @@ namespace Facturacion.Server.Modules.Plataforma.Empresas;
 /// Datos fiscales, domicilio y configuración de la empresa activa.
 /// <para>
 /// La empresa sobre la que trabaja sale siempre del claim del token, nunca de un
-/// identificador que llegue del navegador (CLAUDE.md §4).
+/// identificador que llegue del navegador (ARQUITECTURA.md §4).
 /// </para>
 /// </summary>
 public sealed class ServicioDeEmpresa(
@@ -25,6 +25,121 @@ public sealed class ServicioDeEmpresa(
         var empresa = await CargarAsync(ct);
         return empresa is null ? null : AEmpresaDto(empresa);
     }
+
+    /// <summary>
+    /// Da de alta una empresa emisora en la cuenta del usuario y le otorga los seis permisos
+    /// sobre ella.
+    ///
+    /// <para><b>Por qué no exige el permiso <c>configurar_empresa</c></b></para>
+    /// Los permisos se otorgan <b>por empresa</b>. Una cuenta recién registrada no tiene
+    /// ninguna, así que su dueño no tiene ningún permiso en ninguna parte: exigirlo aquí
+    /// dejaría la cuenta encerrada sin poder crear la primera. La regla es otra: se puede
+    /// crear si la cuenta todavía no tiene empresas, o si quien lo pide ya administra alguna.
+    ///
+    /// <para><b>El RFC se fija aquí y no se vuelve a tocar</b></para>
+    /// Cambiarlo después convertiría a la empresa en otra distinta, y las facturas emitidas
+    /// llevan el anterior congelado dentro (ARQUITECTURA.md §5). Por eso no está en
+    /// <see cref="PeticionGuardarEmpresa"/>.
+    /// </summary>
+    public async Task<Resultado<EmpresaDto>> CrearAsync(PeticionCrearEmpresa peticion, CancellationToken ct)
+    {
+        if (contexto.CuentaActual is not { } cuentaId)
+            return ErrorNegocio.NoEncontrado("cuenta-no-encontrada", "Tu sesión no trae una cuenta.");
+
+        var rfc = (peticion.Rfc ?? string.Empty).Trim().ToUpperInvariant();
+
+        var validacionRfc = Rfc.Validar(rfc);
+        if (!validacionRfc.EsValido)
+            return ErrorNegocio.Validacion("rfc-invalido", validacionRfc.Mensaje ?? "El RFC no es válido.");
+
+        if (Rfc.EsGenerico(rfc))
+            return ErrorNegocio.Validacion(
+                "rfc-generico",
+                "Los RFC genéricos son de receptores, no de emisores: una empresa no puede facturar con uno.");
+
+        var nombre = NombreFiscal.Normalizar(peticion.NombreFiscal);
+
+        if (string.IsNullOrWhiteSpace(nombre.Normalizado))
+            return ErrorNegocio.Validacion("nombre-vacio", "Escribe el nombre o razón social de la empresa.");
+
+        var puedeCrear = !await baseDeDatos.Empresas.IgnoreQueryFilters().AnyAsync(e => e.CuentaId == cuentaId, ct)
+                         || await AdministraAlgunaEmpresaAsync(cuentaId, ct);
+
+        if (!puedeCrear)
+            return ErrorNegocio.Regla(
+                "sin-permiso-para-crear-empresa",
+                "Necesitas permiso de configuración en alguna empresa de tu cuenta para dar de alta otra.");
+
+        // IgnoreQueryFilters justificado: el filtro global recorta por la empresa activa, y
+        // aquí se busca justo entre las de la cuenta, incluida la que aún no existe.
+        var repetido = await baseDeDatos.Empresas
+            .IgnoreQueryFilters()
+            .AnyAsync(e => e.CuentaId == cuentaId && e.Rfc == rfc, ct);
+
+        if (repetido)
+            return ErrorNegocio.Conflicto("rfc-repetido", $"Ya tienes una empresa con el RFC {rfc}.");
+
+        // Se reusa la validación fiscal de la edición: régimen contra el catálogo, compatible
+        // con el tipo de persona que dice el RFC, código postal existente y huso conocido.
+        var comoGuardar = new PeticionGuardarEmpresa(
+            nombre.Normalizado, peticion.RegimenFiscal, peticion.CodigoPostalExpedicion, peticion.ZonaHoraria,
+            null, null, null, null, null, null, null, null, null, null, null, null,
+            // Sin licencias de los módulos de la fase 2: se activan después, y aquí solo se
+            // usa este objeto para reaprovechar la validación fiscal.
+            new LicenciasDto(false, false, false, false));
+
+        var validacion = await ValidarFiscalesAsync(rfc, comoGuardar, ct);
+        if (validacion is not null) return validacion;
+
+        var ahora = DateTime.UtcNow;
+
+        var empresa = new Empresa
+        {
+            Id = Guid.NewGuid(),
+            CuentaId = cuentaId,
+            Rfc = rfc,
+            NombreFiscal = nombre.Normalizado,
+            RegimenFiscal = peticion.RegimenFiscal,
+            CodigoPostalExpedicion = peticion.CodigoPostalExpedicion,
+            ZonaHoraria = peticion.ZonaHoraria,
+            FechaAltaUtc = ahora
+        };
+
+        baseDeDatos.Empresas.Add(empresa);
+
+        baseDeDatos.UsuariosEmpresas.Add(new UsuarioEmpresa
+        {
+            UsuarioId = contexto.UsuarioActual!.Value,
+            EmpresaId = empresa.Id,
+            FechaAltaUtc = ahora
+        });
+
+        baseDeDatos.UsuariosEmpresasPermisos.AddRange(Permisos.Todos.Select(permiso => new UsuarioEmpresaPermiso
+        {
+            UsuarioId = contexto.UsuarioActual!.Value,
+            EmpresaId = empresa.Id,
+            PermisoClave = permiso,
+            OtorgadoUtc = ahora,
+            OtorgadoPorUsuarioId = contexto.UsuarioActual
+        }));
+
+        bitacora.Registrar(
+            EntidadesDeBitacora.Empresa, empresa.Id.ToString(), AccionesDeBitacora.EmpresaCreada,
+            despues: new { empresa.Rfc, empresa.NombreFiscal, empresa.RegimenFiscal },
+            empresaId: empresa.Id);
+
+        await baseDeDatos.SaveChangesAsync(ct);
+
+        return AEmpresaDto(empresa);
+    }
+
+    private async Task<bool> AdministraAlgunaEmpresaAsync(Guid cuentaId, CancellationToken ct)
+        => await baseDeDatos.UsuariosEmpresasPermisos
+            .IgnoreQueryFilters()
+            .AnyAsync(p =>
+                p.UsuarioId == contexto.UsuarioActual &&
+                p.PermisoClave == Permisos.ConfigurarEmpresa &&
+                baseDeDatos.Empresas.IgnoreQueryFilters().Any(e => e.Id == p.EmpresaId && e.CuentaId == cuentaId), ct);
 
     public async Task<Resultado<RespuestaGuardarEmpresa>> GuardarAsync(
         PeticionGuardarEmpresa peticion, CancellationToken ct)
@@ -128,7 +243,7 @@ public sealed class ServicioDeEmpresa(
     /// <summary>
     /// Las tres validaciones que rompen timbrados: régimen del catálogo, régimen compatible
     /// con el tipo de persona que implica el RFC, y código postal de expedición existente
-    /// (CLAUDE.md §7).
+    /// (ARQUITECTURA.md §7).
     /// </summary>
     private async Task<ErrorNegocio?> ValidarFiscalesAsync(
         string rfc, PeticionGuardarEmpresa peticion, CancellationToken ct)

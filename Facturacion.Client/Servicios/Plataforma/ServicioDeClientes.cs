@@ -10,10 +10,13 @@ public sealed class ServicioDeClientes(IHttpClientFactory fabrica)
     private HttpClient Cliente => fabrica.CreateClient(ClientesHttp.Api);
 
     public async Task<PaginaDeClientes> ListarAsync(
-        string? texto, bool soloActivos, int pagina, int tamano,
+        string? texto, bool? activos, int pagina, int tamano,
         string? orden, bool descendente, CancellationToken ct = default)
     {
-        var url = $"api/clientes?pagina={pagina}&tamano={tamano}&soloActivos={soloActivos}" +
+        // El filtro de estatus se omite de la URL cuando es "todos": un &activos= vacío
+        // lo ata el enlazador del servidor a false, que es justo lo contrario.
+        var url = $"api/clientes?pagina={pagina}&tamano={tamano}" +
+                  (activos is { } a ? $"&activos={(a ? "true" : "false")}" : "") +
                   $"&descendente={descendente}" +
                   (string.IsNullOrWhiteSpace(texto) ? "" : $"&texto={Uri.EscapeDataString(texto)}") +
                   (string.IsNullOrWhiteSpace(orden) ? "" : $"&orden={Uri.EscapeDataString(orden)}");
@@ -49,8 +52,8 @@ public sealed class ServicioDeClientes(IHttpClientFactory fabrica)
     }
 
     /// <summary>Ruta del CSV. La descarga la hace el navegador, no se pasa por memoria del WebAssembly.</summary>
-    public static string RutaDeExportacion(bool soloActivos)
-        => $"api/clientes/exportar?soloActivos={soloActivos}";
+    public static string RutaDeExportacion(bool? activos)
+        => $"api/clientes/exportar" + (activos is { } a ? $"?activos={(a ? "true" : "false")}" : "");
 
     private static async Task<(T? Exito, DetalleProblema? Error)> LeerAsync<T>(
         HttpResponseMessage respuesta, CancellationToken ct)

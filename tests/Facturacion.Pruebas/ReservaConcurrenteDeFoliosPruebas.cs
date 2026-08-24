@@ -176,7 +176,7 @@ public sealed class ReservaConcurrenteDeFoliosPruebas : IAsyncLifetime
 
     /// <summary>
     /// Un folio abandonado <b>no</b> vuelve a la serie: el siguiente comprobante toma el
-    /// número siguiente y el hueco queda justificado en la bitácora (CLAUDE.md §5).
+    /// número siguiente y el hueco queda justificado en la bitácora (ARQUITECTURA.md §5).
     /// </summary>
     [Fact]
     public async Task Un_folio_abandonado_no_se_recicla()

@@ -8,7 +8,7 @@ namespace Facturacion.Client.Servicios.Plataforma;
 /// La sesión del navegador.
 ///
 /// <para><b>El access token vive solo en memoria</b></para>
-/// Nunca en <c>localStorage</c> ni en <c>sessionStorage</c> (CLAUDE.md §4). Al recargar la
+/// Nunca en <c>localStorage</c> ni en <c>sessionStorage</c> (ARQUITECTURA.md §4). Al recargar la
 /// página se pierde, y eso es correcto: se recupera con la cookie de refresh, que el
 /// JavaScript de la página no puede leer.
 ///
@@ -58,6 +58,20 @@ public sealed class ServicioDeSesion(IHttpClientFactory fabrica)
 
         await Guardar(respuesta);
         return null;
+    }
+
+    /// <summary>
+    /// Alta de cuenta. <b>No inicia sesión</b>: la contraseña se manda por correo, así que
+    /// aquí no hay ninguna con la que entrar. Devuelve el mensaje del servidor, que es el
+    /// mismo exista o no el correo.
+    /// </summary>
+    public async Task<(RespuestaRegistro? Exito, DetalleProblema? Error)> RegistrarAsync(PeticionRegistro peticion)
+    {
+        var respuesta = await Cliente().PostAsJsonAsync("api/auth/registro", peticion);
+
+        return respuesta.IsSuccessStatusCode
+            ? (await respuesta.Content.ReadFromJsonAsync<RespuestaRegistro>(), null)
+            : (null, await LeerProblema(respuesta));
     }
 
     /// <summary>

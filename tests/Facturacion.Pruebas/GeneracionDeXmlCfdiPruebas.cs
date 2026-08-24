@@ -253,7 +253,7 @@ public sealed class GeneracionDeXmlCfdiPruebas
 
     /// <summary>
     /// El generador no consulta cliente ni empresa: todo sale del comprobante. Es lo que
-    /// hace que reimprimir una factura de hace dos años dé el mismo XML (CLAUDE.md §5).
+    /// hace que reimprimir una factura de hace dos años dé el mismo XML (ARQUITECTURA.md §5).
     /// </summary>
     [Fact]
     public void Los_datos_fiscales_salen_del_comprobante_y_no_de_los_catalogos()

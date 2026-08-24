@@ -5,7 +5,7 @@ namespace Facturacion.Server.Infra.Idempotencia;
 
 /// <summary>
 /// Borra cada hora las claves de idempotencia vencidas. Sin esto, la tabla que guarda la
-/// respuesta de cada cobro crece para siempre y la ventana de 24 horas de CLAUDE.md §4 se
+/// respuesta de cada cobro crece para siempre y la ventana de 24 horas de ARQUITECTURA.md §4 se
 /// vuelve permanente.
 /// </summary>
 public sealed class PurgaDeClavesIdempotencia(

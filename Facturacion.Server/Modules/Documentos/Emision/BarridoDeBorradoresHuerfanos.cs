@@ -15,7 +15,7 @@ namespace Facturacion.Server.Modules.Documentos.Emision;
 ///
 /// <para><b>Por qué esto sí puede borrar</b></para>
 /// «Nada se borra» tiene una única excepción, y es exactamente esta: un borrador nunca
-/// timbrado (CLAUDE.md §5). Aun así el barrido no se conforma con el estatus y exige las tres
+/// timbrado (ARQUITECTURA.md §5). Aun así el barrido no se conforma con el estatus y exige las tres
 /// señales juntas: sin cliente, sin conceptos y sin <c>ModificadoUtc</c>. La última es la que
 /// de verdad decide, porque solo <c>ServicioDeEmision.GuardarAsync</c> la escribe: si viene
 /// nula, el usuario jamás pulsó «Guardar borrador» y no hay nada capturado que perder.

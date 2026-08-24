@@ -11,7 +11,7 @@ namespace Facturacion.Server.Modules.Documentos.Emision;
 /// sola vez— y mezclarlos habría escondido esa diferencia.
 ///
 /// <para>
-/// Requieren <c>timbrar</c> y no un permiso propio: en la lista de permisos de CLAUDE.md §4
+/// Requieren <c>timbrar</c> y no un permiso propio: en la lista de permisos de ARQUITECTURA.md §4
 /// no hay uno de «capturar documentos», y quien no puede timbrar tampoco tiene por qué poder
 /// dejar borradores a medio armar en el sistema.
 /// </para>
@@ -62,6 +62,7 @@ public static class EmisionEndpoints
     private static async Task<IResult> Listar(
         ServicioDeEmision emision, HttpContext http, CancellationToken ct,
         string? texto = null, string? estatus = null,
+        Guid? clienteId = null, string? tipoComprobante = null,
         DateTime? desdeUtc = null, DateTime? hastaUtc = null,
         int pagina = 0, int tamano = 25, string? orden = null, bool descendente = false)
     {
@@ -76,11 +77,12 @@ public static class EmisionEndpoints
         var paginaEfectiva = Math.Max(pagina, 0);
 
         return Results.Ok(await emision.ListarAsync(
-            texto, estatusFiltro, desdeUtc, hastaUtc, paginaEfectiva, tamanoEfectivo, orden, descendente, ct));
+            texto, estatusFiltro, clienteId, tipoComprobante,
+            desdeUtc, hastaUtc, paginaEfectiva, tamanoEfectivo, orden, descendente, ct));
     }
 
     /// <summary>
-    /// El estatus viaja como la cadena de CLAUDE.md §5 —la misma que guarda la columna—, no
+    /// El estatus viaja como la cadena de ARQUITECTURA.md §5 —la misma que guarda la columna—, no
     /// como el nombre del miembro del enum. El enlace automático de minimal APIs resuelve los
     /// enums por nombre de miembro y distinguiendo mayúsculas, así que <c>en_cancelacion</c>
     /// nunca enlazaría y <c>timbrado</c> tampoco: devolvía 400 antes de llegar al método.

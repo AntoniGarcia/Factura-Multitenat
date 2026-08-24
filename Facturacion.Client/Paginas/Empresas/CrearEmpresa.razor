@@ -1,0 +1,112 @@
+@page "/empresa/nueva"
+@attribute [Authorize]
+@using Facturacion.Client.Componentes.Comunes
+@using Facturacion.Client.Servicios.Plataforma
+@using Facturacion.Shared.Comun
+@using Facturacion.Shared.Plataforma
+@inject ServicioDeEmpresa Empresas
+@inject ServicioDeSesion Sesion
+@inject ServicioDeCatalogos Catalogos
+@inject NavigationManager Navegacion
+
+<PageTitle>Nueva empresa</PageTitle>
+<TituloDePagina Texto="Nueva empresa" />
+
+<PanelErrores Problema="_error" />
+
+<p class="seccion-ayuda">
+    Solo lo que hace falta para timbrar. El domicilio, el logotipo y el resto se completan
+    después en «Datos fiscales».
+</p>
+
+<EditForm Model="this" OnValidSubmit="Crear">
+    <div class="rejilla-campos">
+        <CampoRfc Valor="_rfc" ValorCambiado="v => _rfc = v" Label="R.F.C." />
+
+        <MudTextField @bind-Value="_nombreFiscal" Label="Nombre o razón social" Immediate="true" MaxLength="300" />
+
+        <MudSelect T="string" @bind-Value="_regimenFiscal" Label="Régimen fiscal">
+            @foreach (var r in Catalogos.Obtener("c_RegimenFiscal"))
+            {
+                <MudSelectItem T="string" Value="@r.Clave">@r.Clave — @r.Descripcion</MudSelectItem>
+            }
+        </MudSelect>
+
+        <MudTextField @bind-Value="_codigoPostal" Label="Código postal de expedición"
+                      Immediate="true" MaxLength="5" Class="cifra-tabular" />
+
+        <MudSelect T="string" @bind-Value="_zonaHoraria" Label="Huso horario del lugar de expedición">
+            @foreach (var (id, etiqueta) in Husos)
+            {
+                <MudSelectItem T="string" Value="@id">@etiqueta</MudSelectItem>
+            }
+        </MudSelect>
+    </div>
+
+    @* El nombre se normaliza en el servidor —mayúsculas, sin acentos, sin régimen de
+       capital— porque el SAT exige que coincida con la constancia (ARQUITECTURA.md §7). Se avisa
+       antes de guardar para que nadie crea que el sistema le cambió el nombre por su cuenta. *@
+    <p class="seccion-ayuda">
+        El nombre se guarda como lo pide el SAT: en mayúsculas, sin acentos y sin el régimen de
+        capital («S.A. de C.V.» y equivalentes se quitan).
+    </p>
+
+    <div class="acciones-formulario">
+        <MudButton Variant="Variant.Filled" Color="Color.Primary" ButtonType="ButtonType.Submit"
+                   Disabled="@(_guardando || !PuedeGuardar)">
+            @(_guardando ? "Creando…" : "Crear empresa")
+        </MudButton>
+    </div>
+</EditForm>
+
+@code {
+    /// <summary>
+    /// Los husos de México. La lista completa de Windows son más de cien entradas y ninguna
+    /// empresa emisora de CFDI está fuera de estas cuatro.
+    /// </summary>
+    private static readonly (string Id, string Etiqueta)[] Husos =
+    [
+        ("Central Standard Time (Mexico)", "Centro (CDMX, Guadalajara, Monterrey)"),
+        ("Mountain Standard Time (Mexico)", "Pacífico (Chihuahua, Mazatlán)"),
+        ("Pacific Standard Time (Mexico)", "Noroeste (Tijuana, Mexicali)"),
+        ("US Mountain Standard Time", "Sonora")
+    ];
+
+    private string _rfc = string.Empty;
+    private string _nombreFiscal = string.Empty;
+    private string _regimenFiscal = string.Empty;
+    private string _codigoPostal = string.Empty;
+    private string _zonaHoraria = Husos[0].Id;
+
+    private DetalleProblema? _error;
+    private bool _guardando;
+
+    private bool PuedeGuardar =>
+        !string.IsNullOrWhiteSpace(_rfc) &&
+        !string.IsNullOrWhiteSpace(_nombreFiscal) &&
+        !string.IsNullOrWhiteSpace(_regimenFiscal) &&
+        _codigoPostal.Length == 5;
+
+    private async Task Crear()
+    {
+        _guardando = true;
+        _error = null;
+
+        var (empresa, error) = await Empresas.CrearAsync(
+            new PeticionCrearEmpresa(_rfc, _nombreFiscal, _regimenFiscal, _codigoPostal, _zonaHoraria));
+
+        if (error is not null)
+        {
+            _error = error;
+            _guardando = false;
+            return;
+        }
+
+        // El token trae las empresas y la activa: sin pedir uno nuevo, la que se acaba de
+        // crear no existe para el resto de la aplicación. Cambiar a ella hace las dos cosas.
+        _error = await Sesion.CambiarEmpresaAsync(empresa!.Id);
+        _guardando = false;
+
+        if (_error is null) Navegacion.NavigateTo("/", forceLoad: true);
+    }
+}

@@ -114,7 +114,7 @@ public static class InfraestructuraModule
 
     /// <summary>
     /// Data Protection con el llavero persistido fuera del repositorio y protegido por el
-    /// certificado de <c>Almacen:LlaveMaestraPfx</c> (CLAUDE.md §4).
+    /// certificado de <c>Almacen:LlaveMaestraPfx</c> (ARQUITECTURA.md §4).
     /// <para>
     /// Sin esto, el llavero por omisión de ASP.NET Core queda en claro y atado a la máquina:
     /// al reiniciar en otro contenedor, los CSD ya cargados dejarían de poder descifrarse.
@@ -155,7 +155,7 @@ public static class InfraestructuraModule
     }
 
     /// <summary>
-    /// El remitente es del SaaS, nunca del cliente (CLAUDE.md §6). Sin <c>Correo:Servidor</c>
+    /// El remitente es del SaaS, nunca del cliente (ARQUITECTURA.md §6). Sin <c>Correo:Servidor</c>
     /// fuera de <c>Development</c> no se arranca, igual que sin clave de firma del JWT: una
     /// invitación o un aviso de factura que nunca sale es un defecto que hay que ver el día
     /// del despliegue, no el día que un usuario se queja de no recibir nada.

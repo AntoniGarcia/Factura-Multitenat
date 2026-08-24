@@ -24,7 +24,7 @@ public sealed class PermisoConfiguracion : IEntityTypeConfiguration<Permiso>
         constructor.HasData(
             new Permiso { Clave = ClavesPermiso.Timbrar, Descripcion = "Emitir y timbrar comprobantes" },
             new Permiso { Clave = ClavesPermiso.Cancelar, Descripcion = "Cancelar comprobantes timbrados" },
-            new Permiso { Clave = ClavesPermiso.AdministrarUsuarios, Descripcion = "Invitar usuarios y asignar permisos" },
+            new Permiso { Clave = ClavesPermiso.AdministrarUsuarios, Descripcion = "Dar de alta usuarios y asignar permisos" },
             new Permiso { Clave = ClavesPermiso.ComprarTimbres, Descripcion = "Comprar paquetes de timbres" },
             new Permiso { Clave = ClavesPermiso.VerReportes, Descripcion = "Consultar reportes de la empresa" },
             new Permiso { Clave = ClavesPermiso.ConfigurarEmpresa, Descripcion = "Configurar la empresa, sus series y sus certificados" });

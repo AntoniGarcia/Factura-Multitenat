@@ -517,3 +517,8 @@ almacenamiento/
 # Bóveda de Obsidian que se coló en la carpeta del proyecto. No es código ni documentación;
 # marcada para borrarse (docs/AUDITORIA-2026-08-19.md §E1).
 /Sistema de Facturacion/
+
+# Certificado autofirmado para abrir la app desde un teléfono en la red local. Es material
+# criptográfico de desarrollo y solo sirve en esta máquina: se regenera con el comando de
+# docs/ARRANQUE-LOCAL.md.
+/certs-dev/

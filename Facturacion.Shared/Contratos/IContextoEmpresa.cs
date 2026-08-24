@@ -5,7 +5,7 @@ namespace Facturacion.Shared.Contratos;
 /// <summary>
 /// Empresa y usuario de la petición en curso, leídos de los claims del access token.
 /// Es la única fuente de la empresa activa: ningún endpoint recibe un identificador de
-/// empresa por ruta, query o cuerpo (CLAUDE.md §4).
+/// empresa por ruta, query o cuerpo (ARQUITECTURA.md §4).
 /// </summary>
 public interface IContextoEmpresa
 {

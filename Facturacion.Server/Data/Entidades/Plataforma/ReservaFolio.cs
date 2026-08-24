@@ -5,7 +5,7 @@ namespace Facturacion.Server.Data.Entidades.Plataforma;
 /// numeración, incluidos los que no llegaron a ningún comprobante.
 ///
 /// <para><b>Un folio abandonado no se recicla</b></para>
-/// CLAUDE.md §5 es explícito: si el timbrado falla después de tomar folio, el comprobante
+/// ARQUITECTURA.md §5 es explícito: si el timbrado falla después de tomar folio, el comprobante
 /// queda en error con ese folio apartado y el folio no vuelve a la serie. Reciclarlo
 /// significaría que dos comprobantes distintos pudieran llevar el mismo número en momentos
 /// distintos, que es exactamente lo que la numeración consecutiva sirve para impedir.

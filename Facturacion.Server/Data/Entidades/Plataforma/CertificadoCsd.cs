@@ -7,14 +7,14 @@ namespace Facturacion.Server.Data.Entidades.Plataforma;
 /// <para><b>Qué guarda esta tabla y qué no</b></para>
 /// Aquí solo viven los <b>metadatos</b> —número de serie, vigencia, dónde está el archivo— y
 /// la contraseña <b>cifrada</b>. Los archivos <c>.cer</c> y <c>.key</c> viven cifrados en el
-/// almacén, fuera de <c>wwwroot</c> (CLAUDE.md §4). Nada de esto vuelve nunca al
+/// almacén, fuera de <c>wwwroot</c> (ARQUITECTURA.md §4). Nada de esto vuelve nunca al
 /// <c>Client</c>: la pantalla muestra número de serie y vigencia, y nada más.
 ///
 /// <para><b>Por qué el anterior no se borra</b></para>
 /// Un comprobante timbrado hace dos años lleva dentro el número de serie del certificado con
 /// el que se selló. Si se borrara el renglón, no habría forma de explicar de dónde salió ese
 /// número. Se conserva con <see cref="Activo"/> en falso, como todo en este sistema
-/// (CLAUDE.md §5).
+/// (ARQUITECTURA.md §5).
 /// </summary>
 public sealed class CertificadoCsd : IEntidadDeEmpresa
 {

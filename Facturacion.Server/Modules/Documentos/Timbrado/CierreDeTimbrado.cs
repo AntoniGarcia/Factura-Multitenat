@@ -64,7 +64,7 @@ public sealed class CierreDeTimbrado(
 
     /// <summary>
     /// Cierra mal. Devuelve el timbre —no se gastó— pero <b>no</b> recicla el folio:
-    /// CLAUDE.md §5 lo prohíbe. El hueco en la numeración queda explicado por la reserva
+    /// ARQUITECTURA.md §5 lo prohíbe. El hueco en la numeración queda explicado por la reserva
     /// abandonada, que es justo para lo que sirve.
     /// </summary>
     public async Task RevertirAsync(
@@ -92,7 +92,7 @@ public sealed class CierreDeTimbrado(
     }
 
     /// <summary>
-    /// Guarda el CFDI timbrado en el almacén cifrado, fuera de <c>wwwroot</c> (CLAUDE.md §4).
+    /// Guarda el CFDI timbrado en el almacén cifrado, fuera de <c>wwwroot</c> (ARQUITECTURA.md §4).
     /// Es el archivo que el usuario descarga y el que vale ante el SAT.
     ///
     /// <para>

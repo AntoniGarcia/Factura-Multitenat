@@ -9,7 +9,7 @@ namespace Facturacion.Server.Infra.Bitacora;
 /// <summary>
 /// Escribe la bitácora. Toda operación que cambie datos fiscales o de facturación, y todo
 /// evento de identidad, deja aquí quién, en qué empresa, cuándo y con qué valores
-/// (CLAUDE.md §5).
+/// (ARQUITECTURA.md §5).
 /// </summary>
 public interface IServicioDeBitacora
 {

@@ -31,7 +31,7 @@ public sealed record CfdiSellado(string Xml, string CadenaOriginal, string Sello
 ///
 /// <para><b>La llave privada no sale de este método</b></para>
 /// Se abre, se firma y se desecha en el mismo ámbito. No se registra, no se serializa y no
-/// vuelve al cliente (CLAUDE.md §4).
+/// vuelve al cliente (ARQUITECTURA.md §4).
 /// </summary>
 public sealed class ServicioDeXmlCfdi(
     AppDbContext baseDeDatos,

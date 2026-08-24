@@ -41,29 +41,41 @@ else
 
     <h2 class="seccion-titulo">Contraseña</h2>
 
-    <PanelErrores Problema="_errorContrasena" />
+@if (_puedeCambiarContrasena)
+{
+        <PanelErrores Problema="_errorContrasena" />
 
-    <div class="rejilla-campos">
-        <MudTextField @bind-Value="_contrasenaActual" Label="Contraseña actual" InputType="InputType.Password" />
-        <MudTextField @bind-Value="_contrasenaNueva" Label="Contraseña nueva" InputType="InputType.Password" />
-        <MudTextField @bind-Value="_confirmar" Label="Confirmar contraseña nueva" InputType="InputType.Password" />
-    </div>
+        <div class="rejilla-campos">
+            <MudTextField @bind-Value="_contrasenaActual" Label="Contraseña actual" InputType="InputType.Password" />
+            <MudTextField @bind-Value="_contrasenaNueva" Label="Contraseña nueva" InputType="InputType.Password" />
+            <MudTextField @bind-Value="_confirmar" Label="Confirmar contraseña nueva" InputType="InputType.Password" />
+        </div>
 
-    @if (_confirmar.Length > 0 && _contrasenaNueva != _confirmar)
-    {
-        <p class="texto-error">Las contraseñas no coinciden.</p>
-    }
-
-    <div class="acciones-formulario">
-        <MudButton Variant="Variant.Filled" OnClick="CambiarContrasena"
-                   Disabled="@(_cambiandoContrasena || _contrasenaNueva.Length == 0 || _contrasenaNueva != _confirmar)">
-            @(_cambiandoContrasena ? "Cambiando…" : "Cambiar contraseña")
-        </MudButton>
-        @if (_contrasenaCambiada)
+        @if (_confirmar.Length > 0 && _contrasenaNueva != _confirmar)
         {
-            <span class="mensaje-exito" role="status">Contraseña actualizada.</span>
+            <p class="texto-error">Las contraseñas no coinciden.</p>
         }
-    </div>
+
+        <div class="acciones-formulario">
+            <MudButton Variant="Variant.Filled" OnClick="CambiarContrasena"
+                       Disabled="@(_cambiandoContrasena || _contrasenaNueva.Length == 0 || _contrasenaNueva != _confirmar)">
+                @(_cambiandoContrasena ? "Cambiando…" : "Cambiar contraseña")
+            </MudButton>
+            @if (_contrasenaCambiada)
+            {
+                <span class="mensaje-exito" role="status">Contraseña actualizada.</span>
+            }
+        </div>
+    }
+}
+else
+{
+    @* El servidor rechaza igual el cambio: esto solo evita ofrecer un formulario que iba a
+       fallar. Ocultar no es proteger (ARQUITECTURA.md §4). *@
+    <p class="seccion-ayuda">
+        Tu contraseña la administra quien te dio de alta en el sistema. Si necesitas cambiarla,
+        pídeselo a esa persona.
+    </p>
 }
 
 @code {
@@ -75,6 +87,7 @@ else
     private string _confirmar = string.Empty;
     private DetalleProblema? _errorNombre;
     private DetalleProblema? _errorContrasena;
+    private bool _puedeCambiarContrasena = true;
 
     protected override async Task OnInitializedAsync()
     {
@@ -84,6 +97,7 @@ else
         {
             _nombre = perfil.Nombre;
             _correo = perfil.Correo;
+            _puedeCambiarContrasena = perfil.PuedeCambiarContrasena;
         }
 
         _cargando = false;

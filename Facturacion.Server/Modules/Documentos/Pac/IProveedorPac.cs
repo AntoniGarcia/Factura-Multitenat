@@ -120,7 +120,7 @@ public interface IProveedorPac
     /// <para>
     /// Va firmada con el CSD del emisor: el SAT no acepta que un tercero cancele por él. Por eso
     /// recibe el certificado en claro, y por eso el material nunca se registra ni se serializa
-    /// (CLAUDE.md §4).
+    /// (ARQUITECTURA.md §4).
     /// </para>
     /// </summary>
     /// <param name="datos">

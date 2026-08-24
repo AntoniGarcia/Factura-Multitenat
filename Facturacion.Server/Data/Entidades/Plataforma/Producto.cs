@@ -2,11 +2,11 @@ namespace Facturacion.Server.Data.Entidades.Plataforma;
 
 /// <summary>
 /// Producto o servicio del catálogo de la empresa. Es la plantilla de un concepto del CFDI:
-/// al facturar se copian estos datos al comprobante y ahí se congelan (CLAUDE.md §5).
+/// al facturar se copian estos datos al comprobante y ahí se congelan (ARQUITECTURA.md §5).
 ///
 /// <para><b>Dos claves del SAT y una unidad en texto</b></para>
 /// <see cref="ClaveProdServ"/> y <see cref="ClaveUnidad"/> son del catálogo y viajan al XML;
-/// nunca se escriben a mano (CLAUDE.md §7). <see cref="UnidadTexto"/> es lo que el receptor
+/// nunca se escriben a mano (ARQUITECTURA.md §7). <see cref="UnidadTexto"/> es lo que el receptor
 /// lee en el PDF —«Litro», «Caja con 12»— y no tiene que coincidir con la clave.
 /// </summary>
 public sealed class Producto : IEntidadDeEmpresa
@@ -31,7 +31,7 @@ public sealed class Producto : IEntidadDeEmpresa
 
     public required string Descripcion { get; set; }
 
-    /// <summary>Precio de venta. Seis decimales de cálculo, dos de presentación (CLAUDE.md §5).</summary>
+    /// <summary>Precio de venta. Seis decimales de cálculo, dos de presentación (ARQUITECTURA.md §5).</summary>
     public decimal ValorUnitario { get; set; }
 
     /// <summary>Peso en kilogramos. Informativo; lo pide §5 del documento funcional.</summary>
@@ -78,7 +78,7 @@ public sealed class ProductoImpuesto : IEntidadDeEmpresa
     ///
     /// <para>
     /// Con la columna, el filtro global y el sellado del interceptor la cubren solos, como a
-    /// cualquier otra tabla de empresa (CLAUDE.md §5). Se detectó en la verificación
+    /// cualquier otra tabla de empresa (ARQUITECTURA.md §5). Se detectó en la verificación
     /// posterior a la fase 9; ver <c>docs/REPASO-SEGURIDAD.md</c>.
     /// </para>
     /// </summary>

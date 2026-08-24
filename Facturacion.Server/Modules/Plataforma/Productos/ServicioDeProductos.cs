@@ -40,11 +40,12 @@ public sealed class ServicioDeProductos(
     }
 
     public async Task<PaginaDeProductos> ListarAsync(
-        string? texto, bool soloActivos, int pagina, int tamano, string? orden, bool descendente, CancellationToken ct)
+        string? texto, bool? activos, int pagina, int tamano, string? orden, bool descendente, CancellationToken ct)
     {
         var consulta = baseDeDatos.Productos.AsNoTracking();
 
-        if (soloActivos) consulta = consulta.Where(p => p.Activo);
+        // Tres estados: null todos, true activos, false dados de baja (ver ServicioDeClientes).
+        if (activos is { } valor) consulta = consulta.Where(p => p.Activo == valor);
 
         if (!string.IsNullOrWhiteSpace(texto))
         {
@@ -86,11 +87,11 @@ public sealed class ServicioDeProductos(
         return producto is null ? null : ADto(producto);
     }
 
-    public Task<List<Producto>> ListarParaExportarAsync(bool soloActivos, CancellationToken ct)
+    public Task<List<Producto>> ListarParaExportarAsync(bool? activos, CancellationToken ct)
     {
         IQueryable<Producto> consulta = baseDeDatos.Productos.AsNoTracking().Include(p => p.Impuestos);
 
-        if (soloActivos) consulta = consulta.Where(p => p.Activo);
+        if (activos is { } valor) consulta = consulta.Where(p => p.Activo == valor);
 
         return consulta.OrderBy(p => p.CodigoInterno).ToListAsync(ct);
     }

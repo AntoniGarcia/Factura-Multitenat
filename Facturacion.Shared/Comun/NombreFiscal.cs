@@ -5,13 +5,13 @@ namespace Facturacion.Shared.Comun;
 
 /// <summary>
 /// Normaliza un nombre o razón social como exige CFDI 4.0: mayúsculas, sin acentos y sin
-/// régimen de capital (CLAUDE.md §7). Es la causa más común de rechazo del PAC, porque el
+/// régimen de capital (ARQUITECTURA.md §7). Es la causa más común de rechazo del PAC, porque el
 /// nombre tiene que coincidir <b>exactamente</b> con la Constancia de Situación Fiscal.
 ///
 /// <para><b>Por qué vive en Shared y no en el servidor</b></para>
 /// El <c>Client</c> la usa para enseñarle al capturista, mientras escribe, en qué va a
 /// quedar convertido lo que tecleó. La que cuenta es la del servidor, que se ejecuta
-/// siempre (CLAUDE.md §3); tenerla en un solo lugar es lo que garantiza que las dos digan
+/// siempre (ARQUITECTURA.md §3); tenerla en un solo lugar es lo que garantiza que las dos digan
 /// lo mismo. La usan el emisor (fase 4) y el receptor (fase 5).
 ///
 /// <para><b>La eñe no es un acento</b></para>

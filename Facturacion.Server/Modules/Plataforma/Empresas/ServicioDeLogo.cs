@@ -10,7 +10,7 @@ namespace Facturacion.Server.Modules.Plataforma.Empresas;
 
 /// <summary>
 /// Logo de la empresa para el PDF. Se guarda cifrado y fuera de <c>wwwroot</c>, y solo sale
-/// por un endpoint autorizado (CLAUDE.md §4).
+/// por un endpoint autorizado (ARQUITECTURA.md §4).
 /// </summary>
 public sealed class ServicioDeLogo(
     AppDbContext baseDeDatos,
@@ -75,7 +75,7 @@ public sealed class ServicioDeLogo(
 
     /// <summary>
     /// Quita la referencia al logo. <b>No borra el archivo</b>: en este sistema nada se borra
-    /// (CLAUDE.md §5), y un PDF viejo podría seguir necesitándolo.
+    /// (ARQUITECTURA.md §5), y un PDF viejo podría seguir necesitándolo.
     /// </summary>
     public async Task<bool> QuitarAsync(CancellationToken ct)
     {

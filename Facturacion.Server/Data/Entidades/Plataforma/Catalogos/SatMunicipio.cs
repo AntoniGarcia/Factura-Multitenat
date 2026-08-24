@@ -6,7 +6,7 @@ namespace Facturacion.Server.Data.Entidades.Plataforma.Catalogos;
 /// <see cref="Clave"/> + <see cref="ClaveEstado"/>.
 /// <para>
 /// Soporte de <see cref="SatCodigoPostal"/>: su <see cref="Descripcion"/> es uno de los dos
-/// campos que la búsqueda de código postal indexa con texto completo (CLAUDE.md §7).
+/// campos que la búsqueda de código postal indexa con texto completo (ARQUITECTURA.md §7).
 /// </para>
 /// </summary>
 public sealed class SatMunicipio

@@ -17,7 +17,7 @@ public sealed record TokenEmitido(string Token, DateTime ExpiraUtc);
 /// <para>
 /// La empresa activa va <b>dentro del token</b> y no como parámetro de las peticiones: es
 /// lo que impide que el Client pida datos de una empresa a la que no tiene acceso con solo
-/// cambiar un número (CLAUDE.md §4).
+/// cambiar un número (ARQUITECTURA.md §4).
 /// </para>
 /// </summary>
 public sealed class ServicioDeTokens(IOptions<OpcionesDeJwt> opciones)

@@ -6,7 +6,7 @@ namespace Facturacion.Shared.Documentos;
 /// Un comprobante para el formulario de emisión: cabecera, conceptos, relacionados e
 /// información global. Sirve tanto para un borrador como para uno ya timbrado —en ese caso
 /// llega de solo lectura— porque es la misma entidad la que pasa por los dos estados
-/// (CLAUDE.md §5, inmutabilidad: se congela, no se duplica en otra forma).
+/// (ARQUITECTURA.md §5, inmutabilidad: se congela, no se duplica en otra forma).
 /// </summary>
 /// <param name="SerieId">
 /// La serie elegida, que no es lo mismo que <paramref name="Serie"/>: el prefijo se copia al
@@ -122,7 +122,7 @@ public sealed record RespuestaDeTimbradoDto(
 
 /// <summary>
 /// Un renglón del listado de documentos (§1.2 del documento funcional). El folio va nulo
-/// mientras el comprobante no se timbre: no se muestra antes (CLAUDE.md §5).
+/// mientras el comprobante no se timbre: no se muestra antes (ARQUITECTURA.md §5).
 /// </summary>
 public sealed record ComprobanteEnListaDto(
     Guid Id,

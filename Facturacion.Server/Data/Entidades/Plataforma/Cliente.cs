@@ -2,7 +2,7 @@ namespace Facturacion.Server.Data.Entidades.Plataforma;
 
 /// <summary>
 /// Receptor de comprobantes. Es donde viven las reglas de CFDI 4.0 que más timbrados rompen
-/// (CLAUDE.md §7): nombre exacto de la constancia, código postal del domicilio fiscal,
+/// (ARQUITECTURA.md §7): nombre exacto de la constancia, código postal del domicilio fiscal,
 /// régimen fiscal y uso de CFDI compatible.
 ///
 /// <para><b>Dos códigos postales, y no es redundancia</b></para>
@@ -14,7 +14,7 @@ namespace Facturacion.Server.Data.Entidades.Plataforma;
 ///
 /// <para><b>Nada se borra</b></para>
 /// Baja lógica con <see cref="Activo"/>. Un cliente inactivo sigue existiendo porque sus
-/// comprobantes viejos tienen que poder explicarse (CLAUDE.md §5).
+/// comprobantes viejos tienen que poder explicarse (ARQUITECTURA.md §5).
 /// </summary>
 public sealed class Cliente : IEntidadDeEmpresa
 {

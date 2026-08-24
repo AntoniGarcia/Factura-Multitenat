@@ -12,7 +12,8 @@ public sealed class ServicioDeListado(IHttpClientFactory fabrica)
     private HttpClient Cliente => fabrica.CreateClient(ClientesHttp.Api);
 
     public async Task<(PaginaDeComprobantes? Exito, DetalleProblema? Error)> ListarAsync(
-        string? texto, EstatusComprobante? estatus, DateTime? desdeUtc, DateTime? hastaUtc,
+        string? texto, EstatusComprobante? estatus, Guid? clienteId, string? tipoComprobante,
+        DateTime? desdeUtc, DateTime? hastaUtc,
         int pagina, int tamano, string? orden, bool descendente, CancellationToken ct = default)
     {
         var parametros = new List<string>
@@ -27,6 +28,12 @@ public sealed class ServicioDeListado(IHttpClientFactory fabrica)
 
         if (estatus is { } valor)
             parametros.Add($"estatus={valor.ACadena()}");
+
+        if (clienteId is { } cliente)
+            parametros.Add($"clienteId={cliente}");
+
+        if (!string.IsNullOrWhiteSpace(tipoComprobante))
+            parametros.Add($"tipoComprobante={Uri.EscapeDataString(tipoComprobante)}");
 
         if (desdeUtc is { } desde)
             parametros.Add($"desdeUtc={Uri.EscapeDataString(desde.ToString("O", CultureInfo.InvariantCulture))}");

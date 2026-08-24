@@ -6,7 +6,7 @@ using Microsoft.JSInterop;
 namespace Facturacion.Client.Servicios.Plataforma;
 
 /// <summary>
-/// El tema vive en el perfil del usuario, en el servidor, no en el navegador (CLAUDE.md §8):
+/// El tema vive en el perfil del usuario, en el servidor, no en el navegador (ARQUITECTURA.md §8):
 /// el contador que cambia de máquina tiene que encontrar el suyo. Este servicio solo aplica
 /// al DOM lo que ya trajo la sesión y avisa al servidor cuando el usuario elige otro.
 /// </summary>
