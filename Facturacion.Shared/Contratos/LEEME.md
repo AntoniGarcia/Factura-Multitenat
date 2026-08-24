@@ -23,7 +23,7 @@ en `IProveedorCsdParaTimbrado`, que solo resuelve el módulo de timbrado.
 **2 · `IServicioFolios` ganó `ConfirmarAsync`.**
 Sin ella no hay forma de distinguir una reserva en curso de una abandonada, y el barrido
 de reservas huérfanas no tiene contra qué comparar. Además quedó documentado que
-`LiberarSiNoUsadoAsync` **no devuelve el folio a la serie**: CLAUDE.md §5 prohíbe
+`LiberarSiNoUsadoAsync` **no devuelve el folio a la serie**: ARQUITECTURA.md §5 prohíbe
 reciclarlo, y sin decirlo la mitad B iba a suponer lo contrario.
 
 **3 · `IServicioEmpresaEmisora` ganó `ObtenerLogoAsync`.**
@@ -36,4 +36,4 @@ de archivos de la mitad A por su cuenta, que es justo lo que la frontera existe 
 - Todo importe es `decimal` con seis decimales de cálculo.
 - Toda fecha es UTC.
 - Ningún método recibe un `empresaId`: la empresa activa es un claim del token y la
-  resuelve `IContextoEmpresa` (CLAUDE.md §4).
+  resuelve `IContextoEmpresa` (ARQUITECTURA.md §4).

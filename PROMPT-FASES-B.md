@@ -1,11 +1,11 @@
 # Plan de fases — Mitad B (Documentos, timbrado y salidas)
 
-Este documento es para **el compañero**. Se le entrega junto con `CLAUDE.md` y
+Este documento es para **el compañero**. Se le entrega junto con `ARQUITECTURA.md` y
 `REPARTO-EQUIPO.md`.
 
 Luis lo conserva también por una razón concreta: si el 15 de octubre la mitad B no
 timbra contra el sandbox del PAC, esta mitad se absorbe (`REPARTO-EQUIPO.md` §6), y
-entonces estos prompts se usan tal cual, cambiando la línea de `CLAUDE.md` que dice
+entonces estos prompts se usan tal cual, cambiando la línea de `ARQUITECTURA.md` que dice
 qué mitad se trabaja.
 
 ---
@@ -50,7 +50,7 @@ Tres reglas que no se negocian:
 ▸ PROMPT
 
 ```
-Lee CLAUDE.md y REPARTO-EQUIPO.md completos. Trabajo la mitad B.
+Lee ARQUITECTURA.md y REPARTO-EQUIPO.md completos. Trabajo la mitad B.
 
 Fase B0. Antes de construir nada de negocio, monta lo que te permite trabajar sin
 depender de la mitad A.

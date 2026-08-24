@@ -1,6 +1,6 @@
 # Estado del proyecto y cómo continuar
 
-Traspaso de contexto para una sesión nueva de Claude Code.
+Traspaso de contexto para retomar el proyecto en una sesión nueva.
 **Corte: 19 de agosto de 2026, rama `develop`.**
 
 Este documento reemplaza cualquier versión anterior. Si encuentras otro documento de
@@ -44,11 +44,11 @@ sin leer eso.**
 | No leer | Por qué |
 |---|---|
 | **`docs/UI_Funcional.md`** — 41 KB, 1 133 líneas | Especificación del sistema de escritorio viejo. Solo se consulta **una sección puntual** cuando un prompt la cita por número. **Usa `grep -n "^## §27" docs/UI_Funcional.md` y lee solo ese bloque.** Nunca completo, nunca «para tener contexto». |
-| **`AGENTS.md`** — 17 KB | Copia literal de `CLAUDE.md` salvo la primera línea. Leer uno de los dos, jamás los dos. |
+| **`AGENTS.md`** — 17 KB | Copia literal de `ARQUITECTURA.md` salvo la primera línea. Leer uno de los dos, jamás los dos. |
 | **`Sistema anterior/`** — 31 capturas, 2.2 MB | Ya están inventariadas en `docs/AUDITORIA-2026-08-19.md` §B. **No abras las imágenes**: cada una cuesta más que la tabla que las resume. Solo si una tarea pide un detalle visual que la tabla no cubre, y entonces esa captura, no la carpeta. Las 10, 11, 15 a 26 son de módulos fuera del MVP (carta porte, constructoras, comercio exterior, notaría): no se abren nunca. |
 | **`Facturacion.Server/Migrations/*`** — 1 MB, 33 archivos | Autogenerado. `AppDbContextModelSnapshot.cs` solo son ~2 700 líneas. No se leen ni se editan a mano: se generan con `dotnet ef migrations add`. Para el esquema, lee `Data/Entidades/` y `Data/Configurations/`, que son cortos y están comentados. |
 | **`PROMPT-FASES-A.md`** — 31 KB | La mitad A está cerrada. Solo sirve para auditar por qué algo quedó así. |
-| **`PROMPT-FASES-B.md`** — leer **solo la fase en curso** | El resto son fases futuras, y `CLAUDE.md` §10 prohíbe adelantarlas. |
+| **`PROMPT-FASES-B.md`** — leer **solo la fase en curso** | El resto son fases futuras, y `ARQUITECTURA.md` §10 prohíbe adelantarlas. |
 | **`CatalogosSAT/`** — 56 MB | Datos y esquemas del SAT, fuera del repositorio (gitignoreados). Binarios: no hay nada que leer. |
 | **`Sistema de Facturacion/`** | Bóveda de Obsidian vacía que se coló en la carpeta. **No es código.** Está marcada para borrarse. |
 | **`Facturacion.Client/wwwroot/css/*`** — 1 083 líneas | Solo si la tarea es de estilos. |
@@ -57,7 +57,7 @@ sin leer eso.**
 
 ### Lo que sí hay que leer, y nada más
 
-1. **`CLAUDE.md`** — completo, siempre, antes de escribir una línea. Es la única lectura no negociable.
+1. **`ARQUITECTURA.md`** — completo, siempre, antes de escribir una línea. Es la única lectura no negociable.
 2. **Este documento.**
 3. **`docs/AUDITORIA-2026-08-19.md`** — completo la primera vez; después, solo la sección que toca la tarea.
 4. **La sección de la fase en curso** de `PROMPT-FASES-B.md`.
@@ -72,7 +72,7 @@ grep -rn "Map\(Get\|Post\|Put\|Delete\|Group\)(\"" Facturacion.Server/Modules --
 # La frontera congelada entre las dos mitades
 ls Facturacion.Shared/Contratos/
 
-# Componentes comunes que ya existen — revísalo ANTES de crear uno nuevo (CLAUDE.md §10)
+# Componentes comunes que ya existen — revísalo ANTES de crear uno nuevo (ARQUITECTURA.md §10)
 ls Facturacion.Client/Componentes/Comunes/
 
 # Qué hay construido de la mitad B
@@ -158,9 +158,9 @@ que la fase es enganchar XML y PDF como adjuntos, no montar correo desde cero.
 
 ---
 
-## 5. Reglas de trabajo que Claude Code debe respetar
+## 5. Reglas de trabajo del proyecto
 
-Están en `CLAUDE.md` §10, pero son las que más se incumplen:
+Están en `ARQUITECTURA.md` §10, pero son las que más se incumplen:
 
 - **Por fases, con parada y revisión entre cada una.** Al terminar una fase te detienes, dices
   qué construiste y qué quedó pendiente, y **esperas**. No empiezas la siguiente sin que te lo
@@ -260,10 +260,10 @@ que pase la tanda de 50.
 ## 8. Prompt para arrancar la sesión nueva
 
 ```
-Lee CLAUDE.md completo, docs/ESTADO-Y-CONTINUACION.md y docs/AUDITORIA-2026-08-19.md.
+Lee ARQUITECTURA.md completo, docs/ESTADO-Y-CONTINUACION.md y docs/AUDITORIA-2026-08-19.md.
 
 NO leas: docs/UI_Funcional.md (solo secciones puntuales con grep cuando una fase las
-cite), AGENTS.md (es copia de CLAUDE.md), Facturacion.Server/Migrations/*,
+cite), AGENTS.md (es copia de ARQUITECTURA.md), Facturacion.Server/Migrations/*,
 PROMPT-FASES-A.md, la carpeta "Sistema anterior" (las capturas ya están inventariadas
 en la auditoría; abrirlas cuesta más que leer la tabla), ni la carpeta "Sistema de
 Facturacion" (bóveda de Obsidian, no es código).

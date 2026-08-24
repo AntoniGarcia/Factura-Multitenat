@@ -26,7 +26,7 @@ tests/                pruebas contra SQL Server
 
 | | |
 |---|---|
-| `CLAUDE.md` | Contexto permanente: stack, reglas de seguridad, dominio y diseño |
+| `ARQUITECTURA.md` | Contexto permanente: stack, reglas de seguridad, dominio y diseño |
 | `REPARTO-EQUIPO.md` | Reparto del trabajo entre las dos mitades y contratos congelados |
 | `PROMPT-FASES-A.md` | Fases de la mitad A |
 | `docs/UI_Funcional.md` | Inventario de campos y reglas del sistema de escritorio anterior |

@@ -1,7 +1,8 @@
-# CLAUDE.md — Contexto permanente del proyecto
+# Arquitectura del proyecto
 
-Lo lees al inicio de **cada** sesión, completo, antes de escribir una línea.
-No lo modifiques salvo que te lo pida explícitamente.
+Guía de referencia del sistema: reglas de seguridad, dominio, diseño y estructura. Es la
+fuente única de las decisiones no negociables. Conviene leerla completa antes de tocar el
+código y mantenerla al día cuando una decisión de fondo cambie.
 
 ---
 

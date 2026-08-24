@@ -27,7 +27,7 @@ La causa de fondo es que `ComprobanteDto` no expone `SerieId` — solo `Serie` (
 y ambos van nulos mientras no se timbre, así que la pantalla no tiene de dónde recuperarla.
 
 **Arreglo:** agregar `SerieId` a `ComprobanteDto`. Es tocar `Facturacion.Shared/`, que está
-congelada: **commit dedicado, sin ningún otro cambio** (`CLAUDE.md` §10).
+congelada: **commit dedicado, sin ningún otro cambio** (`ARQUITECTURA.md` §10).
 
 ### A2 · El importe del renglón no es el importe del CFDI · **datos** · `FormularioDeEmision.razor:540`
 
@@ -348,7 +348,7 @@ done
 
 ### E2 · `AGENTS.md` — 17 KB de duplicado exacto
 
-Es `CLAUDE.md` con la primera línea cambiada (verificado con `diff`: una sola línea distinta).
+Es `ARQUITECTURA.md` con la primera línea cambiada (verificado con `diff`: una sola línea distinta).
 Dos archivos de 17 KB que hay que mantener sincronizados a mano, y que un asistente puede
 acabar leyendo los dos.
 
@@ -357,8 +357,8 @@ Lo mejor es reducirlo a un puntero:
 ```markdown
 # AGENTS.md
 
-El contexto del proyecto vive en `CLAUDE.md`. Este archivo existe solo para las
-herramientas que buscan `AGENTS.md` por convención. No lo edites: edita `CLAUDE.md`.
+El contexto del proyecto vive en `ARQUITECTURA.md`. Este archivo existe solo para las
+herramientas que buscan `AGENTS.md` por convención. No lo edites: edita `ARQUITECTURA.md`.
 ```
 
 ### E3 · Agregar al `.gitignore`

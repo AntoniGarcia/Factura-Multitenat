@@ -208,7 +208,7 @@ en vez de fingir que hay un procedimiento.
 
 ## 8. Verificar que Brotli funciona
 
-Es el error más común del despliegue (CLAUDE.md §9): si los `.br` no se sirven, la descarga
+Es el error más común del despliegue (ARQUITECTURA.md §9): si los `.br` no se sirven, la descarga
 inicial se triplica. **Que los archivos existan no prueba que se sirvan.**
 
 Primero, que se generaran:

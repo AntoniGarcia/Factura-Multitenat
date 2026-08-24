@@ -109,7 +109,7 @@ comprobantes: es exactamente el uso que caía en la trampa.
 **Corrección.** `ProductoImpuesto` implementa `IEntidadDeEmpresa` y gana columna `EmpresaId`
 (migración `A_EmpresaEnProductoImpuesto`). Con eso lo cubren solos el filtro global y el
 sellado del interceptor, sin que nadie tenga que acordarse de nada — que es la regla de
-CLAUDE.md §5.
+ARQUITECTURA.md §5.
 
 La migración va en tres pasos, y el orden importa: la columna se agrega **nullable**, se
 rellena desde el producto padre y solo entonces se vuelve obligatoria. Agregarla directamente
@@ -143,7 +143,7 @@ la fase 7 y el cambio no es de seguridad; queda anotado abajo.
 ### Punto 1 · `empresaId` desde el cliente
 
 Un solo endpoint lo recibe: `POST /api/auth/cambiar-empresa`. Es **la excepción prevista**
-por CLAUDE.md §4, y está bien resuelta: antes de emitir el token nuevo comprueba que el
+por ARQUITECTURA.md §4, y está bien resuelta: antes de emitir el token nuevo comprueba que el
 acceso exista, esté activo, la empresa esté activa **y** pertenezca a la cuenta del usuario.
 
 Detalle que vale la pena registrar: cuando no hay acceso devuelve el mismo error que si la
@@ -224,7 +224,7 @@ cacheado y viejo produce comprobantes mal emitidos.
 
 ### Punto 8 · Brotli — verificado midiendo, no leyendo
 
-CLAUDE.md §9 lo llama el error más común del despliegue, así que no bastaba con ver que se
+ARQUITECTURA.md §9 lo llama el error más común del despliegue, así que no bastaba con ver que se
 generaran los `.br`. Publiqué en Release, levanté el binario en `Production` y pedí los
 activos con `Accept-Encoding: br`:
 

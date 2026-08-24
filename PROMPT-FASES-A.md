@@ -1,10 +1,10 @@
 # Plan de fases — Mitad A (Plataforma, identidad y catálogos)
 
-Cada bloque marcado con `▸ PROMPT` se pega **tal cual** en Claude Code.
-Se ejecuta una fase, se revisa, y hasta entonces se pega la siguiente.
+Cada bloque marcado con `▸ PROMPT` describe **tal cual** el alcance de una fase.
+Se ejecuta una fase, se revisa, y hasta entonces se arranca la siguiente.
 
 Antes de empezar, la raíz del repositorio debe tener:
-`CLAUDE.md`, `REPARTO-EQUIPO.md` y `docs/UI_Funcional.md`.
+`ARQUITECTURA.md`, `REPARTO-EQUIPO.md` y `docs/UI_Funcional.md`.
 
 ---
 
@@ -37,7 +37,7 @@ El orden no es arbitrario. Catálogos, folios, clientes y productos van temprano
 ▸ PROMPT
 
 ```
-Lee CLAUDE.md y REPARTO-EQUIPO.md completos antes de escribir nada.
+Lee ARQUITECTURA.md y REPARTO-EQUIPO.md completos antes de escribir nada.
 
 Fase 0: fundación. Construye únicamente lo siguiente.
 
@@ -47,7 +47,7 @@ Fase 0: fundación. Construye únicamente lo siguiente.
    Client) y Facturacion.Shared (biblioteca de clases).
    La plantilla blazorwasm --hosted ya no existe. Verifica con `dotnet new list`
    qué hay disponible antes de decidir cómo armarla; si algo no coincide con lo
-   que dice CLAUDE.md, detente y dímelo en vez de improvisar.
+   que dice ARQUITECTURA.md, detente y dímelo en vez de improvisar.
    Crea el árbol de carpetas exacto de REPARTO-EQUIPO.md §4, con .gitkeep en las
    vacías. Incluye también las carpetas de la mitad B: existen para que la
    frontera esté marcada desde el primer commit, pero quedan vacías.
@@ -63,7 +63,7 @@ Fase 0: fundación. Construye únicamente lo siguiente.
 3. PRIMITIVAS COMUNES
    En Shared/Comun/: el tipo de error basado en Problem Details (RFC 7807) con
    traceId; los enums de estatus de comprobante y de permisos con los valores
-   exactos de CLAUDE.md; un tipo Resultado<T> para propagar error de negocio sin
+   exactos de ARQUITECTURA.md; un tipo Resultado<T> para propagar error de negocio sin
    excepciones.
 
 4. BASE DE DATOS
@@ -116,7 +116,7 @@ estaban especificadas, y qué te parece riesgoso de lo que viene.
 ▸ PROMPT
 
 ```
-Lee CLAUDE.md y REPARTO-EQUIPO.md. Fase 1: autenticación. Construye únicamente
+Lee ARQUITECTURA.md y REPARTO-EQUIPO.md. Fase 1: autenticación. Construye únicamente
 el circuito de identidad, de punta a punta.
 
 SERVER
@@ -147,7 +147,7 @@ SERVER
   El access token dura 15 minutos. Claims: id de usuario, id de cuenta, id de
   empresa activa, lista de permisos en esa empresa, y el id de familia de sesión.
 
-  Política de autorización por permiso, con los seis valores exactos de CLAUDE.md.
+  Política de autorización por permiso, con los seis valores exactos de ARQUITECTURA.md.
   Cada permiso es una política de ASP.NET Core; los endpoints se anotan con la
   política, nunca con nombres de rol.
 
@@ -194,7 +194,7 @@ especificadas, y qué parte del circuito de identidad te parece más frágil.
 ▸ PROMPT
 
 ```
-Lee CLAUDE.md, sobre todo §8 y §9. Fase 2: el cascarón visual y los componentes
+Lee ARQUITECTURA.md, sobre todo §8 y §9. Fase 2: el cascarón visual y los componentes
 que va a usar todo el sistema, incluida la mitad B.
 
 1. VARIABLES CSS Y TEMAS
@@ -202,7 +202,7 @@ que va a usar todo el sistema, incluida la mitad B.
    borde, borde-fuerte, texto, texto-suave, texto-inverso, acento, acento-suave,
    estado-timbrada, estado-borrador, estado-cancelada, estado-advertencia,
    estado-error, foco.
-   Tres temas: claro (con los valores exactos de CLAUDE.md §8), oscuro ergonómico
+   Tres temas: claro (con los valores exactos de ARQUITECTURA.md §8), oscuro ergonómico
    (grises y azules profundos, jamás negro puro) y cálido/sepia.
    El tema se aplica con un atributo data-tema en el elemento raíz. La preferencia
    del usuario se guarda en el servidor, en su perfil, no en el navegador: el
@@ -278,7 +278,7 @@ Esta fase desbloquea a la mitad B. En cuanto cierre, avísale.
 ▸ PROMPT
 
 ```
-Lee CLAUDE.md §7. Fase 3: catálogos del SAT.
+Lee ARQUITECTURA.md §7. Fase 3: catálogos del SAT.
 
 1. MODELO Y CARGA
    Tabla por catálogo, no una tabla genérica de clave-valor: los catálogos tienen
@@ -301,7 +301,7 @@ Lee CLAUDE.md §7. Fase 3: catálogos del SAT.
    sobre colonia y municipio de c_CodigoPostal.
    GET /catalogos/{catalogo}/buscar?texto=&tope=   mínimo 3 caracteres, tope 50.
    GET /catalogos/{catalogo}/{clave}               resolución exacta.
-   GET /catalogos/precargables                     los chicos de CLAUDE.md §7, en
+   GET /catalogos/precargables                     los chicos de ARQUITECTURA.md §7, en
                                                    una sola respuesta, con ETag.
    GET /catalogos/version                          versión y fecha de cada uno.
 
@@ -341,7 +341,7 @@ algún caso ambiguo.
 ▸ PROMPT
 
 ```
-Lee CLAUDE.md §4, §5 y §6. Fase 4: la empresa emisora y todo lo que cuelga de
+Lee ARQUITECTURA.md §4, §5 y §6. Fase 4: la empresa emisora y todo lo que cuelga de
 ella. Es la fase con más riesgo de la mitad A: aquí viven los certificados y la
 reserva de folios.
 
@@ -413,7 +413,7 @@ uso.
 ▸ PROMPT
 
 ```
-Lee CLAUDE.md §7, la parte de reglas de CFDI 4.0 que rompen timbrados.
+Lee ARQUITECTURA.md §7, la parte de reglas de CFDI 4.0 que rompen timbrados.
 Fase 5: catálogo de clientes (receptores). Referencia funcional: §7 y §8 del
 documento, sin la sub-sección de Carta Porte.
 
@@ -514,7 +514,7 @@ producto.
 ▸ PROMPT
 
 ```
-Lee CLAUDE.md §4. Fase 7: el dinero. Aquí un error se convierte en cobros
+Lee ARQUITECTURA.md §4. Fase 7: el dinero. Aquí un error se convierte en cobros
 duplicados o en timbres regalados, así que todo lleva idempotencia y bitácora.
 
 1. MODELO
@@ -584,7 +584,7 @@ REGLAS DE NEGOCIO
    El límite se valida en el servidor, no solo en la interfaz.
    Los permisos se asignan POR USUARIO Y POR EMPRESA: el mismo usuario puede ser
    administrador en la llantera y auxiliar en la cementera.
-   Los seis permisos son los de CLAUDE.md. Un auxiliar típico lleva timbrar y
+   Los seis permisos son los de ARQUITECTURA.md. Un auxiliar típico lleva timbrar y
    nada más.
    Baja lógica con Activo = false. Desactivar a un usuario invalida todas sus
    familias de refresh token de inmediato: no puede seguir trabajando hasta que
