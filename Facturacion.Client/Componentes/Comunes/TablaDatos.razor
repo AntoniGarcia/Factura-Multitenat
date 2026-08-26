@@ -50,7 +50,26 @@
         <p class="tabla-datos-estado">Cargando…</p>
     </LoadingContent>
     <PagerContent>
-        <MudTablePager RowsPerPageString="Renglones por página:" InfoFormat="{first_item}-{last_item} de {all_items}" />
+        <div class="tabla-paginacion">
+            <span class="tabla-paginacion-info">
+                Mostrando @_enPagina de @_total @TextoEntidad
+            </span>
+
+            <div class="tabla-paginacion-controles">
+                <MudSelect T="int" Value="_tamano" ValueChanged="CambiarTamanoAsync" Dense="true"
+                           Class="tabla-paginacion-tamano" Label="Por página">
+                    @foreach (var opcion in TamanosDisponibles)
+                    {
+                        <MudSelectItem T="int" Value="@opcion">@opcion</MudSelectItem>
+                    }
+                </MudSelect>
+
+                <MudPagination Count="@_totalPaginas" Selected="@(_pagina + 1)"
+                               SelectedChanged="IrAPaginaAsync"
+                               ShowFirstButton="false" ShowLastButton="false"
+                               BoundaryCount="1" MiddleCount="3" />
+            </div>
+        </div>
     </PagerContent>
 </MudTable>
 
@@ -67,8 +86,27 @@
     [Parameter]
     public string TextoSinDatos { get; set; } = "No hay registros que mostrar.";
 
+    /// <summary>
+    /// Nombre en plural de lo que lista la tabla ("clientes", "productos", "documentos"), para
+    /// el texto "Mostrando X de N …". El componente es agnóstico al dominio, así que lo aporta
+    /// la página dueña.
+    /// </summary>
+    [Parameter]
+    public string TextoEntidad { get; set; } = "registros";
+
+    /// <summary>Opciones del selector de tamaño de página.</summary>
+    private static readonly int[] TamanosDisponibles = [12, 25, 50];
+
     private MudTable<T>? _tabla;
     private bool _cargando;
+
+    // Estado que alimenta la paginación propia (texto y botones numerados). Se refresca en
+    // cada carga del servidor, que es cuando cambian la página, el tamaño o el total.
+    private int _pagina;
+    private int _tamano = 25;
+    private int _total;
+    private int _enPagina;
+    private int _totalPaginas = 1;
 
     /// <summary>
     /// Vuelve a pedir la página actual. Lo llama la página dueña cuando cambia el texto de
@@ -76,6 +114,8 @@
     /// en la petición al servidor que arma esa página, no en <see cref="PeticionDePagina"/>.
     /// </summary>
     public Task RecargarAsync() => _tabla?.ReloadServerData() ?? Task.CompletedTask;
+
+    protected override void OnInitialized() => _tamano = TamanoPagina;
 
     private async Task<TableData<T>> CargarAsync(TableState estado, CancellationToken ct)
     {
@@ -90,11 +130,36 @@
 
             var resultado = await CargarPagina(peticion, ct);
 
+            // Se guarda el estado para pintar "Mostrando X de N" y los botones numerados. El
+            // total lo entrega el servidor; la página y el tamaño vienen del estado de la tabla.
+            _pagina = estado.Page;
+            _tamano = estado.PageSize;
+            _total = resultado.Total;
+            _enPagina = resultado.Elementos.Count;
+            _totalPaginas = Math.Max(1, (int)Math.Ceiling(_total / (double)_tamano));
+
             return new TableData<T> { Items = resultado.Elementos, TotalItems = resultado.Total };
         }
         finally
         {
             _cargando = false;
+            // El pie de paginación es contenido de este componente, no de MudTable: hay que
+            // pedir el redibujo para que tome los valores recién calculados.
+            StateHasChanged();
         }
+    }
+
+    /// <summary>Salta a la página elegida en el paginador. MudPagination cuenta desde 1; MudTable desde 0.</summary>
+    private Task IrAPaginaAsync(int pagina)
+    {
+        _tabla?.NavigateTo(pagina - 1);
+        return Task.CompletedTask;
+    }
+
+    /// <summary>Cambia cuántas filas se ven por página; MudTable recarga la página desde el servidor.</summary>
+    private Task CambiarTamanoAsync(int tamano)
+    {
+        _tabla?.SetRowsPerPage(tamano);
+        return Task.CompletedTask;
     }
 }

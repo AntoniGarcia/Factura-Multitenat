@@ -14,6 +14,7 @@
 <PageTitle>@(EsNuevo ? "Nuevo pago" : "Pago")</PageTitle>
 <TituloDePagina Texto="@(EsNuevo ? "Nuevo pago" : "Pago")" />
 
+<TarjetaFormulario Ancha="true" RutaVolver="/documentos">
 <PanelErrores Problema="_error" />
 
 @if (_aviso is not null)
@@ -213,15 +214,16 @@ else
 
     @if (EsEditable)
     {
-        <div class="acciones-formulario">
+        <div class="tarjeta-formulario-acciones">
+            <MudButton OnClick="@(() => Navegacion.NavigateTo("/documentos"))">Cancelar</MudButton>
             <MudButton OnClick="Guardar" Disabled="@_trabajando">Guardar borrador</MudButton>
             <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="Timbrar" Disabled="@_trabajando">
                 Generar pago
             </MudButton>
-            <MudButton OnClick="@(() => Navegacion.NavigateTo("/documentos"))">Cancelar</MudButton>
         </div>
     }
 }
+</TarjetaFormulario>
 
 @code {
     /// <summary>Formas de pago electrónicas: con ellas §28 exige los datos bancarios.</summary>

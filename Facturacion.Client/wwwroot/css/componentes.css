@@ -128,11 +128,55 @@
     text-align: center;
 }
 
+/* ── Paginación de TablaDatos ──────────────────────────────────────────────────
+   "Mostrando X de N …" a la izquierda; selector de tamaño y botones numerados a la
+   derecha. Se acomoda en dos renglones cuando no cabe (móvil). */
+.tabla-paginacion {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.5rem 1rem;
+    width: 100%;
+    padding: 0.5rem 0.25rem;
+}
+
+.tabla-paginacion-info {
+    color: var(--texto-suave);
+    font-size: var(--etiqueta-tam);
+    letter-spacing: var(--etiqueta-espaciado);
+    font-weight: var(--peso-etiqueta);
+    text-transform: uppercase;
+}
+
+.tabla-paginacion-controles {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    margin-left: auto;
+}
+
+/* El selector de "por página" es angosto: solo muestra un número de dos dígitos. */
+.tabla-paginacion-tamano {
+    min-width: 6rem;
+    max-width: 7rem;
+}
+
+/* Botón de página activa con el acento del sistema; los demás, discretos. */
+.tabla-paginacion .mud-pagination-item .mud-button-root.mud-button-filled.mud-button-filled-primary {
+    background-color: var(--acento);
+    color: var(--texto-inverso);
+}
+
+.tabla-paginacion .mud-pagination-item .mud-button-root:hover {
+    background-color: var(--acento-suave);
+}
+
 .campo-moneda input {
     text-align: right;
 }
 
-/* No descartable a propósito (CLAUDE.md §4): sin botón de cerrar, cubre toda la pantalla y
+/* No descartable a propósito (ARQUITECTURA.md §4): sin botón de cerrar, cubre toda la pantalla y
    se recarga sola a los pocos segundos aunque nadie haga clic. */
 .guarda-version {
     position: fixed;

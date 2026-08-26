@@ -12,14 +12,27 @@ public interface IServicioModalCatalogo
 
 public sealed class ServicioModalCatalogo(IDialogService dialogos) : IServicioModalCatalogo
 {
+    // Igual que en la confirmación: un doble clic no debe apilar dos buscadores de catálogo.
+    private bool _abierto;
+
     public async Task<ClaveSatDto?> ElegirAsync(string catalogo, string titulo)
     {
-        var parametros = new DialogParameters<ModalCatalogo> { { x => x.Catalogo, catalogo } };
-        var opciones = new DialogOptions { CloseOnEscapeKey = true, FullWidth = true };
+        if (_abierto) return null;
+        _abierto = true;
 
-        var referencia = await dialogos.ShowAsync<ModalCatalogo>(titulo, parametros, opciones);
-        var resultado = await referencia.Result;
+        try
+        {
+            var parametros = new DialogParameters<ModalCatalogo> { { x => x.Catalogo, catalogo } };
+            var opciones = new DialogOptions { CloseOnEscapeKey = true, FullWidth = true };
 
-        return resultado is { Canceled: false, Data: ClaveSatDto clave } ? clave : null;
+            var referencia = await dialogos.ShowAsync<ModalCatalogo>(titulo, parametros, opciones);
+            var resultado = await referencia.Result;
+
+            return resultado is { Canceled: false, Data: ClaveSatDto clave } ? clave : null;
+        }
+        finally
+        {
+            _abierto = false;
+        }
     }
 }

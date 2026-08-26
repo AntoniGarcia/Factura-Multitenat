@@ -10,6 +10,7 @@
 <PageTitle>Nuevo usuario</PageTitle>
 <TituloDePagina Texto="Nuevo usuario" />
 
+<TarjetaFormulario RutaVolver="/usuarios">
 <PanelErrores Problema="_error" />
 
 @if (_resultado is null)
@@ -43,11 +44,11 @@
         <h2 class="seccion-titulo">Permisos</h2>
         <SelectorDePermisos @bind-Value="_permisos" />
 
-        <div class="acciones-formulario">
+        <div class="tarjeta-formulario-acciones">
+            <MudButton Variant="Variant.Text" OnClick="@(() => Navegacion.NavigateTo("/usuarios"))">Cancelar</MudButton>
             <MudButton Variant="Variant.Filled" Color="Color.Primary" ButtonType="ButtonType.Submit" Disabled="@_enviando">
                 @(_enviando ? "Guardando…" : "Crear usuario")
             </MudButton>
-            <MudButton Variant="Variant.Text" OnClick="@(() => Navegacion.NavigateTo("/usuarios"))">Cancelar</MudButton>
         </div>
     </EditForm>
 }
@@ -55,11 +56,12 @@ else
 {
     <p class="mensaje-exito" role="status">@_resultado.Mensaje</p>
 
-    <div class="acciones-formulario">
-        <MudButton Variant="Variant.Filled" OnClick="@(() => Navegacion.NavigateTo("/usuarios"))">Ver usuarios</MudButton>
+    <div class="tarjeta-formulario-acciones">
         <MudButton Variant="Variant.Text" OnClick="Limpiar">Crear otro</MudButton>
+        <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="@(() => Navegacion.NavigateTo("/usuarios"))">Ver usuarios</MudButton>
     </div>
 }
+</TarjetaFormulario>
 
 @code {
     private string _correo = string.Empty;

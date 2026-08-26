@@ -1,5 +1,5 @@
 /*
-  Formularios de captura densos (CLAUDE.md §8): sin adornos, muchos campos a la vista, y
+  Formularios de captura densos (ARQUITECTURA.md §8): sin adornos, muchos campos a la vista, y
   siempre sobre variables semánticas — ningún color literal.
 */
 
@@ -34,6 +34,57 @@
     align-items: center;
     gap: 0.75rem;
     margin: 1.25rem 0;
+}
+
+/* ── Tarjeta de formulario ─────────────────────────────────────────────────────
+   Marco centrado tipo tarjeta para los formularios de captura. El fondo de la página
+   (--fondo) hace de lienzo; la tarjeta es la superficie donde se escribe. */
+.tarjeta-formulario {
+    max-width: 60rem;
+    margin: 0 auto;
+    background: var(--superficie);
+    border: 1px solid var(--borde);
+    border-radius: var(--radio);
+    padding: 1.25rem 1.75rem 1rem;
+    box-shadow: 0 1px 2px rgba(var(--texto-rgb), 0.05);
+}
+
+/* Variante a todo el ancho para los formularios grandes (emisión, pago): sus tablas y
+   pestañas necesitan el ancho completo del área de contenido. */
+.tarjeta-formulario-ancha {
+    max-width: none;
+}
+
+/* La primera sección no necesita el margen superior que la separa de la anterior:
+   arriba solo está el borde de la tarjeta. */
+.tarjeta-formulario > .seccion-titulo:first-child {
+    margin-top: 0.25rem;
+}
+
+.tarjeta-formulario-volver {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.25rem;
+    margin-bottom: 0.75rem;
+    color: var(--texto-suave);
+    font-size: 0.875rem;
+    text-decoration: none;
+}
+
+.tarjeta-formulario-volver:hover {
+    color: var(--acento);
+}
+
+/* Pie de la tarjeta: acciones alineadas a la derecha, separadas por una línea, como en el
+   diseño de referencia. Va dentro del <EditForm> para que el botón de envío funcione. */
+.tarjeta-formulario-acciones {
+    display: flex;
+    justify-content: flex-end;
+    align-items: center;
+    gap: 0.75rem;
+    margin-top: 1.5rem;
+    padding-top: 1rem;
+    border-top: 1px solid var(--borde);
 }
 
 .mensaje-exito {

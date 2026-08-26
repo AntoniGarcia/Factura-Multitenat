@@ -10,6 +10,7 @@
 <PageTitle>@(EsNuevo ? "Nuevo producto" : "Editar producto")</PageTitle>
 <TituloDePagina Texto="@(EsNuevo ? "Nuevo producto" : $"Producto {_codigoInterno}")" />
 
+<TarjetaFormulario RutaVolver="/productos">
 <PanelErrores Problema="_error" />
 
 @if (_cargando)
@@ -167,14 +168,15 @@ else
             </div>
         }
 
-        <div class="acciones-formulario">
-            <MudButton ButtonType="ButtonType.Submit" Variant="Variant.Filled" Disabled="_guardando">
+        <div class="tarjeta-formulario-acciones">
+            <MudButton Variant="Variant.Text" OnClick="@(() => Navegacion.NavigateTo("/productos"))">Cancelar</MudButton>
+            <MudButton ButtonType="ButtonType.Submit" Variant="Variant.Filled" Color="Color.Primary" Disabled="_guardando">
                 @(_guardando ? "Guardando…" : "Guardar")
             </MudButton>
-            <MudButton Variant="Variant.Text" OnClick="@(() => Navegacion.NavigateTo("/productos"))">Cancelar</MudButton>
         </div>
     </EditForm>
 }
+</TarjetaFormulario>
 
 @code {
     [Parameter]

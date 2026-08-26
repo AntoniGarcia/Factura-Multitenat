@@ -1,0 +1,40 @@
+@using MudBlazor
+
+@*
+    Contenedor con aspecto de tarjeta para los formularios de captura: una tarjeta centrada
+    sobre el fondo, con una flecha de regreso opcional arriba a la izquierda. El título de la
+    página lo sigue poniendo TituloDePagina en la cabecera estándar (ARQUITECTURA.md §8): esta
+    tarjeta no aporta encabezado propio, solo el marco visual.
+
+    Las acciones (Guardar/Cancelar) van DENTRO del contenido, al final del <EditForm>, con la
+    clase .tarjeta-formulario-acciones; así el botón de envío sigue dentro del formulario y
+    dispara su OnValidSubmit.
+*@
+
+<div class="tarjeta-formulario @(Ancha ? "tarjeta-formulario-ancha" : null)">
+    @if (!string.IsNullOrWhiteSpace(RutaVolver))
+    {
+        <a href="@RutaVolver" class="tarjeta-formulario-volver" title="Volver">
+            <MudIcon Icon="@Icons.Material.Filled.ArrowBack" Size="Size.Small" />
+            <span>Volver</span>
+        </a>
+    }
+
+    @ChildContent
+</div>
+
+@code {
+    /// <summary>Ruta a la que regresa la flecha superior. Si es nula, no se muestra la flecha.</summary>
+    [Parameter]
+    public string? RutaVolver { get; set; }
+
+    /// <summary>
+    /// Tarjeta a todo el ancho, para los formularios grandes (emisión, pago) con tablas y
+    /// pestañas que no caben en el ancho de un formulario de catálogo.
+    /// </summary>
+    [Parameter]
+    public bool Ancha { get; set; }
+
+    [Parameter]
+    public RenderFragment? ChildContent { get; set; }
+}

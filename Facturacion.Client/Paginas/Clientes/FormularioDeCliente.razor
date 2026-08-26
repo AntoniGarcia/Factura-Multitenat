@@ -8,6 +8,7 @@
 <PageTitle>@(EsNuevo ? "Nuevo cliente" : "Editar cliente")</PageTitle>
 <TituloDePagina Texto="@(EsNuevo ? "Nuevo cliente" : $"Cliente {_claveInterna}")" />
 
+<TarjetaFormulario RutaVolver="/clientes">
 <PanelErrores Problema="_error" />
 
 @if (_cargando)
@@ -143,14 +144,15 @@ else
             <MudTextField @bind-Value="_referencia" Label="Referencia" MaxLength="256" />
         </div>
 
-        <div class="acciones-formulario">
-            <MudButton ButtonType="ButtonType.Submit" Variant="Variant.Filled" Disabled="_guardando">
+        <div class="tarjeta-formulario-acciones">
+            <MudButton Variant="Variant.Text" OnClick="@(() => Navegacion.NavigateTo("/clientes"))">Cancelar</MudButton>
+            <MudButton ButtonType="ButtonType.Submit" Variant="Variant.Filled" Color="Color.Primary" Disabled="_guardando">
                 @(_guardando ? "Guardando…" : "Guardar")
             </MudButton>
-            <MudButton Variant="Variant.Text" OnClick="@(() => Navegacion.NavigateTo("/clientes"))">Cancelar</MudButton>
         </div>
     </EditForm>
 }
+</TarjetaFormulario>
 
 @code {
     [Parameter]

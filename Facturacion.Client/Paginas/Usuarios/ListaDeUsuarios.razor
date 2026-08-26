@@ -74,11 +74,14 @@ else
                     </td>
                     <td>
                         <div class="acciones-renglon">
-                            <MudButton Size="Size.Small" OnClick="@(() => EditarPermisos(usuario))">Permisos</MudButton>
-                            <MudButton Size="Size.Small" OnClick="@(() => EditarCorreo(usuario))">Correo</MudButton>
+                            <MudButton Size="Size.Small" Disabled="@_dialogoAbierto"
+                                       OnClick="@(() => EditarPermisos(usuario))">Permisos</MudButton>
+                            <MudButton Size="Size.Small" Disabled="@_dialogoAbierto"
+                                       OnClick="@(() => EditarCorreo(usuario))">Correo</MudButton>
                             @if (usuario.CreadoPorAdministrador && !usuario.EsUsuarioActual)
                             {
-                                <MudButton Size="Size.Small" OnClick="@(() => CambiarContrasena(usuario))">
+                                <MudButton Size="Size.Small" Disabled="@_dialogoAbierto"
+                                           OnClick="@(() => CambiarContrasena(usuario))">
                                     Contraseña
                                 </MudButton>
                             }
@@ -101,6 +104,10 @@ else
     private UsuariosDeLaEmpresaDto? _datos;
     private DetalleProblema? _error;
 
+    // Evita apilar diálogos al doble clic: mientras uno esté abierto, los botones de la fila
+    // quedan deshabilitados y los handlers salen temprano.
+    private bool _dialogoAbierto;
+
     private bool _enElLimite =>
         _datos is not null && _datos.Usuarios.Count(u => u.Activo) >= _datos.LimitePorEmpresa;
 
@@ -113,44 +120,71 @@ else
 
     private async Task EditarPermisos(UsuarioDeEmpresaDto usuario)
     {
-        var parametros = new DialogParameters<EditarPermisosDialogo>
+        if (_dialogoAbierto) return;
+        _dialogoAbierto = true;
+        try
         {
-            { x => x.UsuarioId, usuario.UsuarioId },
-            { x => x.NombreUsuario, usuario.Nombre },
-            { x => x.PermisosActuales, usuario.Permisos }
-        };
+            var parametros = new DialogParameters<EditarPermisosDialogo>
+            {
+                { x => x.UsuarioId, usuario.UsuarioId },
+                { x => x.NombreUsuario, usuario.Nombre },
+                { x => x.PermisosActuales, usuario.Permisos }
+            };
 
-        var referencia = await Dialogos.ShowAsync<EditarPermisosDialogo>("Editar permisos", parametros);
-        var resultado = await referencia.Result;
+            var referencia = await Dialogos.ShowAsync<EditarPermisosDialogo>("Editar permisos", parametros);
+            var resultado = await referencia.Result;
 
-        if (resultado is { Canceled: false }) await CargarAsync();
+            if (resultado is { Canceled: false }) await CargarAsync();
+        }
+        finally
+        {
+            _dialogoAbierto = false;
+        }
     }
 
     private async Task EditarCorreo(UsuarioDeEmpresaDto usuario)
     {
-        var parametros = new DialogParameters<EditarCorreoDialogo>
+        if (_dialogoAbierto) return;
+        _dialogoAbierto = true;
+        try
         {
-            { x => x.UsuarioId, usuario.UsuarioId },
-            { x => x.NombreUsuario, usuario.Nombre },
-            { x => x.CorreoActual, usuario.Correo }
-        };
+            var parametros = new DialogParameters<EditarCorreoDialogo>
+            {
+                { x => x.UsuarioId, usuario.UsuarioId },
+                { x => x.NombreUsuario, usuario.Nombre },
+                { x => x.CorreoActual, usuario.Correo }
+            };
 
-        var referencia = await Dialogos.ShowAsync<EditarCorreoDialogo>("Cambiar correo", parametros);
-        var resultado = await referencia.Result;
+            var referencia = await Dialogos.ShowAsync<EditarCorreoDialogo>("Cambiar correo", parametros);
+            var resultado = await referencia.Result;
 
-        if (resultado is { Canceled: false }) await CargarAsync();
+            if (resultado is { Canceled: false }) await CargarAsync();
+        }
+        finally
+        {
+            _dialogoAbierto = false;
+        }
     }
 
     private async Task CambiarContrasena(UsuarioDeEmpresaDto usuario)
     {
-        var parametros = new DialogParameters<CambiarContrasenaDialogo>
+        if (_dialogoAbierto) return;
+        _dialogoAbierto = true;
+        try
         {
-            { x => x.UsuarioId, usuario.UsuarioId },
-            { x => x.NombreUsuario, usuario.Nombre }
-        };
+            var parametros = new DialogParameters<CambiarContrasenaDialogo>
+            {
+                { x => x.UsuarioId, usuario.UsuarioId },
+                { x => x.NombreUsuario, usuario.Nombre }
+            };
 
-        var referencia = await Dialogos.ShowAsync<CambiarContrasenaDialogo>("Cambiar contraseña", parametros);
-        await referencia.Result;
+            var referencia = await Dialogos.ShowAsync<CambiarContrasenaDialogo>("Cambiar contraseña", parametros);
+            await referencia.Result;
+        }
+        finally
+        {
+            _dialogoAbierto = false;
+        }
     }
 
     private async Task CambiarActivo(UsuarioDeEmpresaDto usuario)

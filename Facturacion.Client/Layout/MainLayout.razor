@@ -11,7 +11,9 @@
 *@
 
 <MudPopoverProvider />
-<MudDialogProvider />
+@* Comportamiento uniforme de todos los diálogos: cerrar con Escape y con clic fuera del
+   recuadro, sin depender de que cada llamada pase sus DialogOptions. *@
+<MudDialogProvider CloseOnEscapeKey="true" BackdropClick="true" />
 <MudSnackbarProvider />
 
 <div class="cascaron">

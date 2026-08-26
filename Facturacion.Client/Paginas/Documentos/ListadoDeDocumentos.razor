@@ -89,6 +89,7 @@
             @ref="_tabla"
             Columnas="_columnas"
             CargarPagina="CargarAsync"
+            TextoEntidad="documentos"
             TextoSinDatos="No hay documentos que coincidan." />
 
 @code {
@@ -97,6 +98,9 @@
     private TablaDatos<ComprobanteEnListaDto>? _tabla;
     private DetalleProblema? _error;
     private string? _aviso;
+
+    // Evita apilar diálogos de cancelación al doble clic.
+    private bool _dialogoAbierto;
     private string _texto = string.Empty;
     private EstatusComprobante? _estatus;
     private ClienteEnListaDto? _cliente;
@@ -134,7 +138,8 @@
                           <SiTienePermiso Permiso="@Permisos.Cancelar">
                               @if (d.Estatus == EstatusComprobante.Timbrado)
                               {
-                                  <MudButton Size="Size.Small" Color="Color.Error" OnClick="@(() => Cancelar(d))">
+                                  <MudButton Size="Size.Small" Color="Color.Error" Disabled="@_dialogoAbierto"
+                                             OnClick="@(() => Cancelar(d))">
                                       Cancelar
                                   </MudButton>
                               }
@@ -262,30 +267,40 @@
 
     private async Task Cancelar(ComprobanteEnListaDto documento)
     {
-        var parametros = new DialogParameters<DialogoDeCancelacion>
+        // Guard contra doble clic: no apilar dos diálogos de cancelación del mismo renglón.
+        if (_dialogoAbierto) return;
+        _dialogoAbierto = true;
+        try
         {
-            { x => x.Folio, Folio(documento) }
-        };
+            var parametros = new DialogParameters<DialogoDeCancelacion>
+            {
+                { x => x.Folio, Folio(documento) }
+            };
 
-        var referencia = await Dialogos.ShowAsync<DialogoDeCancelacion>(
-            "Cancelar comprobante", parametros, new DialogOptions { CloseOnEscapeKey = true });
+            var referencia = await Dialogos.ShowAsync<DialogoDeCancelacion>(
+                "Cancelar comprobante", parametros, new DialogOptions { CloseOnEscapeKey = true });
 
-        var resultado = await referencia.Result;
+            var resultado = await referencia.Result;
 
-        if (resultado is not { Canceled: false, Data: PeticionDeCancelacion peticion }) return;
+            if (resultado is not { Canceled: false, Data: PeticionDeCancelacion peticion }) return;
 
-        _error = null;
+            _error = null;
 
-        // Clave nueva por cada intento real del usuario: protege del doble clic sin impedir
-        // que vuelva a intentarlo a propósito si la primera vez falló.
-        var (exito, error) = await Cancelacion.CancelarAsync(
-            documento.Id, peticion, Guid.NewGuid().ToString("N"));
+            // Clave nueva por cada intento real del usuario: protege del doble clic sin impedir
+            // que vuelva a intentarlo a propósito si la primera vez falló.
+            var (exito, error) = await Cancelacion.CancelarAsync(
+                documento.Id, peticion, Guid.NewGuid().ToString("N"));
 
-        _error = error;
+            _error = error;
 
-        if (exito is not null) _aviso = MensajeDe(exito);
+            if (exito is not null) _aviso = MensajeDe(exito);
 
-        await RecargarAsync();
+            await RecargarAsync();
+        }
+        finally
+        {
+            _dialogoAbierto = false;
+        }
     }
 
     private async Task VerificarAnteSat(ComprobanteEnListaDto documento)

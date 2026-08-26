@@ -12,6 +12,7 @@
 <PageTitle>Nueva empresa</PageTitle>
 <TituloDePagina Texto="Nueva empresa" />
 
+<TarjetaFormulario>
 <PanelErrores Problema="_error" />
 
 <p class="seccion-ayuda">
@@ -51,13 +52,14 @@
         capital («S.A. de C.V.» y equivalentes se quitan).
     </p>
 
-    <div class="acciones-formulario">
+    <div class="tarjeta-formulario-acciones">
         <MudButton Variant="Variant.Filled" Color="Color.Primary" ButtonType="ButtonType.Submit"
                    Disabled="@(_guardando || !PuedeGuardar)">
             @(_guardando ? "Creando…" : "Crear empresa")
         </MudButton>
     </div>
 </EditForm>
+</TarjetaFormulario>
 
 @code {
     /// <summary>

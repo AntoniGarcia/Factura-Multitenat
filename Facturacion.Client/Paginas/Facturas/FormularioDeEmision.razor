@@ -16,6 +16,7 @@
 <PageTitle>@(EsNuevo ? "Nueva factura" : "Factura")</PageTitle>
 <TituloDePagina Texto="@TituloDeLaPantalla" />
 
+<TarjetaFormulario Ancha="true" RutaVolver="/facturas">
 <PanelErrores Problema="_error" />
 
 @if (_cargando)
@@ -246,7 +247,8 @@ else
         </MudTabPanel>
     </MudTabs>
 
-    <div class="acciones-formulario">
+    <div class="tarjeta-formulario-acciones">
+        <MudButton Variant="Variant.Text" OnClick="@(() => Navegacion.NavigateTo("/"))">Cancelar</MudButton>
         <MudButton Variant="Variant.Outlined" OnClick="GuardarAsync" Disabled="@(_guardando || _generando)">
             @(_guardando ? "Guardando…" : "Guardar borrador")
         </MudButton>
@@ -254,9 +256,9 @@ else
                    OnClick="GenerarFacturaAsync" Disabled="@(_guardando || _generando || _renglones.Count == 0)">
             @(_generando ? "Generando…" : "Generar factura")
         </MudButton>
-        <MudButton Variant="Variant.Text" OnClick="@(() => Navegacion.NavigateTo("/"))">Cancelar</MudButton>
     </div>
 }
+</TarjetaFormulario>
 
 @code {
     private const string RfcPublicoEnGeneral = "XAXX010101000";
