@@ -1,10 +1,10 @@
 /*
   Inter para interfaz, IBM Plex Mono con cifras tabulares para RFC, UUID, folios e importes
-  (CLAUDE.md §8). Auto-alojadas en /fuentes: la CSP no admite fonts.googleapis.com
+  (ARQUITECTURA.md §8). Auto-alojadas en /fuentes: la CSP no admite fonts.googleapis.com
   (font-src 'self') y, además, una PWA que promete uso sin conexión no puede depender de
   una red externa para dibujar su propia letra.
 
-  Tres pesos: 400 y 500 de CLAUDE.md §8, más el 600 que el rediseño usa en los títulos y
+  Tres pesos: 400 y 500 de ARQUITECTURA.md §8, más el 600 que el rediseño usa en los títulos y
   en el elemento activo del menú. Nada de cursiva ni de negritas extra que nadie pidió.
 
   El 600 es necesario, no decorativo: sin él el navegador sintetiza la negrita estirando el
@@ -63,7 +63,7 @@ body {
     font-family: var(--tipografia-interfaz);
 }
 
-/* Clase de uso explícito para RFC, UUID, folios e importes (CLAUDE.md §8). Los componentes
+/* Clase de uso explícito para RFC, UUID, folios e importes (ARQUITECTURA.md §8). Los componentes
    CampoRfc, CampoMoneda e IndicadorEstado la aplican; cualquier otro dato de esa misma
    naturaleza debe usarla también. */
 .cifra-tabular {

@@ -1,5 +1,5 @@
 /*
-  Variables semánticas de todo el sistema (CLAUDE.md §8). Ningún componente escribe un
+  Variables semánticas de todo el sistema (ARQUITECTURA.md §8). Ningún componente escribe un
   color literal, nunca: si hace falta uno que no está aquí, se agrega aquí primero.
 
   Tres temas, seleccionados con el atributo data-tema en <html>. El bloque :root de abajo
@@ -18,14 +18,14 @@
   de 3:1 de la 1.4.11. El detalle completo, con los números, está en el reporte de cierre
   de esta fase.
 
-  Dos decisiones que no estaban en CLAUDE.md y hubo que tomar:
+  Dos decisiones que no estaban en ARQUITECTURA.md y hubo que tomar:
 
-  - `--acento` NO es el mismo azul tinta en los tres temas. El #1B3A6B de CLAUDE.md §8 da
+  - `--acento` NO es el mismo azul tinta en los tres temas. El #1B3A6B de ARQUITECTURA.md §8 da
     apenas 1.46:1 contra la superficie del tema oscuro: un botón con ese color se
     confundiría con el fondo. El tema oscuro usa #376FBE, la misma familia de azul pero
     calibrado para pasar 3:1 contra su propia superficie sin perder legibilidad con texto
     blanco encima (5.02:1). El tema claro y el cálido sí usan el #1B3A6B exacto.
-  - `--estado-error` se agregó aparte de `--estado-cancelada`. CLAUDE.md solo nombra cuatro
+  - `--estado-error` se agregó aparte de `--estado-cancelada`. ARQUITECTURA.md solo nombra cuatro
     colores de estado para comprobantes, pero un campo de formulario inválido no es un
     comprobante cancelado: son conceptos distintos aunque hoy compartan el mismo tono.
 */
@@ -82,7 +82,7 @@
 
     /* ── Escala tipográfica (rediseño 2026) ──────────────────────────────────────────
        Antes cada componente elegía su tamaño a mano y no había dos títulos iguales.
-       Los títulos usan peso 600, que es un peso nuevo: CLAUDE.md §8 fijó 400 y 500 para
+       Los títulos usan peso 600, que es un peso nuevo: ARQUITECTURA.md §8 fijó 400 y 500 para
        la interfaz, y el 600 se auto-aloja igual que los otros dos (tipografia.css). */
     --peso-titulo: 600;
     --peso-etiqueta: 500;
@@ -118,7 +118,7 @@
     --ancho-menu: 200px;
 }
 
-/* Oscuro ergonómico: grises y azules profundos, jamás negro puro (CLAUDE.md §8). */
+/* Oscuro ergonómico: grises y azules profundos, jamás negro puro (ARQUITECTURA.md §8). */
 :root[data-tema="oscuro"] {
     --superficie: #182029;
     --superficie-elevada: #1F2833;

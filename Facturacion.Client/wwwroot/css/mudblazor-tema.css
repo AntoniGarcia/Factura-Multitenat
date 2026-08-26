@@ -2,7 +2,7 @@
   Hace que MudBlazor lea las variables semánticas en vez de traer su propia paleta.
 
   MudBlazor no expone un mecanismo para pasarle "usa estos hexadecimales" desde C# sin
-  escribirlos ahí como literales, que es justo lo que CLAUDE.md §8 prohíbe. Lo que sí hace
+  escribirlos ahí como literales, que es justo lo que ARQUITECTURA.md §8 prohíbe. Lo que sí hace
   —se comprobó leyendo su hoja de estilos compilada, no de memoria— es construir cada
   componente sobre sus propias variables CSS (--mud-palette-primary, --mud-palette-surface,
   etc.). Así que en vez de configurar un MudTheme en C# con colores, se sobreescriben esas
@@ -34,7 +34,7 @@
     --mud-palette-primary-darken: var(--acento);
     --mud-palette-primary-lighten: var(--acento-suave);
 
-    /* Sin colores "secundario" ni "terciario" propios: CLAUDE.md §8 no define una segunda
+    /* Sin colores "secundario" ni "terciario" propios: ARQUITECTURA.md §8 no define una segunda
        marca, así que reutilizan el acento en vez de inventar un color que nadie pidió. */
     --mud-palette-secondary: var(--acento);
     --mud-palette-secondary-rgb: var(--acento-rgb);
@@ -96,7 +96,7 @@
 }
 
 /* Filas de tabla a 40px y controles a 36px en todo, también dentro de MudBlazor
-   (CLAUDE.md §8). Se fija aquí y no por componente para que nadie tenga que acordarse. */
+   (ARQUITECTURA.md §8). Se fija aquí y no por componente para que nadie tenga que acordarse. */
 .mud-table-cell,
 .mud-table-row {
     height: var(--alto-fila-tabla);

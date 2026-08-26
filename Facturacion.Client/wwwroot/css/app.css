@@ -6,7 +6,7 @@
 @import "formularios.css";
 
 /*
-  Sistema de diseño (CLAUDE.md §8): herramienta densa en datos, sin ilustraciones, sin
+  Sistema de diseño (ARQUITECTURA.md §8): herramienta densa en datos, sin ilustraciones, sin
   degradados, sin sombras salvo en menús flotantes. Todo color sale de una variable;
   ninguno se escribe literal.
 */
@@ -157,7 +157,7 @@ button:disabled {
 
 /* El aviso de error nativo de Blazor, integrado al sistema de diseño: sin colores
    literales, con el mismo borde y radio que el resto. Es de las pocas superficies con
-   sombra propia, y CLAUDE.md §8 la permite en menús flotantes; esto se le parece más a
+   sombra propia, y ARQUITECTURA.md §8 la permite en menús flotantes; esto se le parece más a
    una notificación flotante que a un panel del lienzo. */
 #blazor-error-ui {
     background: var(--superficie);
