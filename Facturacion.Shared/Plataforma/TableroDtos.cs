@@ -50,13 +50,24 @@ public sealed record AvisoCertificadoDto(
 /// implementación de <c>IResumenDocumentos</c>: entonces el recuadro no se pinta, en vez de
 /// enseñar ceros que se leerían como «este mes no facturaste».
 /// </param>
+/// <param name="SerieMensual">
+/// Comprobantes timbrados e importe de los ultimos meses, para las graficas. Vacia cuando la
+/// mitad B todavia no registro su implementacion, igual que <c>Documentos</c>.
+/// </param>
 public sealed record TableroDto(
     SaldoTimbresDto Timbres,
     int UmbralAvisoTimbres,
     AvisoCertificadoDto? Certificado,
     MembresiaDto? Membresia,
     bool MembresiaEnAviso,
-    ResumenDelMesDto? Documentos);
+    ResumenDelMesDto? Documentos,
+    IReadOnlyList<PuntoDeFacturacionDto> SerieMensual);
+
+/// <summary>Un mes de la serie de facturacion del tablero.</summary>
+public sealed record PuntoDeFacturacionDto(
+    string Etiqueta,
+    int Timbrados,
+    decimal Importe);
 
 /// <summary>
 /// Conteo de comprobantes del periodo, aplanado para el tablero.

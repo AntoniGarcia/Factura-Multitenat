@@ -7,7 +7,7 @@
 @inject ServicioDeTableroDeOperador Tablero
 @inject NavigationManager Navegacion
 
-<PageTitle>Panel Administrador</PageTitle>
+<PageTitle>Panel de operador</PageTitle>
 <TituloDePagina Texto="Tablero" />
 
 @if (_datos is null)
@@ -16,8 +16,8 @@
 }
 else
 {
-    @* Lo que exige acción va primero y destacado: una compra pendiente es dinero que entró
-       al banco y todavía no se convirtió en timbres para el cliente. *@
+    @* Lo que exige acción va primero: una compra pendiente es dinero que ya entró al banco
+       y todavía no se convirtió en timbres para el cliente. *@
     @if (_datos.ComprasPendientes > 0)
     {
         <div class="aviso-caducidad" role="status">
@@ -33,152 +33,238 @@ else
         </div>
     }
 
-    <h2 class="seccion-titulo">Este mes</h2>
+    <div class="rejilla-panel">
+        <div class="tramo-3">
+            <div class="indicador indicador-bien">
+                <span class="indicador-icono">
+                    <MudIcon Icon="@Icons.Material.Filled.Payments" Size="Size.Small" />
+                </span>
+                <span class="indicador-texto">
+                    <span class="indicador-cifra">@_datos.IngresoDelMes.ToString("C0")</span>
+                    <span class="indicador-etiqueta">Ingreso del mes</span>
+                </span>
+            </div>
+        </div>
 
-    <div class="tarjetas-saldo">
-        <div class="tarjeta-saldo">
-            <span class="tarjeta-saldo-cifra cifra-tabular">@_datos.IngresoDelMes.ToString("C2")</span>
-            <span class="tarjeta-saldo-etiqueta">Ingreso acreditado</span>
+        <div class="tramo-3">
+            <div class="indicador">
+                <span class="indicador-icono">
+                    <MudIcon Icon="@Icons.Material.Filled.ConfirmationNumber" Size="Size.Small" />
+                </span>
+                <span class="indicador-texto">
+                    <span class="indicador-cifra">@_datos.TimbresVendidosDelMes.ToString("N0")</span>
+                    <span class="indicador-etiqueta">Timbres vendidos</span>
+                </span>
+            </div>
         </div>
-        <div class="tarjeta-saldo">
-            <span class="tarjeta-saldo-cifra cifra-tabular">@_datos.TimbresVendidosDelMes.ToString("N0")</span>
-            <span class="tarjeta-saldo-etiqueta">Timbres vendidos</span>
+
+        <div class="tramo-3">
+            <div class="indicador @(_datos.ComprasPendientes > 0 ? "indicador-pendiente" : null)">
+                <span class="indicador-icono">
+                    <MudIcon Icon="@Icons.Material.Filled.HourglassTop" Size="Size.Small" />
+                </span>
+                <span class="indicador-texto">
+                    <span class="indicador-cifra">@_datos.MontoPendiente.ToString("C0")</span>
+                    <span class="indicador-etiqueta">Por cobrar</span>
+                </span>
+            </div>
         </div>
-        <div class="tarjeta-saldo">
-            <span class="tarjeta-saldo-cifra cifra-tabular">@_datos.MontoPendiente.ToString("C2")</span>
-            <span class="tarjeta-saldo-etiqueta">Por cobrar</span>
+
+        <div class="tramo-3">
+            <div class="indicador @(_datos.MembresiasPorVencer > 0 ? "indicador-alerta" : null)">
+                <span class="indicador-icono">
+                    <MudIcon Icon="@Icons.Material.Filled.CardMembership" Size="Size.Small" />
+                </span>
+                <span class="indicador-texto">
+                    <span class="indicador-cifra">@_datos.MembresiasPorVencer</span>
+                    <span class="indicador-etiqueta">Membresías por vencer</span>
+                </span>
+            </div>
         </div>
     </div>
 
-    <h2 class="seccion-titulo">Clientes</h2>
-
-    <div class="tarjetas-saldo">
-        <div class="tarjeta-saldo">
-            <span class="tarjeta-saldo-cifra cifra-tabular">@_datos.CuentasActivas</span>
-            <span class="tarjeta-saldo-etiqueta">Cuentas activas</span>
-        </div>
-        <div class="tarjeta-saldo">
-            <span class="tarjeta-saldo-cifra cifra-tabular">@_datos.EmpresasActivas</span>
-            <span class="tarjeta-saldo-etiqueta">Empresas emisoras</span>
-        </div>
-        <div class="tarjeta-saldo">
-            <span class="tarjeta-saldo-cifra cifra-tabular">@_datos.MembresiasPorVencer</span>
-            <span class="tarjeta-saldo-etiqueta">Membresías por vencer</span>
-        </div>
-    </div>
-
-    <h2 class="seccion-titulo">Ingreso de los últimos seis meses</h2>
-
-    @if (_datos.PorMes.Any(p => p.Ingreso > 0))
-    {
-        <div class="grafica">
-            <MudChart T="double" ChartType="ChartType.Bar"
-                      ChartSeries="@_serieIngreso"
-                      ChartLabels="@_etiquetasMes"
-                      Width="100%" Height="280px" />
-        </div>
-
-        <h2 class="seccion-titulo">Timbres vendidos por mes</h2>
-
-        <div class="grafica">
-            <MudChart T="double" ChartType="ChartType.Line"
-                      ChartSeries="@_serieTimbres"
-                      ChartLabels="@_etiquetasMes"
-                      Width="100%" Height="240px" />
-        </div>
-    }
-    else
-    {
-        <p class="tabla-datos-estado">Todavía no hay ventas que graficar.</p>
-    }
-
-    @if (_datos.PorPaquete.Count > 0)
-    {
-        <h2 class="seccion-titulo">Qué paquetes dejan más ingreso</h2>
-
-        <div class="grafica grafica-dona">
-            <MudChart T="double" ChartType="ChartType.Donut"
-                      ChartSeries="@_seriePaquete"
-                      ChartLabels="@_etiquetasPaquete"
-                      Width="300px" Height="300px" />
-
-            <MudSimpleTable Dense="true" Class="tabla-impuestos">
-                <thead>
-                    <tr><th>Paquete</th><th class="cifra-tabular">Compras</th><th class="cifra-tabular">Ingreso</th></tr>
-                </thead>
-                <tbody>
-                    @foreach (var p in _datos.PorPaquete)
+    <div class="rejilla-panel">
+        <div class="tramo-8">
+            <section class="panel">
+                <header class="panel-encabezado">
+                    <h2 class="panel-titulo">Ingreso por mes</h2>
+                    <span class="panel-nota">Últimos seis meses</span>
+                </header>
+                <div class="panel-cuerpo">
+                    @if (_hayVentas)
                     {
-                        <tr>
-                            <td>@p.Nombre</td>
-                            <td class="cifra-tabular">@p.Compras</td>
-                            <td class="cifra-tabular">@p.Ingreso.ToString("C2")</td>
-                        </tr>
+                        <MudChart T="double" ChartType="ChartType.Bar"
+                                  ChartSeries="@_serieIngreso"
+                                  ChartLabels="@_etiquetasMes"
+                                  Width="100%" Height="260px" />
                     }
-                </tbody>
-            </MudSimpleTable>
+                    else
+                    {
+                        <p class="tabla-datos-estado">Todavía no hay ventas que graficar.</p>
+                    }
+                </div>
+            </section>
         </div>
-    }
 
-    <h2 class="seccion-titulo">Últimos pagos acreditados</h2>
+        <div class="tramo-4">
+            <section class="panel">
+                <header class="panel-encabezado">
+                    <h2 class="panel-titulo">Ingreso por paquete</h2>
+                </header>
+                <div class="panel-cuerpo">
+                    @if (_datos.PorPaquete.Count > 0)
+                    {
+                        <MudChart T="double" ChartType="ChartType.Donut"
+                                  ChartSeries="@_seriePaquete"
+                                  ChartLabels="@_etiquetasPaquete"
+                                  Width="100%" Height="260px" />
+                    }
+                    else
+                    {
+                        <p class="tabla-datos-estado">Sin ventas.</p>
+                    }
+                </div>
+            </section>
+        </div>
+    </div>
 
-    @if (_datos.UltimasAcreditadas.Count == 0)
-    {
-        <p class="tabla-datos-estado">Todavía no se ha acreditado ningún pago.</p>
-    }
-    else
-    {
-        <MudSimpleTable Dense="true" Hover="true" Class="tabla-impuestos">
-            <thead>
-                <tr>
-                    <th>Fecha</th><th>Empresa</th><th>Paquete</th>
-                    <th class="cifra-tabular">Timbres</th><th class="cifra-tabular">Total</th>
-                </tr>
-            </thead>
-            <tbody>
-                @foreach (var compra in _datos.UltimasAcreditadas)
-                {
-                    <tr>
-                        <td class="cifra-tabular">
-                            @((compra.AcreditadaUtc ?? compra.CreadaUtc).ToLocalTime().ToString("dd/MM/yyyy"))
-                        </td>
-                        <td>@compra.EmpresaNombre</td>
-                        <td>@compra.NombrePaquete</td>
-                        <td class="cifra-tabular">@compra.CantidadTimbres.ToString("N0")</td>
-                        <td class="cifra-tabular">@compra.PrecioTotal.ToString("C2")</td>
-                    </tr>
-                }
-            </tbody>
-        </MudSimpleTable>
-    }
+    <div class="rejilla-panel">
+        <div class="tramo-6">
+            <section class="panel">
+                <header class="panel-encabezado">
+                    <h2 class="panel-titulo">Timbres vendidos por mes</h2>
+                </header>
+                <div class="panel-cuerpo">
+                    @if (_hayVentas)
+                    {
+                        <MudChart T="double" ChartType="ChartType.Line"
+                                  ChartSeries="@_serieTimbres"
+                                  ChartLabels="@_etiquetasMes"
+                                  Width="100%" Height="240px" />
+                    }
+                    else
+                    {
+                        <p class="tabla-datos-estado">Sin datos.</p>
+                    }
+                </div>
+            </section>
+        </div>
 
-    <h2 class="seccion-titulo">Ir a</h2>
-    <div class="accesos-rapidos">
-        <MudButton Variant="Variant.Filled" Color="Color.Primary" StartIcon="@Icons.Material.Filled.Sell"
-                   OnClick="@(() => Navegacion.NavigateTo("/operador/paquetes"))">
-            Paquetes
-        </MudButton>
-        <MudButton Variant="Variant.Outlined" StartIcon="@Icons.Material.Filled.ReceiptLong"
-                   OnClick="@(() => Navegacion.NavigateTo("/operador/compras"))">
-            Compras
-        </MudButton>
-        <MudButton Variant="Variant.Outlined" StartIcon="@Icons.Material.Filled.Apartment"
-                   OnClick="@(() => Navegacion.NavigateTo("/operador/cuentas"))">
-            Clientes
-        </MudButton>
+        <div class="tramo-6">
+            <section class="panel">
+                <header class="panel-encabezado">
+                    <h2 class="panel-titulo">Qué se vende</h2>
+                </header>
+                <div class="panel-cuerpo panel-cuerpo-tabla">
+                    <MudSimpleTable Dense="true" Hover="true">
+                        <thead>
+                            <tr>
+                                <th>Paquete</th>
+                                <th class="cifra-tabular">Compras</th>
+                                <th class="cifra-tabular">Ingreso</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var paquete in _datos.PorPaquete)
+                            {
+                                <tr>
+                                    <td>@paquete.Nombre</td>
+                                    <td class="cifra-tabular">@paquete.Compras</td>
+                                    <td class="cifra-tabular">@paquete.Ingreso.ToString("C2")</td>
+                                </tr>
+                            }
+                            @if (_datos.PorPaquete.Count == 0)
+                            {
+                                <tr><td colspan="3" class="tabla-datos-estado">Sin ventas.</td></tr>
+                            }
+                        </tbody>
+                    </MudSimpleTable>
+                </div>
+            </section>
+        </div>
+    </div>
+
+    <div class="rejilla-panel">
+        <div class="tramo-8">
+            <section class="panel">
+                <header class="panel-encabezado">
+                    <h2 class="panel-titulo">Últimos pagos acreditados</h2>
+                </header>
+                <div class="panel-cuerpo panel-cuerpo-tabla">
+                    <MudSimpleTable Dense="true" Hover="true">
+                        <thead>
+                            <tr>
+                                <th>Fecha</th>
+                                <th>Empresa</th>
+                                <th>Paquete</th>
+                                <th class="cifra-tabular">Timbres</th>
+                                <th class="cifra-tabular">Total</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var compra in _datos.UltimasAcreditadas)
+                            {
+                                <tr>
+                                    <td class="cifra-tabular">
+                                        @((compra.AcreditadaUtc ?? compra.CreadaUtc).ToLocalTime().ToString("dd/MM/yyyy"))
+                                    </td>
+                                    <td>@compra.EmpresaNombre</td>
+                                    <td>@compra.NombrePaquete</td>
+                                    <td class="cifra-tabular">@compra.CantidadTimbres.ToString("N0")</td>
+                                    <td class="cifra-tabular">@compra.PrecioTotal.ToString("C2")</td>
+                                </tr>
+                            }
+                            @if (_datos.UltimasAcreditadas.Count == 0)
+                            {
+                                <tr><td colspan="5" class="tabla-datos-estado">Todavía no se ha acreditado ningún pago.</td></tr>
+                            }
+                        </tbody>
+                    </MudSimpleTable>
+                </div>
+            </section>
+        </div>
+
+        <div class="tramo-4">
+            <section class="panel">
+                <header class="panel-encabezado">
+                    <h2 class="panel-titulo">Clientes</h2>
+                </header>
+                <div class="panel-cuerpo">
+                    <div class="indicador indicador-apilado">
+                        <span class="indicador-icono">
+                            <MudIcon Icon="@Icons.Material.Filled.Groups" Size="Size.Small" />
+                        </span>
+                        <span class="indicador-texto">
+                            <span class="indicador-cifra">@_datos.CuentasActivas</span>
+                            <span class="indicador-etiqueta">Cuentas activas</span>
+                        </span>
+                    </div>
+
+                    <div class="indicador">
+                        <span class="indicador-icono">
+                            <MudIcon Icon="@Icons.Material.Filled.Apartment" Size="Size.Small" />
+                        </span>
+                        <span class="indicador-texto">
+                            <span class="indicador-cifra">@_datos.EmpresasActivas</span>
+                            <span class="indicador-etiqueta">Empresas emisoras</span>
+                        </span>
+                    </div>
+                </div>
+            </section>
+        </div>
     </div>
 }
 
 @code {
     private TableroDeOperadorDto? _datos;
+    private bool _hayVentas;
 
-    // Las series se arman una vez al cargar y no en cada render: MudChart las recibe como
-    // listas y reconstruirlas en cada repintado haría parpadear la gráfica.
+    // Las series se arman una vez al cargar: reconstruirlas en cada render haría parpadear
+    // las gráficas.
     private List<ChartSeries<double>> _serieIngreso = [];
     private List<ChartSeries<double>> _serieTimbres = [];
-    private string[] _etiquetasMes = [];
-
     private List<ChartSeries<double>> _seriePaquete = [];
+    private string[] _etiquetasMes = [];
     private string[] _etiquetasPaquete = [];
 
     protected override async Task OnInitializedAsync()
@@ -187,6 +273,7 @@ else
 
         if (_datos is null) return;
 
+        _hayVentas = _datos.PorMes.Any(p => p.Ingreso > 0);
         _etiquetasMes = _datos.PorMes.Select(p => p.Etiqueta).ToArray();
 
         _serieIngreso =

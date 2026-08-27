@@ -244,3 +244,137 @@
     color: var(--texto-suave);
     border-color: var(--borde-fuerte);
 }
+
+/* ── Rejilla de panel ──────────────────────────────────────────────────────────
+   Doce columnas, como las plantillas de administración al uso. Las clases de tramo
+   dicen cuánto ocupa cada tarjeta, de modo que en una misma fila quepan dos gráficas
+   o cuatro indicadores sin que ninguna se coma la pantalla entera. */
+.rejilla-panel {
+    display: grid;
+    grid-template-columns: repeat(12, 1fr);
+    gap: 1rem;
+    margin-bottom: 1rem;
+    align-items: start;
+}
+
+.tramo-3 { grid-column: span 3; }
+.tramo-4 { grid-column: span 4; }
+.tramo-6 { grid-column: span 6; }
+.tramo-8 { grid-column: span 8; }
+.tramo-12 { grid-column: span 12; }
+
+/* Por debajo de 1100px las medias quedan demasiado estrechas para una gráfica legible;
+   por debajo de 700px todo se apila. */
+@media (max-width: 1100px) {
+    .tramo-3 { grid-column: span 6; }
+    .tramo-4,
+    .tramo-6,
+    .tramo-8 { grid-column: span 12; }
+}
+
+@media (max-width: 700px) {
+    .tramo-3 { grid-column: span 12; }
+}
+
+/* ── Tarjeta de panel ────────────────────────────────────────────────────────── */
+.panel {
+    display: flex;
+    flex-direction: column;
+    background: var(--superficie);
+    border: 1px solid var(--borde);
+    border-radius: var(--radio);
+    overflow: hidden;
+}
+
+.panel-encabezado {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.5rem;
+    padding: 0.625rem 1rem;
+    border-bottom: 1px solid var(--borde);
+}
+
+.panel-titulo {
+    margin: 0;
+    font-size: 0.9375rem;
+    font-weight: var(--peso-titulo);
+    color: var(--texto);
+}
+
+.panel-nota {
+    font-size: var(--etiqueta-tam);
+    color: var(--texto-suave);
+}
+
+.panel-cuerpo {
+    padding: 1rem;
+    overflow-x: auto;
+}
+
+/* Sin relleno cuando dentro va una tabla, que ya trae el suyo. */
+.panel-cuerpo-tabla {
+    padding: 0;
+}
+
+/* ── Indicador ────────────────────────────────────────────────────────────────
+   Cifra grande con su etiqueta y un icono al costado. La franja de color dice de qué
+   habla el dato sin recurrir a un fondo saturado: esto es una herramienta de trabajo,
+   no un panel de escaparate. */
+.indicador {
+    display: flex;
+    align-items: center;
+    gap: 0.875rem;
+    padding: 0.875rem 1rem;
+    background: var(--superficie);
+    border: 1px solid var(--borde);
+    border-left: 3px solid var(--acento);
+    border-radius: var(--radio);
+}
+
+.indicador-icono {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex: 0 0 auto;
+    width: 2.5rem;
+    height: 2.5rem;
+    border-radius: var(--radio);
+    background: var(--acento-suave);
+    color: var(--acento);
+}
+
+.indicador-texto {
+    min-width: 0;
+}
+
+.indicador-cifra {
+    display: block;
+    font-size: 1.5rem;
+    line-height: 1.15;
+    font-weight: var(--peso-titulo);
+    color: var(--texto);
+    font-variant-numeric: tabular-nums;
+    white-space: nowrap;
+}
+
+.indicador-etiqueta {
+    display: block;
+    font-size: var(--etiqueta-tam);
+    color: var(--texto-suave);
+}
+
+/* Variantes por naturaleza del dato. Solo cambian el acento; el resto lo heredan. */
+.indicador-bien { border-left-color: var(--estado-timbrada); }
+.indicador-bien .indicador-icono { background: rgba(var(--estado-timbrada-rgb), 0.12); color: var(--estado-timbrada-texto); }
+
+.indicador-pendiente { border-left-color: var(--estado-advertencia); }
+.indicador-pendiente .indicador-icono { background: rgba(var(--estado-advertencia-rgb), 0.12); color: var(--estado-advertencia-texto); }
+
+.indicador-alerta { border-left-color: var(--estado-error); }
+.indicador-alerta .indicador-icono { background: rgba(var(--estado-error-rgb), 0.12); color: var(--estado-cancelada-texto); }
+
+/* Indicadores apilados dentro de un panel: separacion entre uno y otro. */
+.indicador-apilado {
+    margin-bottom: 0.75rem;
+}

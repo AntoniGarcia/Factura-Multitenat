@@ -53,7 +53,22 @@ public sealed class ServicioDeTablero(
 
         return new TableroDto(
             saldo, UmbralAvisoTimbres, await CertificadoAsync(ct), membresia, enAviso,
-            await DocumentosAsync(ct));
+            await DocumentosAsync(ct), await SerieAsync(ct));
+    }
+
+    /// <summary>
+    /// Los ultimos seis meses de facturacion. Vacia si la mitad B no esta registrada, igual
+    /// que el resumen del mes: mejor no pintar la grafica que pintarla plana en cero.
+    /// </summary>
+    private async Task<IReadOnlyList<PuntoDeFacturacionDto>> SerieAsync(CancellationToken ct)
+    {
+        if (documentos is null) return [];
+
+        var serie = await documentos.SerieMensualAsync(6, ct);
+
+        return serie
+            .Select(p => new PuntoDeFacturacionDto(p.Etiqueta, p.Timbrados, p.Importe))
+            .ToList();
     }
 
     /// <summary>

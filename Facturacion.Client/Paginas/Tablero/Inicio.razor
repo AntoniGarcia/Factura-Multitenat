@@ -89,24 +89,103 @@ else
 
     @if (_datos.Documentos is { } documentos)
     {
-        <h2 class="seccion-titulo">
-            Comprobantes de @Mes(documentos.Desde)
-        </h2>
+        <div class="rejilla-panel">
+            <div class="tramo-8">
+                <section class="panel">
+                    <header class="panel-encabezado">
+                        <h2 class="panel-titulo">Facturado por mes</h2>
+                        <span class="panel-nota">Últimos seis meses</span>
+                    </header>
+                    <div class="panel-cuerpo">
+                        @if (_hayHistorial)
+                        {
+                            <MudChart T="double" ChartType="ChartType.Bar"
+                                      ChartSeries="@_serieImporte"
+                                      ChartLabels="@_etiquetasMes"
+                                      Width="100%" Height="260px" />
+                        }
+                        else
+                        {
+                            <p class="tabla-datos-estado">Todavía no hay comprobantes timbrados que graficar.</p>
+                        }
+                    </div>
+                </section>
+            </div>
 
-        <div class="tarjetas-saldo">
-            @foreach (var renglon in documentos.ConteoPorEstatus)
-            {
-                <div class="tarjeta-saldo">
-                    <span class="tarjeta-saldo-cifra cifra-tabular">@renglon.Cuenta</span>
-                    <span class="tarjeta-saldo-etiqueta">@renglon.Etiqueta</span>
-                </div>
-            }
+            <div class="tramo-4">
+                <section class="panel">
+                    <header class="panel-encabezado">
+                        <h2 class="panel-titulo">Comprobantes de @Mes(documentos.Desde)</h2>
+                    </header>
+                    <div class="panel-cuerpo">
+                        @if (_hayComprobantesDelMes)
+                        {
+                            <MudChart T="double" ChartType="ChartType.Donut"
+                                      ChartSeries="@_seriePorEstatus"
+                                      ChartLabels="@_etiquetasEstatus"
+                                      Width="100%" Height="220px" />
+                        }
+                        else
+                        {
+                            <p class="tabla-datos-estado">Sin comprobantes este mes.</p>
+                        }
+                    </div>
+                </section>
+            </div>
+
+            <div class="tramo-6">
+                <section class="panel">
+                    <header class="panel-encabezado">
+                        <h2 class="panel-titulo">Comprobantes timbrados por mes</h2>
+                    </header>
+                    <div class="panel-cuerpo">
+                        @if (_hayHistorial)
+                        {
+                            <MudChart T="double" ChartType="ChartType.Line"
+                                      ChartSeries="@_serieTimbrados"
+                                      ChartLabels="@_etiquetasMes"
+                                      Width="100%" Height="220px" />
+                        }
+                        else
+                        {
+                            <p class="tabla-datos-estado">Sin datos.</p>
+                        }
+                    </div>
+                </section>
+            </div>
+
+            <div class="tramo-6">
+                <section class="panel">
+                    <header class="panel-encabezado">
+                        <h2 class="panel-titulo">Resumen de @Mes(documentos.Desde)</h2>
+                    </header>
+                    <div class="panel-cuerpo panel-cuerpo-tabla">
+                        <MudSimpleTable Dense="true" Hover="true">
+                            <thead>
+                                <tr><th>Estatus</th><th class="cifra-tabular">Comprobantes</th></tr>
+                            </thead>
+                            <tbody>
+                                @foreach (var renglon in documentos.ConteoPorEstatus)
+                                {
+                                    <tr>
+                                        <td>@renglon.Etiqueta</td>
+                                        <td class="cifra-tabular">@renglon.Cuenta</td>
+                                    </tr>
+                                }
+                                <tr>
+                                    <td><strong>Importe timbrado</strong></td>
+                                    <td class="cifra-tabular"><strong>@documentos.ImporteTimbrado.ToString("C2")</strong></td>
+                                </tr>
+                                <tr>
+                                    <td>Importe cancelado</td>
+                                    <td class="cifra-tabular">@documentos.ImporteCancelado.ToString("C2")</td>
+                                </tr>
+                            </tbody>
+                        </MudSimpleTable>
+                    </div>
+                </section>
+            </div>
         </div>
-
-        <p class="seccion-ayuda cifra-tabular">
-            Timbrado @documentos.ImporteTimbrado.ToString("C2") ·
-            cancelado @documentos.ImporteCancelado.ToString("C2")
-        </p>
     }
 
     <h2 class="seccion-titulo">Accesos rápidos</h2>
@@ -130,7 +209,60 @@ else
 @code {
     private TableroDto? _datos;
 
-    protected override async Task OnInitializedAsync() => _datos = await Tablero.ObtenerAsync();
+    private bool _hayHistorial;
+    private bool _hayComprobantesDelMes;
+
+    private List<ChartSeries<double>> _serieImporte = [];
+    private List<ChartSeries<double>> _serieTimbrados = [];
+    private List<ChartSeries<double>> _seriePorEstatus = [];
+    private string[] _etiquetasMes = [];
+    private string[] _etiquetasEstatus = [];
+
+    protected override async Task OnInitializedAsync()
+    {
+        _datos = await Tablero.ObtenerAsync();
+
+        if (_datos is null) return;
+
+        _etiquetasMes = _datos.SerieMensual.Select(p => p.Etiqueta).ToArray();
+        _hayHistorial = _datos.SerieMensual.Any(p => p.Timbrados > 0);
+
+        _serieImporte =
+        [
+            new ChartSeries<double>
+            {
+                Name = "Importe",
+                Data = _datos.SerieMensual.Select(p => (double)p.Importe).ToArray()
+            }
+        ];
+
+        _serieTimbrados =
+        [
+            new ChartSeries<double>
+            {
+                Name = "Timbrados",
+                Data = _datos.SerieMensual.Select(p => (double)p.Timbrados).ToArray()
+            }
+        ];
+
+        // La dona solo lleva los estatus con comprobantes: un sector de tamaño cero no se ve
+        // pero sí ocupa sitio en la leyenda.
+        var conEstatus = _datos.Documentos?.ConteoPorEstatus
+            .Where(r => r.Cuenta > 0)
+            .ToList() ?? [];
+
+        _hayComprobantesDelMes = conEstatus.Count > 0;
+        _etiquetasEstatus = conEstatus.Select(r => r.Etiqueta).ToArray();
+
+        _seriePorEstatus =
+        [
+            new ChartSeries<double>
+            {
+                Name = "Comprobantes",
+                Data = conEstatus.Select(r => (double)r.Cuenta).ToArray()
+            }
+        ];
+    }
 
     // El periodo lo decide el servidor, en el huso de la empresa; aquí solo se nombra.
     private static string Mes(DateOnly desde)
