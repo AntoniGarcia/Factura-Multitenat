@@ -12,6 +12,8 @@ using Facturacion.Server.Modules.Plataforma.Productos;
 using Facturacion.Server.Modules.Plataforma.Tablero;
 using Facturacion.Server.Modules.Plataforma.Timbres;
 using Facturacion.Server.Modules.Plataforma.Usuarios;
+using Facturacion.Server.Modules.Operador.Auth;
+using Facturacion.Shared.Comun;
 using Facturacion.Shared.Contratos;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Authorization;
@@ -143,11 +145,57 @@ public static class PlataformaModule
                         "No tienes permiso para esta operación",
                         "Tu usuario no tiene el permiso que exige esta operación en la empresa activa.")
                 };
+            })
+            // El panel del proveedor del SaaS. Misma clave de firma, pero audiencia propia:
+            // los dos tipos de token dejan de ser intercambiables, así que presentar uno de
+            // inquilino aquí falla en la validación y no llega a mirarse ningún claim.
+            .AddJwtBearer(EsquemasDeAutenticacion.Operador, opciones =>
+            {
+                opciones.MapInboundClaims = false;
+
+                opciones.TokenValidationParameters = new TokenValidationParameters
+                {
+                    ValidateIssuer = true,
+                    ValidIssuer = jwt.Emisor,
+                    ValidateAudience = true,
+                    ValidAudience = ServicioDeTokens.AudienciaDeOperador(jwt.Audiencia),
+                    ValidateIssuerSigningKey = true,
+                    IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwt.ClaveDeFirma)),
+                    ValidateLifetime = true,
+                    ClockSkew = TimeSpan.Zero
+                };
+
+                opciones.Events = new JwtBearerEvents
+                {
+                    OnChallenge = async contexto =>
+                    {
+                        contexto.HandleResponse();
+                        await ResultadosDeError.EscribirProblema(
+                            contexto.HttpContext,
+                            StatusCodes.Status401Unauthorized,
+                            "no-autenticado",
+                            "Necesitas iniciar sesión",
+                            "El token de acceso del panel falta o ya expiró.");
+                    },
+                    OnForbidden = contexto => ResultadosDeError.EscribirProblema(
+                        contexto.HttpContext,
+                        StatusCodes.Status403Forbidden,
+                        "sin-permiso",
+                        "No tienes permiso para esta operación",
+                        "Esta operación es del panel de operador.")
+                };
             });
 
         servicios.AddAuthorizationBuilder()
-            .SetDefaultPolicy(new AuthorizationPolicyBuilder().RequireAuthenticatedUser().Build())
-            .AgregarPoliticasDePermiso();
+            // La política por omisión exige sesión y, además, que no sea la del operador: un
+            // endpoint del inquilino anotado solo con [Authorize] no debe abrirse para él.
+            .SetDefaultPolicy(new AuthorizationPolicyBuilder()
+                .RequireAuthenticatedUser()
+                .RequireAssertion(contexto =>
+                    !contexto.User.HasClaim(c => c.Type == ClavesDeClaim.Operador))
+                .Build())
+            .AgregarPoliticasDePermiso()
+            .AgregarPoliticasDeOperador();
 
         return servicios;
     }

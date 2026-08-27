@@ -1,0 +1,302 @@
+@page "/operador/cuentas/{Id:guid}"
+@layout LayoutDeOperador
+@attribute [Authorize(Policy = PoliticasDelPanel.PoliticaDeOperador)]
+@using Facturacion.Client.Componentes.Comunes
+@using Facturacion.Client.Servicios.Operador
+@using Facturacion.Client.Servicios.Plataforma
+@using Facturacion.Shared.Comun
+@using Facturacion.Shared.Operador
+@inject ServicioDeClientesDePlataforma Clientes
+@inject ServicioDeTableroDeOperador Suscripciones
+@inject IServicioDeConfirmacion Confirmacion
+@inject IDialogService Dialogos
+
+<PageTitle>Ficha de cuenta</PageTitle>
+<TituloDePagina Texto="@(_detalle?.Cuenta.Nombre ?? "Ficha de cuenta")" />
+
+<TarjetaFormulario Ancha="true" RutaVolver="/operador/cuentas">
+
+@if (_cargando)
+{
+    <p class="tabla-datos-estado">Cargando…</p>
+}
+else if (_detalle is null)
+{
+    <p class="tabla-datos-estado">No se encontró esa cuenta.</p>
+}
+else
+{
+    <div class="tarjetas-saldo">
+        <div class="tarjeta-saldo">
+            <span class="tarjeta-saldo-cifra cifra-tabular">@_detalle.Cuenta.Empresas</span>
+            <span class="tarjeta-saldo-etiqueta">Empresas</span>
+        </div>
+        <div class="tarjeta-saldo">
+            <span class="tarjeta-saldo-cifra cifra-tabular">@_detalle.Cuenta.Usuarios</span>
+            <span class="tarjeta-saldo-etiqueta">Usuarios</span>
+        </div>
+        <div class="tarjeta-saldo">
+            <span class="tarjeta-saldo-cifra cifra-tabular">@_detalle.Cuenta.TimbresDisponibles.ToString("N0")</span>
+            <span class="tarjeta-saldo-etiqueta">Timbres disponibles</span>
+        </div>
+    </div>
+
+    <h2 class="seccion-titulo">Contacto</h2>
+    <div class="rejilla-campos">
+        <MudTextField T="string" Label="Correo de contacto" ReadOnly="true"
+                      Value="@_detalle.Cuenta.CorreoContacto" />
+        <MudTextField T="string" Label="Alta" ReadOnly="true" Class="cifra-tabular"
+                      Value="@_detalle.Cuenta.FechaAltaUtc.ToLocalTime().ToString("dd/MM/yyyy")" />
+        <MudTextField T="string" Label="Membresía" ReadOnly="true"
+                      Value="@TextoDeMembresia()" />
+    </div>
+
+    <h2 class="seccion-titulo">Membresía</h2>
+
+    <PanelErrores Problema="_error" />
+
+    <div class="acciones-formulario">
+        <MudButton Variant="Variant.Filled" Color="Color.Primary" StartIcon="@Icons.Material.Filled.CardMembership"
+                   Disabled="@_trabajando" OnClick="RegistrarMembresia">
+            @(_membresias.Any(m => m.Estado == "activa") ? "Renovar suscripción" : "Registrar suscripción")
+        </MudButton>
+    </div>
+
+    @if (_membresias.Count == 0)
+    {
+        <p class="tabla-datos-estado">Esta cuenta nunca ha tenido suscripción.</p>
+    }
+    else
+    {
+        <MudSimpleTable Dense="true" Hover="true" Class="tabla-impuestos">
+            <thead>
+                <tr><th>Desde</th><th>Hasta</th><th>Estado</th><th></th></tr>
+            </thead>
+            <tbody>
+                @foreach (var membresia in _membresias)
+                {
+                    <tr>
+                        <td class="cifra-tabular">@membresia.InicioUtc.ToLocalTime().ToString("dd/MM/yyyy")</td>
+                        <td class="cifra-tabular">@membresia.FinUtc.ToLocalTime().ToString("dd/MM/yyyy")</td>
+                        <td>
+                            <span class="indicador-estado indicador-estado-@EstiloDeMembresia(membresia.Estado)">
+                                @TextoDeEstado(membresia.Estado)
+                            </span>
+                        </td>
+                        <td>
+                            @if (membresia.Estado == "activa")
+                            {
+                                <MudButton Size="Size.Small" Disabled="@_trabajando"
+                                           OnClick="@(() => CancelarMembresia(membresia))">
+                                    Dar de baja
+                                </MudButton>
+                            }
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </MudSimpleTable>
+    }
+
+    <h2 class="seccion-titulo">Empresas emisoras</h2>
+
+    <MudSimpleTable Dense="true" Hover="true" Class="tabla-impuestos">
+        <thead>
+            <tr>
+                <th>R.F.C.</th>
+                <th>Nombre fiscal</th>
+                <th>Régimen</th>
+                <th class="cifra-tabular">Disponibles</th>
+                <th class="cifra-tabular">Reservados</th>
+                <th>Estado</th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var empresa in _detalle.Empresas)
+            {
+                <tr>
+                    <td class="cifra-tabular">@empresa.Rfc</td>
+                    <td>@empresa.NombreFiscal</td>
+                    <td class="cifra-tabular">@empresa.RegimenFiscal</td>
+                    <td class="cifra-tabular">@empresa.TimbresDisponibles.ToString("N0")</td>
+                    <td class="cifra-tabular">@empresa.TimbresReservados.ToString("N0")</td>
+                    <td>
+                        <span class="indicador-estado indicador-estado-@(empresa.Activa ? "timbrada" : "borrador")">
+                            @(empresa.Activa ? "Activa" : "Inactiva")
+                        </span>
+                    </td>
+                </tr>
+            }
+            @if (_detalle.Empresas.Count == 0)
+            {
+                <tr><td colspan="6" class="tabla-datos-estado">Todavía no ha dado de alta ninguna empresa.</td></tr>
+            }
+        </tbody>
+    </MudSimpleTable>
+
+    <h2 class="seccion-titulo">Usuarios con acceso</h2>
+
+    <MudSimpleTable Dense="true" Hover="true" Class="tabla-impuestos">
+        <thead>
+            <tr><th>Nombre</th><th>Correo</th><th>Alta</th><th>Estado</th></tr>
+        </thead>
+        <tbody>
+            @foreach (var usuario in _detalle.Usuarios)
+            {
+                <tr>
+                    <td>@usuario.Nombre</td>
+                    <td>@usuario.Correo</td>
+                    <td class="cifra-tabular">@usuario.FechaAltaUtc.ToLocalTime().ToString("dd/MM/yyyy")</td>
+                    <td>
+                        <span class="indicador-estado indicador-estado-@(usuario.Activo ? "timbrada" : "borrador")">
+                            @(usuario.Activo ? "Activo" : "Inactivo")
+                        </span>
+                    </td>
+                </tr>
+            }
+        </tbody>
+    </MudSimpleTable>
+
+    <h2 class="seccion-titulo">Últimas compras</h2>
+
+    <MudSimpleTable Dense="true" Hover="true" Class="tabla-impuestos">
+        <thead>
+            <tr>
+                <th>Fecha</th><th>Empresa</th><th>Paquete</th>
+                <th class="cifra-tabular">Total</th><th>Estado</th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var compra in _detalle.UltimasCompras)
+            {
+                <tr>
+                    <td class="cifra-tabular">@compra.CreadaUtc.ToLocalTime().ToString("dd/MM/yyyy")</td>
+                    <td>@compra.EmpresaNombre</td>
+                    <td>@compra.NombrePaquete</td>
+                    <td class="cifra-tabular">@compra.PrecioTotal.ToString("C2")</td>
+                    <td>
+                        <span class="indicador-estado indicador-estado-@EstiloDeCompra(compra.Estado)">
+                            @TextoDeCompra(compra.Estado)
+                        </span>
+                    </td>
+                </tr>
+            }
+            @if (_detalle.UltimasCompras.Count == 0)
+            {
+                <tr><td colspan="5" class="tabla-datos-estado">Todavía no ha comprado timbres.</td></tr>
+            }
+        </tbody>
+    </MudSimpleTable>
+}
+
+</TarjetaFormulario>
+
+@code {
+    [Parameter]
+    public Guid Id { get; set; }
+
+    private DetalleDeCuentaDto? _detalle;
+    private IReadOnlyList<MembresiaDeOperadorDto> _membresias = [];
+    private DetalleProblema? _error;
+    private bool _cargando = true;
+    private bool _trabajando;
+
+    protected override async Task OnParametersSetAsync()
+    {
+        _cargando = true;
+        await CargarAsync();
+        _cargando = false;
+    }
+
+    private async Task CargarAsync()
+    {
+        _detalle = await Clientes.ObtenerAsync(Id);
+        _membresias = await Suscripciones.MembresiasAsync(Id);
+    }
+
+    private async Task RegistrarMembresia()
+    {
+        if (_trabajando || _detalle is null) return;
+
+        var parametros = new DialogParameters<DialogoDeMembresia>
+        {
+            { x => x.Mensaje, $"Suscripción de «{_detalle.Cuenta.Nombre}». " +
+                              "Si ya tenía una activa, quedará sustituida por esta." }
+        };
+
+        var referencia = await Dialogos.ShowAsync<DialogoDeMembresia>("Registrar suscripción", parametros);
+        var resultado = await referencia.Result;
+
+        if (resultado is not { Canceled: false, Data: ValueTuple<DateTime, DateTime> rango }) return;
+
+        _trabajando = true;
+        _error = null;
+
+        var (_, error) = await Suscripciones.RegistrarMembresiaAsync(
+            new PeticionRegistrarMembresia(Id, rango.Item1, rango.Item2));
+
+        _error = error;
+        _trabajando = false;
+
+        if (error is null) await CargarAsync();
+    }
+
+    private async Task CancelarMembresia(MembresiaDeOperadorDto membresia)
+    {
+        if (_trabajando) return;
+
+        var confirmado = await Confirmacion.ConfirmarAsync(
+            "Dar de baja la suscripción",
+            $"La suscripción vigente hasta el {membresia.FinUtc.ToLocalTime():dd/MM/yyyy} quedará cancelada.",
+            "Dar de baja", esPeligrosa: true);
+
+        if (!confirmado) return;
+
+        _trabajando = true;
+        _error = null;
+
+        _error = await Suscripciones.CancelarMembresiaAsync(membresia.Id);
+
+        _trabajando = false;
+
+        if (_error is null) await CargarAsync();
+    }
+
+    private static string EstiloDeMembresia(string estado) => estado switch
+    {
+        "activa" => "timbrada",
+        "vencida" => "borrador",
+        _ => "cancelada"
+    };
+
+    private static string TextoDeEstado(string estado) => estado switch
+    {
+        "activa" => "Activa",
+        "vencida" => "Vencida",
+        "cancelada" => "Cancelada",
+        _ => estado
+    };
+
+    private string TextoDeMembresia() => _detalle?.Cuenta.MembresiaEstado switch
+    {
+        "activa" when _detalle.Cuenta.MembresiaFinUtc is { } fin => $"Activa hasta {fin.ToLocalTime():dd/MM/yyyy}",
+        "activa" => "Activa",
+        "vencida" => "Vencida",
+        "cancelada" => "Cancelada",
+        _ => "Sin membresía"
+    };
+
+    private static string EstiloDeCompra(string estado) => estado switch
+    {
+        "pagada" => "timbrada",
+        "cancelada" => "cancelada",
+        _ => "borrador"
+    };
+
+    private static string TextoDeCompra(string estado) => estado switch
+    {
+        "pagada" => "Pagada",
+        "cancelada" => "Descartada",
+        _ => "Pendiente"
+    };
+}

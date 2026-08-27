@@ -81,6 +81,23 @@ public static class AccionesDeBitacora
     public const string UsuarioReactivado = "usuario_reactivado";
     public const string PerfilActualizado = "perfil_actualizado";
     public const string ContrasenaCambiada = "contrasena_cambiada";
+
+    // ── Operador del SaaS ────────────────────────────────────────────────────────────────
+    //
+    // Se separan de las del inquilino aunque algunas se llamen parecido: al auditar importa
+    // distinguir quién entró al panel del proveedor de quién entró a facturar.
+
+    public const string InicioSesionOperador = "inicio_sesion_operador";
+    public const string InicioSesionOperadorFallido = "inicio_sesion_operador_fallido";
+    public const string CierreSesionOperador = "cierre_sesion_operador";
+    public const string OperadorCreado = "operador_creado";
+    public const string PaqueteCreado = "paquete_creado";
+    public const string PaqueteActualizado = "paquete_actualizado";
+    public const string PaqueteDesactivado = "paquete_desactivado";
+    public const string PaqueteReactivado = "paquete_reactivado";
+    public const string CompraRechazada = "compra_rechazada";
+    public const string MembresiaRegistrada = "membresia_registrada";
+    public const string MembresiaCancelada = "membresia_cancelada";
 }
 
 /// <summary>Entidades sobre las que registra la bitácora.</summary>
@@ -100,4 +117,12 @@ public static class EntidadesDeBitacora
     public const string Usuario = "Usuario";
     public const string UsuarioEmpresa = "UsuarioEmpresa";
     public const string Perfil = "Perfil";
+
+    // ── Operador del SaaS ────────────────────────────────────────────────────────────────
+    public const string OperadorPlataforma = "OperadorPlataforma";
+    public const string SesionOperador = "SesionOperador";
+    public const string RefreshTokenOperador = "RefreshTokenOperador";
+    public const string Paquete = "Paquete";
+    public const string Membresia = "Membresia";
+    public const string Cuenta = "Cuenta";
 }

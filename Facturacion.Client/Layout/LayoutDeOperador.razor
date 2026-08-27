@@ -1,0 +1,120 @@
+@inherits LayoutComponentBase
+@implements IDisposable
+@using Facturacion.Client.Servicios.Operador
+@using Facturacion.Client.Servicios.Plataforma
+@inject ServicioDeSesionDeOperador Sesion
+@inject EstadoDeEncabezado Encabezado
+@inject NavigationManager Navegacion
+
+@*
+    El cascarón del panel del proveedor. Es hermano de MainLayout, no una variante suya: no
+    lleva selector de empresa ni indicador de timbres —el operador no tiene empresa ni bolsa—
+    ni filtra el menú por permisos.
+
+    Los proveedores de MudBlazor se declaran aquí otra vez a propósito: viven en cada layout,
+    y sin ellos los diálogos de confirmación del panel no montarían.
+*@
+
+<MudPopoverProvider />
+<MudDialogProvider CloseOnEscapeKey="true" BackdropClick="true" />
+<MudSnackbarProvider />
+
+<div class="cascaron">
+    <header class="barra-superior barra-superior-operador">
+        <button type="button" class="boton-colapso" @onclick="AlternarMenu"
+                aria-expanded="@(!_menuColapsado)" aria-controls="menu-operador"
+                title="@(_menuColapsado ? "Fijar el menú abierto" : "Encoger el menú")">
+            <MudIcon Icon="@Icons.Material.Filled.Menu" Size="Size.Small" />
+        </button>
+
+        <span class="barra-superior-marca">Panel de operador</span>
+
+        <span class="separador-flexible"></span>
+
+        <SelectorDeTema />
+
+        @if (Sesion.Sesion is { } operador)
+        {
+            <span class="operador-nombre" title="@operador.Correo">@operador.Nombre</span>
+        }
+
+        <MudButton Variant="Variant.Text" StartIcon="@Icons.Material.Filled.Logout" OnClick="Salir">
+            Salir
+        </MudButton>
+    </header>
+
+    <div class="cuerpo @(_menuColapsado ? "menu-colapsado" : null)">
+        <nav id="menu-operador" class="menu-lateral" aria-label="Secciones del panel">
+            <div class="menu-navegacion">
+                <ul>
+                    @foreach (var elemento in MenuDeOperador.Elementos)
+                    {
+                        <li>
+                            @* Match.All en el tablero para que "/operador" no quede resaltado
+                               estando en cualquiera de sus subrutas. *@
+                            <NavLink href="@elemento.Ruta"
+                                     Match="@(elemento.Ruta == "/operador" ? NavLinkMatch.All : NavLinkMatch.Prefix)"
+                                     title="@elemento.Etiqueta">
+                                <MudIcon Icon="@Icono(elemento.Icono)" Size="Size.Small" />
+                                <span>@elemento.Etiqueta</span>
+                            </NavLink>
+                        </li>
+                    }
+                </ul>
+            </div>
+        </nav>
+
+        <main class="area-principal">
+            @if (!string.IsNullOrWhiteSpace(Encabezado.Titulo))
+            {
+                <h1>@Encabezado.Titulo</h1>
+            }
+
+            @Body
+        </main>
+    </div>
+</div>
+
+@code {
+    /// <summary>
+    /// Menú encogido a riel de iconos. Lo fija el botón de la barra; acercar el cursor al
+    /// riel lo despliega temporalmente, y eso lo resuelve el CSS sin pasar por aquí.
+    /// </summary>
+    private bool _menuColapsado;
+
+    protected override void OnInitialized()
+    {
+        Sesion.Cambio += Redibujar;
+        Encabezado.Cambio += Redibujar;
+    }
+
+    private void AlternarMenu() => _menuColapsado = !_menuColapsado;
+
+    public void Dispose()
+    {
+        Sesion.Cambio -= Redibujar;
+        Encabezado.Cambio -= Redibujar;
+    }
+
+    private async Task Salir()
+    {
+        await Sesion.CerrarSesionAsync();
+        Navegacion.NavigateTo("/operador/iniciar-sesion", replace: true);
+    }
+
+    /// <summary>
+    /// Traduce el nombre del icono del menú al de MudBlazor. Los elementos guardan el nombre
+    /// de Material y no la constante, para que la lista siga siendo datos y no código.
+    /// </summary>
+    private static string Icono(string nombre) => nombre switch
+    {
+        "dashboard" => Icons.Material.Filled.Dashboard,
+        "sell" => Icons.Material.Filled.Sell,
+        "receipt_long" => Icons.Material.Filled.ReceiptLong,
+        "apartment" => Icons.Material.Filled.Apartment,
+        "settings" => Icons.Material.Filled.Settings,
+        _ => Icons.Material.Filled.Circle
+    };
+
+    private void Redibujar() => InvokeAsync(StateHasChanged);
+}

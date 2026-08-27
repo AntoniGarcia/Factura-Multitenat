@@ -1,7 +1,17 @@
 @inject NavigationManager Navegacion
 
-@* Manda a la pantalla de inicio de sesión cuando la ruta exige autenticación y no hay sesión. *@
+@*
+    Manda a la pantalla de inicio de sesión cuando la ruta exige autenticación y no hay
+    sesión. Distingue las dos: quien intentaba entrar al panel del proveedor tiene que acabar
+    en el acceso del panel, no en el de los inquilinos, que es otra puerta y otra credencial.
+*@
 
 @code {
-    protected override void OnInitialized() => Navegacion.NavigateTo("/iniciar-sesion", replace: true);
+    protected override void OnInitialized()
+    {
+        var enPanel = Navegacion.ToBaseRelativePath(Navegacion.Uri)
+            .StartsWith("operador", StringComparison.OrdinalIgnoreCase);
+
+        Navegacion.NavigateTo(enPanel ? "/operador/iniciar-sesion" : "/iniciar-sesion", replace: true);
+    }
 }

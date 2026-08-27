@@ -1,0 +1,48 @@
+@using MudBlazor
+
+@*
+    Pide un texto obligatorio antes de confirmar una acción. Se usa donde el «por qué» tiene
+    que quedar registrado —descartar una compra, por ejemplo—: sin él, meses después nadie
+    puede explicar por qué esa operación no llegó a término.
+
+    Devuelve el motivo como Data del resultado, o cancela.
+*@
+
+<MudDialog>
+    <DialogContent>
+        <p class="dialogo-cancelacion-aviso">@Mensaje</p>
+
+        <MudTextField @bind-Value="_motivo" Label="@EtiquetaCampo" Immediate="true"
+                      Lines="3" MaxLength="300" Counter="300" />
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="@(() => Dialogo.Cancel())">Cancelar</MudButton>
+        <MudButton Variant="Variant.Filled" Color="Color.Error" Disabled="@(!SePuedeConfirmar)"
+                   OnClick="Confirmar">
+            @TextoConfirmar
+        </MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter]
+    private IMudDialogInstance Dialogo { get; set; } = default!;
+
+    [Parameter]
+    public string Titulo { get; set; } = "Confirmar";
+
+    [Parameter]
+    public string Mensaje { get; set; } = string.Empty;
+
+    [Parameter]
+    public string EtiquetaCampo { get; set; } = "Motivo";
+
+    [Parameter]
+    public string TextoConfirmar { get; set; } = "Confirmar";
+
+    private string _motivo = string.Empty;
+
+    private bool SePuedeConfirmar => !string.IsNullOrWhiteSpace(_motivo);
+
+    private void Confirmar() => Dialogo.Close(DialogResult.Ok(_motivo.Trim()));
+}

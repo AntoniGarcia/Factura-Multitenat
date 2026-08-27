@@ -19,7 +19,12 @@ public static class PoliticasDePermiso
         foreach (var permiso in Permisos.Todos)
             constructor.AddPolicy(permiso, politica => politica
                 .RequireAuthenticatedUser()
-                .RequireClaim(ClavesDeClaim.Permiso, permiso));
+                .RequireClaim(ClavesDeClaim.Permiso, permiso)
+                // La barrera en el sentido contrario a la del panel: quien opera el SaaS no
+                // actúa dentro de una empresa, así que su token nunca debe abrir un endpoint
+                // de inquilino aunque de algún modo llegara a llevar permisos.
+                .RequireAssertion(contexto =>
+                    !contexto.User.HasClaim(c => c.Type == ClavesDeClaim.Operador)));
 
         return constructor;
     }

@@ -1,0 +1,221 @@
+@page "/operador"
+@layout LayoutDeOperador
+@attribute [Authorize(Policy = PoliticasDelPanel.PoliticaDeOperador)]
+@using Facturacion.Client.Componentes.Comunes
+@using Facturacion.Client.Servicios.Operador
+@using Facturacion.Shared.Operador
+@inject ServicioDeTableroDeOperador Tablero
+@inject NavigationManager Navegacion
+
+<PageTitle>Panel Administrador</PageTitle>
+<TituloDePagina Texto="Tablero" />
+
+@if (_datos is null)
+{
+    <p class="tabla-datos-estado">Cargando…</p>
+}
+else
+{
+    @* Lo que exige acción va primero y destacado: una compra pendiente es dinero que entró
+       al banco y todavía no se convirtió en timbres para el cliente. *@
+    @if (_datos.ComprasPendientes > 0)
+    {
+        <div class="aviso-caducidad" role="status">
+            <p>
+                Hay <strong>@_datos.ComprasPendientes</strong>
+                @(_datos.ComprasPendientes == 1 ? "compra pendiente" : "compras pendientes")
+                de acreditar por <strong>@_datos.MontoPendiente.ToString("C2")</strong>.
+                <MudButton Variant="Variant.Text" Size="Size.Small"
+                           OnClick="@(() => Navegacion.NavigateTo("/operador/compras"))">
+                    Revisarlas
+                </MudButton>
+            </p>
+        </div>
+    }
+
+    <h2 class="seccion-titulo">Este mes</h2>
+
+    <div class="tarjetas-saldo">
+        <div class="tarjeta-saldo">
+            <span class="tarjeta-saldo-cifra cifra-tabular">@_datos.IngresoDelMes.ToString("C2")</span>
+            <span class="tarjeta-saldo-etiqueta">Ingreso acreditado</span>
+        </div>
+        <div class="tarjeta-saldo">
+            <span class="tarjeta-saldo-cifra cifra-tabular">@_datos.TimbresVendidosDelMes.ToString("N0")</span>
+            <span class="tarjeta-saldo-etiqueta">Timbres vendidos</span>
+        </div>
+        <div class="tarjeta-saldo">
+            <span class="tarjeta-saldo-cifra cifra-tabular">@_datos.MontoPendiente.ToString("C2")</span>
+            <span class="tarjeta-saldo-etiqueta">Por cobrar</span>
+        </div>
+    </div>
+
+    <h2 class="seccion-titulo">Clientes</h2>
+
+    <div class="tarjetas-saldo">
+        <div class="tarjeta-saldo">
+            <span class="tarjeta-saldo-cifra cifra-tabular">@_datos.CuentasActivas</span>
+            <span class="tarjeta-saldo-etiqueta">Cuentas activas</span>
+        </div>
+        <div class="tarjeta-saldo">
+            <span class="tarjeta-saldo-cifra cifra-tabular">@_datos.EmpresasActivas</span>
+            <span class="tarjeta-saldo-etiqueta">Empresas emisoras</span>
+        </div>
+        <div class="tarjeta-saldo">
+            <span class="tarjeta-saldo-cifra cifra-tabular">@_datos.MembresiasPorVencer</span>
+            <span class="tarjeta-saldo-etiqueta">Membresías por vencer</span>
+        </div>
+    </div>
+
+    <h2 class="seccion-titulo">Ingreso de los últimos seis meses</h2>
+
+    @if (_datos.PorMes.Any(p => p.Ingreso > 0))
+    {
+        <div class="grafica">
+            <MudChart T="double" ChartType="ChartType.Bar"
+                      ChartSeries="@_serieIngreso"
+                      ChartLabels="@_etiquetasMes"
+                      Width="100%" Height="280px" />
+        </div>
+
+        <h2 class="seccion-titulo">Timbres vendidos por mes</h2>
+
+        <div class="grafica">
+            <MudChart T="double" ChartType="ChartType.Line"
+                      ChartSeries="@_serieTimbres"
+                      ChartLabels="@_etiquetasMes"
+                      Width="100%" Height="240px" />
+        </div>
+    }
+    else
+    {
+        <p class="tabla-datos-estado">Todavía no hay ventas que graficar.</p>
+    }
+
+    @if (_datos.PorPaquete.Count > 0)
+    {
+        <h2 class="seccion-titulo">Qué paquetes dejan más ingreso</h2>
+
+        <div class="grafica grafica-dona">
+            <MudChart T="double" ChartType="ChartType.Donut"
+                      ChartSeries="@_seriePaquete"
+                      ChartLabels="@_etiquetasPaquete"
+                      Width="300px" Height="300px" />
+
+            <MudSimpleTable Dense="true" Class="tabla-impuestos">
+                <thead>
+                    <tr><th>Paquete</th><th class="cifra-tabular">Compras</th><th class="cifra-tabular">Ingreso</th></tr>
+                </thead>
+                <tbody>
+                    @foreach (var p in _datos.PorPaquete)
+                    {
+                        <tr>
+                            <td>@p.Nombre</td>
+                            <td class="cifra-tabular">@p.Compras</td>
+                            <td class="cifra-tabular">@p.Ingreso.ToString("C2")</td>
+                        </tr>
+                    }
+                </tbody>
+            </MudSimpleTable>
+        </div>
+    }
+
+    <h2 class="seccion-titulo">Últimos pagos acreditados</h2>
+
+    @if (_datos.UltimasAcreditadas.Count == 0)
+    {
+        <p class="tabla-datos-estado">Todavía no se ha acreditado ningún pago.</p>
+    }
+    else
+    {
+        <MudSimpleTable Dense="true" Hover="true" Class="tabla-impuestos">
+            <thead>
+                <tr>
+                    <th>Fecha</th><th>Empresa</th><th>Paquete</th>
+                    <th class="cifra-tabular">Timbres</th><th class="cifra-tabular">Total</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var compra in _datos.UltimasAcreditadas)
+                {
+                    <tr>
+                        <td class="cifra-tabular">
+                            @((compra.AcreditadaUtc ?? compra.CreadaUtc).ToLocalTime().ToString("dd/MM/yyyy"))
+                        </td>
+                        <td>@compra.EmpresaNombre</td>
+                        <td>@compra.NombrePaquete</td>
+                        <td class="cifra-tabular">@compra.CantidadTimbres.ToString("N0")</td>
+                        <td class="cifra-tabular">@compra.PrecioTotal.ToString("C2")</td>
+                    </tr>
+                }
+            </tbody>
+        </MudSimpleTable>
+    }
+
+    <h2 class="seccion-titulo">Ir a</h2>
+    <div class="accesos-rapidos">
+        <MudButton Variant="Variant.Filled" Color="Color.Primary" StartIcon="@Icons.Material.Filled.Sell"
+                   OnClick="@(() => Navegacion.NavigateTo("/operador/paquetes"))">
+            Paquetes
+        </MudButton>
+        <MudButton Variant="Variant.Outlined" StartIcon="@Icons.Material.Filled.ReceiptLong"
+                   OnClick="@(() => Navegacion.NavigateTo("/operador/compras"))">
+            Compras
+        </MudButton>
+        <MudButton Variant="Variant.Outlined" StartIcon="@Icons.Material.Filled.Apartment"
+                   OnClick="@(() => Navegacion.NavigateTo("/operador/cuentas"))">
+            Clientes
+        </MudButton>
+    </div>
+}
+
+@code {
+    private TableroDeOperadorDto? _datos;
+
+    // Las series se arman una vez al cargar y no en cada render: MudChart las recibe como
+    // listas y reconstruirlas en cada repintado haría parpadear la gráfica.
+    private List<ChartSeries<double>> _serieIngreso = [];
+    private List<ChartSeries<double>> _serieTimbres = [];
+    private string[] _etiquetasMes = [];
+
+    private List<ChartSeries<double>> _seriePaquete = [];
+    private string[] _etiquetasPaquete = [];
+
+    protected override async Task OnInitializedAsync()
+    {
+        _datos = await Tablero.ObtenerAsync();
+
+        if (_datos is null) return;
+
+        _etiquetasMes = _datos.PorMes.Select(p => p.Etiqueta).ToArray();
+
+        _serieIngreso =
+        [
+            new ChartSeries<double>
+            {
+                Name = "Ingreso",
+                Data = _datos.PorMes.Select(p => (double)p.Ingreso).ToArray()
+            }
+        ];
+
+        _serieTimbres =
+        [
+            new ChartSeries<double>
+            {
+                Name = "Timbres",
+                Data = _datos.PorMes.Select(p => (double)p.Timbres).ToArray()
+            }
+        ];
+
+        _seriePaquete =
+        [
+            new ChartSeries<double>
+            {
+                Name = "Ingreso",
+                Data = _datos.PorPaquete.Select(p => (double)p.Ingreso).ToArray()
+            }
+        ];
+
+        _etiquetasPaquete = _datos.PorPaquete.Select(p => p.Nombre).ToArray();
+    }
+}

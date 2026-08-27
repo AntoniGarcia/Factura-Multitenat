@@ -116,6 +116,9 @@
     --gutter: 16px;
     --alto-barra: 52px;
     --ancho-menu: 200px;
+
+    /* Ancho del menú encogido: cabe el icono centrado y nada más. */
+    --ancho-menu-riel: 56px;
 }
 
 /* Oscuro ergonómico: grises y azules profundos, jamás negro puro (ARQUITECTURA.md §8). */

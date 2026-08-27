@@ -25,6 +25,17 @@ public sealed class RegistroBitacora : IEntidadDeEmpresaOpcional
     /// <summary>Nulo solo cuando el evento lo genera el sistema, no una persona.</summary>
     public Guid? UsuarioId { get; set; }
 
+    /// <summary>
+    /// Quién lo hizo cuando el autor es el operador del SaaS y no un usuario del inquilino.
+    /// Los dos campos se excluyen: un renglón lleva uno u otro, nunca los dos, porque las dos
+    /// identidades no coexisten en una misma petición.
+    /// <para>
+    /// Importa sobre todo en la acreditación de una compra, que crea saldo: sin este dato el
+    /// movimiento quedaría a nombre de nadie.
+    /// </para>
+    /// </summary>
+    public Guid? OperadorId { get; set; }
+
     /// <summary>Nombre de la entidad afectada, por ejemplo <c>Cliente</c>.</summary>
     public required string Entidad { get; set; }
 

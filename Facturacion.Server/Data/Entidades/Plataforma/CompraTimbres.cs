@@ -56,6 +56,16 @@ public sealed class CompraTimbres : IEntidadDeEmpresa
     /// </para>
     /// </summary>
     public DateTime? VenceUtc { get; set; }
+
+    /// <summary>Cuándo el operador la descartó. Nula salvo en las canceladas.</summary>
+    public DateTime? CanceladaUtc { get; set; }
+
+    /// <summary>
+    /// Por qué se descartó: el pago nunca llegó, el cliente se arrepintió, se capturó por
+    /// error. Se guarda porque una compra que desaparece del pendiente sin explicación
+    /// obliga a reconstruir la razón de memoria meses después.
+    /// </summary>
+    public string? MotivoCancelacion { get; set; }
 }
 
 /// <summary>Estados de una compra. Cadenas fijas para poder filtrarlas sin adivinar.</summary>

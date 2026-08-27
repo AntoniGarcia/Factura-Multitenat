@@ -1,0 +1,90 @@
+@page "/operador/cuentas"
+@layout LayoutDeOperador
+@attribute [Authorize(Policy = PoliticasDelPanel.PoliticaDeOperador)]
+@using Facturacion.Client.Componentes.Comunes
+@using Facturacion.Client.Servicios.Operador
+@using Facturacion.Shared.Operador
+@inject ServicioDeClientesDePlataforma Clientes
+@inject NavigationManager Navegacion
+
+<PageTitle>Clientes</PageTitle>
+<TituloDePagina Texto="Clientes" />
+
+<div class="filtros-documentos">
+    <MudTextField T="string" Value="_texto" ValueChanged="AlBuscar" Label="Buscar"
+                  Placeholder="Cuenta, correo, empresa o RFC" Immediate="false" DebounceInterval="300"
+                  Adornment="Adornment.Start" AdornmentIcon="@Icons.Material.Filled.Search" />
+</div>
+
+<TablaDatos T="CuentaEnListaDto"
+            @ref="_tabla"
+            Columnas="_columnas"
+            CargarPagina="CargarAsync"
+            TextoEntidad="cuentas"
+            TextoSinDatos="No hay cuentas que coincidan." />
+
+@code {
+    private TablaDatos<CuentaEnListaDto>? _tabla;
+    private string _texto = string.Empty;
+
+    private IReadOnlyList<ColumnaDeTabla<CuentaEnListaDto>> _columnas = [];
+
+    protected override void OnInitialized() => _columnas =
+    [
+        new("Cuenta", c => @<div>
+                                <div>@c.Nombre</div>
+                                <div class="texto-secundario">@c.CorreoContacto</div>
+                            </div>),
+        new("Empresas", c => @<span class="cifra-tabular">@c.Empresas</span>, Tabular: true),
+        new("Usuarios", c => @<span class="cifra-tabular">@c.Usuarios</span>, Tabular: true),
+        new("Timbres", c => @<span class="cifra-tabular">@c.TimbresDisponibles.ToString("N0")</span>, Tabular: true),
+        new("Membresía", c => @<span class="indicador-estado indicador-estado-@EstiloDeMembresia(c)">
+                                   @TextoDeMembresia(c)
+                               </span>),
+        new("Alta", c => @<span class="cifra-tabular">@c.FechaAltaUtc.ToLocalTime().ToString("dd/MM/yyyy")</span>),
+        new("Estado", c => @<span class="indicador-estado indicador-estado-@(c.Activa ? "timbrada" : "borrador")">
+                                @(c.Activa ? "Activa" : "Inactiva")
+                            </span>),
+        new("", c => @<div class="acciones-renglon">
+                          <MudButton Size="Size.Small"
+                                     OnClick="@(() => Navegacion.NavigateTo($"/operador/cuentas/{c.Id}"))">
+                              Ver ficha
+                          </MudButton>
+                      </div>)
+    ];
+
+    private async Task<ResultadoDePagina<CuentaEnListaDto>> CargarAsync(
+        PeticionDePagina peticion, CancellationToken ct)
+    {
+        var pagina = await Clientes.ListarAsync(_texto, peticion.Pagina, peticion.TamanoPagina, ct);
+
+        return new ResultadoDePagina<CuentaEnListaDto>(pagina.Elementos, pagina.Total);
+    }
+
+    private async Task AlBuscar(string texto)
+    {
+        _texto = texto;
+        if (_tabla is not null) await _tabla.RecargarAsync();
+    }
+
+    private static string EstiloDeMembresia(CuentaEnListaDto cuenta) => cuenta.MembresiaEstado switch
+    {
+        "activa" when cuenta.MembresiaFinUtc is { } fin && fin < DateTime.UtcNow => "cancelada",
+        "activa" => "timbrada",
+        "vencida" => "cancelada",
+        "cancelada" => "cancelada",
+        _ => "borrador"
+    };
+
+    private static string TextoDeMembresia(CuentaEnListaDto cuenta) => cuenta.MembresiaEstado switch
+    {
+        "activa" => cuenta.MembresiaFinUtc is { } fin
+            ? $"Hasta {fin.ToLocalTime():dd/MM/yyyy}"
+            : "Activa",
+        "vencida" => "Vencida",
+        "cancelada" => "Cancelada",
+        // Una cuenta sin ningún registro de membresía nunca la ha tenido; no es lo mismo que
+        // tenerla vencida y conviene que se distingan de un vistazo.
+        _ => "Sin membresía"
+    };
+}

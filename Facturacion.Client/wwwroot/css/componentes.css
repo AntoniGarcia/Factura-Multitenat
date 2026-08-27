@@ -128,6 +128,37 @@
     text-align: center;
 }
 
+/* Dato de apoyo dentro de una celda: el RFC bajo el nombre de la empresa, el motivo por el
+   que se descartó una compra. Se lee después del principal, no compite con él. */
+.texto-secundario {
+    color: var(--texto-suave);
+    font-size: 0.8125rem;
+}
+
+/* ── Gráficas ──────────────────────────────────────────────────────────────────
+   Caja con el mismo marco que las tarjetas del resto del sistema. */
+.grafica {
+    background: var(--superficie);
+    border: 1px solid var(--borde);
+    border-radius: var(--radio);
+    padding: 1rem;
+    margin-bottom: 1rem;
+    overflow-x: auto;
+}
+
+/* La dona y su tabla van lado a lado en escritorio; apiladas cuando no caben. */
+.grafica-dona {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 1.5rem;
+}
+
+.grafica-dona .tabla-impuestos {
+    flex: 1 1 20rem;
+    margin-bottom: 0;
+}
+
 /* ── Paginación de TablaDatos ──────────────────────────────────────────────────
    "Mostrando X de N …" a la izquierda; selector de tamaño y botones numerados a la
    derecha. Se acomoda en dos renglones cuando no cabe (móvil). */

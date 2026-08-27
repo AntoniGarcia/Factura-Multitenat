@@ -1,0 +1,57 @@
+@using MudBlazor
+
+@*
+    Alta o renovación de la suscripción de una cuenta. Propone un año desde hoy, que es la
+    vigencia habitual, pero deja mover las dos fechas: una renovación a mitad de periodo o una
+    prórroga corta son casos reales.
+
+    Devuelve el par de fechas; quien lo abre decide sobre qué cuenta se aplica.
+*@
+
+<MudDialog>
+    <DialogContent>
+        <p class="dialogo-cancelacion-aviso">@Mensaje</p>
+
+        <div class="rejilla-campos">
+            <MudDatePicker @bind-Date="_inicio" Label="Vigente desde" />
+            <MudDatePicker @bind-Date="_fin" Label="Vigente hasta" />
+        </div>
+
+        @if (!EsRangoValido)
+        {
+            <p class="texto-error">La fecha de fin tiene que ser posterior a la de inicio.</p>
+        }
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="@(() => Dialogo.Cancel())">Cancelar</MudButton>
+        <MudButton Variant="Variant.Filled" Color="Color.Primary" Disabled="@(!EsRangoValido)"
+                   OnClick="Confirmar">
+            Registrar
+        </MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter]
+    private IMudDialogInstance Dialogo { get; set; } = default!;
+
+    [Parameter]
+    public string Mensaje { get; set; } = string.Empty;
+
+    private DateTime? _inicio = DateTime.Today;
+    private DateTime? _fin = DateTime.Today.AddYears(1);
+
+    private bool EsRangoValido => _inicio is { } desde && _fin is { } hasta && hasta > desde;
+
+    private void Confirmar()
+    {
+        if (!EsRangoValido) return;
+
+        // Se manda como UTC: la base guarda todo en UTC y el selector entrega la fecha local
+        // a medianoche. Sin especificarlo, una vigencia podría desplazarse un día.
+        var desde = DateTime.SpecifyKind(_inicio!.Value, DateTimeKind.Utc);
+        var hasta = DateTime.SpecifyKind(_fin!.Value, DateTimeKind.Utc);
+
+        Dialogo.Close(DialogResult.Ok((desde, hasta)));
+    }
+}

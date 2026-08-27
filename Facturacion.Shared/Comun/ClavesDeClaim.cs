@@ -20,4 +20,15 @@ public static class ClavesDeClaim
 
     /// <summary>Id de la familia de refresh tokens de esta sesión, para poder invalidarla entera.</summary>
     public const string Familia = "fam";
+
+    /// <summary>
+    /// Id del operador del SaaS. Es la identidad del proveedor, no la de un inquilino.
+    /// <para>
+    /// <b>Nunca coexiste</b> con <see cref="Usuario"/>, <see cref="Cuenta"/>,
+    /// <see cref="Empresa"/> ni <see cref="Permiso"/>: un token lleva una identidad o la otra.
+    /// Las políticas lo comprueban en los dos sentidos, y además cada lado usa su propia
+    /// audiencia, así que un token del inquilino ni siquiera autentica contra el panel.
+    /// </para>
+    /// </summary>
+    public const string Operador = "opr";
 }

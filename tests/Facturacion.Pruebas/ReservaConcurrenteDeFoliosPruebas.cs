@@ -51,7 +51,7 @@ public sealed class ReservaConcurrenteDeFoliosPruebas : IAsyncLifetime
     private static ServicioDeFolios Servicio(AppDbContext db, Guid empresa)
     {
         var tenencia = new ContextoEmpresaFijo(empresa);
-        return new ServicioDeFolios(db, tenencia, new ServicioDeBitacora(db, tenencia, new HttpContextAccessor()));
+        return new ServicioDeFolios(db, tenencia, new ServicioDeBitacora(db, tenencia, ContextoDeOperadorFijo.SinOperador, new HttpContextAccessor()));
     }
 
     public async Task InitializeAsync()

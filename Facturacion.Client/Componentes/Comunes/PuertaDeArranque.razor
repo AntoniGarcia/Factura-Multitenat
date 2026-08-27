@@ -1,7 +1,10 @@
+@using Facturacion.Client.Servicios.Operador
 @using Facturacion.Client.Servicios.Plataforma
 @inject ServicioDeSesion Sesion
+@inject ServicioDeSesionDeOperador SesionOperador
 @inject ServicioDeTema Tema
 @inject ServicioDeCatalogos Catalogos
+@inject NavigationManager Navegacion
 
 @*
     Antes de renderizar nada, intenta recuperar la sesión con la cookie de refresh y aplica
@@ -29,6 +32,22 @@ else
 
     protected override async Task OnInitializedAsync()
     {
+        // Se prueba primero la identidad que corresponde a la ruta de arranque. Intentar
+        // siempre la del inquilino haría que abrir /operador con la sesión del panel viva
+        // gastara una llamada de más y, si además hubiera cookie de inquilino, restauraría la
+        // sesión equivocada.
+        if (EnRutaDeOperador)
+        {
+            await SesionOperador.RefrescarAsync();
+
+            // El panel no usa los catálogos del SAT ni el tema guardado en el perfil del
+            // inquilino: pedirlos aquí solo daría 401.
+            await Tema.InicializarAsync(null);
+
+            _listo = true;
+            return;
+        }
+
         // Que falle es lo normal cuando no hay cookie: significa que no hay sesión que
         // restaurar, no que algo esté mal.
         var haySesion = await Sesion.RefrescarAsync();
@@ -42,4 +61,8 @@ else
 
         _listo = true;
     }
+
+    private bool EnRutaDeOperador =>
+        Navegacion.ToBaseRelativePath(Navegacion.Uri)
+            .StartsWith("operador", StringComparison.OrdinalIgnoreCase);
 }

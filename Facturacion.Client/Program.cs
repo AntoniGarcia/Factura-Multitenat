@@ -1,7 +1,9 @@
 using System.Globalization;
 using Facturacion.Client;
 using Facturacion.Client.Servicios.Documentos;
+using Facturacion.Client.Servicios.Operador;
 using Facturacion.Client.Servicios.Plataforma;
+using static Facturacion.Client.Servicios.Operador.PoliticasDelPanel;
 using Facturacion.Shared.Comun;
 using Microsoft.AspNetCore.Components.Authorization;
 using Microsoft.AspNetCore.Components.Web;
@@ -29,6 +31,12 @@ var origen = new Uri(builder.HostEnvironment.BaseAddress);
 // La sesión y el tema son únicos para toda la aplicación: el token vive en memoria y el
 // tema aplicado al DOM no depende de qué componente esté montado.
 builder.Services.AddSingleton<ServicioDeSesion>();
+builder.Services.AddSingleton<ServicioDeSesionDeOperador>();
+builder.Services.AddScoped<ServicioDePaquetesDeOperador>();
+builder.Services.AddScoped<ServicioDeComprasDeOperador>();
+builder.Services.AddScoped<ServicioDeClientesDePlataforma>();
+builder.Services.AddScoped<ServicioDeTableroDeOperador>();
+builder.Services.AddScoped<ServicioDePerfilDeOperador>();
 builder.Services.AddSingleton<ServicioDeTema>();
 builder.Services.AddSingleton<EstadoDeEncabezado>();
 
@@ -65,9 +73,16 @@ builder.Services.AddAuthorizationCore(opciones =>
         opciones.AddPolicy(permiso, politica => politica
             .RequireAuthenticatedUser()
             .RequireClaim(ClavesDeClaim.Permiso, permiso));
+
+    // La del panel del proveedor. Misma advertencia que las de arriba: aquí solo sirve para
+    // enrutar y ocultar; quien de verdad decide es el Server.
+    opciones.AddPolicy(PoliticaDeOperador, politica => politica
+        .RequireAuthenticatedUser()
+        .RequireClaim(ClavesDeClaim.Operador));
 });
 builder.Services.AddScoped<AuthenticationStateProvider, ProveedorEstadoAutenticacion>();
 builder.Services.AddTransient<ManejadorDeAutenticacion>();
+builder.Services.AddTransient<ManejadorDeAutenticacionDeOperador>();
 
 // MudBlazor no trae paleta propia aquí: lee las variables de mudblazor-tema.css, que a su
 // vez apuntan a las nuestras (ARQUITECTURA.md §8). Ver ese archivo para el porqué.
@@ -81,5 +96,13 @@ builder.Services.AddHttpClient(ServicioDeSesion.ClienteDesnudo, cliente => clien
 // van a usar el resto de las fases y la mitad B.
 builder.Services.AddHttpClient(ClientesHttp.Api, cliente => cliente.BaseAddress = origen)
     .AddHttpMessageHandler<ManejadorDeAutenticacion>();
+
+// Los dos del panel de operador, con la misma división: uno desnudo para su circuito de
+// identidad y otro que adjunta su token. Separados de los de arriba para que la credencial
+// del proveedor no pueda salir hacia un endpoint de inquilino.
+builder.Services.AddHttpClient(ServicioDeSesionDeOperador.ClienteDesnudo, cliente => cliente.BaseAddress = origen);
+
+builder.Services.AddHttpClient(ClientesHttp.ApiOperador, cliente => cliente.BaseAddress = origen)
+    .AddHttpMessageHandler<ManejadorDeAutenticacionDeOperador>();
 
 await builder.Build().RunAsync();

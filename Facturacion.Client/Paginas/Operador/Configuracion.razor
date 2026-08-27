@@ -1,0 +1,164 @@
+@page "/operador/configuracion"
+@layout LayoutDeOperador
+@attribute [Authorize(Policy = PoliticasDelPanel.PoliticaDeOperador)]
+@using Facturacion.Client.Componentes.Comunes
+@using Facturacion.Client.Servicios.Operador
+@using Facturacion.Client.Servicios.Plataforma
+@using Facturacion.Shared.Comun
+@inject ServicioDePerfilDeOperador Perfil
+@inject ServicioDeSesionDeOperador Sesion
+@inject NavigationManager Navegacion
+
+<PageTitle>Configuración</PageTitle>
+<TituloDePagina Texto="Configuración" />
+
+<TarjetaFormulario>
+    <PanelErrores Problema="_error" />
+
+    @if (_aviso is not null)
+    {
+        <p class="mensaje-exito" role="status">@_aviso</p>
+    }
+
+    <h2 class="seccion-titulo">Mis datos</h2>
+
+    <div class="rejilla-campos">
+        <MudTextField @bind-Value="_nombre" Label="Nombre" MaxLength="128" />
+    </div>
+
+    <div class="acciones-formulario">
+        <MudButton Variant="Variant.Filled" Color="Color.Primary" Disabled="@_trabajando"
+                   OnClick="GuardarNombre">
+            Guardar nombre
+        </MudButton>
+    </div>
+
+    <h2 class="seccion-titulo">Correo de acceso</h2>
+
+    <div class="rejilla-campos">
+        <MudTextField @bind-Value="_correo" Label="Correo" InputType="InputType.Email" MaxLength="254" />
+        <MudTextField @bind-Value="_contrasenaParaCorreo" Label="Tu contraseña actual"
+                      InputType="InputType.Password" />
+    </div>
+
+    <div class="acciones-formulario">
+        <MudButton Variant="Variant.Filled" Color="Color.Primary"
+                   Disabled="@(_trabajando || string.IsNullOrWhiteSpace(_contrasenaParaCorreo))"
+                   OnClick="CambiarCorreo">
+            Cambiar correo
+        </MudButton>
+    </div>
+
+    <h2 class="seccion-titulo">Contraseña</h2>
+    <p class="seccion-ayuda">Al cambiarla se cierran todas las sesiones y tendrás que entrar de nuevo.</p>
+
+    <div class="rejilla-campos">
+        <MudTextField @bind-Value="_contrasenaActual" Label="Contraseña actual"
+                      InputType="InputType.Password" />
+        <MudTextField @bind-Value="_contrasenaNueva" Label="Contraseña nueva"
+                      InputType="@(_verContrasena ? InputType.Text : InputType.Password)"
+                      Adornment="Adornment.End"
+                      AdornmentIcon="@(_verContrasena ? Icons.Material.Filled.VisibilityOff : Icons.Material.Filled.Visibility)"
+                      OnAdornmentClick="@(() => _verContrasena = !_verContrasena)"
+                      HelperText="Al menos 12 caracteres." MaxLength="128" />
+        <MudTextField @bind-Value="_contrasenaRepetida" Label="Repite la nueva"
+                      InputType="InputType.Password" MaxLength="128" />
+    </div>
+
+    @if (!string.IsNullOrEmpty(_contrasenaRepetida) && _contrasenaNueva != _contrasenaRepetida)
+    {
+        <p class="texto-error">Las dos contraseñas no coinciden.</p>
+    }
+
+    <div class="acciones-formulario">
+        <MudButton Variant="Variant.Filled" Color="Color.Primary" Disabled="@(!PuedeCambiarContrasena)"
+                   OnClick="CambiarContrasena">
+            Cambiar contraseña
+        </MudButton>
+    </div>
+
+</TarjetaFormulario>
+
+@code {
+    private DetalleProblema? _error;
+    private string? _aviso;
+    private bool _trabajando;
+    private bool _verContrasena;
+
+    private string _nombre = string.Empty;
+    private string _correo = string.Empty;
+    private string _contrasenaParaCorreo = string.Empty;
+    private string _contrasenaActual = string.Empty;
+    private string _contrasenaNueva = string.Empty;
+    private string _contrasenaRepetida = string.Empty;
+
+    private bool PuedeCambiarContrasena =>
+        !_trabajando &&
+        !string.IsNullOrWhiteSpace(_contrasenaActual) &&
+        _contrasenaNueva.Length >= 12 &&
+        _contrasenaNueva == _contrasenaRepetida;
+
+    protected override void OnInitialized()
+    {
+        if (Sesion.Sesion is not { } sesion) return;
+
+        _nombre = sesion.Nombre;
+        _correo = sesion.Correo;
+    }
+
+    private async Task GuardarNombre()
+    {
+        _trabajando = true;
+        _error = null;
+        _aviso = null;
+
+        var (exito, error) = await Perfil.ActualizarNombreAsync(_nombre);
+
+        _error = error;
+        _trabajando = false;
+
+        if (exito is not null)
+        {
+            Sesion.RefrescarDatos(exito);
+            _aviso = "Nombre actualizado.";
+        }
+    }
+
+    private async Task CambiarCorreo()
+    {
+        _trabajando = true;
+        _error = null;
+        _aviso = null;
+
+        var (exito, error) = await Perfil.CambiarCorreoAsync(_correo, _contrasenaParaCorreo);
+
+        _error = error;
+        _trabajando = false;
+        _contrasenaParaCorreo = string.Empty;
+
+        if (exito is not null)
+        {
+            Sesion.RefrescarDatos(exito);
+            _aviso = $"Ahora entras con {exito.Correo}.";
+        }
+    }
+
+    private async Task CambiarContrasena()
+    {
+        _trabajando = true;
+        _error = null;
+        _aviso = null;
+
+        _error = await Perfil.CambiarContrasenaAsync(_contrasenaActual, _contrasenaNueva);
+
+        _trabajando = false;
+
+        if (_error is not null) return;
+
+        // El servidor cerró todas las sesiones, incluida la de esta pestaña: el token que
+        // queda en memoria ya no sirve para nada.
+        Sesion.Olvidar();
+        Navegacion.NavigateTo("/operador/iniciar-sesion", replace: true);
+    }
+
+}

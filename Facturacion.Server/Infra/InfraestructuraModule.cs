@@ -31,6 +31,10 @@ public static class InfraestructuraModule
         servicios.AddScoped<IContextoEmpresaInterno, ContextoEmpresaHttp>();
         servicios.AddScoped<IContextoEmpresa>(sp => sp.GetRequiredService<IContextoEmpresaInterno>());
 
+        // La otra identidad del sistema: el operador del SaaS. Va aparte del contexto de
+        // empresa a propósito; las dos nunca están presentes en la misma petición.
+        servicios.AddScoped<IContextoDeOperador, ContextoDeOperadorHttp>();
+
         // Por petición, no transitorio: memoriza el huso de la empresa para no volver a
         // consultarlo en cada corte de fechas de la misma pantalla.
         servicios.AddScoped<HusoDeEmpresa>();

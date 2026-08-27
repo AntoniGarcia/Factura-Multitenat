@@ -27,7 +27,33 @@ public sealed class PaqueteConfiguracion : IEntityTypeConfiguration<Paquete>
         // depender de un sembrado de desarrollo. Los identificadores son fijos y escritos a
         // mano a propósito: si fueran generados, cada migración crearía paquetes nuevos y
         // las compras viejas quedarían apuntando a un catálogo que ya no existe.
+        // Se listan en el orden en que se le muestran al cliente, del más chico al más grande.
+        // Los dos que ya existían conservan su identificador aunque hayan cambiado de posición:
+        // reasignarlos haría que una compra vieja apuntara a un paquete distinto del que se
+        // compró, que es justo lo que los identificadores fijos evitan.
         constructor.HasData(
+            new Paquete
+            {
+                Id = new Guid("9c1f0a10-0000-4000-8000-000000000006"),
+                Nombre = "50 timbres",
+                CantidadTimbres = 50,
+                PrecioPorTimbre = 3.50m,
+                PrecioTotal = 175.00m,
+                VigenciaMeses = 12,
+                Activo = true,
+                Orden = 1
+            },
+            new Paquete
+            {
+                Id = new Guid("9c1f0a10-0000-4000-8000-000000000007"),
+                Nombre = "200 timbres",
+                CantidadTimbres = 200,
+                PrecioPorTimbre = 2.50m,
+                PrecioTotal = 500.00m,
+                VigenciaMeses = 12,
+                Activo = true,
+                Orden = 2
+            },
             new Paquete
             {
                 Id = new Guid("9c1f0a10-0000-4000-8000-000000000001"),
@@ -37,7 +63,18 @@ public sealed class PaqueteConfiguracion : IEntityTypeConfiguration<Paquete>
                 PrecioTotal = 1000.00m,
                 VigenciaMeses = 12,
                 Activo = true,
-                Orden = 1
+                Orden = 3
+            },
+            new Paquete
+            {
+                Id = new Guid("9c1f0a10-0000-4000-8000-000000000008"),
+                Nombre = "800 timbres",
+                CantidadTimbres = 800,
+                PrecioPorTimbre = 1.90m,
+                PrecioTotal = 1520.00m,
+                VigenciaMeses = 12,
+                Activo = true,
+                Orden = 4
             },
             new Paquete
             {
@@ -48,7 +85,7 @@ public sealed class PaqueteConfiguracion : IEntityTypeConfiguration<Paquete>
                 PrecioTotal = 1800.00m,
                 VigenciaMeses = 12,
                 Activo = true,
-                Orden = 2
+                Orden = 5
             });
     }
 }
@@ -143,6 +180,7 @@ public sealed class CompraTimbresConfiguracion : IEntityTypeConfiguration<Compra
         constructor.Property(c => c.Estado).HasMaxLength(20);
         constructor.Property(c => c.PrecioPorTimbre).HasPrecision(18, 6);
         constructor.Property(c => c.PrecioTotal).HasPrecision(18, 6);
+        constructor.Property(c => c.MotivoCancelacion).HasMaxLength(300);
 
         // Sin llave foránea al paquete: el paquete es catálogo vivo y la compra ya copió lo
         // que le importa. Una foránea impediría retirar un paquete de la venta.

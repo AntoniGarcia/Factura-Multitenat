@@ -1601,6 +1601,9 @@ namespace Facturacion.Server.Migrations
                     b.Property<DateTime?>("AcreditadaUtc")
                         .HasColumnType("datetime2");
 
+                    b.Property<DateTime?>("CanceladaUtc")
+                        .HasColumnType("datetime2");
+
                     b.Property<int>("CantidadTimbres")
                         .HasColumnType("int");
 
@@ -1614,6 +1617,10 @@ namespace Facturacion.Server.Migrations
                         .IsRequired()
                         .HasMaxLength(20)
                         .HasColumnType("nvarchar(20)");
+
+                    b.Property<string>("MotivoCancelacion")
+                        .HasMaxLength(300)
+                        .HasColumnType("nvarchar(300)");
 
                     b.Property<string>("NombrePaquete")
                         .IsRequired()
@@ -1901,6 +1908,59 @@ namespace Facturacion.Server.Migrations
                     b.ToTable("MovimientosTimbre", (string)null);
                 });
 
+            modelBuilder.Entity("Facturacion.Server.Data.Entidades.Plataforma.OperadorPlataforma", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<int>("AccesosFallidos")
+                        .HasColumnType("int");
+
+                    b.Property<bool>("Activo")
+                        .HasColumnType("bit");
+
+                    b.Property<DateTime?>("BloqueadoHastaUtc")
+                        .HasColumnType("datetime2");
+
+                    b.Property<int>("BloqueosConsecutivos")
+                        .HasColumnType("int");
+
+                    b.Property<string>("Correo")
+                        .IsRequired()
+                        .HasMaxLength(254)
+                        .HasColumnType("nvarchar(254)");
+
+                    b.Property<string>("CorreoNormalizado")
+                        .IsRequired()
+                        .HasMaxLength(254)
+                        .HasColumnType("nvarchar(254)");
+
+                    b.Property<DateTime>("FechaAltaUtc")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("HashContrasena")
+                        .IsRequired()
+                        .HasMaxLength(256)
+                        .HasColumnType("nvarchar(256)");
+
+                    b.Property<string>("Nombre")
+                        .IsRequired()
+                        .HasMaxLength(128)
+                        .HasColumnType("nvarchar(128)");
+
+                    b.Property<DateTime?>("UltimoAccesoUtc")
+                        .HasColumnType("datetime2");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("CorreoNormalizado")
+                        .IsUnique()
+                        .HasDatabaseName("IX_OperadoresPlataforma_Correo");
+
+                    b.ToTable("OperadoresPlataforma", (string)null);
+                });
+
             modelBuilder.Entity("Facturacion.Server.Data.Entidades.Plataforma.Paquete", b =>
                 {
                     b.Property<Guid>("Id")
@@ -1941,13 +2001,46 @@ namespace Facturacion.Server.Migrations
                     b.HasData(
                         new
                         {
+                            Id = new Guid("9c1f0a10-0000-4000-8000-000000000006"),
+                            Activo = true,
+                            CantidadTimbres = 50,
+                            Nombre = "50 timbres",
+                            Orden = 1,
+                            PrecioPorTimbre = 3.50m,
+                            PrecioTotal = 175.00m,
+                            VigenciaMeses = 12
+                        },
+                        new
+                        {
+                            Id = new Guid("9c1f0a10-0000-4000-8000-000000000007"),
+                            Activo = true,
+                            CantidadTimbres = 200,
+                            Nombre = "200 timbres",
+                            Orden = 2,
+                            PrecioPorTimbre = 2.50m,
+                            PrecioTotal = 500.00m,
+                            VigenciaMeses = 12
+                        },
+                        new
+                        {
                             Id = new Guid("9c1f0a10-0000-4000-8000-000000000001"),
                             Activo = true,
                             CantidadTimbres = 500,
                             Nombre = "500 timbres",
-                            Orden = 1,
+                            Orden = 3,
                             PrecioPorTimbre = 2.00m,
                             PrecioTotal = 1000.00m,
+                            VigenciaMeses = 12
+                        },
+                        new
+                        {
+                            Id = new Guid("9c1f0a10-0000-4000-8000-000000000008"),
+                            Activo = true,
+                            CantidadTimbres = 800,
+                            Nombre = "800 timbres",
+                            Orden = 4,
+                            PrecioPorTimbre = 1.90m,
+                            PrecioTotal = 1520.00m,
                             VigenciaMeses = 12
                         },
                         new
@@ -1956,7 +2049,7 @@ namespace Facturacion.Server.Migrations
                             Activo = true,
                             CantidadTimbres = 1000,
                             Nombre = "1000 timbres",
-                            Orden = 2,
+                            Orden = 5,
                             PrecioPorTimbre = 1.80m,
                             PrecioTotal = 1800.00m,
                             VigenciaMeses = 12
@@ -2173,6 +2266,62 @@ namespace Facturacion.Server.Migrations
                     b.ToTable("RefreshTokens", (string)null);
                 });
 
+            modelBuilder.Entity("Facturacion.Server.Data.Entidades.Plataforma.RefreshTokenOperador", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("AgenteUsuario")
+                        .HasMaxLength(256)
+                        .HasColumnType("nvarchar(256)");
+
+                    b.Property<DateTime?>("ConsumidoUtc")
+                        .HasColumnType("datetime2");
+
+                    b.Property<DateTime>("CreadoUtc")
+                        .HasColumnType("datetime2");
+
+                    b.Property<DateTime>("ExpiraUtc")
+                        .HasColumnType("datetime2");
+
+                    b.Property<Guid>("FamiliaId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("HashToken")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("nvarchar(64)");
+
+                    b.Property<string>("IpCreacion")
+                        .HasMaxLength(45)
+                        .HasColumnType("nvarchar(45)");
+
+                    b.Property<string>("MotivoRevocacion")
+                        .HasMaxLength(128)
+                        .HasColumnType("nvarchar(128)");
+
+                    b.Property<Guid>("OperadorId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<Guid?>("ReemplazadoPorId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTime?>("RevocadoUtc")
+                        .HasColumnType("datetime2");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("FamiliaId");
+
+                    b.HasIndex("HashToken")
+                        .IsUnique();
+
+                    b.HasIndex("OperadorId");
+
+                    b.ToTable("RefreshTokensOperador", (string)null);
+                });
+
             modelBuilder.Entity("Facturacion.Server.Data.Entidades.Plataforma.RegistroBitacora", b =>
                 {
                     b.Property<long>("Id")
@@ -2208,6 +2357,9 @@ namespace Facturacion.Server.Migrations
                     b.Property<DateTime>("MomentoUtc")
                         .HasColumnType("datetime2");
 
+                    b.Property<Guid?>("OperadorId")
+                        .HasColumnType("uniqueidentifier");
+
                     b.Property<string>("TraceId")
                         .HasMaxLength(64)
                         .HasColumnType("nvarchar(64)");
@@ -2226,6 +2378,10 @@ namespace Facturacion.Server.Migrations
                     b.HasIndex("CuentaId", "MomentoUtc");
 
                     b.HasIndex("EmpresaId", "MomentoUtc");
+
+                    b.HasIndex("OperadorId", "MomentoUtc")
+                        .HasDatabaseName("IX_Bitacora_PorOperador")
+                        .HasFilter("[OperadorId] IS NOT NULL");
 
                     b.ToTable("Bitacora", (string)null);
                 });
@@ -2744,6 +2900,17 @@ namespace Facturacion.Server.Migrations
                     b.Navigation("Usuario");
                 });
 
+            modelBuilder.Entity("Facturacion.Server.Data.Entidades.Plataforma.RefreshTokenOperador", b =>
+                {
+                    b.HasOne("Facturacion.Server.Data.Entidades.Plataforma.OperadorPlataforma", "Operador")
+                        .WithMany("RefreshTokens")
+                        .HasForeignKey("OperadorId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("Operador");
+                });
+
             modelBuilder.Entity("Facturacion.Server.Data.Entidades.Plataforma.ReservaFolio", b =>
                 {
                     b.HasOne("Facturacion.Server.Data.Entidades.Plataforma.Serie", "Serie")
@@ -2878,6 +3045,11 @@ namespace Facturacion.Server.Migrations
             modelBuilder.Entity("Facturacion.Server.Data.Entidades.Plataforma.Empresa", b =>
                 {
                     b.Navigation("Usuarios");
+                });
+
+            modelBuilder.Entity("Facturacion.Server.Data.Entidades.Plataforma.OperadorPlataforma", b =>
+                {
+                    b.Navigation("RefreshTokens");
                 });
 
             modelBuilder.Entity("Facturacion.Server.Data.Entidades.Plataforma.Producto", b =>

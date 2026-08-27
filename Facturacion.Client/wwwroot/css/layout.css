@@ -33,6 +33,21 @@ html, body {
     white-space: nowrap;
 }
 
+/* ── Panel de operador ─────────────────────────────────────────────────────────
+   La barra del panel se distingue de la del inquilino con una franja de acento:
+   quien administra el servicio tiene que saber de un vistazo que no está viendo la
+   pantalla de una empresa. El padding compensa el borde para que no salte al cambiar. */
+.barra-superior-operador {
+    border-bottom: 2px solid var(--acento);
+    padding-left: 1rem;
+}
+
+.operador-nombre {
+    color: var(--texto-suave);
+    font-size: 0.875rem;
+    white-space: nowrap;
+}
+
 /* Encoge y expande el menú. Es un botón real y no un icono decorativo: se alcanza con
    teclado y anuncia su estado con aria-expanded desde MainLayout. */
 .boton-colapso {
@@ -195,15 +210,68 @@ html, body {
     font-weight: var(--peso-titulo);
 }
 
-/* ── Menú colapsado ──────────────────────────────────────────────────────────────────
-   Se oculta entero, no se encoge a una franja de iconos. La franja de 56px que había antes
-   seguía comiendo ancho y dejaba media interfaz a la vista: en una herramienta de tablas
-   anchas, encoger el menú se hace para recuperar ese ancho, no para conservar los iconos.
+/* ── Menú encogido a riel de iconos ──────────────────────────────────────────────────
+   El botón de la barra fija el estado: encogido o abierto, y así se queda. Encogido deja un
+   riel con los iconos, y acercar el cursor lo despliega mientras esté encima; al alejarse
+   vuelve al riel. Quien quiera dejarlo abierto usa el botón.
 
-   display:none y no un ancho cero: con ancho cero el menú sigue en el árbol de foco y
-   tabular desde la barra superior entraría en enlaces que nadie puede ver. */
+   El desplegado flota sobre el contenido en vez de empujarlo: si empujara, la tabla que hay
+   debajo se recolocaría cada vez que el cursor roza el borde izquierdo. */
 .cuerpo.menu-colapsado .menu-lateral {
+    width: var(--ancho-menu-riel);
+    transition: width 0.15s ease;
+}
+
+.cuerpo.menu-colapsado .menu-lateral:hover,
+.cuerpo.menu-colapsado .menu-lateral:focus-within {
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    left: 0;
+    z-index: 20;
+    width: var(--ancho-menu);
+    box-shadow: 4px 0 16px rgba(var(--texto-rgb), 0.12);
+}
+
+/* En el riel solo sobrevive el icono: los textos se ocultan y los enlaces se centran. */
+.cuerpo.menu-colapsado .menu-lateral a span,
+.cuerpo.menu-colapsado .menu-grupo,
+.cuerpo.menu-colapsado .menu-marca-texto {
     display: none;
+}
+
+.cuerpo.menu-colapsado .menu-lateral a,
+.cuerpo.menu-colapsado .menu-marca {
+    justify-content: center;
+    padding: 0.5rem;
+}
+
+/* Y al desplegarse vuelven, porque ahí sí hay ancho para leerlos. */
+.cuerpo.menu-colapsado .menu-lateral:hover a span,
+.cuerpo.menu-colapsado .menu-lateral:focus-within a span,
+.cuerpo.menu-colapsado .menu-lateral:hover .menu-grupo,
+.cuerpo.menu-colapsado .menu-lateral:focus-within .menu-grupo,
+.cuerpo.menu-colapsado .menu-lateral:hover .menu-marca-texto,
+.cuerpo.menu-colapsado .menu-lateral:focus-within .menu-marca-texto {
+    display: block;
+}
+
+.cuerpo.menu-colapsado .menu-lateral:hover a,
+.cuerpo.menu-colapsado .menu-lateral:focus-within a,
+.cuerpo.menu-colapsado .menu-lateral:hover .menu-marca,
+.cuerpo.menu-colapsado .menu-lateral:focus-within .menu-marca {
+    justify-content: flex-start;
+    padding: 0 0.625rem;
+}
+
+.cuerpo.menu-colapsado .menu-lateral:hover .menu-marca,
+.cuerpo.menu-colapsado .menu-lateral:focus-within .menu-marca {
+    padding: 0.875rem 0.75rem;
+}
+
+/* Ancla del menú flotante: sin esto, el desplegado se posicionaría contra la ventana. */
+.cuerpo {
+    position: relative;
 }
 
 .area-principal {
@@ -279,6 +347,24 @@ html, body {
         overflow-x: auto;
         overflow-y: hidden;
         z-index: 10;
+    }
+
+    /* El riel y su despliegue al pasar el cursor no existen aquí: en la barra inferior no hay
+       cursor que acercar, y dejar el flotante convertiría un toque en un panel encima del
+       contenido. Se anula lo que puso el bloque de escritorio. */
+    .cuerpo.menu-colapsado .menu-lateral:hover,
+    .cuerpo.menu-colapsado .menu-lateral:focus-within {
+        position: fixed;
+        width: 100%;
+        box-shadow: none;
+    }
+
+    .cuerpo.menu-colapsado .menu-lateral a span {
+        display: block;
+    }
+
+    .cuerpo.menu-colapsado .menu-lateral a {
+        justify-content: center;
     }
 
     .menu-pie {

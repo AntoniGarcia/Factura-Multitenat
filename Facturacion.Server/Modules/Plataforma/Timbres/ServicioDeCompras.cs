@@ -164,10 +164,13 @@ public sealed class ServicioDeCompras(
     /// <summary>
     /// Acredita el pago y mete los timbres a la bolsa. Es el único punto donde se crea saldo.
     /// <para>
-    /// No hay endpoint para esto a propósito: lo ejecuta el operador del SaaS por consola
-    /// (<c>--acreditar-compra</c>). Un usuario del inquilino no puede acreditar su propia
-    /// compra, y todavía no existe una identidad de operador que pudiera protegerlo como
-    /// endpoint; inventarla aquí sería adelantarse a la fase 8.
+    /// Lo invocan dos caminos, los dos del proveedor del SaaS y ninguno del inquilino: el
+    /// panel de operador, tras su política, y el comando <c>--acreditar-compra</c>, que se
+    /// conserva como respaldo para cuando el panel no esté disponible.
+    /// </para>
+    /// <para>
+    /// Es idempotente porque el procedimiento almacenado solo actúa si la compra sigue
+    /// pendiente: acreditar dos veces no entrega timbres dos veces.
     /// </para>
     /// </summary>
     public async Task<Resultado<CompraDto>> AcreditarAsync(Guid compraId, CancellationToken ct)

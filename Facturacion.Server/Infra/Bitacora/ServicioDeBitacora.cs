@@ -24,6 +24,10 @@ public interface IServicioDeBitacora
     /// Empresa del evento. Si se omite se toma la activa, que puede no existir: un inicio
     /// de sesión ocurre antes de que haya empresa.
     /// </param>
+    /// <param name="operadorId">
+    /// Autor cuando el evento lo genera el operador del SaaS. Si se omite se toma el de la
+    /// petición, que solo existe en el panel de operador.
+    /// </param>
     void Registrar(
         string entidad,
         string? entidadId,
@@ -32,12 +36,14 @@ public interface IServicioDeBitacora
         object? despues = null,
         Guid? empresaId = null,
         Guid? usuarioId = null,
-        Guid? cuentaId = null);
+        Guid? cuentaId = null,
+        Guid? operadorId = null);
 }
 
 public sealed class ServicioDeBitacora(
     AppDbContext baseDeDatos,
     IContextoEmpresaInterno contexto,
+    IContextoDeOperador operador,
     IHttpContextAccessor accesor) : IServicioDeBitacora
 {
     public void Registrar(
@@ -48,13 +54,17 @@ public sealed class ServicioDeBitacora(
         object? despues = null,
         Guid? empresaId = null,
         Guid? usuarioId = null,
-        Guid? cuentaId = null)
+        Guid? cuentaId = null,
+        Guid? operadorId = null)
     {
         baseDeDatos.Bitacora.Add(new RegistroBitacora
         {
             EmpresaId = empresaId ?? contexto.EmpresaActual,
             CuentaId = cuentaId ?? contexto.CuentaActual,
             UsuarioId = usuarioId ?? contexto.UsuarioActual,
+            // Se toma del contexto igual que el usuario, así ninguna de las llamadas que ya
+            // existen tiene que cambiar para que la acción del operador quede atribuida.
+            OperadorId = operadorId ?? operador.OperadorId,
             Entidad = entidad,
             EntidadId = entidadId,
             Accion = accion,

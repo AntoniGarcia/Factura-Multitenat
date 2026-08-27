@@ -41,7 +41,7 @@ public sealed class ReutilizacionDeRefreshTokenPruebas : IAsyncLifetime
     private static ServicioDeRefreshTokens Servicio(AppDbContext baseDeDatos)
     {
         var bitacora = new ServicioDeBitacora(
-            baseDeDatos, new ContextoEmpresaFijo(), new HttpContextAccessor());
+            baseDeDatos, new ContextoEmpresaFijo(), ContextoDeOperadorFijo.SinOperador, new HttpContextAccessor());
 
         return new ServicioDeRefreshTokens(
             baseDeDatos, bitacora, NullLogger<ServicioDeRefreshTokens>.Instance);

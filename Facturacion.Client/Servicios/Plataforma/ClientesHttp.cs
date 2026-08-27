@@ -16,4 +16,10 @@ namespace Facturacion.Client.Servicios.Plataforma;
 public static class ClientesHttp
 {
     public const string Api = "api";
+
+    /// <summary>
+    /// El del panel de operador. Adjunta el token del proveedor, no el del inquilino: son
+    /// clientes distintos para que ninguna credencial pueda salir hacia el lado equivocado.
+    /// </summary>
+    public const string ApiOperador = "api-operador";
 }

@@ -165,8 +165,10 @@ public sealed class ConciliacionDeTimbrados(
         if (intento.Resultado != ResultadosDeIntento.EnVuelo) return;
 
         // Sin HttpContext: la bitácora registrará la operación sin IP ni agente, que es lo
-        // correcto para algo que no lo hizo una persona sino el propio sistema.
-        var bitacora = new ServicioDeBitacora(baseDeDatos, tenencia, accesor);
+        // correcto para algo que no lo hizo una persona sino el propio sistema. Y sin
+        // operador, por lo mismo: aquí no hay nadie a quien atribuirlo.
+        var bitacora = new ServicioDeBitacora(
+            baseDeDatos, tenencia, ContextoDeOperadorFijo.SinOperador, accesor);
 
         var cierre = new CierreDeTimbrado(
             baseDeDatos,

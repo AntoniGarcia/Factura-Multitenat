@@ -1,0 +1,194 @@
+@page "/operador/compras"
+@layout LayoutDeOperador
+@attribute [Authorize(Policy = PoliticasDelPanel.PoliticaDeOperador)]
+@using Facturacion.Client.Componentes.Comunes
+@using Facturacion.Client.Servicios.Operador
+@using Facturacion.Client.Servicios.Plataforma
+@using Facturacion.Shared.Comun
+@using Facturacion.Shared.Operador
+@inject ServicioDeComprasDeOperador Compras
+@inject IServicioDeConfirmacion Confirmacion
+@inject IDialogService Dialogos
+
+<PageTitle>Compras de timbres</PageTitle>
+<TituloDePagina Texto="Compras de timbres" />
+
+<PanelErrores Problema="_error" />
+
+@if (_aviso is not null)
+{
+    <div class="aviso-documentos" role="status">@_aviso</div>
+}
+
+<div class="filtros-documentos">
+    <MudSelect T="string" Value="_estado" ValueChanged="AlCambiarEstado" Label="Estado" Dense="true">
+        <MudSelectItem T="string" Value="@Estados.Pendiente">Pendientes de pago</MudSelectItem>
+        <MudSelectItem T="string" Value="@Estados.Pagada">Pagadas</MudSelectItem>
+        <MudSelectItem T="string" Value="@Estados.Cancelada">Descartadas</MudSelectItem>
+        <MudSelectItem T="string" Value="@(null as string)">Todas</MudSelectItem>
+    </MudSelect>
+
+    <MudTextField T="string" Value="_texto" ValueChanged="AlBuscar" Label="Buscar"
+                  Placeholder="Empresa, RFC o paquete" Immediate="false" DebounceInterval="300"
+                  Adornment="Adornment.Start" AdornmentIcon="@Icons.Material.Filled.Search" />
+</div>
+
+<TablaDatos T="CompraDeOperadorDto"
+            @ref="_tabla"
+            Columnas="_columnas"
+            CargarPagina="CargarAsync"
+            TextoEntidad="compras"
+            TextoSinDatos="No hay compras que coincidan." />
+
+@code {
+    /// <summary>
+    /// Los estados tal como viajan en el DTO. Van como texto porque <c>EstadosDeCompra</c>
+    /// vive en el Server y el navegador no lo ve; agrupados aquí para no repartir literales
+    /// sueltos por el archivo, que es lo que hace la pantalla de timbres del inquilino.
+    /// </summary>
+    private static class Estados
+    {
+        public const string Pendiente = "pendiente_de_pago";
+        public const string Pagada = "pagada";
+        public const string Cancelada = "cancelada";
+    }
+
+    private TablaDatos<CompraDeOperadorDto>? _tabla;
+    private DetalleProblema? _error;
+    private string? _aviso;
+    private bool _trabajando;
+
+    // Arranca en lo pendiente, que es a lo que se entra a esta pantalla; para eso existe el
+    // índice filtrado por ese estado en la base.
+    private string? _estado = Estados.Pendiente;
+    private string _texto = string.Empty;
+
+    private IReadOnlyList<ColumnaDeTabla<CompraDeOperadorDto>> _columnas = [];
+
+    protected override void OnInitialized() => _columnas =
+    [
+        new("Fecha", c => @<span class="cifra-tabular">@c.CreadaUtc.ToLocalTime().ToString("dd/MM/yyyy HH:mm")</span>),
+        new("Empresa", c => @<div>
+                                 <div>@c.EmpresaNombre</div>
+                                 <div class="cifra-tabular texto-secundario">@c.EmpresaRfc</div>
+                             </div>),
+        new("Paquete", c => @<span>@c.NombrePaquete</span>),
+        new("Timbres", c => @<span class="cifra-tabular">@c.CantidadTimbres.ToString("N0")</span>, Tabular: true),
+        new("Total", c => @<span class="cifra-tabular">@c.PrecioTotal.ToString("C2")</span>, Tabular: true),
+        new("Estado", c => @<span class="indicador-estado indicador-estado-@EstiloDe(c.Estado)">@TextoDe(c.Estado)</span>),
+        new("", c => @<div class="acciones-renglon">
+                          @if (c.Estado == Estados.Pendiente)
+                          {
+                              <MudButton Size="Size.Small" Variant="Variant.Filled" Color="Color.Primary"
+                                         Disabled="@_trabajando" OnClick="@(() => Acreditar(c))">
+                                  Acreditar
+                              </MudButton>
+                              <MudButton Size="Size.Small" Disabled="@_trabajando"
+                                         OnClick="@(() => Rechazar(c))">
+                                  Descartar
+                              </MudButton>
+                          }
+                          else if (c.MotivoCancelacion is { } motivo)
+                          {
+                              <span class="texto-secundario" title="@motivo">@Recortar(motivo)</span>
+                          }
+                      </div>)
+    ];
+
+    private async Task<ResultadoDePagina<CompraDeOperadorDto>> CargarAsync(
+        PeticionDePagina peticion, CancellationToken ct)
+    {
+        var pagina = await Compras.ListarAsync(_estado, _texto, peticion.Pagina, peticion.TamanoPagina, ct);
+
+        return new ResultadoDePagina<CompraDeOperadorDto>(pagina.Elementos, pagina.Total);
+    }
+
+    private async Task AlCambiarEstado(string? estado)
+    {
+        _estado = estado;
+        await RecargarAsync();
+    }
+
+    private async Task AlBuscar(string texto)
+    {
+        _texto = texto;
+        await RecargarAsync();
+    }
+
+    private Task RecargarAsync() => _tabla?.RecargarAsync() ?? Task.CompletedTask;
+
+    /// <summary>
+    /// La última pantalla antes de crear saldo: se confirma con la empresa y el importe a la
+    /// vista, porque acreditar la compra equivocada entrega timbres que nadie pagó.
+    /// </summary>
+    private async Task Acreditar(CompraDeOperadorDto compra)
+    {
+        if (_trabajando) return;
+
+        var confirmado = await Confirmacion.ConfirmarAsync(
+            "Acreditar el pago",
+            $"Se van a abonar {compra.CantidadTimbres:N0} timbres a «{compra.EmpresaNombre}» " +
+            $"({compra.EmpresaRfc}) por {compra.PrecioTotal:C2}. Hazlo solo si el pago ya llegó.",
+            "Acreditar");
+
+        if (!confirmado) return;
+
+        _trabajando = true;
+        _error = null;
+        _aviso = null;
+
+        _error = await Compras.AcreditarAsync(compra.Id);
+
+        _trabajando = false;
+
+        if (_error is null)
+            _aviso = $"Pago acreditado: {compra.CantidadTimbres:N0} timbres para {compra.EmpresaNombre}.";
+
+        await RecargarAsync();
+    }
+
+    private async Task Rechazar(CompraDeOperadorDto compra)
+    {
+        if (_trabajando) return;
+
+        var parametros = new DialogParameters<DialogoDeMotivo>
+        {
+            { x => x.Titulo, "Descartar la compra" },
+            { x => x.Mensaje, $"«{compra.NombrePaquete}» de {compra.EmpresaNombre} por {compra.PrecioTotal:C2}. " +
+                              "No se entregará ningún timbre." }
+        };
+
+        var referencia = await Dialogos.ShowAsync<DialogoDeMotivo>("Descartar la compra", parametros);
+        var resultado = await referencia.Result;
+
+        if (resultado is not { Canceled: false, Data: string motivo }) return;
+
+        _trabajando = true;
+        _error = null;
+        _aviso = null;
+
+        _error = await Compras.RechazarAsync(compra.Id, motivo);
+
+        _trabajando = false;
+
+        if (_error is null) _aviso = "Compra descartada.";
+
+        await RecargarAsync();
+    }
+
+    private static string EstiloDe(string estado) => estado switch
+    {
+        Estados.Pagada => "timbrada",
+        Estados.Cancelada => "cancelada",
+        _ => "borrador"
+    };
+
+    private static string TextoDe(string estado) => estado switch
+    {
+        Estados.Pagada => "Pagada",
+        Estados.Cancelada => "Descartada",
+        _ => "Pendiente"
+    };
+
+    private static string Recortar(string texto) => texto.Length <= 40 ? texto : texto[..40] + "…";
+}

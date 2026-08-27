@@ -134,6 +134,37 @@ y se ejecuta siempre, sin excepción.
 - Cada permiso es una política de ASP.NET Core. Los endpoints se anotan con la política.
 - **Ocultar un botón no es proteger.** El `Server` rechaza igual la operación, siempre.
 
+**Las dos identidades del sistema**
+
+Todo lo anterior describe al **inquilino**: quien contrata el servicio y factura con él. Hay
+una segunda identidad, la del **operador del SaaS** —el proveedor— que administra los
+paquetes que se venden, acredita los pagos y consulta a las cuentas contratantes. Vive en el
+panel bajo `/operador`.
+
+- **Tabla propia** (`OperadoresPlataforma`), no un usuario con una bandera. Un usuario exige
+  cuenta contratante y el operador no pertenece a ninguna; con dos tablas, un operador no
+  puede aparecer como cliente ni un cliente ganar poderes de operador.
+- **Claim propio** (`opr`), no un rol: el esquema sigue sin tablas de roles. Su token lleva
+  exactamente operador, familia y jti; **nunca** empresa, cuenta, usuario ni permisos.
+- **Las dos identidades no coexisten.** Lo garantizan tres barreras independientes:
+  audiencia distinta en el JWT (un token de inquilino ni siquiera autentica contra el panel:
+  da 401, no 403), esquema de autenticación pinado en la política, y aserción negativa de
+  claims en ambos sentidos.
+- **Cookie de refresh propia**, con nombre y ruta distintos (`refresh_op` en
+  `/api/operador/auth`), para que ninguno de los dos circuitos pueda consumir la del otro.
+- **Alta solo por consola** (`--crear-operador`): quien puede acreditar pagos crea dinero, así
+  que decidir que exista otro operador es del dueño del servidor, no de un formulario.
+- **Todo lo que hace queda en bitácora** con su `OperadorId`, junto a la empresa afectada
+  cuando la hay. La acreditación de un pago sin autor identificado no es aceptable.
+- **Privacidad del inquilino:** el panel solo consulta metadatos de negocio —cuentas,
+  empresas, usuarios, bolsas, compras, paquetes y membresías—. Ninguna consulta suya toca
+  comprobantes, clientes finales, productos, certificados ni series. No hay barrera técnica
+  que lo impida: es una decisión, y está escrita también en el propio módulo.
+- El identificador de **cuenta** sí viaja en el cuerpo al registrar una membresía. No
+  contradice la regla de tenencia de arriba: esa regla dice que el inquilino no manda la
+  empresa sobre la que actúa; el operador no tiene tenencia que deducir, su aislamiento es la
+  política del panel.
+
 **Datos y transporte**
 
 - Los precios de los paquetes de timbres **los devuelve el servidor**. El `Client` solo

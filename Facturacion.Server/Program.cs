@@ -3,6 +3,8 @@ using Facturacion.Server.Infra.Almacen;
 using Facturacion.Server.Infra.Integracion;
 using Facturacion.Server.Infra.Registro;
 using Facturacion.Server.Modules.Documentos;
+using Facturacion.Server.Modules.Operador;
+using Facturacion.Server.Modules.Operador.Auth;
 using Facturacion.Server.Modules.Plataforma;
 using Facturacion.Server.Modules.Plataforma.Auth;
 using Facturacion.Server.Modules.Plataforma.Catalogos;
@@ -25,6 +27,7 @@ constructor.AgregarRegistro();
 
 constructor.Services.AddInfraestructura(constructor.Configuration, constructor.Environment);
 constructor.Services.AddPlataforma(constructor.Configuration);
+constructor.Services.AddOperador();
 constructor.Services.AddDocumentos(constructor.Configuration, constructor.Environment);
 
 var aplicacion = constructor.Build();
@@ -55,6 +58,14 @@ if (args is ["--acreditar-compra", var compraId])
     return;
 }
 
+// Alta de un operador del SaaS. Va por consola y no por pantalla porque un operador puede
+// acreditar pagos: quien decide que exista otro es el dueño del servidor. Ver OperadoresCli.
+if (args is ["--crear-operador", var correoOperador, var nombreOperador])
+{
+    Environment.ExitCode = await OperadoresCli.CrearAsync(aplicacion.Services, correoOperador, nombreOperador);
+    return;
+}
+
 // Antes de atender la primera petición: si un doble de prueba quedó registrado fuera de
 // Development, aquí revienta. Un doble que llega a producción no se nota — el sistema
 // responde y los datos son inventados (fase 9).
@@ -64,6 +75,7 @@ aplicacion.UsePipelineDeInfraestructura();
 
 aplicacion.MapInfraestructura();
 aplicacion.MapPlataforma();
+aplicacion.MapOperador();
 aplicacion.MapDocumentos();
 
 // Siempre al final: todo lo que no sea un endpoint de la API lo atiende el WebAssembly.

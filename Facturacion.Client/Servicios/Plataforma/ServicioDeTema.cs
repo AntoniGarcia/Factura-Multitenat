@@ -10,7 +10,7 @@ namespace Facturacion.Client.Servicios.Plataforma;
 /// el contador que cambia de máquina tiene que encontrar el suyo. Este servicio solo aplica
 /// al DOM lo que ya trajo la sesión y avisa al servidor cuando el usuario elige otro.
 /// </summary>
-public sealed class ServicioDeTema(IJSRuntime js, IHttpClientFactory fabrica)
+public sealed class ServicioDeTema(IJSRuntime js, IHttpClientFactory fabrica, ServicioDeSesion sesion)
 {
     public string Actual { get; private set; } = Temas.Claro;
 
@@ -30,6 +30,12 @@ public sealed class ServicioDeTema(IJSRuntime js, IHttpClientFactory fabrica)
         if (tema == Actual || !Temas.EsValido(tema)) return;
 
         await AplicarAsync(tema);
+
+        // El tema se guarda en el perfil del usuario, y el operador del SaaS no tiene uno: ese
+        // endpoint es del inquilino y para él respondería 401, disparando además un refresco
+        // de una sesión que no existe. En el panel el tema se aplica y vive lo que dure la
+        // pestaña, que para una herramienta de administración es suficiente.
+        if (!sesion.HaySesion) return;
 
         // Optimista a propósito: si la llamada al servidor falla por una red intermitente,
         // el contador ya está trabajando con el tema que eligió. Se reintentará solo la

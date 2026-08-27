@@ -1,0 +1,168 @@
+@page "/operador/paquetes/nuevo"
+@page "/operador/paquetes/{Id:guid}"
+@layout LayoutDeOperador
+@attribute [Authorize(Policy = PoliticasDelPanel.PoliticaDeOperador)]
+@using Facturacion.Client.Componentes.Comunes
+@using Facturacion.Client.Servicios.Operador
+@using Facturacion.Shared.Comun
+@using Facturacion.Shared.Operador
+@inject ServicioDePaquetesDeOperador Paquetes
+@inject NavigationManager Navegacion
+
+<PageTitle>@(EsNuevo ? "Nuevo paquete" : "Editar paquete")</PageTitle>
+<TituloDePagina Texto="@(EsNuevo ? "Nuevo paquete" : "Editar paquete")" />
+
+<TarjetaFormulario RutaVolver="/operador/paquetes">
+<PanelErrores Problema="_error" />
+
+@if (_cargando)
+{
+    <p>Cargando…</p>
+}
+else
+{
+    <EditForm Model="this" OnValidSubmit="Guardar">
+        <h2 class="seccion-titulo">Qué se vende</h2>
+
+        <div class="rejilla-campos">
+            <MudTextField @bind-Value="_nombre" Label="Nombre" MaxLength="100" />
+
+            <MudNumericField @bind-Value="_cantidadTimbres" @bind-Value:after="Recalcular"
+                             Label="Cantidad de timbres" Min="1" Class="cifra-tabular" />
+        </div>
+
+        <h2 class="seccion-titulo">Precio</h2>
+
+        <div class="rejilla-campos">
+            <CampoMoneda Valor="_precioTotal" ValorCambiado="AlCambiarPrecioTotal" Label="Precio total" />
+
+            <CampoMoneda Valor="_precioPorTimbre" ValorCambiado="AlCambiarPrecioUnitario"
+                         Label="Precio por timbre" />
+
+            <MudNumericField @bind-Value="_vigenciaMeses" Label="Vigencia en meses" Min="1" Max="120"
+                             Class="cifra-tabular" />
+        </div>
+
+        @if (HayDescuadre)
+        {
+            @* No bloquea: hay tarifas que no salen de una división exacta. Pero un descuadre
+               grande casi siempre es un dedazo, y conviene verlo antes de guardar. *@
+            <div class="aviso-caducidad" role="status">
+                <p>
+                    @_cantidadTimbres × @_precioPorTimbre.ToString("C4") =
+                    <strong>@((_cantidadTimbres * _precioPorTimbre).ToString("C2"))</strong>,
+                    y el total dice <strong>@_precioTotal.ToString("C2")</strong>.
+                    Se guarda tal cual si es lo que quieres.
+                </p>
+            </div>
+        }
+
+        <h2 class="seccion-titulo">Presentación</h2>
+
+        <div class="rejilla-campos">
+            <MudNumericField @bind-Value="_orden" Label="Orden" Min="0" Class="cifra-tabular"
+                             HelperText="De menor a mayor, es como se acomodan en la pantalla del cliente." />
+        </div>
+
+        @if (!EsNuevo && _compras > 0)
+        {
+            <div class="aviso-reservado" role="note">
+                <p>
+                    Este paquete se ha comprado <strong>@_compras</strong> @(_compras == 1 ? "vez" : "veces").
+                    Cambiar su precio no altera esas compras: cada una guarda lo que se cobró en su momento.
+                </p>
+            </div>
+        }
+
+        <div class="tarjeta-formulario-acciones">
+            <MudButton Variant="Variant.Text"
+                       OnClick="@(() => Navegacion.NavigateTo("/operador/paquetes"))">Cancelar</MudButton>
+            <MudButton ButtonType="ButtonType.Submit" Variant="Variant.Filled" Color="Color.Primary"
+                       Disabled="_guardando">
+                @(_guardando ? "Guardando…" : "Guardar")
+            </MudButton>
+        </div>
+    </EditForm>
+}
+</TarjetaFormulario>
+
+@code {
+    [Parameter]
+    public Guid? Id { get; set; }
+
+    private bool EsNuevo => Id is null;
+
+    private DetalleProblema? _error;
+    private bool _cargando;
+    private bool _guardando;
+    private int _compras;
+
+    private string _nombre = string.Empty;
+    private int _cantidadTimbres = 100;
+    private decimal _precioTotal;
+    private decimal _precioPorTimbre;
+    private int _vigenciaMeses = 12;
+    private int _orden;
+
+    /// <summary>
+    /// Verdadero cuando cantidad × unitario se aleja del total más de un peso. El margen evita
+    /// que un redondeo de céntimos dispare el aviso en cada tecla.
+    /// </summary>
+    private bool HayDescuadre =>
+        _cantidadTimbres > 0 && _precioPorTimbre > 0 && _precioTotal > 0 &&
+        Math.Abs(_cantidadTimbres * _precioPorTimbre - _precioTotal) > 1m;
+
+    protected override async Task OnParametersSetAsync()
+    {
+        if (Id is not { } id) return;
+
+        _cargando = true;
+
+        if (await Paquetes.ObtenerAsync(id) is { } paquete)
+        {
+            _nombre = paquete.Nombre;
+            _cantidadTimbres = paquete.CantidadTimbres;
+            _precioTotal = paquete.PrecioTotal;
+            _precioPorTimbre = paquete.PrecioPorTimbre;
+            _vigenciaMeses = paquete.VigenciaMeses;
+            _orden = paquete.Orden;
+            _compras = paquete.Compras;
+        }
+
+        _cargando = false;
+    }
+
+    /// <summary>
+    /// Al escribir el total se propone el unitario que le corresponde, pero solo mientras el
+    /// unitario siga vacío: si ya se capturó a mano, no se pisa.
+    /// </summary>
+    private void AlCambiarPrecioTotal(decimal valor)
+    {
+        _precioTotal = valor;
+
+        if (_precioPorTimbre == 0 && _cantidadTimbres > 0 && valor > 0)
+            _precioPorTimbre = Math.Round(valor / _cantidadTimbres, 6, MidpointRounding.AwayFromZero);
+    }
+
+    private void AlCambiarPrecioUnitario(decimal valor) => _precioPorTimbre = valor;
+
+    private void Recalcular() => StateHasChanged();
+
+    private async Task Guardar()
+    {
+        _guardando = true;
+        _error = null;
+
+        var peticion = new PeticionGuardarPaquete(
+            _nombre, _cantidadTimbres, _precioPorTimbre, _precioTotal, _vigenciaMeses, _orden);
+
+        var (exito, error) = EsNuevo
+            ? await Paquetes.CrearAsync(peticion)
+            : await Paquetes.ActualizarAsync(Id!.Value, peticion);
+
+        _guardando = false;
+        _error = error;
+
+        if (error is null && exito is not null) Navegacion.NavigateTo("/operador/paquetes");
+    }
+}
