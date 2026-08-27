@@ -36,27 +36,14 @@
     src: url("../fuentes/inter-600.woff2") format("woff2");
 }
 
-@font-face {
-    font-family: "IBM Plex Mono";
-    font-style: normal;
-    font-weight: 400;
-    font-display: swap;
-    src: url("../fuentes/ibm-plex-mono-400.woff2") format("woff2");
-}
-
-@font-face {
-    font-family: "IBM Plex Mono";
-    font-style: normal;
-    font-weight: 500;
-    font-display: swap;
-    src: url("../fuentes/ibm-plex-mono-500.woff2") format("woff2");
-}
-
 :root {
     --tipografia-interfaz: "Inter", system-ui, sans-serif;
-    /* font-variant-numeric: tabular-nums va junto a la variable: sin cifras tabulares las
-       columnas de dinero no alinean y el contador no puede leerlas de un vistazo. */
-    --tipografia-monoespaciada: "IBM Plex Mono", ui-monospace, monospace;
+
+    /* Una sola familia en todo el sistema. Lo que las cifras necesitan no es una fuente
+       monoespaciada, es que sus digitos ocupen lo mismo para que las columnas de dinero
+       alineen; eso lo da font-variant-numeric, e Inter lo trae. La variable se conserva
+       porque hay codigo que la nombra, pero apunta a la misma familia. */
+    --tipografia-monoespaciada: var(--tipografia-interfaz);
 }
 
 body {
