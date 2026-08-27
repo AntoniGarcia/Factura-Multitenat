@@ -18,6 +18,22 @@
 */
 
 :root {
+    /* ── Alturas de apilamiento ──────────────────────────────────────────────────
+       Las inyecta MudThemeProvider, que este proyecto no usa: la paleta se define aquí
+       a mano y ese componente solo se traeria para eso. Faltaban, y sin ellas
+       calc(var(--mud-zindex-dialog) + 1) es una expresion invalida, el z-index cae a
+       'auto' y el dialogo queda tapado por el contenido de la pagina, que va despues en
+       el documento. Se veia como que "la ventana sale por debajo".
+
+       Son los valores por omision de MudBlazor; conviene no separarse de ellos para que
+       sus componentes sigan apilandose entre si como su propia hoja de estilos espera. */
+    --mud-zindex-drawer: 1100;
+    --mud-zindex-popover: 1200;
+    --mud-zindex-appbar: 1300;
+    --mud-zindex-dialog: 1400;
+    --mud-zindex-snackbar: 1500;
+    --mud-zindex-tooltip: 1600;
+
     --mud-palette-background: var(--fondo);
     --mud-palette-background-gray: var(--fondo);
     --mud-palette-surface: var(--superficie);
