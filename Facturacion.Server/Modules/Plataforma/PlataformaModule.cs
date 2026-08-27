@@ -58,7 +58,13 @@ public static class PlataformaModule
                 opciones.Lockout.MaxFailedAccessAttempts = 5;
                 opciones.Lockout.DefaultLockoutTimeSpan = TimeSpan.FromMinutes(1);
             })
-            .AddEntityFrameworkStores<AppDbContext>();
+            .AddEntityFrameworkStores<AppDbContext>()
+            // Hacen falta para GeneratePasswordResetTokenAsync, que es como se restablece una
+            // contrasena sin dejar al usuario un instante sin ninguna. Sin ellos, esa llamada
+            // revienta con "No IUserTwoFactorTokenProvider named 'Default' is registered", y
+            // eso tumbaba tanto el boton de contrasena del panel del inquilino como el del
+            // panel de operador. No habilitan doble factor: solo permiten emitir el token.
+            .AddDefaultTokenProviders();
 
         servicios.AddScoped<ServicioDeTokens>();
         servicios.AddScoped<ServicioDeRefreshTokens>();
