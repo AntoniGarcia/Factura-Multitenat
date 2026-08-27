@@ -4,6 +4,7 @@
 @import "layout.css";
 @import "componentes.css";
 @import "formularios.css";
+@import "acceso.css";
 
 /*
   Sistema de diseño (ARQUITECTURA.md §8): herramienta densa en datos, sin ilustraciones, sin
@@ -30,14 +31,9 @@ h1 {
     color: var(--texto-suave);
 }
 
-.tarjeta-acceso {
-    max-width: 24rem;
-    margin: 3rem auto;
-    padding: 1.5rem;
-    background: var(--superficie);
-    border: 1px solid var(--borde);
-    border-radius: var(--radio);
-}
+/* La tarjeta de acceso vive ahora en acceso.css, junto al resto de esas pantallas. Aquí
+   quedaba una definicion mas estrecha que ganaba por orden de cascada —los @import van
+   arriba— y dejaba el alta por pasos sin ancho para sus rotulos. */
 
 .campo {
     display: flex;

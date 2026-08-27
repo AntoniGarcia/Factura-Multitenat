@@ -66,7 +66,12 @@ public sealed record PeticionCambioEmpresa(Guid EmpresaId);
 /// recibirlo. La contraseña la genera el servidor y se la manda por correo; la empresa
 /// emisora se da de alta después, ya dentro.
 /// </summary>
-public sealed record PeticionRegistro(string Correo, string Nombre);
+/// <param name="NombreCuenta">
+/// Con que nombre se identifica la cuenta contratante: el del despacho o el del negocio. Si
+/// viene vacio se usa el de la persona, que es lo que pasaba cuando el alta era de un solo
+/// paso.
+/// </param>
+public sealed record PeticionRegistro(string Correo, string Nombre, string? NombreCuenta = null);
 
 /// <summary>
 /// Respuesta del registro. <b>Es la misma tanto si la cuenta se creó como si el correo ya

@@ -12,6 +12,7 @@
 
 <section class="tarjeta-acceso">
     <h1>Iniciar sesión</h1>
+    <p class="acceso-nota">Entra para emitir y consultar tus comprobantes.</p>
 
     <EditForm Model="_datos" OnValidSubmit="Entrar" FormName="acceso">
         <div class="campo">
@@ -31,14 +32,14 @@
 
         <PanelErrores Problema="_problema" />
 
-        <button type="submit" disabled="@_enviando">
-            @(_enviando ? "Entrando…" : "Entrar")
-        </button>
-    </EditForm>
+        <div class="acciones-acceso acciones-acceso-separadas">
+            <a class="acceso-alterno-enlace" href="/registro">Crear una cuenta</a>
 
-    <p class="acceso-alterno">
-        ¿No tienes cuenta? <a href="/registro">Crea una</a>
-    </p>
+            <button type="submit" disabled="@_enviando">
+                @(_enviando ? "Entrando…" : "Entrar")
+            </button>
+        </div>
+    </EditForm>
 </section>
 
 @code {

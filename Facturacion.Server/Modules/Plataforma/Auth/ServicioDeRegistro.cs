@@ -94,10 +94,15 @@ public sealed class ServicioDeRegistro(
 
         var ahora = DateTime.UtcNow;
 
+        // El nombre de la cuenta es el que dio en el alta; si no dio ninguno, el suyo.
+        var nombreCuenta = string.IsNullOrWhiteSpace(peticion.NombreCuenta)
+            ? nombre
+            : peticion.NombreCuenta.Trim();
+
         var cuenta = new Cuenta
         {
             Id = Guid.NewGuid(),
-            Nombre = nombre,
+            Nombre = nombreCuenta,
             CorreoContacto = correoNormalizado,
             FechaAltaUtc = ahora
         };

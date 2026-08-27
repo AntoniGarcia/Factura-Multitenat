@@ -1,0 +1,50 @@
+@using MudBlazor
+
+@*
+    Los pasos de un trámite, unidos por conectores que se pintan conforme se avanza. Marca los
+    ya resueltos con una palomita y el actual con un halo, para que se distingan entre sí: los
+    dos van rellenos y sin esa diferencia parecerían lo mismo.
+
+    Los conectores son elementos de la propia fila, no una línea posicionada por encima: así el
+    ancho lo reparte el navegador y no depende de calcular porcentajes contra un contenedor.
+
+    Es solo indicador. Quien decide si se puede avanzar es la pantalla que lo usa.
+*@
+
+<div class="pasos" role="group" aria-label="Progreso">
+    @for (var i = 0; i < Etiquetas.Count; i++)
+    {
+        var indice = i;
+        var hecho = indice < Actual;
+        var enCurso = indice == Actual;
+
+        @if (indice > 0)
+        {
+            <div class="paso-conector @(indice <= Actual ? "paso-conector-hecho" : null)"></div>
+        }
+
+        <div class="paso @(hecho ? "paso-hecho" : null) @(enCurso ? "paso-actual" : null)"
+             aria-current="@(enCurso ? "step" : null)">
+            <span class="paso-marca">
+                @if (hecho)
+                {
+                    <MudIcon Icon="@Icons.Material.Filled.Check" Size="Size.Small" />
+                }
+                else
+                {
+                    @(indice + 1)
+                }
+            </span>
+            <span class="paso-etiqueta">@Etiquetas[indice]</span>
+        </div>
+    }
+</div>
+
+@code {
+    [Parameter, EditorRequired]
+    public IReadOnlyList<string> Etiquetas { get; set; } = [];
+
+    /// <summary>Índice del paso en curso, empezando en cero.</summary>
+    [Parameter]
+    public int Actual { get; set; }
+}

@@ -1,9 +1,24 @@
 @inherits LayoutComponentBase
 
 @*
-    Para las pantallas de antes de tener empresa activa: iniciar sesión y elegir empresa.
-    Nunca dentro de MainLayout — no hay nada que poner en su barra superior (ni empresa
-    activa que mostrar, ni permisos que filtrar el menú) hasta que estas pantallas terminan.
+    Para las pantallas de antes de tener empresa activa: acceso, alta de cuenta y elección de
+    empresa. Nunca dentro de MainLayout — no hay nada que poner en su barra superior (ni
+    empresa activa que mostrar, ni permisos que filtrar el menú) hasta que estas terminan.
+
+    Lleva su propia barra, solo con la marca: da suelo a la tarjeta y evita que el formulario
+    quede flotando sobre una pantalla vacía.
 *@
 
-@Body
+<MudPopoverProvider />
+<MudDialogProvider CloseOnEscapeKey="true" BackdropClick="true" />
+<MudSnackbarProvider />
+
+<div class="cascaron-acceso">
+    <header class="barra-acceso">
+        <span class="barra-acceso-marca">Sistema de Facturacion</span>
+    </header>
+
+    <main class="lienzo-acceso">
+        @Body
+    </main>
+</div>

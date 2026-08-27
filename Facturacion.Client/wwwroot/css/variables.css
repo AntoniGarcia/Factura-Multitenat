@@ -77,6 +77,9 @@
     --foco: var(--acento);
 
     --radio: 6px;
+
+    /* Radio mayor, para las tarjetas que se leen como una sola pieza (acceso, alta). */
+    --radio-lg: 8px;
     --alto-fila-tabla: 40px;
     --alto-control: 36px;
 

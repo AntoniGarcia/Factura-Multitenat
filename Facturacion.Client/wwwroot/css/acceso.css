@@ -1,0 +1,249 @@
+/*
+  Pantallas de antes de entrar: acceso, alta de cuenta y elección de empresa.
+
+  Siguen la maqueta de referencia: barra de marca arriba, tarjeta centrada sobre el lienzo,
+  y —cuando el trámite tiene varios pasos— un indicador de progreso con los círculos unidos
+  por una línea. Todo sobre las variables semánticas; ningún color literal (ARQUITECTURA.md §8).
+*/
+
+/* ── Cascarón de las pantallas de acceso ────────────────────────────────────── */
+.cascaron-acceso {
+    display: flex;
+    flex-direction: column;
+    min-height: 100vh;
+    background: var(--fondo);
+}
+
+.barra-acceso {
+    flex: 0 0 auto;
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    height: var(--alto-barra);
+    padding: 0 var(--margen-pagina);
+    background: var(--superficie);
+    border-bottom: 1px solid var(--borde);
+}
+
+.barra-acceso-marca {
+    font-size: 1.125rem;
+    font-weight: var(--peso-titulo);
+    color: var(--acento);
+}
+
+/* Centrada en lo que queda de alto, con aire arriba y abajo en pantallas cortas. */
+.lienzo-acceso {
+    flex: 1 1 auto;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: var(--margen-pagina);
+}
+
+/* ── Tarjeta ────────────────────────────────────────────────────────────────── */
+.tarjeta-acceso {
+    width: 100%;
+    max-width: 26rem;
+    margin: 0;
+    padding: 2rem;
+    background: var(--superficie);
+    border: 1px solid var(--borde);
+    border-radius: var(--radio-lg, 0.5rem);
+}
+
+/* El alta por pasos necesita más ancho: el indicador de progreso lleva cuatro rótulos. */
+.tarjeta-acceso-pasos {
+    max-width: 33rem;
+}
+
+.tarjeta-acceso h1 {
+    margin: 0 0 0.25rem;
+    font-size: 1.5rem;
+    line-height: 2rem;
+    letter-spacing: -0.02em;
+    font-weight: var(--peso-titulo);
+    color: var(--texto);
+}
+
+.acceso-nota {
+    margin: 0 0 1.5rem;
+    color: var(--texto-suave);
+    font-size: var(--cuerpo-sm-tam);
+}
+
+/* ── Indicador de pasos ─────────────────────────────────────────────────────
+   Fila de circulos con conectores entre medias. El conector es un elemento mas de la fila y
+   se estira con flex, asi que su ancho lo reparte el navegador: no hay que calcular
+   porcentajes contra un contenedor posicionado, que es justo lo que no resolvia bien. */
+.pasos {
+    display: flex;
+    align-items: flex-start;
+    margin-bottom: 2rem;
+}
+
+.paso {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.5rem;
+    flex: 0 0 auto;
+}
+
+/* Se alinea con el centro del circulo, que mide 1.5rem de alto. */
+.paso-conector {
+    flex: 1 1 auto;
+    height: 2px;
+    margin-top: calc(0.75rem - 1px);
+    background: var(--borde);
+    transition: background-color 0.2s ease;
+}
+
+.paso-conector-hecho {
+    background: var(--acento);
+}
+
+.paso-marca {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 1.5rem;
+    height: 1.5rem;
+    border-radius: 9999px;
+    border: 1px solid var(--borde);
+    background: var(--superficie);
+    color: var(--texto-suave);
+    font-size: var(--etiqueta-tam);
+    font-weight: var(--peso-titulo);
+}
+
+.paso-etiqueta {
+    font-size: var(--etiqueta-tam);
+    font-weight: var(--peso-etiqueta);
+    color: var(--texto-suave);
+    white-space: nowrap;
+}
+
+/* Paso ya resuelto: relleno con el acento y una palomita. */
+.paso-hecho .paso-marca {
+    background: var(--acento);
+    border-color: var(--acento);
+    color: var(--texto-inverso);
+}
+
+.paso-hecho .paso-etiqueta {
+    color: var(--texto);
+}
+
+/* Paso en curso: igual de relleno, con un halo que lo distingue de los ya hechos. */
+.paso-actual .paso-marca {
+    background: var(--acento);
+    border-color: var(--acento);
+    color: var(--texto-inverso);
+    box-shadow: 0 0 0 4px rgba(var(--acento-rgb), 0.2);
+}
+
+.paso-actual .paso-etiqueta {
+    color: var(--acento);
+    font-weight: var(--peso-titulo);
+}
+
+/* ── Campos ─────────────────────────────────────────────────────────────────── */
+.acceso-rejilla {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(12rem, 1fr));
+    gap: 1rem;
+}
+
+.campo-ayuda {
+    margin: 0.25rem 0 0;
+    font-size: var(--etiqueta-tam);
+    color: var(--texto-suave);
+}
+
+/* ── Pie de acciones ────────────────────────────────────────────────────────
+   Separado por una línea y alineado a la derecha, como el resto de formularios. */
+.acciones-acceso {
+    display: flex;
+    justify-content: flex-end;
+    align-items: center;
+    gap: 0.75rem;
+    margin-top: 1.5rem;
+    padding-top: 1.5rem;
+    border-top: 1px solid var(--borde);
+}
+
+/* Cuando hay algo a la izquierda —un enlace de ayuda— separa los dos grupos. */
+.acciones-acceso-separadas {
+    justify-content: space-between;
+}
+
+/* Botón secundario dentro de las pantallas de acceso: el <button> por omisión de app.css
+   viene relleno con el acento, y «Atrás» no debe competir con «Continuar». */
+.boton-secundario {
+    background: var(--superficie);
+    border-color: var(--borde-fuerte);
+    color: var(--texto);
+}
+
+.boton-secundario:hover:not(:disabled) {
+    background: var(--fondo);
+}
+
+@media (max-width: 520px) {
+    .tarjeta-acceso {
+        padding: 1.25rem;
+    }
+
+    /* En pantallas estrechas los rótulos no caben en una fila: se quedan los círculos. */
+    .paso-etiqueta {
+        display: none;
+    }
+}
+
+/* Enlace que hace de acción secundaria en el pie: no es un botón, pero se alinea con ellos. */
+.acceso-alterno-enlace {
+    color: var(--acento);
+    font-size: var(--cuerpo-sm-tam);
+    text-decoration: none;
+}
+
+.acceso-alterno-enlace:hover {
+    text-decoration: underline;
+}
+
+/* Enlace con aspecto de botón, para el final del alta. */
+.boton-enlace {
+    display: inline-flex;
+    align-items: center;
+    height: var(--alto-control);
+    padding: 0 0.75rem;
+    border-radius: var(--radio);
+    background: var(--acento);
+    color: var(--texto-inverso);
+    font-size: var(--cuerpo-md-tam);
+    text-decoration: none;
+}
+
+/* Resumen final del alta: pares etiqueta/valor en dos columnas. */
+.resumen-alta {
+    display: grid;
+    grid-template-columns: auto 1fr;
+    gap: 0.5rem 1rem;
+    margin: 0;
+    padding: 0.875rem 1rem;
+    background: var(--fondo);
+    border: 1px solid var(--borde);
+    border-radius: var(--radio);
+}
+
+.resumen-alta dt {
+    color: var(--texto-suave);
+    font-size: var(--etiqueta-tam);
+    font-weight: var(--peso-etiqueta);
+}
+
+.resumen-alta dd {
+    margin: 0;
+    color: var(--texto);
+    font-size: var(--cuerpo-md-tam);
+}

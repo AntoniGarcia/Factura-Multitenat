@@ -41,7 +41,9 @@
    (--fondo) hace de lienzo; la tarjeta es la superficie donde se escribe. */
 .tarjeta-formulario {
     max-width: 60rem;
-    margin: 0 auto;
+    /* Alineada al mismo borde que el titulo de la pagina, no centrada: centrada dejaba la
+       tarjeta flotando respecto del h1 que la encabeza, y las dos cosas se leen como una. */
+    margin: 0;
     background: var(--superficie);
     border: 1px solid var(--borde);
     border-radius: var(--radio);
@@ -305,4 +307,9 @@
     display: flex;
     flex-wrap: wrap;
     gap: 0.5rem;
+}
+
+/* El alta por pasos necesita mas ancho que un formulario de acceso normal. */
+.tarjeta-acceso-ancha {
+    max-width: 40rem;
 }

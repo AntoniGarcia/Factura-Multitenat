@@ -5,76 +5,178 @@
 @using Facturacion.Shared.Comun
 @using Facturacion.Shared.Plataforma
 @inject ServicioDeSesion Sesion
-@inject NavigationManager Navegacion
 
 <PageTitle>Crear cuenta</PageTitle>
 
-<section class="tarjeta-acceso">
+@*
+    Alta en pasos. Los datos de la empresa emisora —RFC, régimen, código postal— no se piden
+    aquí: se capturan después en «Datos fiscales», donde además hay que cargar el certificado.
+    Pedirlos ahora obligaría a tenerlos a mano para poder siquiera entrar.
+*@
+
+<section class="tarjeta-acceso tarjeta-acceso-pasos">
     @if (_mensaje is null)
     {
-        <h1>Crear cuenta</h1>
+        <IndicadorDePasos Etiquetas="_etapas" Actual="_paso" />
 
-        <p class="seccion-ayuda">
-            Te mandamos tu contraseña por correo. Al entrar podrás cambiarla y dar de alta la
-            empresa con la que vas a facturar.
-        </p>
+        <h1>@TituloDelPaso</h1>
+        <p class="acceso-nota">@AyudaDelPaso</p>
 
-        <EditForm Model="_datos" OnValidSubmit="Registrar" FormName="registro">
-            <div class="campo">
-                <label for="correo">Correo</label>
-                <InputText id="correo" @bind-Value="_datos.Correo" type="email" autocomplete="email" />
+        @if (_paso == 0)
+        {
+            <div class="acceso-rejilla">
+                <div class="campo">
+                    <label for="nombre">Tu nombre</label>
+                    <input id="nombre" type="text" autocomplete="name" maxlength="128"
+                           value="@_nombre" @oninput="AlEscribirNombre" />
+                </div>
+
+                <div class="campo">
+                    <label for="correo">Correo</label>
+                    <input id="correo" type="email" autocomplete="email" maxlength="254"
+                           value="@_correo" @oninput="AlEscribirCorreo" />
+                    <p class="campo-ayuda">Aquí llegará tu contraseña.</p>
+                </div>
             </div>
 
+            @if (!string.IsNullOrWhiteSpace(_correo) && !CorreoParece)
+            {
+                <p class="texto-error">Ese correo no parece válido.</p>
+            }
+        }
+        else if (_paso == 1)
+        {
             <div class="campo">
-                <label for="nombre">Tu nombre</label>
-                <InputText id="nombre" @bind-Value="_datos.Nombre" autocomplete="name" />
+                <label for="cuenta">Nombre de la cuenta</label>
+                <input id="cuenta" type="text" maxlength="200"
+                       placeholder="@_nombre" value="@_nombreCuenta" @oninput="AlEscribirCuenta" />
+                <p class="campo-ayuda">
+                    El del despacho o el negocio. Si lo dejas vacío se usa el tuyo.
+                </p>
             </div>
+        }
+        else
+        {
+            <dl class="resumen-alta">
+                <dt>Nombre</dt>
+                <dd>@_nombre</dd>
+
+                <dt>Correo</dt>
+                <dd>@_correo</dd>
+
+                <dt>Cuenta</dt>
+                <dd>@NombreDeCuenta</dd>
+            </dl>
 
             <PanelErrores Problema="_problema" />
+        }
 
-            <button type="submit" disabled="@_enviando">
-                @(_enviando ? "Creando…" : "Crear cuenta")
-            </button>
-        </EditForm>
+        <div class="acciones-acceso @(_paso == 0 ? "acciones-acceso-separadas" : null)">
+            @if (_paso == 0)
+            {
+                <a class="acceso-alterno-enlace" href="/iniciar-sesion">¿Ya tienes cuenta?</a>
+            }
+            else
+            {
+                <button type="button" class="boton-secundario" @onclick="Atras" disabled="@_enviando">
+                    Atrás
+                </button>
+            }
 
-        <p class="acceso-alterno">
-            ¿Ya tienes cuenta? <a href="/iniciar-sesion">Inicia sesión</a>
-        </p>
+            @if (_paso < _etapas.Count - 1)
+            {
+                <button type="button" @onclick="Siguiente" disabled="@(!PuedeAvanzar)">
+                    Continuar
+                </button>
+            }
+            else
+            {
+                <button type="button" @onclick="Registrar" disabled="@(_enviando || !PasoUnoListo)">
+                    @(_enviando ? "Creando…" : "Crear cuenta")
+                </button>
+            }
+        </div>
     }
     else
     {
         <h1>Revisa tu correo</h1>
-        <p role="status">@_mensaje</p>
+        <p class="acceso-nota" role="status">@_mensaje</p>
 
-        <p class="acceso-alterno">
-            Cuando tengas la contraseña, <a href="/iniciar-sesion">inicia sesión</a>.
-        </p>
+        <div class="acciones-acceso">
+            <a class="boton-enlace" href="/iniciar-sesion">Ir a iniciar sesión</a>
+        </div>
     }
 </section>
 
 @code {
-    private sealed class Datos
-    {
-        public string Correo { get; set; } = string.Empty;
-        public string Nombre { get; set; } = string.Empty;
-    }
+    private readonly List<string> _etapas = ["Tus datos", "Tu cuenta", "Confirmar"];
 
-    private readonly Datos _datos = new();
+    private int _paso;
+
+    private string _nombre = string.Empty;
+    private string _correo = string.Empty;
+    private string _nombreCuenta = string.Empty;
+
     private DetalleProblema? _problema;
     private string? _mensaje;
     private bool _enviando;
+
+    private string TituloDelPaso => _paso switch
+    {
+        0 => "Crear cuenta",
+        1 => "Nombra tu cuenta",
+        _ => "Revisa y confirma"
+    };
+
+    private string AyudaDelPaso => _paso switch
+    {
+        0 => "Con estos datos entras al sistema.",
+        1 => "Las empresas con las que vas a facturar se dan de alta después, en «Datos fiscales».",
+        _ => "Al crear la cuenta te mandamos la contraseña por correo."
+    };
+
+    /// <summary>Comprobación de forma, no de existencia; la de verdad la hace el servidor.</summary>
+    private bool CorreoParece =>
+        _correo.Contains('@') && _correo.Contains('.') && _correo.Length >= 5;
+
+    private bool PasoUnoListo => !string.IsNullOrWhiteSpace(_nombre) && CorreoParece;
+
+    // El segundo paso se puede pasar sin escribir nada: si no dan nombre de cuenta se usa el
+    // de la persona, que es lo que hacía el alta de un solo paso.
+    private bool PuedeAvanzar => PasoUnoListo;
+
+    private string NombreDeCuenta =>
+        string.IsNullOrWhiteSpace(_nombreCuenta) ? _nombre : _nombreCuenta.Trim();
+
+    private void AlEscribirNombre(ChangeEventArgs e) => _nombre = e.Value?.ToString() ?? string.Empty;
+
+    private void AlEscribirCorreo(ChangeEventArgs e) => _correo = e.Value?.ToString() ?? string.Empty;
+
+    private void AlEscribirCuenta(ChangeEventArgs e) => _nombreCuenta = e.Value?.ToString() ?? string.Empty;
+
+    private void Siguiente()
+    {
+        if (PuedeAvanzar && _paso < _etapas.Count - 1) _paso++;
+    }
+
+    private void Atras()
+    {
+        if (_paso > 0) _paso--;
+    }
 
     private async Task Registrar()
     {
         _enviando = true;
         _problema = null;
 
-        var (exito, error) = await Sesion.RegistrarAsync(new PeticionRegistro(_datos.Correo, _datos.Nombre));
+        var (exito, error) = await Sesion.RegistrarAsync(
+            new PeticionRegistro(_correo.Trim(), _nombre.Trim(), NombreDeCuenta));
 
-        _problema = error;
-        // El mensaje viene del servidor y es el mismo exista o no el correo: la pantalla no
-        // debe poder usarse para averiguar quién tiene cuenta aquí.
-        _mensaje = exito?.Mensaje;
         _enviando = false;
+        _problema = error;
+
+        // El mensaje es el mismo exista o no el correo: la pantalla no puede convertirse en
+        // un detector de qué correos ya tienen cuenta.
+        if (exito is not null) _mensaje = exito.Mensaje;
     }
 }
