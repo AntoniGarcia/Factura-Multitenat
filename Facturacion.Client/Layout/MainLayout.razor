@@ -20,7 +20,7 @@
     <header class="barra-superior">
         <button type="button" class="boton-colapso" @onclick="AlternarMenu"
                 aria-expanded="@(!_menuColapsado)" aria-controls="menu-lateral"
-                title="@(_menuColapsado ? "Expandir el menú" : "Encoger el menú")">
+                title="@(_menuColapsado ? "Fijar el menú abierto" : "Encoger el menú a iconos")">
             <MudIcon Icon="@Icons.Material.Filled.Menu" Size="Size.Small" />
         </button>
 
@@ -117,9 +117,13 @@
     private int? _timbresDisponibles;
 
     /// <summary>
-    /// Menú encogido a riel de iconos. Vive en memoria y vuelve a expandirse al recargar:
-    /// las preferencias de este sistema viven en el perfil del servidor, no en el navegador
-    /// (ver el tema), y guardarla ahí pide un campo y su migración. Se decide aparte.
+    /// Menú encogido a riel de iconos. El botón fija el estado; acercar el cursor al riel lo
+    /// despliega mientras esté encima, y de eso se encarga el CSS.
+    /// <para>
+    /// Vive en memoria y vuelve a expandirse al recargar: las preferencias de este sistema
+    /// viven en el perfil del servidor, no en el navegador (ver el tema), y guardarla ahí pide
+    /// un campo y su migración. Se decide aparte.
+    /// </para>
     /// </summary>
     private bool _menuColapsado;
 
