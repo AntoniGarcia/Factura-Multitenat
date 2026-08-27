@@ -51,7 +51,7 @@
     resuelve los marcadores #[.{fingerprint}] de wwwroot/index.html —solo se ejecuta al
     publicar el Client directamente—, así que el index.html que llega al publicado del
     Server queda sin resolver y la aplicación no arranca. Se comprobó publicando de
-    verdad, no leyendo el código (CLAUDE.md §9): con este bug, "blazor.webassembly.js"
+    verdad, no leyendo el código (ARQUITECTURA.md §9): con este bug, "blazor.webassembly.js"
     del index.html publicado literalmente decía "blazor.webassembly#[.{fingerprint}].js".
 
     La fase de "build" del Client sí resuelve los marcadores correctamente, y con el

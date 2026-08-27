@@ -506,7 +506,7 @@ almacenamiento/
 # en docs/DESPLIEGUE.md (fase 9).
 /CatalogosSAT/
 
-# Configuración local de Claude Code: es de la máquina, no del proyecto.
+# Configuración local del entorno de trabajo: es de la máquina, no del proyecto.
 .claude/settings.local.json
 
 # Capturas de referencia del sistema de escritorio anterior. No son código y pesan 2.2 MB;
