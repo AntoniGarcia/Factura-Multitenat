@@ -1,0 +1,164 @@
+@page "/operador/usuarios"
+@layout LayoutDeOperador
+@attribute [Authorize(Policy = PoliticasDelPanel.PoliticaDeOperador)]
+@using Facturacion.Client.Componentes.Comunes
+@using Facturacion.Client.Servicios.Operador
+@using Facturacion.Client.Servicios.Plataforma
+@using Facturacion.Shared.Comun
+@using Facturacion.Shared.Operador
+@inject ServicioDeUsuariosDePlataforma Usuarios
+@inject IServicioDeConfirmacion Confirmacion
+@inject IDialogService Dialogos
+
+<PageTitle>Usuarios</PageTitle>
+<TituloDePagina Texto="Usuarios" />
+
+<PanelErrores Problema="_error" />
+
+@if (_aviso is not null)
+{
+    <div class="aviso-documentos" role="status">@_aviso</div>
+}
+
+<div class="filtros-documentos">
+    <MudTextField T="string" Value="_texto" ValueChanged="AlBuscar" Label="Buscar"
+                  Placeholder="Nombre o correo" Immediate="false" DebounceInterval="300"
+                  Adornment="Adornment.Start" AdornmentIcon="@Icons.Material.Filled.Search" />
+</div>
+
+<TablaDatos T="UsuarioDePlataformaDto"
+            @ref="_tabla"
+            Columnas="_columnas"
+            CargarPagina="CargarAsync"
+            TextoEntidad="usuarios"
+            TextoSinDatos="No hay usuarios que coincidan." />
+
+@code {
+    private TablaDatos<UsuarioDePlataformaDto>? _tabla;
+    private DetalleProblema? _error;
+    private string? _aviso;
+    private bool _trabajando;
+    private string _texto = string.Empty;
+
+    private IReadOnlyList<ColumnaDeTabla<UsuarioDePlataformaDto>> _columnas = [];
+
+    protected override void OnInitialized() => _columnas =
+    [
+        new("Usuario", u => @<div>
+                                 <div>@u.Nombre</div>
+                                 <div class="texto-secundario">@u.Correo</div>
+                             </div>),
+        new("Cuenta", u => @<span>@u.CuentaNombre</span>),
+        new("Empresas", u => @<span class="cifra-tabular">@u.Empresas</span>, Tabular: true),
+        new("Alta", u => @<span class="cifra-tabular">@u.FechaAltaUtc.ToLocalTime().ToString("dd/MM/yyyy")</span>),
+        new("Estado", u => @<span class="indicador-estado indicador-estado-@(u.Activo ? "timbrada" : "borrador")">
+                                @(u.Activo ? "Activo" : "Dado de baja")
+                            </span>),
+        new("", u => @<div class="acciones-renglon">
+                          <MudButton Size="Size.Small" Disabled="@_trabajando"
+                                     OnClick="@(() => RestablecerContrasena(u))">
+                              Contraseña
+                          </MudButton>
+                          <MudButton Size="Size.Small" Disabled="@_trabajando"
+                                     OnClick="@(() => CambiarActivo(u))">
+                              @(u.Activo ? "Dar de baja" : "Reactivar")
+                          </MudButton>
+                      </div>)
+    ];
+
+    private async Task<ResultadoDePagina<UsuarioDePlataformaDto>> CargarAsync(
+        PeticionDePagina peticion, CancellationToken ct)
+    {
+        var pagina = await Usuarios.ListarAsync(_texto, null, peticion.Pagina, peticion.TamanoPagina, ct);
+
+        return new ResultadoDePagina<UsuarioDePlataformaDto>(pagina.Elementos, pagina.Total);
+    }
+
+    private async Task AlBuscar(string texto)
+    {
+        _texto = texto;
+        await RecargarAsync();
+    }
+
+    private Task RecargarAsync() => _tabla?.RecargarAsync() ?? Task.CompletedTask;
+
+    private async Task RestablecerContrasena(UsuarioDePlataformaDto usuario)
+    {
+        if (_trabajando) return;
+
+        var parametros = new DialogParameters<DialogoDeContrasenaDeUsuario>
+        {
+            { x => x.NombreUsuario, usuario.Nombre },
+            { x => x.CorreoUsuario, usuario.Correo }
+        };
+
+        var referencia = await Dialogos.ShowAsync<DialogoDeContrasenaDeUsuario>(
+            "Restablecer contraseña", parametros);
+
+        var resultado = await referencia.Result;
+
+        if (resultado is not { Canceled: false, Data: ValueTuple<string, string> datos }) return;
+
+        _trabajando = true;
+        _error = null;
+        _aviso = null;
+
+        _error = await Usuarios.RestablecerContrasenaAsync(usuario.Id, datos.Item1, datos.Item2);
+
+        _trabajando = false;
+
+        if (_error is null)
+            _aviso = $"Contraseña restablecida. Comunícasela a {usuario.Nombre} por un medio seguro; " +
+                     "sus sesiones abiertas ya se cerraron.";
+
+        await RecargarAsync();
+    }
+
+    private async Task CambiarActivo(UsuarioDePlataformaDto usuario)
+    {
+        if (_trabajando) return;
+
+        string? motivo = null;
+
+        if (usuario.Activo)
+        {
+            var parametros = new DialogParameters<DialogoDeMotivo>
+            {
+                { x => x.Titulo, "Dar de baja el acceso" },
+                { x => x.Mensaje, $"«{usuario.Nombre}» ({usuario.Correo}) dejará de poder entrar y " +
+                                  "sus sesiones se cerrarán." },
+                { x => x.EtiquetaCampo, "Motivo de la baja" },
+                { x => x.TextoConfirmar, "Dar de baja" }
+            };
+
+            var referencia = await Dialogos.ShowAsync<DialogoDeMotivo>("Dar de baja el acceso", parametros);
+            var resultado = await referencia.Result;
+
+            if (resultado is not { Canceled: false, Data: string texto }) return;
+
+            motivo = texto;
+        }
+        else
+        {
+            var confirmado = await Confirmacion.ConfirmarAsync(
+                "Reactivar el acceso",
+                $"«{usuario.Nombre}» volverá a poder entrar al sistema.",
+                "Reactivar");
+
+            if (!confirmado) return;
+        }
+
+        _trabajando = true;
+        _error = null;
+        _aviso = null;
+
+        _error = await Usuarios.CambiarActivoAsync(usuario.Id, !usuario.Activo, motivo);
+
+        _trabajando = false;
+
+        if (_error is null)
+            _aviso = usuario.Activo ? "Acceso dado de baja." : "Acceso reactivado.";
+
+        await RecargarAsync();
+    }
+}

@@ -1,0 +1,55 @@
+@using MudBlazor
+
+@*
+    Restablecer la contraseña de un usuario de un cliente. Pide dos cosas: la contraseña
+    nueva y la del propio operador, porque esta operación permite entrar como esa persona.
+*@
+
+<MudDialog>
+    <DialogContent>
+        <p class="dialogo-cancelacion-aviso">
+            Se le pondrá una contraseña nueva a <strong>@NombreUsuario</strong> (@CorreoUsuario)
+            y se cerrarán todas sus sesiones. Tendrás que comunicársela por un medio seguro.
+        </p>
+
+        <div class="rejilla-campos">
+            <MudTextField @bind-Value="_nueva" Label="Contraseña nueva para el usuario"
+                          InputType="@(_ver ? InputType.Text : InputType.Password)"
+                          Adornment="Adornment.End"
+                          AdornmentIcon="@(_ver ? Icons.Material.Filled.VisibilityOff : Icons.Material.Filled.Visibility)"
+                          OnAdornmentClick="@(() => _ver = !_ver)"
+                          Immediate="true" MaxLength="128"
+                          HelperText="Al menos 12 caracteres." />
+
+            <MudTextField @bind-Value="_deLOperador" Label="Tu contraseña de operador"
+                          InputType="InputType.Password" Immediate="true" />
+        </div>
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="@(() => Dialogo.Cancel())">Cancelar</MudButton>
+        <MudButton Variant="Variant.Filled" Color="Color.Error" Disabled="@(!SePuedeConfirmar)"
+                   OnClick="Confirmar">
+            Restablecer
+        </MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter]
+    private IMudDialogInstance Dialogo { get; set; } = default!;
+
+    [Parameter]
+    public string NombreUsuario { get; set; } = string.Empty;
+
+    [Parameter]
+    public string CorreoUsuario { get; set; } = string.Empty;
+
+    private string _nueva = string.Empty;
+    private string _deLOperador = string.Empty;
+    private bool _ver;
+
+    private bool SePuedeConfirmar =>
+        _nueva.Length >= 12 && !string.IsNullOrWhiteSpace(_deLOperador);
+
+    private void Confirmar() => Dialogo.Close(DialogResult.Ok((_nueva, _deLOperador)));
+}

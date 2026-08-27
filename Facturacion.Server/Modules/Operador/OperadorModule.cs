@@ -34,6 +34,7 @@ public static class OperadorModule
         servicios.AddScoped<ServicioDePaquetesDeOperador>();
         servicios.AddScoped<ServicioDeComprasDeOperador>();
         servicios.AddScoped<ServicioDeClientesDePlataforma>();
+        servicios.AddScoped<ServicioDeUsuariosDePlataforma>();
         servicios.AddScoped<ServicioDeMembresias>();
         servicios.AddScoped<ServicioDeTableroDeOperador>();
 
@@ -46,6 +47,7 @@ public static class OperadorModule
         aplicacion.MapPaquetesDeOperador();
         aplicacion.MapComprasDeOperador();
         aplicacion.MapClientesDePlataforma();
+        aplicacion.MapUsuariosDePlataforma();
         aplicacion.MapMembresiasYTablero();
 
         return aplicacion;

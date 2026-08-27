@@ -35,6 +35,7 @@ builder.Services.AddSingleton<ServicioDeSesionDeOperador>();
 builder.Services.AddScoped<ServicioDePaquetesDeOperador>();
 builder.Services.AddScoped<ServicioDeComprasDeOperador>();
 builder.Services.AddScoped<ServicioDeClientesDePlataforma>();
+builder.Services.AddScoped<ServicioDeUsuariosDePlataforma>();
 builder.Services.AddScoped<ServicioDeTableroDeOperador>();
 builder.Services.AddScoped<ServicioDePerfilDeOperador>();
 builder.Services.AddSingleton<ServicioDeTema>();

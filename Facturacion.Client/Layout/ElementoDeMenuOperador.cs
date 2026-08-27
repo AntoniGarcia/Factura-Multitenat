@@ -21,6 +21,7 @@ public static class MenuDeOperador
         new("/operador/paquetes", "Paquetes", "sell"),
         new("/operador/compras", "Compras", "receipt_long"),
         new("/operador/cuentas", "Clientes", "apartment"),
+        new("/operador/usuarios", "Usuarios", "people"),
         new("/operador/configuracion", "Configuración", "settings")
     ];
 }
