@@ -1,4 +1,4 @@
-using System.Net.Http.Json;
+﻿using System.Net.Http.Json;
 using Facturacion.Shared.Comun;
 using Facturacion.Shared.Plataforma;
 
@@ -61,8 +61,8 @@ public sealed class ServicioDeSesion(IHttpClientFactory fabrica)
     }
 
     /// <summary>
-    /// Alta de cuenta. <b>No inicia sesión</b>: la contraseña se manda por correo, así que
-    /// aquí no hay ninguna con la que entrar. Devuelve el mensaje del servidor, que es el
+    /// Primer paso del alta: pide el código de verificación. <b>No crea la cuenta ni inicia
+    /// sesión</b>; solo manda un código al correo. Devuelve el mensaje del servidor, que es el
     /// mismo exista o no el correo.
     /// </summary>
     public async Task<(RespuestaRegistro? Exito, DetalleProblema? Error)> RegistrarAsync(PeticionRegistro peticion)
@@ -71,6 +71,21 @@ public sealed class ServicioDeSesion(IHttpClientFactory fabrica)
 
         return respuesta.IsSuccessStatusCode
             ? (await respuesta.Content.ReadFromJsonAsync<RespuestaRegistro>(), null)
+            : (null, await LeerProblema(respuesta));
+    }
+
+    /// <summary>
+    /// Segundo paso del alta: canjea el código. Si el código es bueno, es aquí donde el
+    /// servidor crea la cuenta y manda la contraseña por correo. Tampoco inicia sesión: la
+    /// contraseña está en el correo, no en esta respuesta.
+    /// </summary>
+    public async Task<(RespuestaAltaVerificada? Exito, DetalleProblema? Error)> VerificarAltaAsync(
+        PeticionVerificarAlta peticion)
+    {
+        var respuesta = await Cliente().PostAsJsonAsync("api/auth/registro/verificar", peticion);
+
+        return respuesta.IsSuccessStatusCode
+            ? (await respuesta.Content.ReadFromJsonAsync<RespuestaAltaVerificada>(), null)
             : (null, await LeerProblema(respuesta));
     }
 
