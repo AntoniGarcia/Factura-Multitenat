@@ -653,6 +653,59 @@ namespace Facturacion.Server.Migrations
                     b.ToTable("SolicitudesCancelacion", (string)null);
                 });
 
+            modelBuilder.Entity("Facturacion.Server.Data.Entidades.Plataforma.AltaPendiente", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTime?>("ConsumidoUtc")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("Correo")
+                        .IsRequired()
+                        .HasMaxLength(254)
+                        .HasColumnType("nvarchar(254)");
+
+                    b.Property<DateTime>("CreadoUtc")
+                        .HasColumnType("datetime2");
+
+                    b.Property<DateTime>("ExpiraUtc")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("HashCodigo")
+                        .IsRequired()
+                        .HasMaxLength(256)
+                        .HasColumnType("nvarchar(256)");
+
+                    b.Property<int>("Intentos")
+                        .HasColumnType("int");
+
+                    b.Property<string>("IpCreacion")
+                        .HasMaxLength(45)
+                        .HasColumnType("nvarchar(45)");
+
+                    b.Property<string>("Nombre")
+                        .IsRequired()
+                        .HasMaxLength(128)
+                        .HasColumnType("nvarchar(128)");
+
+                    b.Property<string>("NombreCuenta")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("Correo")
+                        .HasDatabaseName("IX_AltasPendientes_Correo");
+
+                    b.HasIndex("ExpiraUtc")
+                        .HasDatabaseName("IX_AltasPendientes_Expira");
+
+                    b.ToTable("AltasPendientes", (string)null);
+                });
+
             modelBuilder.Entity("Facturacion.Server.Data.Entidades.Plataforma.BolsaTimbres", b =>
                 {
                     b.Property<Guid>("Id")

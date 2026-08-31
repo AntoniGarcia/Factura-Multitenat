@@ -1,4 +1,4 @@
-using System.Text;
+﻿using System.Text;
 using Facturacion.Server.Data;
 using Facturacion.Server.Data.Entidades.Plataforma;
 using Facturacion.Server.Infra.Errores;
@@ -73,6 +73,11 @@ public static class PlataformaModule
         servicios.AddOptions<OpcionesDeSoporte>().Bind(configuracion.GetSection(OpcionesDeSoporte.Seccion));
         servicios.AddScoped<ServicioDeUsuarios>();
         servicios.AddScoped<Auth.ServicioDeRegistro>();
+
+        // El codigo de verificacion del alta se guarda con el mismo PBKDF2 de las
+        // contrasenas. IPasswordHasher es generico y no exige que su tipo sea de
+        // Identity, asi que se registra suelto igual que el del operador.
+        servicios.AddSingleton<IPasswordHasher<AltaPendiente>, PasswordHasher<AltaPendiente>>();
 
         servicios.AddScoped<IServicioCatalogosSat, ServicioCatalogosSat>();
 

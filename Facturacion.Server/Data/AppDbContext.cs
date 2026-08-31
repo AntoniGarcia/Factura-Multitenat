@@ -1,4 +1,4 @@
-using Facturacion.Server.Data.Entidades.Documentos;
+﻿using Facturacion.Server.Data.Entidades.Documentos;
 using Facturacion.Server.Data.Entidades.Plataforma;
 using Facturacion.Server.Data.Entidades.Plataforma.Catalogos;
 using Facturacion.Server.Infra.Tenencia;
@@ -39,6 +39,7 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> opciones, IConte
     public DbSet<Permiso> Permisos => Set<Permiso>();
     public DbSet<UsuarioEmpresaPermiso> UsuariosEmpresasPermisos => Set<UsuarioEmpresaPermiso>();
     public DbSet<RefreshToken> RefreshTokens => Set<RefreshToken>();
+    public DbSet<AltaPendiente> AltasPendientes => Set<AltaPendiente>();
     public DbSet<OperadorPlataforma> OperadoresPlataforma => Set<OperadorPlataforma>();
     public DbSet<RefreshTokenOperador> RefreshTokensOperador => Set<RefreshTokenOperador>();
     public DbSet<ClaveIdempotencia> ClavesIdempotencia => Set<ClaveIdempotencia>();
