@@ -1,4 +1,4 @@
-namespace Facturacion.Shared.Plataforma;
+﻿namespace Facturacion.Shared.Plataforma;
 
 /// <summary>Credenciales de inicio de sesión.</summary>
 /// <param name="Correo">Correo del usuario.</param>
@@ -62,9 +62,13 @@ public sealed record RespuestaSesion(
 public sealed record PeticionCambioEmpresa(Guid EmpresaId);
 
 /// <summary>
-/// Alta de una cuenta nueva desde fuera del sistema. Pide lo mínimo: quién es y dónde
-/// recibirlo. La contraseña la genera el servidor y se la manda por correo; la empresa
+/// Primer paso del alta de una cuenta nueva desde fuera del sistema. Pide lo mínimo: quién
+/// es y dónde recibirlo.
+/// <para>
+/// <b>Esto todavía no crea nada.</b> Manda un código al correo y deja el alta esperando; la
+/// cuenta nace cuando el código vuelve en <see cref="PeticionVerificarAlta"/>. La empresa
 /// emisora se da de alta después, ya dentro.
+/// </para>
 /// </summary>
 /// <param name="NombreCuenta">
 /// Con que nombre se identifica la cuenta contratante: el del despacho o el del negocio. Si
@@ -74,9 +78,23 @@ public sealed record PeticionCambioEmpresa(Guid EmpresaId);
 public sealed record PeticionRegistro(string Correo, string Nombre, string? NombreCuenta = null);
 
 /// <summary>
-/// Respuesta del registro. <b>Es la misma tanto si la cuenta se creó como si el correo ya
+/// Respuesta del registro. <b>Es la misma tanto si se mandó el código como si el correo ya
 /// estaba registrado</b>: distinguirlas convertiría el registro en un detector de qué
 /// correos tienen cuenta aquí. Quien escribió el correo se entera por el correo, no por la
 /// pantalla.
 /// </summary>
 public sealed record RespuestaRegistro(string Mensaje);
+
+/// <summary>
+/// Segundo paso del alta: el código que llegó al correo. El correo viaja otra vez porque
+/// entre los dos pasos no hay sesión ni cookie donde recordarlo, y el código por sí solo no
+/// identifica a nadie.
+/// </summary>
+public sealed record PeticionVerificarAlta(string Correo, string Codigo);
+
+/// <summary>
+/// Resultado de verificar el código. Aquí sí se distingue el éxito del fallo —no habría
+/// forma de continuar si no—, pero un código equivocado y un correo sin alta pendiente dan
+/// exactamente el mismo error, para no delatar cuál de las dos cosas pasó.
+/// </summary>
+public sealed record RespuestaAltaVerificada(string Mensaje);
