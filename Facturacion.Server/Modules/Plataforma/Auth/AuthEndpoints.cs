@@ -1,11 +1,11 @@
-using Facturacion.Server.Infra.Errores;
+﻿using Facturacion.Server.Infra.Errores;
 using Facturacion.Shared.Comun;
 using Facturacion.Shared.Plataforma;
 
 namespace Facturacion.Server.Modules.Plataforma.Auth;
 
 /// <summary>
-/// Los cinco endpoints del circuito de identidad. Cuelgan de <c>/api/</c> como todo el
+/// Los endpoints del circuito de identidad. Cuelgan de <c>/api/</c> como todo el
 /// resto: es lo que permite que el service worker excluya la API de la caché con una sola
 /// regla y que <c>MapFallbackToFile</c> no se confunda.
 /// </summary>
@@ -17,6 +17,7 @@ public static class AuthEndpoints
 
         grupo.MapPost("/iniciar-sesion", IniciarSesion).AllowAnonymous();
         grupo.MapPost("/registro", Registrar).AllowAnonymous();
+        grupo.MapPost("/registro/verificar", VerificarAlta).AllowAnonymous();
         grupo.MapPost("/refresh", Refrescar).AllowAnonymous();
         grupo.MapPost("/cerrar-sesion", CerrarSesion).AllowAnonymous();
         grupo.MapPost("/cambiar-empresa", CambiarEmpresa).RequireAuthorization();
@@ -27,6 +28,21 @@ public static class AuthEndpoints
         PeticionRegistro peticion, ServicioDeRegistro registro, HttpContext contexto, CancellationToken ct)
     {
         var resultado = await registro.RegistrarAsync(peticion, Ip(contexto), ct);
+
+        return resultado.EsFallo
+            ? resultado.Error!.AResultado(contexto)
+            : Results.Ok(resultado.Valor);
+    }
+
+    /// <summary>
+    /// Segundo paso del alta: el código que llegó al correo. Anónimo como el primero —quien
+    /// se está registrando todavía no tiene con qué autenticarse— y es aquí, no en
+    /// <see cref="Registrar"/>, donde nace la cuenta.
+    /// </summary>
+    private static async Task<IResult> VerificarAlta(
+        PeticionVerificarAlta peticion, ServicioDeRegistro registro, HttpContext contexto, CancellationToken ct)
+    {
+        var resultado = await registro.VerificarAsync(peticion, Ip(contexto), ct);
 
         return resultado.EsFallo
             ? resultado.Error!.AResultado(contexto)
