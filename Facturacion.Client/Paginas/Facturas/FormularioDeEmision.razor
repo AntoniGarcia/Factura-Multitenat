@@ -535,7 +535,6 @@ else
             _error = error;
             return;
         }
-
         // Se vuelve a pedir el comprobante completo: la respuesta de timbrar solo trae el
         // resumen, y la pantalla de solo lectura necesita el resto (receptor, conceptos).
         _comprobante = await Emision.ObtenerAsync(exito!.ComprobanteId);
