@@ -522,3 +522,8 @@ almacenamiento/
 # criptográfico de desarrollo y solo sirve en esta máquina: se regenera con el comando de
 # docs/ARRANQUE-LOCAL.md.
 /certs-dev/
+
+# Documentación de la residencia profesional: cronograma, reporte y sus imágenes. Es
+# entregable de la escuela, no del sistema, y lleva datos personales; se queda en la máquina.
+/docs/*Residencia*
+/docs/cronograma-residencia.*
