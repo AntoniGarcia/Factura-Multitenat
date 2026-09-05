@@ -1,0 +1,47 @@
+@using MudBlazor
+
+@*
+    Dar de baja una empresa desde el panel del operador. Pide el motivo (obligatorio: es lo que
+    explicará después por qué se le quitó el servicio a esa empresa) y la contraseña del propio
+    operador, porque deja a la empresa sin poder facturar.
+*@
+
+<MudDialog>
+    <DialogContent>
+        <p class="dialogo-cancelacion-aviso">
+            <strong>@NombreEmpresa</strong> dejará de poder emitir comprobantes. Los ya timbrados
+            quedan intactos e inmutables, y puedes reactivarla después. Esto no borra nada.
+        </p>
+
+        <div class="rejilla-campos">
+            <MudTextField @bind-Value="_motivo" Label="Motivo de la baja" Immediate="true"
+                          Lines="3" MaxLength="300" Counter="300" />
+
+            <MudTextField @bind-Value="_deLOperador" Label="Tu contraseña de operador"
+                          InputType="InputType.Password" Immediate="true" />
+        </div>
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="@(() => Dialogo.Cancel())">Cancelar</MudButton>
+        <MudButton Variant="Variant.Filled" Color="Color.Error" Disabled="@(!SePuedeConfirmar)"
+                   OnClick="Confirmar">
+            Dar de baja
+        </MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter]
+    private IMudDialogInstance Dialogo { get; set; } = default!;
+
+    [Parameter]
+    public string NombreEmpresa { get; set; } = string.Empty;
+
+    private string _motivo = string.Empty;
+    private string _deLOperador = string.Empty;
+
+    private bool SePuedeConfirmar =>
+        !string.IsNullOrWhiteSpace(_motivo) && !string.IsNullOrWhiteSpace(_deLOperador);
+
+    private void Confirmar() => Dialogo.Close(DialogResult.Ok((_motivo.Trim(), _deLOperador)));
+}

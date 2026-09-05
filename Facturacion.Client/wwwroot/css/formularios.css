@@ -187,6 +187,16 @@
     white-space: nowrap;
 }
 
+/* Fila de tabla que navega al hacer clic: el cursor lo anuncia y el enlace dentro de la
+   primera celda mantiene la operación con teclado. */
+.fila-navegable {
+    cursor: pointer;
+}
+
+.fila-navegable:hover {
+    background: var(--superficie-elevada);
+}
+
 .resumen-importacion {
     display: flex;
     gap: 0.5rem;

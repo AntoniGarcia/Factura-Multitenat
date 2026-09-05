@@ -135,6 +135,33 @@
     font-size: 0.8125rem;
 }
 
+/* Nombre principal de una fila en el listado de cuentas. En negrita porque es el dato que el
+   proveedor reconoce de un vistazo, y el badge de pendientes se pega a su lado, no al final
+   del renglón donde competiría con las cifras. */
+.lista-cuenta-nombre {
+    font-weight: var(--peso-titulo);
+    color: var(--texto);
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.lista-cuenta-nombre .indicador-estado {
+    font-weight: var(--peso-etiqueta);
+}
+
+/* Empresa emisora con compras por acreditar: el nombre y la píldora de pendientes van en el
+   mismo renglón, con respiro entre ambos y sin que la píldora se pegue al texto. */
+.empresa-con-pendientes {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.empresa-con-pendientes .indicador-estado {
+    font-weight: var(--peso-etiqueta);
+}
+
 /* ── Gráficas ──────────────────────────────────────────────────────────────────
    Caja con el mismo marco que las tarjetas del resto del sistema. */
 .grafica {
@@ -377,4 +404,37 @@
 /* Indicadores apilados dentro de un panel: separacion entre uno y otro. */
 .indicador-apilado {
     margin-bottom: 0.75rem;
+}
+
+/* ── Chips de permisos ──────────────────────────────────────────────────────────
+   Visualización compacta de los permisos en la tabla de operadores. */
+.permisos-chips {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.25rem;
+}
+
+.permiso-chip {
+    display: inline-block;
+    padding: 0.125rem 0.5rem;
+    font-size: 0.625rem;
+    font-weight: var(--peso-titulo);
+    text-transform: uppercase;
+    letter-spacing: 0.025em;
+    border-radius: 9999px;
+    background: rgba(var(--acento-rgb), 0.1);
+    color: var(--acento);
+    white-space: nowrap;
+}
+
+@media (prefers-color-scheme: dark) {
+    .permiso-chip {
+        background: rgba(var(--acento-rgb), 0.15);
+    }
+}
+
+/* Variante por tema cálido/sepia: el acento cambia a ámbar. */
+:root[data-tema="calido"] .permiso-chip {
+    background: rgba(var(--acento-calido-rgb), 0.15);
+    color: var(--acento-calido);
 }

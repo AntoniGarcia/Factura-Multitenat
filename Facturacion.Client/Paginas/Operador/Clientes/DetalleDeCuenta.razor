@@ -10,6 +10,7 @@
 @inject ServicioDeTableroDeOperador Suscripciones
 @inject IServicioDeConfirmacion Confirmacion
 @inject IDialogService Dialogos
+@inject NavigationManager Navegacion
 
 <PageTitle>Ficha de cuenta</PageTitle>
 <TituloDePagina Texto="@(_detalle?.Cuenta.Nombre ?? "Ficha de cuenta")" />
@@ -49,6 +50,12 @@ else
                       Value="@_detalle.Cuenta.FechaAltaUtc.ToLocalTime().ToString("dd/MM/yyyy")" />
         <MudTextField T="string" Label="Membresía" ReadOnly="true"
                       Value="@TextoDeMembresia()" />
+    </div>
+
+    <div class="acciones-formulario">
+        <MudButton Variant="Variant.Outlined" Disabled="@_trabajando" OnClick="EditarCorreoDeContacto">
+            Editar correo de contacto
+        </MudButton>
     </div>
 
     <h2 class="seccion-titulo">Membresía</h2>
@@ -114,9 +121,22 @@ else
         <tbody>
             @foreach (var empresa in _detalle.Empresas)
             {
-                <tr>
+                <tr class="fila-navegable" @onclick="@(() => Navegacion.NavigateTo($"/operador/cuentas/{_detalle!.Cuenta.Id}/empresas/{empresa.Id}"))">
                     <td class="cifra-tabular">@empresa.Rfc</td>
-                    <td>@empresa.NombreFiscal</td>
+                    <td>
+                        <span class="empresa-con-pendientes">
+                            <a href="@($"/operador/cuentas/{_detalle!.Cuenta.Id}/empresas/{empresa.Id}")">
+                                @empresa.NombreFiscal
+                            </a>
+                            @if (empresa.ComprasPendientes > 0)
+                            {
+                                <span class="indicador-estado indicador-estado-advertencia"
+                                      title="@empresa.ComprasPendientes compra(s) por acreditar">
+                                    @empresa.ComprasPendientes pendientes
+                                </span>
+                            }
+                        </span>
+                    </td>
                     <td class="cifra-tabular">@empresa.RegimenFiscal</td>
                     <td class="cifra-tabular">@empresa.TimbresDisponibles.ToString("N0")</td>
                     <td class="cifra-tabular">@empresa.TimbresReservados.ToString("N0")</td>
@@ -130,60 +150,6 @@ else
             @if (_detalle.Empresas.Count == 0)
             {
                 <tr><td colspan="6" class="tabla-datos-estado">Todavía no ha dado de alta ninguna empresa.</td></tr>
-            }
-        </tbody>
-    </MudSimpleTable>
-
-    <h2 class="seccion-titulo">Usuarios con acceso</h2>
-
-    <MudSimpleTable Dense="true" Hover="true" Class="tabla-impuestos">
-        <thead>
-            <tr><th>Nombre</th><th>Correo</th><th>Alta</th><th>Estado</th></tr>
-        </thead>
-        <tbody>
-            @foreach (var usuario in _detalle.Usuarios)
-            {
-                <tr>
-                    <td>@usuario.Nombre</td>
-                    <td>@usuario.Correo</td>
-                    <td class="cifra-tabular">@usuario.FechaAltaUtc.ToLocalTime().ToString("dd/MM/yyyy")</td>
-                    <td>
-                        <span class="indicador-estado indicador-estado-@(usuario.Activo ? "timbrada" : "borrador")">
-                            @(usuario.Activo ? "Activo" : "Inactivo")
-                        </span>
-                    </td>
-                </tr>
-            }
-        </tbody>
-    </MudSimpleTable>
-
-    <h2 class="seccion-titulo">Últimas compras</h2>
-
-    <MudSimpleTable Dense="true" Hover="true" Class="tabla-impuestos">
-        <thead>
-            <tr>
-                <th>Fecha</th><th>Empresa</th><th>Paquete</th>
-                <th class="cifra-tabular">Total</th><th>Estado</th>
-            </tr>
-        </thead>
-        <tbody>
-            @foreach (var compra in _detalle.UltimasCompras)
-            {
-                <tr>
-                    <td class="cifra-tabular">@compra.CreadaUtc.ToLocalTime().ToString("dd/MM/yyyy")</td>
-                    <td>@compra.EmpresaNombre</td>
-                    <td>@compra.NombrePaquete</td>
-                    <td class="cifra-tabular">@compra.PrecioTotal.ToString("C2")</td>
-                    <td>
-                        <span class="indicador-estado indicador-estado-@EstiloDeCompra(compra.Estado)">
-                            @TextoDeCompra(compra.Estado)
-                        </span>
-                    </td>
-                </tr>
-            }
-            @if (_detalle.UltimasCompras.Count == 0)
-            {
-                <tr><td colspan="5" class="tabla-datos-estado">Todavía no ha comprado timbres.</td></tr>
             }
         </tbody>
     </MudSimpleTable>
@@ -256,6 +222,33 @@ else
         _error = null;
 
         _error = await Suscripciones.CancelarMembresiaAsync(membresia.Id);
+
+        _trabajando = false;
+
+        if (_error is null) await CargarAsync();
+    }
+
+    private async Task EditarCorreoDeContacto()
+    {
+        if (_trabajando || _detalle is null) return;
+
+        var parametros = new DialogParameters<DialogoDeCambioDeCorreo>
+        {
+            { x => x.Mensaje, $"Correo de contacto de «{_detalle.Cuenta.Nombre}». " +
+                              "No cambia el acceso de ningún usuario." },
+            { x => x.TextoConfirmar, "Guardar" }
+        };
+
+        var referencia = await Dialogos.ShowAsync<DialogoDeCambioDeCorreo>("Editar correo de contacto", parametros);
+        var resultado = await referencia.Result;
+
+        if (resultado is not { Canceled: false, Data: ValueTuple<string, string> datos }) return;
+
+        _trabajando = true;
+        _error = null;
+
+        _error = await Clientes.CambiarCorreoDeContactoDeCuentaAsync(
+            Id, new PeticionCambiarCorreoDeContactoDeCuenta(datos.Item1, datos.Item2));
 
         _trabajando = false;
 

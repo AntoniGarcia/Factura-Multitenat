@@ -3,6 +3,7 @@ using Facturacion.Server.Infra.Errores;
 using Facturacion.Server.Modules.Operador.Auth;
 using Facturacion.Shared.Comun;
 using Facturacion.Shared.Operador;
+using Microsoft.AspNetCore.Mvc;
 
 namespace Facturacion.Server.Modules.Operador.Clientes;
 
@@ -21,9 +22,11 @@ public static class UsuariosDePlataformaEndpoints
             .WithTags("Operador · Usuarios")
             .RequireAuthorization(PoliticasDeOperador.Operador);
 
-        grupo.MapGet("/", Listar);
-        grupo.MapPut("/{id:guid}/contrasena", RestablecerContrasena);
-        grupo.MapPost("/{id:guid}/activo", CambiarActivo);
+        grupo.MapGet("/", Listar).RequireAuthorization(PoliticasDeOperador.AdministrarUsuarios);
+        grupo.MapDelete("/{id:guid}/empresas/{empresaId:guid}/acceso", EliminarAccesoAEmpresa).RequireAuthorization(PoliticasDeOperador.AdministrarUsuarios);
+        grupo.MapPut("/{id:guid}/contrasena", RestablecerContrasena).RequireAuthorization(PoliticasDeOperador.AdministrarUsuarios);
+        grupo.MapPut("/{id:guid}/correo", CambiarCorreo).RequireAuthorization(PoliticasDeOperador.AdministrarUsuarios);
+        grupo.MapPost("/{id:guid}/activo", CambiarActivo).RequireAuthorization(PoliticasDeOperador.AdministrarUsuarios);
     }
 
     private static async Task<IResult> Listar(
@@ -61,6 +64,39 @@ public static class UsuariosDePlataformaEndpoints
         if (!TryOperador(contexto, out var operadorId)) return Results.Unauthorized();
 
         var resultado = await usuarios.CambiarActivoAsync(operadorId, id, peticion, ct);
+
+        return resultado.EsExito
+            ? Results.NoContent()
+            : resultado.Error!.AResultado(contexto);
+    }
+
+    private static async Task<IResult> CambiarCorreo(
+        Guid id,
+        PeticionCambiarCorreoDeUsuario peticion,
+        ServicioDeUsuariosDePlataforma usuarios,
+        HttpContext contexto,
+        CancellationToken ct)
+    {
+        if (!TryOperador(contexto, out var operadorId)) return Results.Unauthorized();
+
+        var resultado = await usuarios.CambiarCorreoAsync(operadorId, id, peticion, ct);
+
+        return resultado.EsExito
+            ? Results.NoContent()
+            : resultado.Error!.AResultado(contexto);
+    }
+
+    private static async Task<IResult> EliminarAccesoAEmpresa(
+        Guid id,
+        Guid empresaId,
+        [FromBody] PeticionEliminarAccesoDeUsuario peticion,
+        ServicioDeUsuariosDePlataforma usuarios,
+        HttpContext contexto,
+        CancellationToken ct)
+    {
+        if (!TryOperador(contexto, out var operadorId)) return Results.Unauthorized();
+
+        var resultado = await usuarios.EliminarAccesoAEmpresaAsync(operadorId, id, empresaId, peticion, ct);
 
         return resultado.EsExito
             ? Results.NoContent()

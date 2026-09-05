@@ -1,0 +1,53 @@
+@using MudBlazor
+
+@*
+    Asignación directa de timbres a una empresa por el operador: cuántos, por cuánto tiempo
+    valen, y la contraseña del operador. Es una compensación del proveedor, no una venta.
+*@
+
+<MudDialog>
+    <DialogContent>
+        <p class="dialogo-cancelacion-aviso">
+            Se van a dar <strong>timbres sueltos</strong>; no es la compra de un paquete del
+            catálogo y no hay cobro. La empresa quedará con el saldo disponible al instante.
+        </p>
+
+        <div class="rejilla-campos">
+            <MudNumericField @bind-Value="_cantidad" Label="Cantidad de timbres"
+                             Min="1" Max="1000000" Immediate="true"
+                             Adornment="Adornment.End" AdornmentText="timbres" />
+
+            <MudNumericField @bind-Value="_vigencia" Label="Vigencia"
+                             Min="1" Max="24" Immediate="true"
+                             Adornment="Adornment.End" AdornmentText="meses" />
+
+            <MudTextField @bind-Value="_deLOperador" Label="Tu contraseña de operador"
+                          InputType="InputType.Password" Immediate="true" />
+        </div>
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="@(() => Dialogo.Cancel())">Cancelar</MudButton>
+        <MudButton Variant="Variant.Filled" Color="Color.Primary" Disabled="@(!SePuedeConfirmar)"
+                   OnClick="Confirmar">
+            Asignar timbres
+        </MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter]
+    private IMudDialogInstance Dialogo { get; set; } = default!;
+
+    [Parameter]
+    public string NombreEmpresa { get; set; } = string.Empty;
+
+    private int? _cantidad;
+    private int? _vigencia;
+    private string _deLOperador = string.Empty;
+
+    private bool SePuedeConfirmar =>
+        _cantidad is > 0 && _vigencia is > 0 && !string.IsNullOrWhiteSpace(_deLOperador);
+
+    private void Confirmar() =>
+        Dialogo.Close(DialogResult.Ok((_cantidad!.Value, _vigencia!.Value, _deLOperador)));
+}

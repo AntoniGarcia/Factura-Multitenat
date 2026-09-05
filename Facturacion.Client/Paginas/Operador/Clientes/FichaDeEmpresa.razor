@@ -1,0 +1,539 @@
+@page "/operador/cuentas/{CuentaId:guid}/empresas/{EmpresaId:guid}"
+@layout LayoutDeOperador
+@attribute [Authorize(Policy = PoliticasDelPanel.PoliticaDeOperador)]
+@using Facturacion.Client.Componentes.Comunes
+@using Facturacion.Client.Servicios.Operador
+@using Facturacion.Client.Servicios.Plataforma
+@using Facturacion.Client.Paginas.Operador.Operadores
+@using Facturacion.Shared.Comun
+@using Facturacion.Shared.Operador
+@inject ServicioDeClientesDePlataforma Clientes
+@inject ServicioDeComprasDeOperador Compras
+@inject ServicioDeUsuariosDePlataforma Usuarios
+@inject IServicioDeConfirmacion Confirmacion
+@inject IDialogService Dialogos
+
+<PageTitle>Ficha de empresa</PageTitle>
+<TituloDePagina Texto="@(_ficha?.NombreFiscal ?? "Ficha de empresa")" />
+
+<TarjetaFormulario Ancha="true" RutaVolver="@($"/operador/cuentas/{CuentaId}")">
+
+@if (_cargando)
+{
+    <p class="tabla-datos-estado">Cargando…</p>
+}
+else if (_ficha is null)
+{
+    <p class="tabla-datos-estado">No se encontró esa empresa.</p>
+}
+else
+{
+    <div class="tarjetas-saldo">
+        <div class="tarjeta-saldo">
+            <span class="tarjeta-saldo-cifra cifra-tabular">@_ficha.Rfc</span>
+            <span class="tarjeta-saldo-etiqueta">R.F.C.</span>
+        </div>
+        <div class="tarjeta-saldo">
+            <span class="tarjeta-saldo-cifra cifra-tabular">@_ficha.TimbresDisponibles.ToString("N0")</span>
+            <span class="tarjeta-saldo-etiqueta">Timbres disponibles</span>
+        </div>
+        <div class="tarjeta-saldo">
+            <span class="tarjeta-saldo-cifra cifra-tabular">@_ficha.TimbresReservados.ToString("N0")</span>
+            <span class="tarjeta-saldo-etiqueta">Timbres reservados</span>
+        </div>
+    </div>
+
+    <h2 class="seccion-titulo">Datos generales</h2>
+    <div class="rejilla-campos">
+        <MudTextField T="string" Label="Nombre fiscal" ReadOnly="true" Value="@_ficha.NombreFiscal" />
+        <MudTextField T="string" Label="Régimen fiscal" ReadOnly="true" Class="cifra-tabular"
+                      Value="@_ficha.RegimenFiscal" />
+        <MudTextField T="string" Label="Alta" ReadOnly="true" Class="cifra-tabular"
+                      Value="@_ficha.FechaAltaUtc.ToLocalTime().ToString("dd/MM/yyyy")" />
+        <MudTextField T="string" Label="Estado" ReadOnly="true"
+                      Value="@(_ficha.Activa ? "Activa" : "Inactiva")" />
+    </div>
+
+    <div class="acciones-formulario">
+        <MudButton Variant="@(_ficha.Activa ? Variant.Filled : Variant.Outlined)"
+                   Color="@(_ficha.Activa ? Color.Error : Color.Primary)" Disabled="@_trabajando"
+                   OnClick="CambiarActivoEmpresa">
+            @(_ficha.Activa ? "Dar de baja" : "Reactivar")
+        </MudButton>
+
+        <MudButton Variant="Variant.Outlined" StartIcon="@Icons.Material.Filled.CardGiftcard"
+                   Disabled="@_trabajando" OnClick="AsignarTimbres">
+            Asignar timbres
+        </MudButton>
+    </div>
+
+    <div class="filtros-documentos">
+        <MudTextField T="string" Value="_textoCompras" ValueChanged="AlBuscarCompras"
+                      Label="Buscar compras" Placeholder="Nombre del paquete" Immediate="false"
+                      DebounceInterval="300" Adornment="Adornment.Start"
+                      AdornmentIcon="@Icons.Material.Filled.Search" />
+    </div>
+
+    <h2 class="seccion-titulo">Usuarios con acceso</h2>
+
+    @if (_ficha.Usuarios.Count == 0)
+    {
+        <p class="tabla-datos-estado">Ningún usuario tiene acceso a esta empresa.</p>
+    }
+    else
+    {
+        <MudSimpleTable Dense="true" Hover="true" Class="tabla-impuestos">
+            <thead>
+                <tr><th>Usuario</th><th>Correo</th><th>Alta</th><th>Estado</th><th></th></tr>
+            </thead>
+            <tbody>
+                @foreach (var usuario in _ficha.Usuarios)
+                {
+                    <tr>
+                        <td>@usuario.Nombre</td>
+                        <td>@usuario.Correo</td>
+                        <td class="cifra-tabular">@usuario.FechaAltaUtc.ToLocalTime().ToString("dd/MM/yyyy")</td>
+                        <td>
+                            <span class="indicador-estado indicador-estado-@(usuario.Activo ? "timbrada" : "borrador")">
+                                @(usuario.Activo ? "Activo" : "Inactivo")
+                            </span>
+                        </td>
+                        <td>
+                            <div class="acciones-renglon">
+                                <MudButton Size="Size.Small" Disabled="@_trabajando"
+                                           OnClick="@(() => RestablecerContrasena(usuario))">
+                                    Contraseña
+                                </MudButton>
+                                <MudButton Size="Size.Small" Disabled="@_trabajando"
+                                           OnClick="@(() => CambiarCorreo(usuario))">
+                                    Correo
+                                </MudButton>
+                                <MudButton Size="Size.Small" Disabled="@_trabajando"
+                                           OnClick="@(() => CambiarActivo(usuario))">
+                                    @(usuario.Activo ? "Dar de baja" : "Reactivar")
+                                </MudButton>
+                                <MudButton Size="Size.Small" Disabled="@_trabajando"
+                                           OnClick="@(() => EliminarAcceso(usuario))">
+                                    Eliminar
+                                </MudButton>
+                            </div>
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </MudSimpleTable>
+    }
+
+    <h2 class="seccion-titulo">Compras pendientes de acreditar</h2>
+
+    <PanelErrores Problema="_error" />
+
+    @if (_aviso is not null)
+    {
+        <div class="aviso-documentos" role="status">@_aviso</div>
+    }
+
+    @if (_ficha.ComprasPendientes.Count == 0)
+    {
+        <p class="tabla-datos-estado">@(_buscandoCompras ? "Ninguna compra pendiente coincide con la búsqueda." : "No hay compras por acreditar o descartar.")</p>
+    }
+    else
+    {
+        <MudSimpleTable Dense="true" Hover="true" Class="tabla-impuestos">
+            <thead>
+                <tr>
+                    <th>Solicitada</th>
+                    <th>Paquete</th>
+                    <th class="cifra-tabular">Timbres</th>
+                    <th class="cifra-tabular">Total</th>
+                    <th></th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var compra in _ficha.ComprasPendientes)
+                {
+                    <tr>
+                        <td class="cifra-tabular">@compra.CreadaUtc.ToLocalTime().ToString("dd/MM/yyyy HH:mm")</td>
+                        <td>@compra.NombrePaquete</td>
+                        <td class="cifra-tabular">@compra.CantidadTimbres.ToString("N0")</td>
+                        <td class="cifra-tabular">@compra.PrecioTotal.ToString("C2")</td>
+                        <td>
+                            <div class="acciones-renglon">
+                                <MudButton Size="Size.Small" Variant="Variant.Filled" Color="Color.Primary"
+                                           Disabled="@_trabajando" OnClick="@(() => Acreditar(compra))">
+                                    Acreditar
+                                </MudButton>
+                                <MudButton Size="Size.Small" Disabled="@_trabajando"
+                                           OnClick="@(() => Rechazar(compra))">
+                                    Descartar
+                                </MudButton>
+                            </div>
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </MudSimpleTable>
+    }
+
+    <h2 class="seccion-titulo">Últimas compras</h2>
+
+    @if (_ficha.UltimasCompras.Count == 0)
+    {
+        <p class="tabla-datos-estado">@(_buscandoCompras ? "Ninguna compra pagada coincide con la búsqueda." : "Todavía no se ha acreditado ninguna compra.")</p>
+    }
+    else
+    {
+        <MudSimpleTable Dense="true" Hover="true" Class="tabla-impuestos">
+            <thead>
+                <tr>
+                    <th>Fecha</th>
+                    <th>Paquete</th>
+                    <th class="cifra-tabular">Timbres</th>
+                    <th class="cifra-tabular">Total</th>
+                    <th>Estado</th>
+                    <th class="cifra-tabular">Vence</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var compra in _ficha.UltimasCompras)
+                {
+                    <tr>
+                        <td class="cifra-tabular">@compra.CreadaUtc.ToLocalTime().ToString("dd/MM/yyyy")</td>
+                        <td>@compra.NombrePaquete</td>
+                        <td class="cifra-tabular">@compra.CantidadTimbres.ToString("N0")</td>
+                        <td class="cifra-tabular">@compra.PrecioTotal.ToString("C2")</td>
+                        <td>
+                            <span class="indicador-estado indicador-estado-timbrada">Pagada</span>
+                        </td>
+                        <td class="cifra-tabular">@(compra.VenceUtc?.ToLocalTime().ToString("dd/MM/yyyy") ?? "—")</td>
+                    </tr>
+                }
+            </tbody>
+        </MudSimpleTable>
+    }
+
+    }
+
+</TarjetaFormulario>
+
+@code {
+    [Parameter]
+    public Guid CuentaId { get; set; }
+
+    [Parameter]
+    public Guid EmpresaId { get; set; }
+
+    private FichaDeEmpresaDto? _ficha;
+    private DetalleProblema? _error;
+    private string? _aviso;
+    private bool _cargando = true;
+    private bool _trabajando;
+    private string _textoCompras = string.Empty;
+
+    private bool _buscandoCompras => !string.IsNullOrWhiteSpace(_textoCompras);
+
+    protected override async Task OnParametersSetAsync()
+    {
+        _cargando = true;
+        await CargarAsync();
+        _cargando = false;
+    }
+
+    private async Task CargarAsync()
+    {
+        _ficha = await Clientes.ObtenerEmpresaAsync(CuentaId, EmpresaId, _textoCompras);
+    }
+
+    private async Task AlBuscarCompras(string texto)
+    {
+        _textoCompras = texto;
+        _cargando = true;
+        await CargarAsync();
+        _cargando = false;
+    }
+
+    private async Task Acreditar(CompraDeOperadorDto compra)
+    {
+        if (_trabajando) return;
+
+        var confirmado = await Confirmacion.ConfirmarAsync(
+            "Acreditar el pago",
+            $"Se van a abonar {compra.CantidadTimbres:N0} timbres a «{_ficha!.NombreFiscal}» " +
+            $"({_ficha.Rfc}) por {compra.PrecioTotal:C2}. Hazlo solo si el pago ya llegó.",
+            "Acreditar");
+
+        if (!confirmado) return;
+
+        _trabajando = true;
+        _error = null;
+        _aviso = null;
+
+        _error = await Compras.AcreditarAsync(compra.Id);
+
+        _trabajando = false;
+
+        if (_error is null)
+            _aviso = $"Pago acreditado: {compra.CantidadTimbres:N0} timbres para {_ficha.NombreFiscal}.";
+
+        await CargarAsync();
+    }
+
+    private async Task Rechazar(CompraDeOperadorDto compra)
+    {
+        if (_trabajando) return;
+
+        var parametros = new DialogParameters<DialogoDeMotivo>
+        {
+            { x => x.Titulo, "Descartar la compra" },
+            { x => x.Mensaje, $"«{compra.NombrePaquete}» por {compra.PrecioTotal:C2}. " +
+                              "No se entregará ningún timbre." }
+        };
+
+        var referencia = await Dialogos.ShowAsync<DialogoDeMotivo>("Descartar la compra", parametros);
+        var resultado = await referencia.Result;
+
+        if (resultado is not { Canceled: false, Data: string motivo }) return;
+
+        _trabajando = true;
+        _error = null;
+        _aviso = null;
+
+        _error = await Compras.RechazarAsync(compra.Id, motivo);
+
+        _trabajando = false;
+
+        if (_error is null) _aviso = "Compra descartada.";
+
+        await CargarAsync();
+    }
+
+    private async Task CambiarActivoEmpresa()
+    {
+        if (_trabajando || _ficha is null) return;
+
+        if (_ficha.Activa)
+        {
+            var parametros = new DialogParameters<DialogoDeBajaDeEmpresa>
+            {
+                { x => x.NombreEmpresa, _ficha.NombreFiscal }
+            };
+
+            var referencia = await Dialogos.ShowAsync<DialogoDeBajaDeEmpresa>("Dar de baja la empresa", parametros);
+            var resultado = await referencia.Result;
+
+            if (resultado is not { Canceled: false, Data: ValueTuple<string, string> baja }) return;
+
+            _trabajando = true;
+            _error = null;
+            _aviso = null;
+
+            _error = await Clientes.CambiarActivoEmpresaAsync(
+                CuentaId, EmpresaId,
+                new PeticionCambiarActivoDeEmpresa(false, baja.Item1, baja.Item2));
+
+            _trabajando = false;
+
+            if (_error is null) _aviso = "Empresa dada de baja. Los comprobantes ya timbrados quedan intactos.";
+
+            await CargarAsync();
+            return;
+        }
+
+        var confirmar = new DialogParameters<DialogoConfirmarContrasenaOperador>
+        {
+            { x => x.Mensaje, $"Vas a reactivar «{_ficha.NombreFiscal}» ({_ficha.Rfc})." },
+            { x => x.TextoConfirmar, "Reactivar" }
+        };
+
+        var refReactivar = await Dialogos.ShowAsync<DialogoConfirmarContrasenaOperador>("Reactivar la empresa", confirmar);
+        var resReactivar = await refReactivar.Result;
+
+        if (resReactivar is not { Canceled: false, Data: string contrasena }) return;
+
+        _trabajando = true;
+        _error = null;
+        _aviso = null;
+
+        _error = await Clientes.CambiarActivoEmpresaAsync(
+            CuentaId, EmpresaId,
+            new PeticionCambiarActivoDeEmpresa(true, null, contrasena));
+
+        _trabajando = false;
+
+        if (_error is null) _aviso = "Empresa reactivada.";
+
+        await CargarAsync();
+    }
+
+    private async Task AsignarTimbres()
+    {
+        if (_trabajando || _ficha is null) return;
+
+        var parametros = new DialogParameters<DialogoDeAsignacionDeTimbres>
+        {
+            { x => x.NombreEmpresa, _ficha.NombreFiscal }
+        };
+
+        var referencia = await Dialogos.ShowAsync<DialogoDeAsignacionDeTimbres>("Asignar timbres", parametros);
+        var resultado = await referencia.Result;
+
+        if (resultado is not { Canceled: false, Data: ValueTuple<int, int, string> asignacion }) return;
+
+        _trabajando = true;
+        _error = null;
+        _aviso = null;
+
+        var error = await Clientes.AsignarTimbresAsync(
+            CuentaId, EmpresaId,
+            new PeticionAsignarTimbres(asignacion.Item1, asignacion.Item2, asignacion.Item3));
+
+        _trabajando = false;
+
+        if (error is null)
+            _aviso = $"Se asignaron {asignacion.Item1:N0} timbres a {_ficha.NombreFiscal}.";
+        else
+            _error = error;
+
+        await CargarAsync();
+    }
+
+    private async Task RestablecerContrasena(UsuarioDeCuentaDto usuario)
+    {
+        if (_trabajando) return;
+
+        var parametros = new DialogParameters<DialogoDeContrasenaDeUsuario>
+        {
+            { x => x.NombreUsuario, usuario.Nombre },
+            { x => x.CorreoUsuario, usuario.Correo }
+        };
+
+        var referencia = await Dialogos.ShowAsync<DialogoDeContrasenaDeUsuario>(
+            "Restablecer contraseña", parametros);
+
+        var resultado = await referencia.Result;
+
+        if (resultado is not { Canceled: false, Data: ValueTuple<string, string> datos }) return;
+
+        _trabajando = true;
+        _error = null;
+        _aviso = null;
+
+        _error = await Usuarios.RestablecerContrasenaAsync(usuario.Id, datos.Item1, datos.Item2);
+
+        _trabajando = false;
+
+        if (_error is null)
+            _aviso = $"Contraseña restablecida. Comunícasela a {usuario.Nombre} por un medio seguro; " +
+                     "sus sesiones abiertas ya se cerraron.";
+
+        await CargarAsync();
+    }
+
+    private async Task CambiarCorreo(UsuarioDeCuentaDto usuario)
+    {
+        if (_trabajando) return;
+
+        var parametros = new DialogParameters<DialogoDeCambioDeCorreo>
+        {
+            { x => x.Mensaje, $"Correo de «{usuario.Nombre}» ({usuario.Correo}). " +
+                              "El usuario entra con este correo; comunícaselo si cambia." }
+        };
+
+        var referencia = await Dialogos.ShowAsync<DialogoDeCambioDeCorreo>("Modificar correo", parametros);
+        var resultado = await referencia.Result;
+
+        if (resultado is not { Canceled: false, Data: ValueTuple<string, string> datos }) return;
+
+        _trabajando = true;
+        _error = null;
+        _aviso = null;
+
+        _error = await Usuarios.CambiarCorreoAsync(usuario.Id, datos.Item1, datos.Item2);
+
+        _trabajando = false;
+
+        if (_error is null) _aviso = $"Correo de {usuario.Nombre} actualizado.";
+
+        await CargarAsync();
+    }
+
+    private async Task CambiarActivo(UsuarioDeCuentaDto usuario)
+    {
+        if (_trabajando) return;
+
+        string? motivo = null;
+
+        if (usuario.Activo)
+        {
+            var parametros = new DialogParameters<DialogoDeMotivo>
+            {
+                { x => x.Titulo, "Dar de baja el acceso" },
+                { x => x.Mensaje, $"«{usuario.Nombre}» ({usuario.Correo}) dejará de poder entrar a " +
+                                  $"«{_ficha!.NombreFiscal}» y sus sesiones se cerrarán." },
+                { x => x.EtiquetaCampo, "Motivo de la baja" },
+                { x => x.TextoConfirmar, "Dar de baja" }
+            };
+
+            var referencia = await Dialogos.ShowAsync<DialogoDeMotivo>("Dar de baja el acceso", parametros);
+            var resultado = await referencia.Result;
+
+            if (resultado is not { Canceled: false, Data: string texto }) return;
+
+            motivo = texto;
+        }
+        else
+        {
+            var confirmado = await Confirmacion.ConfirmarAsync(
+                "Reactivar el acceso",
+                $"«{usuario.Nombre}» volverá a poder entrar a «{_ficha!.NombreFiscal}».",
+                "Reactivar");
+
+            if (!confirmado) return;
+        }
+
+        _trabajando = true;
+        _error = null;
+        _aviso = null;
+
+        _error = await Usuarios.CambiarActivoAsync(usuario.Id, !usuario.Activo, motivo);
+
+        _trabajando = false;
+
+        if (_error is null)
+            _aviso = usuario.Activo ? "Acceso dado de baja." : "Acceso reactivado.";
+
+        await CargarAsync();
+    }
+
+    private async Task EliminarAcceso(UsuarioDeCuentaDto usuario)
+    {
+        if (_trabajando) return;
+
+        var parametros = new DialogParameters<DialogoDeMotivo>
+        {
+            { x => x.Titulo, "Eliminar el acceso" },
+            { x => x.Mensaje, $"«{usuario.Nombre}» ({usuario.Correo}) dejará de poder entrar a " +
+                              $"«{_ficha!.NombreFiscal}». Su cuenta queda intacta para las demás empresas." },
+            { x => x.EtiquetaCampo, "Motivo" },
+            { x => x.TextoConfirmar, "Eliminar acceso" }
+        };
+
+        var referencia = await Dialogos.ShowAsync<DialogoDeMotivo>("Eliminar el acceso", parametros);
+        var resultado = await referencia.Result;
+
+        if (resultado is not { Canceled: false, Data: string motivo }) return;
+
+        _trabajando = true;
+        _error = null;
+        _aviso = null;
+
+        _error = await Usuarios.EliminarAccesoAsync(usuario.Id, EmpresaId, motivo);
+
+        _trabajando = false;
+
+        if (_error is null)
+            _aviso = $"Acceso de {usuario.Nombre} a «{_ficha.NombreFiscal}» eliminado.";
+
+        await CargarAsync();
+    }
+}

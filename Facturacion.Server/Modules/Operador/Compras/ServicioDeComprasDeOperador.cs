@@ -1,10 +1,12 @@
 using Facturacion.Server.Data;
 using Facturacion.Server.Data.Entidades.Plataforma;
 using Facturacion.Server.Infra.Bitacora;
+using Facturacion.Server.Modules.Operador.Auth;
 using Facturacion.Server.Modules.Plataforma.Timbres;
 using Facturacion.Shared.Comun;
 using Facturacion.Shared.Operador;
 using Facturacion.Shared.Plataforma;
+using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 
 namespace Facturacion.Server.Modules.Operador.Compras;
@@ -28,6 +30,7 @@ namespace Facturacion.Server.Modules.Operador.Compras;
 public sealed class ServicioDeComprasDeOperador(
     AppDbContext baseDeDatos,
     ServicioDeCompras compras,
+    IPasswordHasher<OperadorPlataforma> hasher,
     IServicioDeBitacora bitacora)
 {
     /// <summary>
@@ -105,6 +108,82 @@ public sealed class ServicioDeComprasDeOperador(
     /// </summary>
     public async Task<Resultado<CompraDto>> AcreditarAsync(Guid compraId, CancellationToken ct)
         => await compras.AcreditarAsync(compraId, ct);
+
+    /// <summary>
+    /// Entrega timbres directo a una sola empresa, sin pasar por un paquete del catálogo.
+    /// Sirve de compensación o de ajuste del proveedor (una garantía, una reposición).
+    /// <para>
+    /// La cantidad y la vigencia las captura el operador; la empresa se deduce de la ruta y
+    /// se valida que exista dentro de la cuenta. La compra nace y se acredita al instante:
+    /// entra al historial de compras como pagada y con precio cero, porque aquí el proveedor
+    /// regala saldo, no vende. El trabajo de la bolsa lo hace el mismo procedimiento
+    /// almacenado de cualquier acreditación, transaccional e idempotente.
+    /// </para>
+    /// </summary>
+    public async Task<Resultado<CompraDto>> AsignarTimbresAsync(
+        Guid operadorId, Guid cuentaId, Guid empresaId, PeticionAsignarTimbres peticion, CancellationToken ct)
+    {
+        if (await ContrasenaDelOperadorEsIncorrecta(operadorId, peticion.ContrasenaDelOperador, ct))
+            return ErrorNegocio.Validacion("contrasena-incorrecta", "Tu contraseña de operador no es correcta.");
+
+        // La empresa se deduce de la ruta y se valida que pertenezca a la cuenta. El operador
+        // nunca manda un identificador de empresa suelto (ARQUITECTURA.md §4).
+        var existeEmpresa = await baseDeDatos.Empresas
+            .AnyAsync(e => e.Id == empresaId && e.CuentaId == cuentaId, ct);
+
+        if (!existeEmpresa)
+            return ErrorNegocio.NoEncontrado("empresa-no-encontrada", "Esa empresa no existe en esta cuenta.");
+
+        var compra = new CompraTimbres
+        {
+            Id = Guid.NewGuid(),
+            EmpresaId = empresaId,
+            PaqueteId = Guid.Empty, // Asignación directa: no viene de un paquete del catálogo.
+            UsuarioId = Guid.Empty,
+            NombrePaquete = "Asignación del operador",
+            CantidadTimbres = peticion.CantidadTimbres,
+            PrecioPorTimbre = 0m,
+            PrecioTotal = 0m,
+            VigenciaMeses = peticion.VigenciaMeses,
+            Estado = EstadosDeCompra.PendienteDePago,
+            CreadaUtc = DateTime.UtcNow
+        };
+
+        baseDeDatos.ComprasTimbres.Add(compra);
+        await baseDeDatos.SaveChangesAsync(ct);
+
+        bitacora.Registrar(
+            EntidadesDeBitacora.CompraTimbres,
+            compra.Id.ToString(),
+            AccionesDeBitacora.TimbresAsignados,
+            despues: new
+            {
+                EmpresaId = empresaId,
+                NombrePaquete = compra.NombrePaquete,
+                compra.CantidadTimbres,
+                compra.VigenciaMeses,
+                PorOperadorDelServicio = true
+            },
+            empresaId: empresaId,
+            cuentaId: cuentaId,
+            operadorId: operadorId);
+
+        // Reutiliza el mismo alta de saldo que cualquier compra: mete los timbres a la bolsa
+        // de forma transaccional e idempotente con el procedimiento almacenado.
+        return await compras.AcreditarAsync(compra.Id, ct);
+    }
+
+    private async Task<bool> ContrasenaDelOperadorEsIncorrecta(
+        Guid operadorId, string contrasena, CancellationToken ct)
+    {
+        var operador = await baseDeDatos.OperadoresPlataforma
+            .SingleOrDefaultAsync(o => o.Id == operadorId && o.Activo, ct);
+
+        if (operador is null) return true;
+
+        return hasher.VerifyHashedPassword(operador, operador.HashContrasena, contrasena)
+            is PasswordVerificationResult.Failed;
+    }
 
     /// <summary>
     /// Descarta una compra que no se va a cobrar. No toca la bolsa: una compra pendiente nunca

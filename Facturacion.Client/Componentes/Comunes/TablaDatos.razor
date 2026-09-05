@@ -19,6 +19,7 @@
           Dense="true"
           Hover="true"
           Loading="_cargando"
+          OnRowClick="OnRowClickMud"
           RowsPerPage="@TamanoPagina">
     <HeaderContent>
         @foreach (var columna in Columnas)
@@ -94,6 +95,13 @@
     [Parameter]
     public string TextoEntidad { get; set; } = "registros";
 
+    /// <summary>
+    /// Se dispara al hacer clic en una fila. Quien lo use decide qué hacer con el elemento;
+    /// si no se declara, la fila no reacciona al clic.
+    /// </summary>
+    [Parameter]
+    public EventCallback<T> AlHacerClic { get; set; }
+
     /// <summary>Opciones del selector de tamaño de página.</summary>
     private static readonly int[] TamanosDisponibles = [12, 25, 50];
 
@@ -114,6 +122,9 @@
     /// en la petición al servidor que arma esa página, no en <see cref="PeticionDePagina"/>.
     /// </summary>
     public Task RecargarAsync() => _tabla?.ReloadServerData() ?? Task.CompletedTask;
+
+    private Task OnRowClickMud(TableRowClickEventArgs<T> evento)
+        => AlHacerClic.HasDelegate ? AlHacerClic.InvokeAsync(evento.Item) : Task.CompletedTask;
 
     protected override void OnInitialized() => _tamano = TamanoPagina;
 

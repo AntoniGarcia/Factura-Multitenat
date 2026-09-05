@@ -1,0 +1,48 @@
+@using MudBlazor
+@using System.ComponentModel.DataAnnotations
+
+@*
+    Cambiar un correo desde el panel del operador: el nuevo valor y la contraseña del propio
+    operador, porque toca la identidad de una persona o el dato de contacto de una cuenta.
+    Se reutiliza para el correo de contacto de una cuenta y para el correo de un usuario.
+*@
+
+<MudDialog>
+    <DialogContent>
+        <p class="dialogo-cancelacion-aviso">@Mensaje</p>
+
+        <div class="rejilla-campos">
+            <MudTextField @bind-Value="_correoNuevo" Label="Correo nuevo" InputType="InputType.Email"
+                          Immediate="true" MaxLength="254" />
+
+            <MudTextField @bind-Value="_deLOperador" Label="Tu contraseña de operador"
+                          InputType="InputType.Password" Immediate="true" />
+        </div>
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="@(() => Dialogo.Cancel())">Cancelar</MudButton>
+        <MudButton Variant="Variant.Filled" Color="Color.Primary" Disabled="@(!SePuedeConfirmar)"
+                   OnClick="Confirmar">
+            Guardar
+        </MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter]
+    private IMudDialogInstance Dialogo { get; set; } = default!;
+
+    [Parameter]
+    public string Mensaje { get; set; } = "Escribe el correo nuevo y tu contraseña de operador.";
+
+    [Parameter]
+    public string TextoConfirmar { get; set; } = "Guardar";
+
+    private string _correoNuevo = string.Empty;
+    private string _deLOperador = string.Empty;
+
+    private bool SePuedeConfirmar =>
+        new EmailAddressAttribute().IsValid(_correoNuevo) && !string.IsNullOrWhiteSpace(_deLOperador);
+
+    private void Confirmar() => Dialogo.Close(DialogResult.Ok((_correoNuevo.Trim().ToLowerInvariant(), _deLOperador)));
+}
