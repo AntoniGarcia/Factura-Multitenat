@@ -89,6 +89,7 @@ public sealed class ServicioDeAutenticacionDeOperador(
         var normalizado = peticion.Correo.Trim().ToUpperInvariant();
 
         var operador = await baseDeDatos.OperadoresPlataforma
+            .Include(o => o.Permisos)
             .SingleOrDefaultAsync(o => o.CorreoNormalizado == normalizado, ct);
 
         var contrasenaCorrecta = operador is null
@@ -147,6 +148,7 @@ public sealed class ServicioDeAutenticacionDeOperador(
         var emitido = rotado.Valor!;
 
         var operador = await baseDeDatos.OperadoresPlataforma
+            .Include(o => o.Permisos)
             .SingleOrDefaultAsync(o => o.Id == emitido.Registro.OperadorId, ct);
 
         if (operador is null || !operador.Activo)
@@ -185,6 +187,7 @@ public sealed class ServicioDeAutenticacionDeOperador(
     public async Task<SesionDeOperadorDto?> ObtenerSesionAsync(Guid operadorId, CancellationToken ct)
     {
         var operador = await baseDeDatos.OperadoresPlataforma
+            .Include(o => o.Permisos)
             .SingleOrDefaultAsync(o => o.Id == operadorId && o.Activo, ct);
 
         return operador is null ? null : ADto(operador);
