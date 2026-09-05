@@ -15,35 +15,65 @@ public static class EsquemasDeAutenticacion
 }
 
 /// <summary>
-/// La política que protege el panel del proveedor del SaaS.
+/// Políticas de autorización para el panel del proveedor del SaaS.
 ///
-/// <para><b>Esto no es autorizar por rol</b></para>
-/// Es una política sobre un claim, igual que las seis de permisos. La diferencia es que ese
-/// claim identifica a la otra identidad del sistema, no a un permiso dentro de una empresa.
+/// <para><b>Dos niveles</b></para>
+/// 1. <see cref="Operador"/> — base: cualquier operador autenticado (claim "opr").
+/// 2. Una por permiso (<c>perm:configurar_empresa</c>, etc.) — para operaciones sensibles.
 ///
-/// <para><b>Tres barreras, no una</b></para>
-/// Un solo <c>RequireClaim</c> bastaría en el papel, pero dejaría toda la separación entre el
-/// proveedor y sus clientes colgando de una línea. Se apilan tres comprobaciones
-/// independientes: la audiencia del token, el esquema con el que se autentica y la ausencia
-/// de claims de tenencia. Para que un inquilino entrara al panel tendrían que fallar las tres.
+/// <para><b>Por qué no hay "superadmin"</b></para>
+/// El operador principal (el que crea la BD) se siembra con los seis permisos.
+/// Si algún día hace falta distinguir, se añade el permiso y no un rol.
 /// </summary>
 public static class PoliticasDeOperador
 {
-    /// <summary>Nombre de la política. Se anota con <c>.RequireAuthorization(PoliticasDeOperador.Operador)</c>.</summary>
+    /// <summary>Política base: cualquier operador autenticado. Se usa en el grupo de rutas.</summary>
     public const string Operador = "operador";
+
+    /// <summary>Permisos individuales — misma clave que los inquilinos (<see cref="Permisos"/>).</summary>
+    public const string Timbrar = "timbrar";
+    public const string Cancelar = "cancelar";
+    public const string AdministrarUsuarios = "administrar_usuarios";
+    public const string ComprarTimbres = "comprar_timbres";
+    public const string VerReportes = "ver_reportes";
+    public const string ConfigurarEmpresa = "configurar_empresa";
+
+    /// <summary>Todas las políticas de permiso, para iterar si se necesita.</summary>
+    public static IReadOnlyList<string> Permisos { get; } =
+    [
+        Timbrar,
+        Cancelar,
+        AdministrarUsuarios,
+        ComprarTimbres,
+        VerReportes,
+        ConfigurarEmpresa
+    ];
 
     public static AuthorizationBuilder AgregarPoliticasDeOperador(this AuthorizationBuilder constructor)
     {
+        // Base: operador autenticado, audiencia correcta, sin claims de tenencia.
         constructor.AddPolicy(Operador, politica => politica
             .AddAuthenticationSchemes(EsquemasDeAutenticacion.Operador)
             .RequireAuthenticatedUser()
             .RequireClaim(ClavesDeClaim.Operador)
-            // Un token de operador no tiene por qué llevar tenencia. Si la lleva, algo lo
-            // emitió mal y no se le abre la puerta.
             .RequireAssertion(contexto =>
                 !contexto.User.HasClaim(c => c.Type == ClavesDeClaim.Empresa) &&
                 !contexto.User.HasClaim(c => c.Type == ClavesDeClaim.Cuenta) &&
                 !contexto.User.HasClaim(c => c.Type == ClavesDeClaim.Usuario)));
+
+        // Una política por permiso: RequireClaim("perm", "configurar_empresa") etc.
+        foreach (var permiso in Permisos)
+        {
+            constructor.AddPolicy(permiso, politica => politica
+                .AddAuthenticationSchemes(EsquemasDeAutenticacion.Operador)
+                .RequireAuthenticatedUser()
+                .RequireClaim(ClavesDeClaim.Operador)
+                .RequireClaim(ClavesDeClaim.Permiso, permiso)
+                .RequireAssertion(contexto =>
+                    !contexto.User.HasClaim(c => c.Type == ClavesDeClaim.Empresa) &&
+                    !contexto.User.HasClaim(c => c.Type == ClavesDeClaim.Cuenta) &&
+                    !contexto.User.HasClaim(c => c.Type == ClavesDeClaim.Usuario)));
+        }
 
         return constructor;
     }

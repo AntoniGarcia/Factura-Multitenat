@@ -7,9 +7,9 @@ namespace Facturacion.Server.Modules.Operador.Paquetes;
 /// <summary>
 /// El catálogo de paquetes visto desde el panel del proveedor.
 /// <para>
-/// Todo el grupo exige la política de operador. Nótese que el inquilino tiene su propio
-/// <c>GET /api/timbres/paquetes</c>, que solo devuelve los activos y sin el orden ni el
-/// estado: son dos vistas distintas del mismo catálogo, y por eso son dos endpoints.
+/// Lectura: cualquier operador autenticado. Escritura: permiso <c>configurar_empresa</c>.
+/// Nótese que el inquilino tiene su propio <c>GET /api/timbres/paquetes</c>, que solo devuelve
+/// los activos y sin el orden ni el estado: son dos vistas distintas del mismo catálogo.
 /// </para>
 /// </summary>
 public static class PaquetesDeOperadorEndpoints
@@ -22,9 +22,9 @@ public static class PaquetesDeOperadorEndpoints
 
         grupo.MapGet("/", Listar);
         grupo.MapGet("/{id:guid}", Obtener);
-        grupo.MapPost("/", Crear);
-        grupo.MapPut("/{id:guid}", Actualizar);
-        grupo.MapPost("/{id:guid}/activo", CambiarActivo);
+        grupo.MapPost("/", Crear).RequireAuthorization(PoliticasDeOperador.ConfigurarEmpresa);
+        grupo.MapPut("/{id:guid}", Actualizar).RequireAuthorization(PoliticasDeOperador.ConfigurarEmpresa);
+        grupo.MapPost("/{id:guid}/activo", CambiarActivo).RequireAuthorization(PoliticasDeOperador.ConfigurarEmpresa);
     }
 
     private static async Task<IResult> Listar(

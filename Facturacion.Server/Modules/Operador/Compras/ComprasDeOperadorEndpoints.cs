@@ -18,28 +18,9 @@ public static class ComprasDeOperadorEndpoints
 
         grupo.MapGet("/", Listar);
 
-        // ── Por qué este endpoint NO lleva FiltroDeIdempotencia ──────────────────────────
-        //
-        // Crea saldo, así que debería llevarlo. No lo lleva porque no puede: ese filtro
-        // registra la clave en ClavesIdempotencia, que es una entidad de empresa —EmpresaId
-        // obligatorio, bajo el filtro global y bajo el interceptor de sellado— y el operador
-        // no tiene empresa activa. Intentarlo revienta con "se pidió la empresa activa en una
-        // petición que no la tiene".
-        //
-        // Hacerlo compatible exigiría volver EmpresaId opcional en esa tabla y tocar el filtro
-        // global y el interceptor: infraestructura que hoy protege la compra del inquilino y
-        // tiene pruebas. No vale el riesgo, porque la propiedad que de verdad importa —que
-        // acreditar dos veces no entregue timbres dos veces— ya está garantizada aguas abajo:
-        // dbo.AcreditarCompra solo actúa si la compra sigue pendiente, dentro de una
-        // transacción con bloqueo de renglón. El segundo intento recibe un 409 y la bolsa no
-        // se mueve.
-        //
-        // Lo único que se pierde es que un reintento de red conteste 200 en vez de 409. Si
-        // algún día se quiere eso, el camino es hacer opcional la tenencia de la clave, no
-        // añadir el filtro aquí sin más.
-        grupo.MapPost("/{id:guid}/acreditar", Acreditar);
-
-        grupo.MapPost("/{id:guid}/rechazar", Rechazar);
+        // Acreditar y rechazar mueven dinero/saldo → permiso ComprarTimbres
+        grupo.MapPost("/{id:guid}/acreditar", Acreditar).RequireAuthorization(PoliticasDeOperador.ComprarTimbres);
+        grupo.MapPost("/{id:guid}/rechazar", Rechazar).RequireAuthorization(PoliticasDeOperador.ComprarTimbres);
     }
 
     private static async Task<IResult> Listar(
