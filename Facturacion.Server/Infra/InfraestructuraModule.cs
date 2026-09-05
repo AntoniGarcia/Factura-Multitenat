@@ -178,7 +178,10 @@ public static class InfraestructuraModule
             throw new InvalidOperationException(
                 "Falta 'Correo:Servidor'. Se configura en variables de entorno; nunca en el repositorio.");
 
-        if (servidorConfigurado)
+        // En Development siempre se registra Smtp: el operador puede configurar el servidor
+        // desde la UI en cualquier momento. Si el servidor está vacío, SmtpClient fallará al
+        // enviar, que es el comportamiento esperado (se registra en bitácora y se ignora).
+        if (servidorConfigurado || entorno.IsDevelopment())
             servicios.AddScoped<IServicioDeCorreo, ServicioDeCorreoSmtp>();
         else
             servicios.AddScoped<IServicioDeCorreo, ServicioDeCorreoConsola>();
