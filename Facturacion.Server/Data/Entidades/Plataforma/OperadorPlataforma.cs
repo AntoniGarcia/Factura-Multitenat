@@ -63,4 +63,7 @@ public sealed class OperadorPlataforma
     public int BloqueosConsecutivos { get; set; }
 
     public ICollection<RefreshTokenOperador> RefreshTokens { get; set; } = [];
+
+    /// <summary>Permisos asignados a este operador. Claves de <see cref="Facturacion.Shared.Comun.Permisos"/>.</summary>
+    public ICollection<PermisoOperador> Permisos { get; set; } = [];
 }

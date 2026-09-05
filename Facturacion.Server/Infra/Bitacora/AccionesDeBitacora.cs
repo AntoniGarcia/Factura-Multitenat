@@ -91,6 +91,10 @@ public static class AccionesDeBitacora
     public const string InicioSesionOperadorFallido = "inicio_sesion_operador_fallido";
     public const string CierreSesionOperador = "cierre_sesion_operador";
     public const string OperadorCreado = "operador_creado";
+    public const string OperadorActualizado = "operador_actualizado";
+    public const string OperadorPermisosCambiados = "operador_permisos_cambiados";
+    public const string OperadorDesactivado = "operador_desactivado";
+    public const string OperadorReactivado = "operador_reactivado";
     public const string PaqueteCreado = "paquete_creado";
     public const string PaqueteActualizado = "paquete_actualizado";
     public const string PaqueteDesactivado = "paquete_desactivado";
@@ -98,6 +102,12 @@ public static class AccionesDeBitacora
     public const string CompraRechazada = "compra_rechazada";
     public const string MembresiaRegistrada = "membresia_registrada";
     public const string MembresiaCancelada = "membresia_cancelada";
+    public const string EmpresaDesactivadaPorOperador = "empresa_desactivada_por_operador";
+    public const string EmpresaReactivadaPorOperador = "empresa_reactivada_por_operador";
+    public const string TimbresAsignados = "timbres_asignados_por_operador";
+    public const string CorreoDeCuentaCambiadoPorOperador = "correo_de_cuenta_cambiado_por_operador";
+    public const string CorreoDeUsuarioCambiadoPorOperador = "correo_de_usuario_cambiado_por_operador";
+    public const string AccesoAEmpresaEliminadoPorOperador = "acceso_a_empresa_eliminado_por_operador";
 }
 
 /// <summary>Entidades sobre las que registra la bitácora.</summary>

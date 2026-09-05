@@ -28,6 +28,11 @@ public sealed class OperadorPlataformaConfiguracion : IEntityTypeConfiguration<O
             .WithOne(t => t.Operador)
             .HasForeignKey(t => t.OperadorId)
             .OnDelete(DeleteBehavior.Restrict);
+
+        constructor.HasMany(o => o.Permisos)
+            .WithOne(p => p.Operador)
+            .HasForeignKey(p => p.OperadorId)
+            .OnDelete(DeleteBehavior.Cascade);
     }
 }
 
