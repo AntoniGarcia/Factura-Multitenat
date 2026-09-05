@@ -1,6 +1,7 @@
 using System.Security.Cryptography;
 using Facturacion.Server.Data;
 using Facturacion.Server.Data.Entidades.Plataforma;
+using Facturacion.Shared.Comun;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 
@@ -60,7 +61,11 @@ public static class OperadoresCli
             CorreoNormalizado = normalizado,
             HashContrasena = string.Empty,
             Activo = true,
-            FechaAltaUtc = DateTime.UtcNow
+            FechaAltaUtc = DateTime.UtcNow,
+            // Quien se da de alta por consola es el dueño del SaaS: nace con los seis permisos,
+            // igual que el principal. Si hiciera falta un operador con menos, se le quitan luego
+            // desde el panel (ARQUITECTURA.md §4).
+            Permisos = Permisos.Todos.Select(p => new PermisoOperador { Permiso = p }).ToList()
         };
 
         operador.HashContrasena = hasher.HashPassword(operador, contrasena);
