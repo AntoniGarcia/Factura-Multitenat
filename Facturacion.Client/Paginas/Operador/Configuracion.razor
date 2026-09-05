@@ -2,11 +2,15 @@
 @layout LayoutDeOperador
 @attribute [Authorize(Policy = PoliticasDelPanel.PoliticaDeOperador)]
 @using Facturacion.Client.Componentes.Comunes
+@using Facturacion.Client.Paginas.Operador.Operadores
 @using Facturacion.Client.Servicios.Operador
 @using Facturacion.Client.Servicios.Plataforma
 @using Facturacion.Shared.Comun
+@using Facturacion.Shared.Operador
 @inject ServicioDePerfilDeOperador Perfil
 @inject ServicioDeSesionDeOperador Sesion
+@inject ServicioDeConfiguracionDelSistema ConfiguracionDelSistema
+@inject IDialogService Dialogos
 @inject NavigationManager Navegacion
 
 <PageTitle>Configuración</PageTitle>
@@ -77,6 +81,51 @@
         </MudButton>
     </div>
 
+    <h2 class="seccion-titulo">Correo saliente (SMTP)</h2>
+    <p class="seccion-ayuda">De aquí salen todas las notificaciones del sistema. Es la cuenta del SaaS,
+        no la de ninguna empresa.</p>
+
+    @if (_sistemaCargando)
+    {
+        <p class="tabla-datos-estado">Cargando…</p>
+    }
+    else
+    {
+        <div class="rejilla-campos">
+            <MudTextField @bind-Value="_servidor" Label="Servidor SMTP" Placeholder="smtp.ejemplo.com" />
+            <MudTextField @bind-Value="_puertoTexto" Label="Puerto" Class="cifra-tabular" />
+            <MudTextField @bind-Value="_usuarioSmtp" Label="Usuario" />
+            <MudTextField @bind-Value="_contrasenaSmtp" Label="Contraseña"
+                          InputType="@(_verSmtp ? InputType.Text : InputType.Password)"
+                          Adornment="Adornment.End"
+                          AdornmentIcon="@(_verSmtp ? Icons.Material.Filled.VisibilityOff : Icons.Material.Filled.Visibility)"
+                          OnAdornmentClick="@(() => _verSmtp = !_verSmtp)" />
+            <MudTextField @bind-Value="_remitenteCorreo" Label="Correo del remitente"
+                          InputType="InputType.Email" />
+            <MudTextField @bind-Value="_remitenteNombre" Label="Nombre del remitente" />
+        </div>
+
+        <div class="rejilla-campos">
+            <MudSwitch @bind-Value="_usarTls" Label="Usar TLS" Color="Color.Primary" />
+        </div>
+    }
+
+    <h2 class="seccion-titulo">Identidad del sistema</h2>
+
+    <div class="rejilla-campos">
+        <MudTextField @bind-Value="_nombreDelSistema" Label="Nombre del sistema"
+                      HelperText="El nombre que aparece en los correos y documentos."
+                      MaxLength="128" />
+    </div>
+
+    <div class="acciones-formulario">
+        <MudButton Variant="Variant.Filled" Color="Color.Primary"
+                   Disabled="@(_sistemaCargando || _trabajando)"
+                   OnClick="GuardarConfiguracionDelSistema">
+            Guardar configuración del sistema
+        </MudButton>
+    </div>
+
 </TarjetaFormulario>
 
 @code {
@@ -92,6 +141,17 @@
     private string _contrasenaNueva = string.Empty;
     private string _contrasenaRepetida = string.Empty;
 
+    private bool _sistemaCargando = true;
+    private bool _verSmtp;
+    private string _servidor = string.Empty;
+    private string _puertoTexto = string.Empty;
+    private string _usuarioSmtp = string.Empty;
+    private string _contrasenaSmtp = string.Empty;
+    private string _remitenteCorreo = string.Empty;
+    private string _remitenteNombre = string.Empty;
+    private bool _usarTls = true;
+    private string _nombreDelSistema = string.Empty;
+
     private bool PuedeCambiarContrasena =>
         !_trabajando &&
         !string.IsNullOrWhiteSpace(_contrasenaActual) &&
@@ -104,6 +164,28 @@
 
         _nombre = sesion.Nombre;
         _correo = sesion.Correo;
+    }
+
+    protected override async Task OnAfterRenderAsync(bool primeraVez)
+    {
+        if (!primeraVez) return;
+
+        var configuracion = await ConfiguracionDelSistema.ObtenerAsync();
+
+        if (configuracion is not null)
+        {
+            _servidor = configuracion.Servidor;
+            _puertoTexto = configuracion.Puerto.ToString();
+            _usuarioSmtp = configuracion.Usuario;
+            _contrasenaSmtp = configuracion.Contrasena;
+            _remitenteCorreo = configuracion.RemitenteCorreo;
+            _remitenteNombre = configuracion.RemitenteNombre;
+            _usarTls = configuracion.UsarTls;
+            _nombreDelSistema = configuracion.NombreDelSistema;
+        }
+
+        _sistemaCargando = false;
+        StateHasChanged();
     }
 
     private async Task GuardarNombre()
@@ -159,6 +241,59 @@
         // queda en memoria ya no sirve para nada.
         Sesion.Olvidar();
         Navegacion.NavigateTo("/operador/iniciar-sesion", replace: true);
+    }
+
+    private async Task GuardarConfiguracionDelSistema()
+    {
+        if (_trabajando || _sistemaCargando) return;
+
+        if (!int.TryParse(_puertoTexto, out var puerto) || puerto is < 1 or > 65535)
+        {
+            _error = new DetalleProblema(
+                Titulo: "Puerto no válido",
+                Detalle: "El puerto debe ser un número entre 1 y 65535.",
+                Estado: 400,
+                Tipo: "https://facturacion.com/errors/puerto-invalido",
+                Instancia: null,
+                TraceId: Guid.NewGuid().ToString("N"),
+                Errores: null);
+            return;
+        }
+
+        var parametros = new DialogParameters<DialogoConfirmarContrasenaOperador>
+        {
+            { x => x.Mensaje, "Vas a cambiar la configuración del correo saliente y el nombre del sistema. " +
+                              "Esto afecta a todos los correos que envía el SaaS." },
+            { x => x.TextoConfirmar, "Guardar cambios" }
+        };
+
+        var referencia = await Dialogos.ShowAsync<DialogoConfirmarContrasenaOperador>(
+            "Configuración del sistema", parametros);
+        var resultado = await referencia.Result;
+
+        if (resultado is not { Canceled: false, Data: string contrasena }) return;
+
+        _trabajando = true;
+        _error = null;
+        _aviso = null;
+
+        var peticion = new PeticionGuardarConfiguracionDelSistema(
+            _servidor.Trim(),
+            puerto,
+            _usuarioSmtp.Trim(),
+            _contrasenaSmtp,
+            _remitenteCorreo.Trim(),
+            _remitenteNombre.Trim(),
+            _usarTls,
+            _nombreDelSistema.Trim(),
+            contrasena);
+
+        _error = await ConfiguracionDelSistema.GuardarAsync(peticion);
+
+        _trabajando = false;
+
+        if (_error is null)
+            _aviso = "Configuración del sistema guardada y aplicada.";
     }
 
 }

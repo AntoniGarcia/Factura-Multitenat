@@ -1,0 +1,225 @@
+@page "/operador/operadores"
+@layout LayoutDeOperador
+@attribute [Authorize(Policy = PoliticasDelPanel.PoliticaDeOperador)]
+@using Facturacion.Client.Componentes.Comunes
+@using Facturacion.Client.Servicios.Operador
+@using Facturacion.Shared.Operador
+@inject ServicioDeOperadores Operadores
+@inject IDialogService Dialogos
+@inject IServicioDeConfirmacion Confirmacion
+
+<PageTitle>Operadores</PageTitle>
+<TituloDePagina Texto="Operadores" />
+
+<PanelErrores Problema="_error" />
+
+@if (_aviso is not null)
+{
+    <div class="aviso-documentos" role="status">@_aviso</div>
+}
+
+<div class="filtros-documentos">
+    <MudTextField T="string" Value="_texto" ValueChanged="AlBuscar" Label="Buscar"
+                  Placeholder="Nombre o correo" Immediate="false" DebounceInterval="300"
+                  Adornment="Adornment.Start" AdornmentIcon="@Icons.Material.Filled.Search" />
+    <MudButton Color="Color.Primary" Variant="Variant.Filled" StartIcon="@Icons.Material.Filled.PersonAdd"
+               OnClick="Nuevo" Class="ml-4">Nuevo operador</MudButton>
+</div>
+
+<TablaDatos T="OperadorDto"
+            @ref="_tabla"
+            Columnas="_columnas"
+            CargarPagina="CargarAsync"
+            TextoEntidad="operadores"
+            TextoSinDatos="No hay operadores que coincidan." />
+
+@code {
+    private TablaDatos<OperadorDto>? _tabla;
+    private DetalleProblema? _error;
+    private string? _aviso;
+    private bool _trabajando;
+    private string _texto = string.Empty;
+
+    private IReadOnlyList<ColumnaDeTabla<OperadorDto>> _columnas = [];
+
+    protected override void OnInitialized() => _columnas =
+    [
+        new("Operador", u => @<div>
+                             <div>@u.Nombre</div>
+                             <div class="texto-secundario">@u.Correo</div>
+                         </div>),
+        new("Permisos", u => @<div class="permisos-chips">
+                               @foreach (var p in u.Permisos)
+                               {
+                                   <span class="permiso-chip">@Permisos.EtiquetaCorta(p)</span>
+                               }
+                           </div>),
+        new("Alta", u => @<span class="cifra-tabular">@u.FechaAltaUtc.ToLocalTime().ToString("dd/MM/yyyy")</span>),
+        new("Estado", u => @<span class="indicador-estado indicador-estado-@(u.Activo ? "timbrada" : "borrador")">
+                                 @(u.Activo ? "Activo" : "Desactivado")
+                             </span>),
+        new("", u => @<div class="acciones-renglon">
+                           <MudButton Size="Size.Small" Disabled="@_trabajando"
+                                      OnClick="@(() => Editar(u))">
+                               Editar
+                           </MudButton>
+                           <MudButton Size="Size.Small" Disabled="@_trabajando"
+                                      OnClick="@(() => CambiarPermisos(u))">
+                               Permisos
+                           </MudButton>
+                           <MudButton Size="Size.Small" Disabled="@_trabajando"
+                                      OnClick="@(() => CambiarActivo(u))"
+                                      Color="@(u.Activo ? Color.Error : Color.Success)">
+                               @(u.Activo ? "Desactivar" : "Activar")
+                           </MudButton>
+                       </div>)
+    ];
+
+    private async Task<ResultadoDePagina<OperadorDto>> CargarAsync(
+        PeticionDePagina peticion, CancellationToken ct)
+    {
+        var pagina = await Operadores.ListarAsync(_texto, null, peticion.Pagina, peticion.TamanoPagina, ct);
+
+        return new ResultadoDePagina<OperadorDto>(pagina.Elementos, pagina.Total);
+    }
+
+    private async Task AlBuscar(string texto)
+    {
+        _texto = texto;
+        await RecargarAsync();
+    }
+
+    private Task RecargarAsync() => _tabla?.RecargarAsync() ?? Task.CompletedTask;
+
+    private async Task Nuevo()
+    {
+        var parametros = new DialogParameters<FormularioDeOperador>
+        {
+            { x => x.Modo, ModoFormulario.Crear }
+        };
+
+        var referencia = await Dialogos.ShowAsync<FormularioDeOperador>("Nuevo operador", parametros, new DialogOptions { MaxWidth = MaxWidth.Medium, FullWidth = true });
+        var resultado = await referencia.Result;
+
+        if (resultado is { Canceled: false, Data: true })
+        {
+            _aviso = "Operador creado correctamente.";
+            await RecargarAsync();
+        }
+    }
+
+    private async Task Editar(OperadorDto operador)
+    {
+        var parametros = new DialogParameters<FormularioDeOperador>
+        {
+            { x => x.Modo, ModoFormulario.Editar },
+            { x => x.Operador, operador }
+        };
+
+        var referencia = await Dialogos.ShowAsync<FormularioDeOperador>("Editar operador", parametros, new DialogOptions { MaxWidth = MaxWidth.Medium, FullWidth = true });
+        var resultado = await referencia.Result;
+
+        if (resultado is { Canceled: false, Data: true })
+        {
+            _aviso = "Operador actualizado correctamente.";
+            await RecargarAsync();
+        }
+    }
+
+    private async Task CambiarPermisos(OperadorDto operador)
+    {
+        var parametros = new DialogParameters<DialogoPermisosOperador>
+        {
+            { x => x.NombreOperador, operador.Nombre },
+            { x => x.PermisosActuales, operador.Permisos }
+        };
+
+        var referencia = await Dialogos.ShowAsync<DialogoPermisosOperador>("Permisos de " + operador.Nombre, parametros);
+        var resultado = await referencia.Result;
+
+        if (resultado is not { Canceled: false, Data: List<string> nuevosPermisos }) return;
+
+        _trabajando = true;
+        _error = null;
+        _aviso = null;
+
+        var contrasena = await PedirContrasenaOperadorAsync("cambiar los permisos de " + operador.Nombre);
+        if (contrasena is null) { _trabajando = false; return; }
+
+        var (exito, error) = await Operadores.CambiarPermisosAsync(operador.Id, new PeticionPermisosOperador(nuevosPermisos), contrasena, CancellationToken.None);
+
+        _error = error;
+        _trabajando = false;
+
+        if (_error is null)
+            _aviso = "Permisos actualizados.";
+
+        await RecargarAsync();
+    }
+
+    private async Task CambiarActivo(OperadorDto operador)
+    {
+        if (_trabajando) return;
+
+        string? motivo = null;
+
+        if (operador.Activo)
+        {
+            var parametros = new DialogParameters<DialogoDeMotivo>
+            {
+                { x => x.Titulo, "Desactivar operador" },
+                { x => x.Mensaje, $"«{operador.Nombre}» ({operador.Correo}) dejará de poder entrar al panel y se cerrarán sus sesiones." },
+                { x => x.EtiquetaCampo, "Motivo de la desactivación" },
+                { x => x.TextoConfirmar, "Desactivar" }
+            };
+
+            var referencia = await Dialogos.ShowAsync<DialogoDeMotivo>("Desactivar operador", parametros);
+            var resultado = await referencia.Result;
+
+            if (resultado is not { Canceled: false, Data: string texto }) return;
+
+            motivo = texto;
+        }
+        else
+        {
+            var confirmado = await Confirmacion.ConfirmarAsync(
+                "Activar operador",
+                $"«{operador.Nombre}» volverá a poder entrar al panel.",
+                "Activar");
+
+            if (!confirmado) return;
+        }
+
+        _trabajando = true;
+        _error = null;
+        _aviso = null;
+
+        var contrasena = await PedirContrasenaOperadorAsync((operador.Activo ? "desactivar" : "activar") + " a " + operador.Nombre);
+        if (contrasena is null) { _trabajando = false; return; }
+
+        var (exito, error) = await Operadores.CambiarActivoAsync(operador.Id, new PeticionCambiarActivoOperador(!operador.Activo, motivo), contrasena, CancellationToken.None);
+
+        _error = error;
+        _trabajando = false;
+
+        if (_error is null)
+            _aviso = operador.Activo ? "Operador desactivado." : "Operador activado.";
+
+        await RecargarAsync();
+    }
+
+    private async Task<string?> PedirContrasenaOperadorAsync(string accion)
+    {
+        var parametros = new DialogParameters<DialogoConfirmarContrasenaOperador>
+        {
+            { x => x.Mensaje, $"Escribe tu contraseña de operador para {accion}." },
+            { x => x.EtiquetaCampo, "Tu contraseña" },
+            { x => x.TextoConfirmar, "Confirmar" }
+        };
+
+        var referencia = await Dialogos.ShowAsync<DialogoConfirmarContrasenaOperador>("Confirmar contraseña", parametros);
+        var resultado = await referencia.Result;
+
+        return resultado is { Canceled: false, Data: string contrasena } ? contrasena : null;
+    }
+}

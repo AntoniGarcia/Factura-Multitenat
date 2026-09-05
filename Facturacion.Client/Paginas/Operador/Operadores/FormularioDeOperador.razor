@@ -1,0 +1,154 @@
+@using Facturacion.Client.Componentes.Comunes
+@using Facturacion.Client.Servicios.Operador
+@using Facturacion.Shared.Operador
+@using Facturacion.Client.Paginas.Operador.Operadores
+@inject ServicioDeOperadores Operadores
+@inject IDialogService Dialogos
+
+<MudDialog>
+    <DialogContent>
+        <PanelErrores Problema="_error" />
+
+        @if (_resultado is not null)
+        {
+            <p class="mensaje-exito" role="status">@_resultado.Mensaje</p>
+
+            <div class="tarjeta-formulario-acciones">
+                <MudButton Variant="Variant.Text" OnClick="Limpiar">Crear otro</MudButton>
+                <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="CerrarConExito">Cerrar</MudButton>
+            </div>
+        }
+        else
+        {
+            <EditForm Model="this" OnValidSubmit="Guardar">
+                <div class="rejilla-campos">
+                    <MudTextField @bind-Value="_correo" Label="Correo" Immediate="true" InputType="InputType.Email" MaxLength="254" Required="true" />
+                    <MudTextField @bind-Value="_nombre" Label="Nombre" Immediate="true" MaxLength="128" Required="true" />
+                    <MudTextField @bind-Value="_contrasena" Label="@(_modo == ModoFormulario.Crear ? "Contraseña" : "Contraseña (dejar en blanco para no cambiar)")" Immediate="true"
+                                  InputType="@(_verContrasena ? InputType.Text : InputType.Password)"
+                                  Adornment="Adornment.End"
+                                  AdornmentIcon="@(_verContrasena ? Icons.Material.Filled.VisibilityOff : Icons.Material.Filled.Visibility)"
+                                  OnAdornmentClick="@(() => _verContrasena = !_verContrasena)"
+                                  MaxLength="128"
+                                  Required="@(_modo == ModoFormulario.Crear)" />
+                    <MudTextField @bind-Value="_contrasenaOperador" Label="Tu contraseña de operador" Immediate="true"
+                                  InputType="@(_verContrasenaOp ? InputType.Text : InputType.Password)"
+                                  Adornment="Adornment.End"
+                                  AdornmentIcon="@(_verContrasenaOp ? Icons.Material.Filled.VisibilityOff : Icons.Material.Filled.Visibility)"
+                                  OnAdornmentClick="@(() => _verContrasenaOp = !_verContrasenaOp)"
+                                  MaxLength="128"
+                                  Required="true" />
+                </div>
+
+                @if (_modo == ModoFormulario.Crear)
+                {
+                    <p class="seccion-ayuda">
+                        La contraseña la fijas tú y se la comunicas al operador por fuera del sistema.
+                        Si la olvida, se la cambias tú desde el listado con el botón «Editar».
+                    </p>
+                }
+
+                <h2 class="seccion-titulo">Permisos</h2>
+                <SelectorDePermisos @bind-Value="_permisos" Deshabilitado="@_guardando" />
+
+                <div class="tarjeta-formulario-acciones">
+                    <MudButton Variant="Variant.Text" OnClick="Cancelar">Cancelar</MudButton>
+                    <MudButton Variant="Variant.Filled" Color="Color.Primary" ButtonType="ButtonType.Submit" Disabled="@_guardando">
+                        @(_guardando ? "Guardando…" : (_modo == ModoFormulario.Crear ? "Crear operador" : "Guardar cambios"))
+                    </MudButton>
+                </div>
+            </EditForm>
+        }
+    </DialogContent>
+</MudDialog>
+
+@code {
+    [CascadingParameter]
+    private IMudDialogInstance Dialogo { get; set; } = default!;
+
+    [Parameter, EditorRequired]
+    public ModoFormulario Modo { get; set; }
+
+    [Parameter]
+    public OperadorDto? Operador { get; set; }
+
+    private string _correo = string.Empty;
+    private string _nombre = string.Empty;
+    private string _contrasena = string.Empty;
+    private string _contrasenaOperador = string.Empty;
+    private bool _verContrasena;
+    private bool _verContrasenaOp;
+    private List<string> _permisos = [];
+    private RespuestaFormularioOperador? _resultado;
+    private DetalleProblema? _error;
+    private bool _guardando;
+    private ModoFormulario _modo;
+
+    protected override void OnInitialized()
+    {
+        _modo = Modo;
+        
+        if (Modo == ModoFormulario.Editar && Operador is not null)
+        {
+            _correo = Operador.Correo;
+            _nombre = Operador.Nombre;
+            _permisos = [.. Operador.Permisos];
+        }
+    }
+
+    private async Task Guardar()
+    {
+        _guardando = true;
+        _error = null;
+
+        try
+        {
+            if (_modo == ModoFormulario.Crear)
+            {
+                var peticion = new PeticionGuardarOperador(_correo, _nombre, _contrasena, _permisos);
+                var (exito, error) = await Operadores.CrearAsync(peticion, _contrasenaOperador, CancellationToken.None);
+
+                _error = error;
+                _resultado = exito is not null ? new RespuestaFormularioOperador("Operador creado correctamente.") : null;
+
+                if (exito is not null)
+                {
+                    _contrasena = string.Empty;
+                    _contrasenaOperador = string.Empty;
+                }
+            }
+            else if (Operador is not null)
+            {
+                var peticion = new PeticionGuardarOperador(_correo, _nombre, _contrasena, _permisos);
+                var (exito, error) = await Operadores.ActualizarAsync(Operador.Id, peticion, _contrasenaOperador, CancellationToken.None);
+
+                _error = error;
+                _resultado = exito is not null ? new RespuestaFormularioOperador("Operador actualizado correctamente.") : null;
+
+                if (exito is not null)
+                    _contrasenaOperador = string.Empty;
+            }
+        }
+        finally
+        {
+            _guardando = false;
+        }
+    }
+
+    private void Cancelar() => Dialogo.Cancel();
+
+    private void Limpiar()
+    {
+        _correo = string.Empty;
+        _nombre = string.Empty;
+        _contrasena = string.Empty;
+        _contrasenaOperador = string.Empty;
+        _verContrasena = false;
+        _verContrasenaOp = false;
+        _permisos = [];
+        _resultado = null;
+        _error = null;
+    }
+
+    private void CerrarConExito() => Dialogo.Close(DialogResult.Ok(true));
+}
