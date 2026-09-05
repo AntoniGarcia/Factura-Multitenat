@@ -38,6 +38,8 @@ builder.Services.AddScoped<ServicioDeClientesDePlataforma>();
 builder.Services.AddScoped<ServicioDeUsuariosDePlataforma>();
 builder.Services.AddScoped<ServicioDeTableroDeOperador>();
 builder.Services.AddScoped<ServicioDePerfilDeOperador>();
+builder.Services.AddScoped<ServicioDeOperadores>();
+builder.Services.AddScoped<ServicioDeConfiguracionDelSistema>();
 builder.Services.AddSingleton<ServicioDeTema>();
 builder.Services.AddSingleton<EstadoDeEncabezado>();
 
@@ -70,7 +72,7 @@ builder.Services.AddSingleton<ServicioDeInstalacion>();
 // rechaza igual la operación aunque alguien llegue a la ruta a mano (ARQUITECTURA.md §4).
 builder.Services.AddAuthorizationCore(opciones =>
 {
-    foreach (var permiso in Permisos.Todos)
+    foreach (var permiso in Facturacion.Shared.Comun.Permisos.Todos)
         opciones.AddPolicy(permiso, politica => politica
             .RequireAuthenticatedUser()
             .RequireClaim(ClavesDeClaim.Permiso, permiso));

@@ -7,10 +7,9 @@ public sealed record ElementoDeMenuOperador(string Ruta, string Etiqueta, string
 /// Las secciones del panel del proveedor del SaaS.
 ///
 /// <para>
-/// A diferencia del menú del inquilino, aquí no hay permisos que filtren: dentro del panel el
-/// operador lo ve todo. La separación de poderes de este sistema está entre el proveedor y
-/// sus clientes, no dentro del proveedor; si algún día hace falta distinguir a quien mira de
-/// quien acredita, se añade el permiso entonces y no antes.
+/// El menú muestra las secciones completas; las operaciones sensibles se guardan por permiso
+/// individual del operador en el lado del Server. Ocultar una entrada aquí solo es comodidad
+/// visual, no protección: la defensa real es que el Server rechace la operación.
 /// </para>
 /// </summary>
 public static class MenuDeOperador
@@ -22,6 +21,7 @@ public static class MenuDeOperador
         new("/operador/compras", "Compras", "receipt_long"),
         new("/operador/cuentas", "Clientes", "apartment"),
         new("/operador/usuarios", "Usuarios", "people"),
+        new("/operador/operadores", "Operadores", "supervisor_account"), 
         new("/operador/configuracion", "Configuración", "settings")
     ];
 }
