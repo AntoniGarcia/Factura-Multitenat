@@ -77,6 +77,13 @@ builder.Services.AddAuthorizationCore(opciones =>
             .RequireAuthenticatedUser()
             .RequireClaim(ClavesDeClaim.Permiso, permiso));
 
+    // Las trece del panel del proveedor, igual que el Server: ver/administrar por sección.
+    // Misma advertencia que las de arriba: aquí solo sirven para enrutar y ocultar.
+    foreach (var permiso in Facturacion.Shared.Operador.PermisosDePanel.Todos)
+        opciones.AddPolicy(permiso, politica => politica
+            .RequireAuthenticatedUser()
+            .RequireClaim(ClavesDeClaim.Permiso, permiso));
+
     // La del panel del proveedor. Misma advertencia que las de arriba: aquí solo sirve para
     // enrutar y ocultar; quien de verdad decide es el Server.
     opciones.AddPolicy(PoliticaDeOperador, politica => politica

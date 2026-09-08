@@ -1,3 +1,5 @@
+using Facturacion.Shared.Operador;
+
 namespace Facturacion.Client.Servicios.Operador;
 
 /// <summary>
@@ -8,21 +10,20 @@ public static class PoliticasDelPanel
 {
     public const string PoliticaDeOperador = "operador";
 
-    // Permisos individuales (igual que Permisos.Todos del Shared)
-    public const string Timbrar = "timbrar";
-    public const string Cancelar = "cancelar";
-    public const string AdministrarUsuarios = "administrar_usuarios";
-    public const string ComprarTimbres = "comprar_timbres";
-    public const string VerReportes = "ver_reportes";
-    public const string ConfigurarEmpresa = "configurar_empresa";
+    // Permisos individuales del panel (igual que PermisosDePanel.Todos del Shared)
+    public const string VerPaquetes = PermisosDePanel.VerPaquetes;
+    public const string AdministrarPaquetes = PermisosDePanel.AdministrarPaquetes;
+    public const string VerCompras = PermisosDePanel.VerCompras;
+    public const string AcreditarCompras = PermisosDePanel.AcreditarCompras;
+    public const string VerClientes = PermisosDePanel.VerClientes;
+    public const string AdministrarClientes = PermisosDePanel.AdministrarClientes;
+    public const string AsignarTimbres = PermisosDePanel.AsignarTimbres;
+    public const string VerUsuarios = PermisosDePanel.VerUsuarios;
+    public const string AdministrarUsuarios = PermisosDePanel.AdministrarUsuarios;
+    public const string VerOperadores = PermisosDePanel.VerOperadores;
+    public const string AdministrarOperadores = PermisosDePanel.AdministrarOperadores;
+    public const string VerConfiguracion = PermisosDePanel.VerConfiguracion;
+    public const string AdministrarConfiguracion = PermisosDePanel.AdministrarConfiguracion;
 
-    public static IReadOnlyList<string> Permisos { get; } =
-    [
-        Timbrar,
-        Cancelar,
-        AdministrarUsuarios,
-        ComprarTimbres,
-        VerReportes,
-        ConfigurarEmpresa
-    ];
+    public static IReadOnlyList<string> Permisos { get; } = PermisosDePanel.Todos;
 }

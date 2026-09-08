@@ -70,8 +70,9 @@ public sealed class ProveedorEstadoAutenticacion : AuthenticationStateProvider, 
     }
 
     /// <summary>
-    /// La identidad del operador lleva su claim y nada de tenencia, igual que su token: así
-    /// una pantalla del inquilino protegida por permiso tampoco se dibuja para él.
+    /// La identidad del operador lleva su claim, sus permisos del panel y nada de tenencia,
+    /// igual que su token: así una pantalla del inquilino protegida por permiso tampoco se
+    /// dibuja para él.
     /// </summary>
     private static AuthenticationState EstadoDeOperador(Facturacion.Shared.Operador.SesionDeOperadorDto operador)
     {
@@ -82,6 +83,11 @@ public sealed class ProveedorEstadoAutenticacion : AuthenticationStateProvider, 
             new(ClaimTypes.Email, operador.Correo),
             new(ClavesDeClaim.Operador, operador.OperadorId.ToString())
         };
+
+        // Los permisos del panel viajan con la sesión y también como claims, con la misma
+        // clave (ClavesDeClaim.Permiso) que en el Server: así las políticas del cliente
+        // pueden enrutar y ocultar por sección.
+        claims.AddRange(operador.Permisos.Select(p => new Claim(ClavesDeClaim.Permiso, p)));
 
         return new AuthenticationState(new ClaimsPrincipal(new ClaimsIdentity(claims, "sesion-operador")));
     }
