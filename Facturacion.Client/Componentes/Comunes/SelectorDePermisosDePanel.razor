@@ -1,0 +1,91 @@
+@using Facturacion.Shared.Operador
+
+@*
+    Los permisos del panel, por sección y con jerarquía. Cada sección se abre con su «ver»;
+    al marcarla se muestran las acciones de ese módulo (administrar, acreditar, asignar…).
+    No hay atajo de "todo" ni de rol: por permiso y solo por permiso.
+
+    La jerarquía no es solo visual: una acción no puede quedar marcada sin su sección, y lo que
+    arma este selector ya sale coherente. Si alguien llegara a pegar una petición con una acción
+    sin su sección, el servidor la rechaza igual (no es comodidad visual, es la defensa de fondo).
+*@
+
+@foreach (var seccion in PermisosDePanel.Secciones)
+{
+    var verMarcado = Value.Contains(seccion.Ver.Clave);
+
+    <div class="seccion-permisos @(verMarcado ? "abierta" : null)">
+        <MudCheckBox T="bool"
+                      Value="@verMarcado"
+                      ValueChanged="@(marcado => CambiarVer(seccion, marcado))"
+                      Label="@seccion.Ver.Etiqueta"
+                      Disabled="@Deshabilitado" />
+
+        @if (verMarcado && seccion.Acciones.Count > 0)
+        {
+            <div class="permisos-acciones">
+                @foreach (var accion in seccion.Acciones)
+                {
+                    <MudCheckBox T="bool"
+                                  Value="@Value.Contains(accion.Clave)"
+                                  ValueChanged="@(marcado => CambiarAccion(seccion, accion.Clave, marcado))"
+                                  Label="@accion.Etiqueta"
+                                  Disabled="@Deshabilitado" />
+                }
+            </div>
+        }
+    </div>
+}
+
+@code {
+    [Parameter, EditorRequired]
+    public List<string> Value { get; set; } = [];
+
+    [Parameter]
+    public EventCallback<List<string>> ValueChanged { get; set; }
+
+    [Parameter]
+    public bool Deshabilitado { get; set; }
+
+    /// <summary>
+    /// Marcar el «ver» muestra las acciones de la sección. Desmarcarlo las quita todas: una
+    /// acción sin su sección no se sostiene (el servidor hace valer lo mismo).
+    /// </summary>
+    private async Task CambiarVer(SeccionDePermisosDePanel seccion, bool marcado)
+    {
+        if (marcado)
+        {
+            await ValueChanged.InvokeAsync(SobreLista(Value, seccion.Ver.Clave, marcado: true));
+            return;
+        }
+
+        var clavesDeLaSeccion = seccion.Acciones.Select(a => a.Clave).Append(seccion.Ver.Clave);
+        await ValueChanged.InvokeAsync([.. Value.Where(p => !clavesDeLaSeccion.Contains(p))]);
+    }
+
+    /// <summary>
+    /// Al marcar una acción se asegura el «ver» de su sección: no puede haber una sin la otra.
+    /// </summary>
+    private async Task CambiarAccion(SeccionDePermisosDePanel seccion, string clave, bool marcado)
+    {
+        List<string> nuevo = marcado
+            ? SobreAccion(Value, seccion.Ver.Clave, clave)
+            : [.. Value.Where(p => p != clave)];
+
+        await ValueChanged.InvokeAsync(nuevo);
+    }
+
+    private static List<string> SobreLista(List<string> actual, string clave, bool marcado)
+    {
+        if (marcado && !actual.Contains(clave)) return [.. actual, clave];
+        if (!marcado) return [.. actual.Where(p => p != clave)];
+        return actual;
+    }
+
+    /// <summary>Marca una acción y, si hace falta, también el «ver» de su sección.</summary>
+    private static List<string> SobreAccion(List<string> actual, string ver, string accion)
+    {
+        var conAccion = SobreLista(actual, accion, marcado: true);
+        return SobreLista(conAccion, ver, marcado: true);
+    }
+}

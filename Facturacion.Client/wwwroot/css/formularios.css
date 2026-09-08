@@ -36,14 +36,38 @@
     margin: 1.25rem 0;
 }
 
+/* ── Selector de permisos del panel ─────────────────────────────────────────────
+   Jerárquico: cada sección se abre con su «ver» y, dentro, sus acciones. Las acciones van
+   levemente indentadas y separadas del ver por una línea fina para leerse como un bloque que
+   cuelga de él, en vez de como un campo suelto más. */
+.seccion-permisos {
+    padding: 0.35rem 0.5rem;
+    border-radius: 6px;
+}
+
+.seccion-permisos > .mud-checkbox {
+    font-weight: 500;
+}
+
+.permisos-acciones {
+    margin-left: 2.25rem;
+    margin-top: 0.1rem;
+    padding-left: 0.75rem;
+    border-left: 1px solid var(--borde);
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(15rem, 1fr));
+    gap: 0.1rem 1rem;
+}
+
 /* ── Tarjeta de formulario ─────────────────────────────────────────────────────
    Marco centrado tipo tarjeta para los formularios de captura. El fondo de la página
    (--fondo) hace de lienzo; la tarjeta es la superficie donde se escribe. */
 .tarjeta-formulario {
     max-width: 60rem;
-    /* Alineada al mismo borde que el titulo de la pagina, no centrada: centrada dejaba la
-       tarjeta flotando respecto del h1 que la encabeza, y las dos cosas se leen como una. */
-    margin: 0;
+    /* Centrada, igual que el h1 que la encabeza en las páginas de formulario: título y
+       tarjeta se leen como una sola columna. En pantallas menores a 60rem la tarjeta ocupa
+       todo el ancho disponible y el margen automático no desplaza nada. */
+    margin: 0 auto;
     background: var(--superficie);
     border: 1px solid var(--borde);
     border-radius: var(--radio);
