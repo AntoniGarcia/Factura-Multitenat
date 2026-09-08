@@ -44,7 +44,7 @@ public sealed class ServicioDePerfilDeOperador(
 
         await baseDeDatos.SaveChangesAsync(ct);
 
-        return new SesionDeOperadorDto(operador.Id, operador.Nombre, operador.Correo);
+        return ADto(operador);
     }
 
     public async Task<Resultado<SesionDeOperadorDto>> CambiarCorreoAsync(
@@ -61,7 +61,7 @@ public sealed class ServicioDePerfilDeOperador(
         var normalizado = peticion.Correo.Trim().ToUpperInvariant();
 
         if (normalizado == operador.CorreoNormalizado)
-            return new SesionDeOperadorDto(operador.Id, operador.Nombre, operador.Correo);
+            return ADto(operador);
 
         var ocupado = await baseDeDatos.OperadoresPlataforma
             .AnyAsync(o => o.CorreoNormalizado == normalizado && o.Id != operadorId, ct);
@@ -84,7 +84,7 @@ public sealed class ServicioDePerfilDeOperador(
 
         await baseDeDatos.SaveChangesAsync(ct);
 
-        return new SesionDeOperadorDto(operador.Id, operador.Nombre, operador.Correo);
+        return ADto(operador);
     }
 
     /// <summary>
@@ -132,7 +132,11 @@ public sealed class ServicioDePerfilDeOperador(
 
     private Task<OperadorPlataforma?> Buscar(Guid operadorId, CancellationToken ct)
         => baseDeDatos.OperadoresPlataforma
+            .Include(o => o.Permisos)
             .SingleOrDefaultAsync(o => o.Id == operadorId && o.Activo, ct);
+
+    private static SesionDeOperadorDto ADto(OperadorPlataforma operador)
+        => new(operador.Id, operador.Nombre, operador.Correo, [.. operador.Permisos.Select(p => p.Permiso)]);
 
     private bool ContrasenaCorrecta(OperadorPlataforma operador, string contrasena)
         => hasher.VerifyHashedPassword(operador, operador.HashContrasena, contrasena)

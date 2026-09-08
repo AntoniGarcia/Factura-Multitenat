@@ -205,7 +205,7 @@ public sealed class ServicioDeAutenticacionDeOperador(
     }
 
     private static SesionDeOperadorDto ADto(OperadorPlataforma operador)
-        => new(operador.Id, operador.Nombre, operador.Correo);
+        => new(operador.Id, operador.Nombre, operador.Correo, [.. operador.Permisos.Select(p => p.Permiso)]);
 
     private async Task RegistrarFallo(
         OperadorPlataforma? operador, string claveIp, string correo, CancellationToken ct)

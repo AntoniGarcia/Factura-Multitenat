@@ -12,13 +12,16 @@ public sealed record PeticionInicioSesionOperador(
     bool MantenerSesion = false);
 
 /// <summary>
-/// Quién está operando el SaaS. Deliberadamente no lleva empresa, cuenta ni permisos: el
-/// operador no tiene tenencia, y dentro del panel lo ve todo.
+/// Quién está operando el SaaS y qué puede hacer dentro del panel. Lleva los permisos en
+/// cada respuesta para que el cliente pueda filtrar el menú y ocultar lo que no aplica;
+/// quien de verdad decide sigue siendo el Server. No lleva empresa ni cuenta: el operador
+/// no tiene tenencia.
 /// </summary>
 public sealed record SesionDeOperadorDto(
     Guid OperadorId,
     string Nombre,
-    string Correo);
+    string Correo,
+    IReadOnlyList<string> Permisos);
 
 /// <summary>
 /// Lo que devuelve iniciar sesión o refrescar. El refresh token no viaja aquí: va en una
