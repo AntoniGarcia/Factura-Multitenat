@@ -1,4 +1,5 @@
 using System.Security.Cryptography;
+using System.Text.RegularExpressions;
 using Facturacion.Server.Data;
 using Facturacion.Server.Data.Entidades.Plataforma;
 using Facturacion.Server.Infra.Bitacora;
@@ -8,6 +9,7 @@ using Facturacion.Shared.Comun;
 using Facturacion.Shared.Plataforma;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Options;
 
 namespace Facturacion.Server.Modules.Plataforma.Auth;
 
@@ -46,6 +48,7 @@ public sealed class ServicioDeRegistro(
     IServicioDeCorreo correo,
     IServicioDeBitacora bitacora,
     IControlDeIntentos intentos,
+    IOptionsMonitor<OpcionesDeMensajes> mensajes,
     ILogger<ServicioDeRegistro> registro)
 {
     /// <summary>
@@ -341,44 +344,63 @@ public sealed class ServicioDeRegistro(
 
     private async Task EnviarCodigoAsync(string destinatario, string nombre, string codigo, CancellationToken ct)
     {
-        var cuerpo =
-            $"""
-             <p>Hola, {Escapar(nombre)}:</p>
-             <p>Para terminar de crear tu cuenta, escribe este código en la pantalla de alta:</p>
-             <p style="font-family: monospace; font-size: 28px; letter-spacing: 6px">
-               <strong>{Escapar(codigo)}</strong>
-             </p>
-             <p>
-               Caduca en {VigenciaDelCodigo.TotalMinutes:0} minutos. Cuando lo escribas te
-               mandamos la contraseña en otro mensaje.
-             </p>
-             <p>
-               Si no fuiste tú quien pidió esto, ignora este mensaje: sin el código no se crea
-               ninguna cuenta con tu correo.
-             </p>
-             """;
+        var plantillas = mensajes.CurrentValue;
 
-        await EnviarSinTumbarElAltaAsync(destinatario, "Tu código de verificación", cuerpo, ct);
+        var cuerpo = Renderizar(plantillas.CuerpoVerificacion,
+            (OpcionesDeMensajes.MarcadorNombre, nombre),
+            (OpcionesDeMensajes.MarcadorCodigo, codigo),
+            (OpcionesDeMensajes.MarcadorMinutos, VigenciaDelCodigo.TotalMinutes.ToString("0")));
+
+        var asunto = Rellenar(plantillas.AsuntoVerificacion, (OpcionesDeMensajes.MarcadorNombre, nombre));
+
+        await EnviarSinTumbarElAltaAsync(destinatario, asunto, cuerpo, ct);
     }
 
     private async Task EnviarContrasenaAsync(string destinatario, string nombre, string contrasena, CancellationToken ct)
     {
-        var cuerpo =
-            $"""
-             <p>Hola, {Escapar(nombre)}:</p>
-             <p>Tu cuenta ya está lista. Entra con estos datos:</p>
-             <p>
-               Correo: <strong>{Escapar(destinatario)}</strong><br>
-               Contraseña: <strong style="font-family: monospace; font-size: 16px">{Escapar(contrasena)}</strong>
-             </p>
-             <p>
-               Cámbiala en cuanto entres, desde tu perfil. Este mensaje contiene tu contraseña:
-               bórralo después de guardarla en un lugar seguro.
-             </p>
-             <p>El siguiente paso es dar de alta tu empresa emisora para poder facturar.</p>
-             """;
+        var plantillas = mensajes.CurrentValue;
 
-        await EnviarSinTumbarElAltaAsync(destinatario, "Tus datos de acceso", cuerpo, ct);
+        var cuerpo = Renderizar(plantillas.CuerpoContrasena,
+            (OpcionesDeMensajes.MarcadorNombre, nombre),
+            (OpcionesDeMensajes.MarcadorCorreo, destinatario),
+            (OpcionesDeMensajes.MarcadorClave, contrasena));
+
+        var asunto = Rellenar(plantillas.AsuntoContrasena, (OpcionesDeMensajes.MarcadorNombre, nombre));
+
+        await EnviarSinTumbarElAltaAsync(destinatario, asunto, cuerpo, ct);
+    }
+
+    /// <summary>
+    /// Sustituye los marcadores de una plantilla del operador. Son palabras completas en
+    /// mayúsculas (NOMBRE, CODIGO, CORREO…), no corchetes ni llaves: un operador sin
+    /// experiencia técnica puede leer el mensaje tal y como quedará.
+    /// </summary>
+    private static string Rellenar(string plantilla, params (string Marcador, string Valor)[] valores)
+    {
+        var resultado = plantilla;
+
+        foreach (var (marcador, valor) in valores)
+            resultado = Regex.Replace(resultado, $@"\b{Regex.Escape(marcador)}\b", valor);
+
+        return resultado;
+    }
+
+    /// <summary>
+    /// El operador escribe el mensaje en texto normal; el correo necesita HTML. Se sustituyen
+    /// primero los marcadores (con los valores en bruto, aún sin escapar) y se escapa y
+    /// convierte todo al final: así un nombre o un correo raros no pueden colar etiquetas
+    /// dentro del mensaje, por mucho que la plantilla esté en manos del operador.
+    /// </summary>
+    private static string Renderizar(string plantilla, params (string Marcador, string Valor)[] valores)
+    {
+        var texto = Rellenar(plantilla, valores);
+
+        return string.Join("\n",
+            texto
+                .Replace("\r\n", "\n")
+                .Split("\n\n", StringSplitOptions.RemoveEmptyEntries)
+                .Select(bloque =>
+                    $"<p>{string.Join("<br>\n", bloque.Split('\n').Select(linea => Escapar(linea.TrimEnd())))}</p>"));
     }
 
     private async Task AvisarQueYaExisteAsync(string destinatario, CancellationToken ct)

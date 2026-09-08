@@ -12,6 +12,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging.Abstractions;
+using Microsoft.Extensions.Options;
 
 namespace Facturacion.Pruebas;
 
@@ -51,6 +52,19 @@ public sealed class VerificacionDeAltaPruebas : IAsyncLifetime
             Enviados.Add((destinatario, asunto, cuerpoHtml));
             return Task.CompletedTask;
         }
+    }
+
+    /// <summary>
+    /// Plantillas fijas con los valores predeterminados: la prueba extrae el código del
+    /// cuerpo del correo, que es de donde lo lee una persona.
+    /// </summary>
+    private sealed class MensajesDeRegistroFijos : IOptionsMonitor<OpcionesDeMensajes>
+    {
+        public OpcionesDeMensajes CurrentValue { get; } = new();
+
+        public OpcionesDeMensajes Get(string? nombre) => CurrentValue;
+
+        public IDisposable? OnChange(Action<OpcionesDeMensajes, string?> oyente) => null;
     }
 
     private readonly CorreoDeMemoria _correo = new();
@@ -104,6 +118,7 @@ public sealed class VerificacionDeAltaPruebas : IAsyncLifetime
             _correo,
             bitacora,
             new ControlDeIntentos(new MemoryCache(new MemoryCacheOptions())),
+            new MensajesDeRegistroFijos(),
             NullLogger<ServicioDeRegistro>.Instance);
     }
 
@@ -224,7 +239,7 @@ public sealed class VerificacionDeAltaPruebas : IAsyncLifetime
     /// </summary>
     private static string ExtraerCodigo(string cuerpo)
     {
-        var codigo = System.Text.RegularExpressions.Regex.Match(cuerpo, @"<strong>(\d{6})</strong>");
+        var codigo = System.Text.RegularExpressions.Regex.Match(cuerpo, @"\b(\d{6})\b");
 
         Assert.True(codigo.Success, "El correo del código tiene que llevar los seis dígitos.");
 
