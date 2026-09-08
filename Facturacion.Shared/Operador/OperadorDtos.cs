@@ -8,6 +8,7 @@ public sealed record OperadorDto(
     string Nombre,
     string Correo,
     bool Activo,
+    bool EsPrincipal,
     DateTime FechaAltaUtc,
     IReadOnlyList<string> Permisos);
 
