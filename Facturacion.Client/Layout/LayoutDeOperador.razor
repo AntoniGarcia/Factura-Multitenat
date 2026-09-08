@@ -8,8 +8,10 @@
 
 @*
     El cascarón del panel del proveedor. Es hermano de MainLayout, no una variante suya: no
-    lleva selector de empresa ni indicador de timbres —el operador no tiene empresa ni bolsa—
-    ni filtra el menú por permisos.
+    lleva selector de empresa ni indicador de timbres —el operador no tiene empresa ni bolsa—.
+    Sí filtra el menú por los permisos de la sesión: cada sección pide su «ver» y el Tablero
+    se muestra siempre. Ocultar una entrada es comodidad, no protección: el Server rechaza
+    cada operación por su propio permiso.
 
     Los proveedores de MudBlazor se declaran aquí otra vez a propósito: viven en cada layout,
     y sin ellos los diálogos de confirmación del panel no montarían.
@@ -47,7 +49,7 @@
         <nav id="menu-operador" class="menu-lateral" aria-label="Secciones del panel">
             <div class="menu-navegacion">
                 <ul>
-                    @foreach (var elemento in MenuDeOperador.Elementos)
+                    @foreach (var elemento in ElementosVisibles)
                     {
                         <li>
                             @* Match.All en el tablero para que "/operador" no quede resaltado
@@ -89,6 +91,17 @@
     }
 
     private void AlternarMenu() => _menuColapsado = !_menuColapsado;
+
+    /// <summary>
+    /// Las secciones que el operador puede ver, según los permisos de su sesión. El Tablero
+    /// no pide permiso: cualquier operador activo lo ve.
+    /// </summary>
+    private IReadOnlyList<ElementoDeMenuOperador> ElementosVisibles
+        => Sesion.Sesion is { } operador
+            ? MenuDeOperador.Elementos
+                .Where(e => e.Permiso is null || operador.Permisos.Contains(e.Permiso))
+                .ToList()
+            : MenuDeOperador.Elementos;
 
     public void Dispose()
     {
