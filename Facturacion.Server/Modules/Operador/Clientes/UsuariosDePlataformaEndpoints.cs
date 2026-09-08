@@ -22,7 +22,7 @@ public static class UsuariosDePlataformaEndpoints
             .WithTags("Operador · Usuarios")
             .RequireAuthorization(PoliticasDeOperador.Operador);
 
-        grupo.MapGet("/", Listar).RequireAuthorization(PoliticasDeOperador.AdministrarUsuarios);
+        grupo.MapGet("/", Listar).RequireAuthorization(PoliticasDeOperador.VerUsuarios);
         grupo.MapDelete("/{id:guid}/empresas/{empresaId:guid}/acceso", EliminarAccesoAEmpresa).RequireAuthorization(PoliticasDeOperador.AdministrarUsuarios);
         grupo.MapPut("/{id:guid}/contrasena", RestablecerContrasena).RequireAuthorization(PoliticasDeOperador.AdministrarUsuarios);
         grupo.MapPut("/{id:guid}/correo", CambiarCorreo).RequireAuthorization(PoliticasDeOperador.AdministrarUsuarios);

@@ -16,11 +16,11 @@ public static class ComprasDeOperadorEndpoints
             .WithTags("Operador · Compras")
             .RequireAuthorization(PoliticasDeOperador.Operador);
 
-        grupo.MapGet("/", Listar);
+        grupo.MapGet("/", Listar).RequireAuthorization(PoliticasDeOperador.VerCompras);
 
-        // Acreditar y rechazar mueven dinero/saldo → permiso ComprarTimbres
-        grupo.MapPost("/{id:guid}/acreditar", Acreditar).RequireAuthorization(PoliticasDeOperador.ComprarTimbres);
-        grupo.MapPost("/{id:guid}/rechazar", Rechazar).RequireAuthorization(PoliticasDeOperador.ComprarTimbres);
+        // Acreditar y rechazar mueven dinero/saldo → permiso AcreditarCompras
+        grupo.MapPost("/{id:guid}/acreditar", Acreditar).RequireAuthorization(PoliticasDeOperador.AcreditarCompras);
+        grupo.MapPost("/{id:guid}/rechazar", Rechazar).RequireAuthorization(PoliticasDeOperador.AcreditarCompras);
     }
 
     private static async Task<IResult> Listar(

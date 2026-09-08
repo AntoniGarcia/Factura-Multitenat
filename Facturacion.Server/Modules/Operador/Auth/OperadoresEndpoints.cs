@@ -22,12 +22,12 @@ public static class OperadoresEndpoints
             .WithTags("Operador · Operadores")
             .RequireAuthorization(PoliticasDeOperador.Operador);
 
-        grupo.MapGet("/", Listar).RequireAuthorization(PoliticasDeOperador.AdministrarUsuarios);
-        grupo.MapGet("/{id:guid}", Obtener).RequireAuthorization(PoliticasDeOperador.AdministrarUsuarios);
-        grupo.MapPost("/", Crear).RequireAuthorization(PoliticasDeOperador.AdministrarUsuarios);
-        grupo.MapPut("/{id:guid}", Actualizar).RequireAuthorization(PoliticasDeOperador.AdministrarUsuarios);
-        grupo.MapPost("/{id:guid}/permisos", CambiarPermisos).RequireAuthorization(PoliticasDeOperador.AdministrarUsuarios);
-        grupo.MapPost("/{id:guid}/activo", CambiarActivo).RequireAuthorization(PoliticasDeOperador.AdministrarUsuarios);
+        grupo.MapGet("/", Listar).RequireAuthorization(PoliticasDeOperador.VerOperadores);
+        grupo.MapGet("/{id:guid}", Obtener).RequireAuthorization(PoliticasDeOperador.VerOperadores);
+        grupo.MapPost("/", Crear).RequireAuthorization(PoliticasDeOperador.AdministrarOperadores);
+        grupo.MapPut("/{id:guid}", Actualizar).RequireAuthorization(PoliticasDeOperador.AdministrarOperadores);
+        grupo.MapPost("/{id:guid}/permisos", CambiarPermisos).RequireAuthorization(PoliticasDeOperador.AdministrarOperadores);
+        grupo.MapPost("/{id:guid}/activo", CambiarActivo).RequireAuthorization(PoliticasDeOperador.AdministrarOperadores);
     }
 
     private static async Task<IResult> Listar(

@@ -23,16 +23,16 @@ public static class ClientesDePlataformaEndpoints
             .WithTags("Operador · Clientes")
             .RequireAuthorization(PoliticasDeOperador.Operador);
 
-        grupo.MapGet("/", Listar);
-        grupo.MapGet("/{id:guid}", Obtener);
-        grupo.MapGet("/{id:guid}/empresas/{empresaId:guid}", ObtenerEmpresa);
+        grupo.MapGet("/", Listar).RequireAuthorization(PoliticasDeOperador.VerClientes);
+        grupo.MapGet("/{id:guid}", Obtener).RequireAuthorization(PoliticasDeOperador.VerClientes);
+        grupo.MapGet("/{id:guid}/empresas/{empresaId:guid}", ObtenerEmpresa).RequireAuthorization(PoliticasDeOperador.VerClientes);
 
         grupo.MapPost("/{id:guid}/empresas/{empresaId:guid}/activo", CambiarActivoEmpresa)
-            .RequireAuthorization(PoliticasDeOperador.ConfigurarEmpresa);
+            .RequireAuthorization(PoliticasDeOperador.AdministrarClientes);
         grupo.MapPost("/{id:guid}/correo-contacto", CambiarCorreoDeContacto)
-            .RequireAuthorization(PoliticasDeOperador.ConfigurarEmpresa);
+            .RequireAuthorization(PoliticasDeOperador.AdministrarClientes);
         grupo.MapPost("/{id:guid}/empresas/{empresaId:guid}/timbres", AsignarTimbres)
-            .RequireAuthorization(PoliticasDeOperador.ComprarTimbres);
+            .RequireAuthorization(PoliticasDeOperador.AsignarTimbres);
     }
 
     private static async Task<IResult> Listar(

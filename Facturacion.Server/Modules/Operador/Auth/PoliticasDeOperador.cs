@@ -1,4 +1,5 @@
 using Facturacion.Shared.Comun;
+using Facturacion.Shared.Operador;
 using Microsoft.AspNetCore.Authorization;
 
 namespace Facturacion.Server.Modules.Operador.Auth;
@@ -19,10 +20,12 @@ public static class EsquemasDeAutenticacion
 ///
 /// <para><b>Dos niveles</b></para>
 /// 1. <see cref="Operador"/> — base: cualquier operador autenticado (claim "opr").
-/// 2. Una por permiso (<c>perm:configurar_empresa</c>, etc.) — para operaciones sensibles.
+/// 2. Una por permiso (<c>perm:panel_ver_paquetes</c>, etc.) — por sección, con su ver y
+///    su administrar. Vocabulario propio del panel (<see cref="PermisosDePanel"/>), no el de
+///    los inquilinos: el operador no tiene empresa ni bolsa.
 ///
 /// <para><b>Por qué no hay "superadmin"</b></para>
-/// El operador principal (el que crea la BD) se siembra con los seis permisos.
+/// El operador principal (el que crea la BD) se siembra con los trece permisos del panel.
 /// Si algún día hace falta distinguir, se añade el permiso y no un rol.
 /// </summary>
 public static class PoliticasDeOperador
@@ -30,24 +33,23 @@ public static class PoliticasDeOperador
     /// <summary>Política base: cualquier operador autenticado. Se usa en el grupo de rutas.</summary>
     public const string Operador = "operador";
 
-    /// <summary>Permisos individuales — misma clave que los inquilinos (<see cref="Permisos"/>).</summary>
-    public const string Timbrar = "timbrar";
-    public const string Cancelar = "cancelar";
-    public const string AdministrarUsuarios = "administrar_usuarios";
-    public const string ComprarTimbres = "comprar_timbres";
-    public const string VerReportes = "ver_reportes";
-    public const string ConfigurarEmpresa = "configurar_empresa";
+    /// <summary>Permisos individuales del panel — mismas claves que <see cref="PermisosDePanel"/>.</summary>
+    public const string VerPaquetes = PermisosDePanel.VerPaquetes;
+    public const string AdministrarPaquetes = PermisosDePanel.AdministrarPaquetes;
+    public const string VerCompras = PermisosDePanel.VerCompras;
+    public const string AcreditarCompras = PermisosDePanel.AcreditarCompras;
+    public const string VerClientes = PermisosDePanel.VerClientes;
+    public const string AdministrarClientes = PermisosDePanel.AdministrarClientes;
+    public const string AsignarTimbres = PermisosDePanel.AsignarTimbres;
+    public const string VerUsuarios = PermisosDePanel.VerUsuarios;
+    public const string AdministrarUsuarios = PermisosDePanel.AdministrarUsuarios;
+    public const string VerOperadores = PermisosDePanel.VerOperadores;
+    public const string AdministrarOperadores = PermisosDePanel.AdministrarOperadores;
+    public const string VerConfiguracion = PermisosDePanel.VerConfiguracion;
+    public const string AdministrarConfiguracion = PermisosDePanel.AdministrarConfiguracion;
 
     /// <summary>Todas las políticas de permiso, para iterar si se necesita.</summary>
-    public static IReadOnlyList<string> Permisos { get; } =
-    [
-        Timbrar,
-        Cancelar,
-        AdministrarUsuarios,
-        ComprarTimbres,
-        VerReportes,
-        ConfigurarEmpresa
-    ];
+    public static IReadOnlyList<string> Permisos { get; } = PermisosDePanel.Todos;
 
     public static AuthorizationBuilder AgregarPoliticasDeOperador(this AuthorizationBuilder constructor)
     {
@@ -61,7 +63,7 @@ public static class PoliticasDeOperador
                 !contexto.User.HasClaim(c => c.Type == ClavesDeClaim.Cuenta) &&
                 !contexto.User.HasClaim(c => c.Type == ClavesDeClaim.Usuario)));
 
-        // Una política por permiso: RequireClaim("perm", "configurar_empresa") etc.
+        // Una política por permiso: RequireClaim("perm", "panel_ver_paquetes") etc.
         foreach (var permiso in Permisos)
         {
             constructor.AddPolicy(permiso, politica => politica

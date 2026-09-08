@@ -14,9 +14,9 @@ public static class MembresiasYTableroEndpoints
             .WithTags("Operador · Membresías")
             .RequireAuthorization(PoliticasDeOperador.Operador);
 
-        membresias.MapGet("/", Listar);
-        membresias.MapPost("/", Registrar).RequireAuthorization(PoliticasDeOperador.ConfigurarEmpresa);
-        membresias.MapPost("/{id:guid}/cancelar", Cancelar).RequireAuthorization(PoliticasDeOperador.ConfigurarEmpresa);
+        membresias.MapGet("/", Listar).RequireAuthorization(PoliticasDeOperador.VerClientes);
+        membresias.MapPost("/", Registrar).RequireAuthorization(PoliticasDeOperador.AdministrarClientes);
+        membresias.MapPost("/{id:guid}/cancelar", Cancelar).RequireAuthorization(PoliticasDeOperador.AdministrarClientes);
 
         rutas.MapGet("/api/operador/tablero", Tablero)
             .WithTags("Operador · Tablero")

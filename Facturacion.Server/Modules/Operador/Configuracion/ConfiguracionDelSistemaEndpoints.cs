@@ -18,8 +18,8 @@ public static class ConfiguracionDelSistemaEndpoints
             .WithTags("Operador · Configuración")
             .RequireAuthorization(PoliticasDeOperador.Operador);
 
-        grupo.MapGet("/", Obtener).RequireAuthorization(PoliticasDeOperador.ConfigurarEmpresa);
-        grupo.MapPut("/", Guardar).RequireAuthorization(PoliticasDeOperador.ConfigurarEmpresa);
+        grupo.MapGet("/", Obtener).RequireAuthorization(PoliticasDeOperador.VerConfiguracion);
+        grupo.MapPut("/", Guardar).RequireAuthorization(PoliticasDeOperador.AdministrarConfiguracion);
     }
 
     private static async Task<IResult> Obtener(
