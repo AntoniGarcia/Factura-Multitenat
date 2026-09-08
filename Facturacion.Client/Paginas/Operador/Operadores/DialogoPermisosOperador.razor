@@ -1,5 +1,5 @@
 @using Facturacion.Client.Componentes.Comunes
-@using Facturacion.Shared.Comun
+@using Facturacion.Shared.Operador
 @using Facturacion.Client.Servicios.Operador
 
 <MudDialog>
@@ -8,7 +8,7 @@
 
         <PanelErrores Problema="_error" />
 
-        <SelectorDePermisos @bind-Value="_permisos" Deshabilitado="@_guardando" />
+        <SelectorDePermisosDePanel @bind-Value="_permisos" Deshabilitado="@_guardando" />
     </DialogContent>
     <DialogActions>
         <MudButton OnClick="Cancelar">Cancelar</MudButton>
