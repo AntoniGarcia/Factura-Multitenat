@@ -171,6 +171,10 @@ public static class InfraestructuraModule
             .Bind(configuracion.GetSection(OpcionesDeCorreo.Seccion))
             .ValidateOnStart();
 
+        servicios.AddOptions<OpcionesDeMensajes>()
+            .Bind(configuracion.GetSection(OpcionesDeMensajes.Seccion))
+            .ValidateOnStart();
+
         var servidorConfigurado = !string.IsNullOrWhiteSpace(
             configuracion[$"{OpcionesDeCorreo.Seccion}:{nameof(OpcionesDeCorreo.Servidor)}"]);
 
