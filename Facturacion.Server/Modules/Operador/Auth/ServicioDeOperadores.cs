@@ -23,7 +23,7 @@ public sealed class ServicioDeOperadores(
     IServicioDeBitacora bitacora)
 {
     private static readonly HashSet<string> _permisosValidos =
-        new(Permisos.Todos, StringComparer.OrdinalIgnoreCase);
+        new(PermisosDePanel.Todos, StringComparer.OrdinalIgnoreCase);
 
     /// <summary>Lista paginada de operadores, con sus permisos.</summary>
     public async Task<PaginaDeOperadores> ListarAsync(
@@ -184,6 +184,12 @@ public sealed class ServicioDeOperadores(
         {
             if (!_permisosValidos.Contains(p))
                 return ErrorNegocio.Validacion("permiso-invalido", $"Permiso desconocido: {p}");
+
+            // Una acción sin su sección no se sostiene: para administrar algo hay que poder verlo.
+            if (PermisosDePanel.VerQueExige(p) is { } ver && !peticion.Permisos.Contains(ver))
+                return ErrorNegocio.Validacion(
+                    "accion-sin-seccion",
+                    $"No puedes «{PermisosDePanel.EtiquetaCorta(p)}» sin «{PermisosDePanel.EtiquetaCorta(ver)}».");
         }
 
         var operador = await baseDeDatos.OperadoresPlataforma
@@ -241,6 +247,11 @@ public sealed class ServicioDeOperadores(
         if (id == operadorActualId && !peticion.Activo)
             return ErrorNegocio.Regla("auto-desactivacion", "No puedes desactivar tu propio acceso.");
 
+        // El operador principal (dueño del SaaS) no puede ser desactivado por nadie:
+        // la plataforma quedaría sin administrador.
+        if (operador.EsPrincipal && !peticion.Activo)
+            return ErrorNegocio.Regla("principal-no-desactivable", "El operador principal no puede ser desactivado.");
+
         var antes = Retrato(operador);
 
         operador.Activo = peticion.Activo;
@@ -291,6 +302,12 @@ public sealed class ServicioDeOperadores(
         {
             if (!_permisosValidos.Contains(permiso))
                 return ErrorNegocio.Validacion("permiso-invalido", $"Permiso desconocido: {permiso}");
+
+            // Una acción sin su sección no se sostiene: para administrar algo hay que poder verlo.
+            if (PermisosDePanel.VerQueExige(permiso) is { } ver && !p.Permisos.Contains(ver))
+                return ErrorNegocio.Validacion(
+                    "accion-sin-seccion",
+                    $"No puedes «{PermisosDePanel.EtiquetaCorta(permiso)}» sin «{PermisosDePanel.EtiquetaCorta(ver)}».");
         }
 
         return null;
@@ -333,6 +350,7 @@ public sealed class ServicioDeOperadores(
         o.Nombre,
         o.Correo,
         o.Activo,
+        o.EsPrincipal,
         o.FechaAltaUtc,
         [.. o.Permisos.Select(p => p.Permiso)]);
 
