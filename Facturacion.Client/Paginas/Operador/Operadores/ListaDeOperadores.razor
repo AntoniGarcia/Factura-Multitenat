@@ -51,27 +51,38 @@
         new("Permisos", u => @<div class="permisos-chips">
                                @foreach (var p in u.Permisos)
                                {
-                                   <span class="permiso-chip">@Permisos.EtiquetaCorta(p)</span>
+                                   <span class="permiso-chip">@PermisosDePanel.EtiquetaCorta(p)</span>
                                }
                            </div>),
         new("Alta", u => @<span class="cifra-tabular">@u.FechaAltaUtc.ToLocalTime().ToString("dd/MM/yyyy")</span>),
-        new("Estado", u => @<span class="indicador-estado indicador-estado-@(u.Activo ? "timbrada" : "borrador")">
-                                 @(u.Activo ? "Activo" : "Desactivado")
-                             </span>),
+        new("Estado", u => @<span>
+                               <span class="indicador-estado indicador-estado-@(u.Activo ? "timbrada" : "borrador")">
+                                   @(u.Activo ? "Activo" : "Desactivado")
+                               </span>
+                               @if (u.EsPrincipal)
+                               {
+                                   <span class="indicador-estado indicador-estado-principal" title="Operador principal del SaaS">
+                                       Principal
+                                   </span>
+                               }
+                           </span>),
         new("", u => @<div class="acciones-renglon">
                            <MudButton Size="Size.Small" Disabled="@_trabajando"
                                       OnClick="@(() => Editar(u))">
                                Editar
                            </MudButton>
-                           <MudButton Size="Size.Small" Disabled="@_trabajando"
-                                      OnClick="@(() => CambiarPermisos(u))">
-                               Permisos
-                           </MudButton>
-                           <MudButton Size="Size.Small" Disabled="@_trabajando"
-                                      OnClick="@(() => CambiarActivo(u))"
-                                      Color="@(u.Activo ? Color.Error : Color.Success)">
-                               @(u.Activo ? "Desactivar" : "Activar")
-                           </MudButton>
+                            <MudButton Size="Size.Small" Disabled="@_trabajando"
+                                       OnClick="@(() => CambiarPermisos(u))">
+                                Permisos
+                            </MudButton>
+                            @if (!u.EsPrincipal)
+                            {
+                                <MudButton Size="Size.Small" Disabled="@_trabajando"
+                                           OnClick="@(() => CambiarActivo(u))"
+                                           Color="@(u.Activo ? Color.Error : Color.Success)">
+                                    @(u.Activo ? "Desactivar" : "Activar")
+                                </MudButton>
+                            }
                        </div>)
     ];
 

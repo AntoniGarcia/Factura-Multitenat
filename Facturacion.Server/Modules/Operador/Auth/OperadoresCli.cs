@@ -1,7 +1,7 @@
 using System.Security.Cryptography;
 using Facturacion.Server.Data;
 using Facturacion.Server.Data.Entidades.Plataforma;
-using Facturacion.Shared.Comun;
+using Facturacion.Shared.Operador;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 
@@ -62,10 +62,10 @@ public static class OperadoresCli
             HashContrasena = string.Empty,
             Activo = true,
             FechaAltaUtc = DateTime.UtcNow,
-            // Quien se da de alta por consola es el dueño del SaaS: nace con los seis permisos,
-            // igual que el principal. Si hiciera falta un operador con menos, se le quitan luego
-            // desde el panel (ARQUITECTURA.md §4).
-            Permisos = Permisos.Todos.Select(p => new PermisoOperador { Permiso = p }).ToList()
+            // El primer operador creado por consola es el dueño del SaaS: nace con los
+            // trece permisos del panel y la marca de principal (no se puede desactivar).
+            EsPrincipal = !await baseDeDatos.OperadoresPlataforma.AnyAsync(o => o.EsPrincipal),
+            Permisos = PermisosDePanel.Todos.Select(p => new PermisoOperador { Permiso = p }).ToList()
         };
 
         operador.HashContrasena = hasher.HashPassword(operador, contrasena);
@@ -79,7 +79,7 @@ public static class OperadoresCli
         Console.WriteLine($"  Contraseña: {contrasena}");
         Console.WriteLine();
         Console.WriteLine("Esta contraseña no se vuelve a mostrar. Entrégala por un medio seguro.");
-        Console.WriteLine();
+        Console.WriteLine(); 
 
         return 0;
     }

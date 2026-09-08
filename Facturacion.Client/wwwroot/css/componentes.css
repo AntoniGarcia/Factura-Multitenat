@@ -49,6 +49,21 @@
     color: var(--estado-cancelada-texto);
 }
 
+/*
+  El principal es la distinción de identidad del SaaS, no un estado de documento: usa el
+  acento del tema en vez de un color de estado, igual que .permiso-chip. Sin esto, marcar
+  «Principal» con timbrada se leería como un estado de aprobación.
+*/
+.indicador-estado-principal {
+    background: rgba(var(--acento-rgb), 0.1);
+    color: var(--acento);
+}
+
+:root[data-tema="calido"] .indicador-estado-principal {
+    background: rgba(var(--acento-calido-rgb), 0.15);
+    color: var(--acento-calido);
+}
+
 .buscador-catalogo-clave {
     margin-right: 0.5rem;
     color: var(--texto-suave);

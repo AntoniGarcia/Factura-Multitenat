@@ -289,6 +289,15 @@ html, body {
     color: var(--texto);
 }
 
+/* En las páginas de formulario (no en las de listado) el título se centra a la misma anchura
+   que la tarjeta del formulario (60rem), para que título y tarjeta queden alineados en una
+   sola columna. Las tarjetas anchas —emisión, pago, fichas— siguen a todo el ancho y
+   conservan el título a la izquierda. :has() evita tocar el título de las listas. */
+.area-principal h1:has(+ .tarjeta-formulario:not(.tarjeta-formulario-ancha)) {
+    margin: 0 auto 1rem;
+    max-width: 60rem;
+}
+
 @media (max-width: 768px) {
     .barra-superior {
         padding: 0 1rem;
