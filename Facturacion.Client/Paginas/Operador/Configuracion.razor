@@ -81,9 +81,8 @@
         </MudButton>
     </div>
 
-    <h2 class="seccion-titulo">Correo saliente (SMTP)</h2>
-    <p class="seccion-ayuda">De aquí salen todas las notificaciones del sistema. Es la cuenta del SaaS,
-        no la de ninguna empresa.</p>
+    <h2 class="seccion-titulo">Correo saliente</h2>
+    <p class="seccion-ayuda">De aquí salen todas las notificaciones del sistema.</p>
 
     @if (_sistemaCargando)
     {
@@ -106,7 +105,7 @@
         </div>
 
         <div class="rejilla-campos">
-            <MudSwitch @bind-Value="_usarTls" Label="Usar TLS" Color="Color.Primary" />
+            <MudSwitch @bind-Value="_usarTls" Label="Usar conexión segura" Color="Color.Primary" />
         </div>
     }
 
@@ -117,6 +116,23 @@
                       HelperText="El nombre que aparece en los correos y documentos."
                       MaxLength="128" />
     </div>
+
+    <h2 class="seccion-titulo">Mensajes del registro</h2>
+    <p class="seccion-ayuda">Se mandan por correo al crear una cuenta. Las palabras en mayúsculas las escribe solo el sistema con el dato correspondiente: NOMBRE es el nombre de quien se registra, CODIGO el de verificación, MINUTOS el tiempo de validez, y CORREO y CLAVE son los datos de acceso.</p>
+
+    <h3 class="seccion-subtitulo">Correo de verificación</h3>
+
+    <div class="rejilla-campos">
+        <MudTextField @bind-Value="_asuntoVerificacion" Label="Asunto" MaxLength="128" />
+    </div>
+    <MudTextField @bind-Value="_cuerpoVerificacion" Label="Mensaje" Lines="7" MaxLength="8000" />
+
+    <h3 class="seccion-subtitulo">Correo de contraseña</h3>
+
+    <div class="rejilla-campos">
+        <MudTextField @bind-Value="_asuntoContrasena" Label="Asunto" MaxLength="128" />
+    </div>
+    <MudTextField @bind-Value="_cuerpoContrasena" Label="Mensaje" Lines="7" MaxLength="8000" />
 
     <div class="acciones-formulario">
         <MudButton Variant="Variant.Filled" Color="Color.Primary"
@@ -151,6 +167,10 @@
     private string _remitenteNombre = string.Empty;
     private bool _usarTls = true;
     private string _nombreDelSistema = string.Empty;
+    private string _asuntoVerificacion = string.Empty;
+    private string _cuerpoVerificacion = string.Empty;
+    private string _asuntoContrasena = string.Empty;
+    private string _cuerpoContrasena = string.Empty;
 
     private bool PuedeCambiarContrasena =>
         !_trabajando &&
@@ -182,6 +202,10 @@
             _remitenteNombre = configuracion.RemitenteNombre;
             _usarTls = configuracion.UsarTls;
             _nombreDelSistema = configuracion.NombreDelSistema;
+            _asuntoVerificacion = configuracion.AsuntoVerificacion;
+            _cuerpoVerificacion = configuracion.CuerpoVerificacion;
+            _asuntoContrasena = configuracion.AsuntoContrasena;
+            _cuerpoContrasena = configuracion.CuerpoContrasena;
         }
 
         _sistemaCargando = false;
@@ -262,8 +286,7 @@
 
         var parametros = new DialogParameters<DialogoConfirmarContrasenaOperador>
         {
-            { x => x.Mensaje, "Vas a cambiar la configuración del correo saliente y el nombre del sistema. " +
-                              "Esto afecta a todos los correos que envía el SaaS." },
+            { x => x.Mensaje, "Vas a cambiar la configuración del correo saliente, el nombre del sistema y los mensajes del registro. Esto afecta a todos los correos que envía el SaaS." },
             { x => x.TextoConfirmar, "Guardar cambios" }
         };
 
@@ -286,6 +309,10 @@
             _remitenteNombre.Trim(),
             _usarTls,
             _nombreDelSistema.Trim(),
+            _asuntoVerificacion.Trim(),
+            _cuerpoVerificacion.Trim(),
+            _asuntoContrasena.Trim(),
+            _cuerpoContrasena.Trim(),
             contrasena);
 
         _error = await ConfiguracionDelSistema.GuardarAsync(peticion);

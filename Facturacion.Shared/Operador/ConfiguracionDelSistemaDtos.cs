@@ -1,8 +1,9 @@
 namespace Facturacion.Shared.Operador;
 
 /// <summary>
-/// La configuración actual del sistema: correo saliente (SMTP) y nombre que aparece en los
-/// correos y documentos. Solo el operador puede verla y modificarla.
+/// La configuración actual del sistema: correo saliente (SMTP), nombre que aparece en los
+/// correos y documentos, y las plantillas de los mensajes de registro. Solo el operador
+/// puede verla y modificarla.
 /// </summary>
 public sealed record ConfiguracionDelSistemaDto(
     string Servidor,
@@ -12,7 +13,11 @@ public sealed record ConfiguracionDelSistemaDto(
     string RemitenteCorreo,
     string RemitenteNombre,
     bool UsarTls,
-    string NombreDelSistema);
+    string NombreDelSistema,
+    string AsuntoVerificacion,
+    string CuerpoVerificacion,
+    string AsuntoContrasena,
+    string CuerpoContrasena);
 
 /// <summary>
 /// Guardar la configuración del sistema. La contraseña del operador es obligatoria porque
@@ -28,5 +33,9 @@ public sealed record PeticionGuardarConfiguracionDelSistema(
     string RemitenteNombre,
     bool UsarTls,
     string NombreDelSistema,
+    string AsuntoVerificacion,
+    string CuerpoVerificacion,
+    string AsuntoContrasena,
+    string CuerpoContrasena,
     [property: System.ComponentModel.DataAnnotations.Required]
     string ContrasenaDelOperador);

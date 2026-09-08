@@ -2,6 +2,7 @@ using System.Text.Json;
 using System.Text.Json.Nodes;
 using Facturacion.Server.Data;
 using Facturacion.Server.Data.Entidades.Plataforma;
+using Facturacion.Server.Infra.Correo;
 using Facturacion.Shared.Comun;
 using Facturacion.Shared.Operador;
 using Microsoft.AspNetCore.Identity;
@@ -37,6 +38,7 @@ public sealed class ServicioDeConfiguracionDelSistema(
 
         var correo = nodo["Correo"] ?? new JsonObject();
         var sistema = nodo["Sistema"] ?? new JsonObject();
+        var mensajes = nodo[OpcionesDeMensajes.Seccion] ?? new JsonObject();
 
         return new ConfiguracionDelSistemaDto(
             Servidor: correo["Servidor"]?.GetValue<string>() ?? string.Empty,
@@ -46,7 +48,11 @@ public sealed class ServicioDeConfiguracionDelSistema(
             RemitenteCorreo: correo["RemitenteCorreo"]?.GetValue<string>() ?? string.Empty,
             RemitenteNombre: correo["RemitenteNombre"]?.GetValue<string>() ?? "Sistema de facturación",
             UsarTls: correo["UsarTls"]?.GetValue<bool>() ?? true,
-            NombreDelSistema: sistema["Nombre"]?.GetValue<string>() ?? "Sistema de facturación");
+            NombreDelSistema: sistema["Nombre"]?.GetValue<string>() ?? "Sistema de facturación",
+            AsuntoVerificacion: mensajes["AsuntoVerificacion"]?.GetValue<string>() ?? OpcionesDeMensajes.AsuntoVerificacionPredeterminado,
+            CuerpoVerificacion: mensajes["CuerpoVerificacion"]?.GetValue<string>() ?? OpcionesDeMensajes.CuerpoVerificacionPredeterminado,
+            AsuntoContrasena: mensajes["AsuntoContrasena"]?.GetValue<string>() ?? OpcionesDeMensajes.AsuntoContrasenaPredeterminado,
+            CuerpoContrasena: mensajes["CuerpoContrasena"]?.GetValue<string>() ?? OpcionesDeMensajes.CuerpoContrasenaPredeterminado);
     }
 
     public async Task<Resultado<bool>> GuardarAsync(
@@ -60,6 +66,19 @@ public sealed class ServicioDeConfiguracionDelSistema(
 
         if (string.IsNullOrWhiteSpace(peticion.Servidor))
             return ErrorNegocio.Validacion("servidor-requerido", "Escribe el servidor SMTP.");
+
+        if (string.IsNullOrWhiteSpace(peticion.CuerpoVerificacion)
+            || !peticion.CuerpoVerificacion.Contains(OpcionesDeMensajes.MarcadorCodigo, StringComparison.Ordinal))
+            return ErrorNegocio.Validacion(
+                "codigo-sin-marcador",
+                "El mensaje del correo de verificación debe conservar la palabra CODIGO: es donde el sistema escribe el número.");
+
+        if (string.IsNullOrWhiteSpace(peticion.CuerpoContrasena)
+            || !peticion.CuerpoContrasena.Contains(OpcionesDeMensajes.MarcadorCorreo, StringComparison.Ordinal)
+            || !peticion.CuerpoContrasena.Contains(OpcionesDeMensajes.MarcadorClave, StringComparison.Ordinal))
+            return ErrorNegocio.Validacion(
+                "contrasena-sin-marcador",
+                "El mensaje del correo de contraseña debe conservar las palabras CORREO y CLAVE: es donde el sistema escribe los datos de acceso.");
 
         if (await ContrasenaDelOperadorEsIncorrecta(operadorId, peticion.ContrasenaDelOperador, ct))
             return ErrorNegocio.Validacion("contrasena-incorrecta", "Tu contraseña de operador no es correcta.");
@@ -75,7 +94,7 @@ public sealed class ServicioDeConfiguracionDelSistema(
         nodo["Correo"] ??= new JsonObject();
         nodo["Correo"]!["Servidor"] = peticion.Servidor;
         nodo["Correo"]!["Puerto"] = peticion.Puerto;
-        nodo["Correo"]!["Usuario"] = peticion.Usuario;
+        nodo["Correo"]!["Usuario"] = peticion.Usuario; 
         nodo["Correo"]!["Contrasena"] = peticion.Contrasena;
         nodo["Correo"]!["RemitenteCorreo"] = peticion.RemitenteCorreo;
         nodo["Correo"]!["RemitenteNombre"] = peticion.RemitenteNombre;
@@ -84,6 +103,13 @@ public sealed class ServicioDeConfiguracionDelSistema(
         // Sección Sistema
         nodo["Sistema"] ??= new JsonObject();
         nodo["Sistema"]!["Nombre"] = peticion.NombreDelSistema;
+
+        // Sección Mensajes
+        nodo[OpcionesDeMensajes.Seccion] ??= new JsonObject();
+        nodo[OpcionesDeMensajes.Seccion]!["AsuntoVerificacion"] = peticion.AsuntoVerificacion;
+        nodo[OpcionesDeMensajes.Seccion]!["CuerpoVerificacion"] = peticion.CuerpoVerificacion;
+        nodo[OpcionesDeMensajes.Seccion]!["AsuntoContrasena"] = peticion.AsuntoContrasena;
+        nodo[OpcionesDeMensajes.Seccion]!["CuerpoContrasena"] = peticion.CuerpoContrasena;
 
         var opciones = new JsonSerializerOptions { WriteIndented = true };
         var textoNuevo = nodo.ToJsonString(opciones);
@@ -95,7 +121,7 @@ public sealed class ServicioDeConfiguracionDelSistema(
 
         return true;
     }
-
+  
     private string RutaDelArchivo()
     {
         // En desarrollo, appsettings.Development.json está junto al bin, no junto al .csproj.
