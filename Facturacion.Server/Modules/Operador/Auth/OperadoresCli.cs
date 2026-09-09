@@ -85,6 +85,53 @@ public static class OperadoresCli
     }
 
     /// <summary>
+    /// Restablece la contraseña de un operador por su correo. Igual que el alta, esto vive en
+    /// consola: quien puede cambiarla es el dueño del servidor, no una sesión del panel.
+    /// </summary>
+    public static async Task<int> CambiarContrasenaAsync(
+        IServiceProvider servicios, string correo, string contrasena)
+    {
+        if (string.IsNullOrWhiteSpace(correo) || !correo.Contains('@'))
+        {
+            Console.Error.WriteLine("El correo no es válido.");
+            return 1;
+        }
+
+        if (string.IsNullOrWhiteSpace(contrasena))
+        {
+            Console.Error.WriteLine("Falta la contraseña.");
+            return 1;
+        }
+
+        using var ambito = servicios.CreateScope();
+        var proveedor = ambito.ServiceProvider;
+
+        var baseDeDatos = proveedor.GetRequiredService<AppDbContext>();
+        var hasher = proveedor.GetRequiredService<IPasswordHasher<OperadorPlataforma>>();
+
+        var normalizado = correo.Trim().ToUpperInvariant();
+        var operador = await baseDeDatos.OperadoresPlataforma
+            .SingleOrDefaultAsync(o => o.CorreoNormalizado == normalizado);
+
+        if (operador is null)
+        {
+            Console.Error.WriteLine($"No existe un operador con el correo {correo}.");
+            return 1;
+        }
+
+        operador.HashContrasena = hasher.HashPassword(operador, contrasena);
+
+        await baseDeDatos.SaveChangesAsync();
+
+        Console.WriteLine();
+        Console.WriteLine("Contraseña restablecida.");
+        Console.WriteLine($"  Correo: {operador.Correo}");
+        Console.WriteLine();
+
+        return 0;
+    }
+
+    /// <summary>
     /// Veinticuatro caracteres de un alfabeto sin parecidos visuales: nadie tiene que teclear
     /// esto adivinando si es un uno o una ele.
     /// </summary>
