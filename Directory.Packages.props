@@ -1,15 +1,14 @@
 <Project>
-
   <PropertyGroup>
     <ManagePackageVersionsCentrally>true</ManagePackageVersionsCentrally>
     <CentralPackageTransitivePinningEnabled>true</CentralPackageTransitivePinningEnabled>
   </PropertyGroup>
-
   <!-- Las versiones de Microsoft.* se fijan al runtime instalado (10.0.10) para no cargar
        ensamblados más nuevos que el host. Un solo archivo evita que las dos mitades
        diverjan de versión en sus .csproj. -->
   <ItemGroup>
     <PackageVersion Include="Microsoft.AspNetCore.Components.WebAssembly" Version="10.0.10" />
+    <PackageVersion Include="Microsoft.Build.Tasks.Git" Version="10.0.111" />
     <PackageVersion Include="MudBlazor" Version="9.8.0" />
     <PackageVersion Include="Microsoft.AspNetCore.Components.WebAssembly.DevServer" Version="10.0.10" />
     <PackageVersion Include="Microsoft.AspNetCore.Components.Authorization" Version="10.0.10" />
@@ -25,7 +24,6 @@
          (corregida a partir de 2.7.5). -->
     <PackageVersion Include="Microsoft.OpenApi" Version="2.11.0" />
   </ItemGroup>
-
   <!-- Lee el .xls (formato binario legado) del catálogo del SAT sin depender de Excel
        instalado. Solo el Server la referencia: es una herramienta de carga, no algo que
        viaje al WebAssembly. -->
@@ -36,7 +34,6 @@
          versión igual trae varias vulnerabilidades conocidas (NU1903) que hay que tapar. -->
     <PackageVersion Include="System.Security.Cryptography.Xml" Version="10.0.11" />
   </ItemGroup>
-
   <!-- Representación impresa del CFDI (fase B5).
 
        QuestPDF va bajo licencia Community, que es gratuita SOLO mientras la facturación
@@ -49,18 +46,15 @@
     <PackageVersion Include="QuestPDF" Version="2025.7.0" />
     <PackageVersion Include="QRCoder" Version="1.6.0" />
   </ItemGroup>
-
   <ItemGroup>
     <PackageVersion Include="Serilog" Version="4.4.0" />
     <PackageVersion Include="Serilog.AspNetCore" Version="10.0.0" />
     <PackageVersion Include="Serilog.Sinks.Console" Version="6.1.1" />
   </ItemGroup>
-
   <ItemGroup>
     <PackageVersion Include="coverlet.collector" Version="6.0.4" />
     <PackageVersion Include="Microsoft.NET.Test.Sdk" Version="17.14.1" />
     <PackageVersion Include="xunit" Version="2.9.3" />
     <PackageVersion Include="xunit.runner.visualstudio" Version="3.1.4" />
   </ItemGroup>
-
 </Project>
