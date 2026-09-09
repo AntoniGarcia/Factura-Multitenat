@@ -7,6 +7,7 @@
 @inject ServicioDeOperadores Operadores
 @inject IDialogService Dialogos
 @inject IServicioDeConfirmacion Confirmacion
+@inject ServicioDeSesionDeOperador Sesion
 
 <PageTitle>Operadores</PageTitle>
 <TituloDePagina Texto="Operadores" />
@@ -42,6 +43,8 @@
 
     private IReadOnlyList<ColumnaDeTabla<OperadorDto>> _columnas = [];
 
+    private bool EsPrincipalEnSesion => Sesion.Sesion?.EsPrincipal == true;
+
     protected override void OnInitialized() => _columnas =
     [
         new("Operador", u => @<div>
@@ -75,6 +78,13 @@
                                        OnClick="@(() => CambiarPermisos(u))">
                                 Permisos
                             </MudButton>
+                            @if (EsPrincipalEnSesion && !u.EsPrincipal)
+                            {
+                                <MudButton Size="Size.Small" Disabled="@_trabajando"
+                                           OnClick="@(() => CambiarContrasena(u))">
+                                    Contraseña
+                                </MudButton>
+                            }
                             @if (!u.EsPrincipal)
                             {
                                 <MudButton Size="Size.Small" Disabled="@_trabajando"
@@ -164,6 +174,38 @@
 
         if (_error is null)
             _aviso = "Permisos actualizados.";
+
+        await RecargarAsync();
+    }
+
+    private async Task CambiarContrasena(OperadorDto operador)
+    {
+        var parametros = new DialogParameters<DialogoCambioContrasenaOperador>
+        {
+            { x => x.NombreOperador, operador.Nombre }
+        };
+
+        var referencia = await Dialogos.ShowAsync<DialogoCambioContrasenaOperador>(
+            "Cambiar contraseña de " + operador.Nombre, parametros);
+        var resultado = await referencia.Result;
+
+        if (resultado is not { Canceled: false, Data: DialogoCambioContrasenaOperador.ContrasenaACambiar datos }) return;
+
+        _trabajando = true;
+        _error = null;
+        _aviso = null;
+
+        var (exito, error) = await Operadores.CambiarContrasenaAsync(
+            operador.Id,
+            new PeticionContrasenaNuevaDeOperador(datos.ContrasenaNueva),
+            datos.ContrasenaOperador,
+            CancellationToken.None);
+
+        _error = error;
+        _trabajando = false;
+
+        if (exito)
+            _aviso = "Contraseña cambiada y sus sesiones fueron cerradas.";
 
         await RecargarAsync();
     }
