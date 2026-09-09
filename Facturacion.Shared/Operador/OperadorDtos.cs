@@ -32,3 +32,10 @@ public sealed record PeticionPermisosOperador(
 public sealed record PeticionCambiarActivoOperador(
     bool Activo,
     [property: MaxLength(300)] string? Motivo);
+
+/// <summary>
+/// Contraseña nueva que el operador principal le pone a otro operador. Solo él puede:
+/// es entrar como otra persona, la operación más delicada del panel.
+/// </summary>
+public sealed record PeticionContrasenaNuevaDeOperador(
+    [property: Required, MinLength(12), MaxLength(128)] string ContrasenaNueva);

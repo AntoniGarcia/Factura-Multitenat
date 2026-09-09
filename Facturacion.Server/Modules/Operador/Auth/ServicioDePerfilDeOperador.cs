@@ -136,7 +136,7 @@ public sealed class ServicioDePerfilDeOperador(
             .SingleOrDefaultAsync(o => o.Id == operadorId && o.Activo, ct);
 
     private static SesionDeOperadorDto ADto(OperadorPlataforma operador)
-        => new(operador.Id, operador.Nombre, operador.Correo, [.. operador.Permisos.Select(p => p.Permiso)]);
+        => new(operador.Id, operador.Nombre, operador.Correo, operador.EsPrincipal, [.. operador.Permisos.Select(p => p.Permiso)]);
 
     private bool ContrasenaCorrecta(OperadorPlataforma operador, string contrasena)
         => hasher.VerifyHashedPassword(operador, operador.HashContrasena, contrasena)

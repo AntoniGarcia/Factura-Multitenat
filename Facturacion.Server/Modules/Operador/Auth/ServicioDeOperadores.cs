@@ -275,6 +275,61 @@ public sealed class ServicioDeOperadores(
             : ErrorNegocio.NoEncontrado("operador-no-encontrado", "El operador no existe tras el cambio de estado.");
     }
 
+    /// <summary>
+    /// El operador principal le pone una contraseña nueva a otro operador y cierra todas sus
+    /// sesiones. Es la operación más delicada del panel —equivale a entrar como otra persona—,
+    /// por eso la puede ejecutar solo el principal y exige su re-autenticación.
+    /// </summary>
+    public async Task<Resultado<bool>> CambiarContrasenaAsync(
+        Guid operadorActualId,
+        Guid id,
+        PeticionContrasenaNuevaDeOperador peticion,
+        string contrasenaOperadorActual,
+        CancellationToken ct)
+    {
+        if (await ContrasenaIncorrecta(operadorActualId, contrasenaOperadorActual, ct))
+            return ErrorNegocio.Validacion("contrasena-incorrecta", "Tu contraseña de operador no es correcta.");
+
+        var operadorActual = await baseDeDatos.OperadoresPlataforma
+            .AsNoTracking()
+            .SingleOrDefaultAsync(o => o.Id == operadorActualId, ct);
+
+        // Solo el dueño del SaaS puede dejar fuera a alguien poniéndole otra contraseña.
+        if (operadorActual is null || !operadorActual.EsPrincipal)
+            return ErrorNegocio.Regla(
+                "solo-principal", "Solo el operador principal puede cambiar la contraseña de otro operador.");
+
+        if (id == operadorActualId)
+            return ErrorNegocio.Regla(
+                "auto-cambio", "No puedes cambiarte la contraseña desde aquí: hazlo desde tu perfil.");
+
+        if (peticion.ContrasenaNueva.Length < 12 || peticion.ContrasenaNueva.Length > 128)
+            return ErrorNegocio.Validacion(
+                "contrasena-invalida", "La contraseña debe tener entre 12 y 128 caracteres.");
+
+        var operador = await baseDeDatos.OperadoresPlataforma
+            .SingleOrDefaultAsync(o => o.Id == id, ct);
+
+        if (operador is null)
+            return ErrorNegocio.NoEncontrado("operador-no-encontrado", "Ese operador no existe.");
+
+        operador.HashContrasena = hasher.HashPassword(operador, peticion.ContrasenaNueva);
+
+        await refrescos.InvalidarTodasLasFamiliasDelOperadorAsync(
+            id, "contraseña restablecida por el operador principal", ct);
+
+        bitacora.Registrar(
+            EntidadesDeBitacora.OperadorPlataforma,
+            operador.Id.ToString(),
+            AccionesDeBitacora.ContrasenaCambiada,
+            despues: new { SesionDelOperador = operador.Nombre, SesionesCerradas = true },
+            operadorId: operadorActualId);
+
+        await baseDeDatos.SaveChangesAsync(ct);
+
+        return true;
+    }
+
     private static ErrorNegocio? ValidarCreacion(PeticionGuardarOperador p)
     {
         if (string.IsNullOrWhiteSpace(p.Nombre))

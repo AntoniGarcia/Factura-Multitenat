@@ -21,6 +21,7 @@ public sealed record SesionDeOperadorDto(
     Guid OperadorId,
     string Nombre,
     string Correo,
+    bool EsPrincipal,
     IReadOnlyList<string> Permisos);
 
 /// <summary>
