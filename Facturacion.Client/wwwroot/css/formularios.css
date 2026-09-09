@@ -20,11 +20,12 @@
 
 /*
   Rejilla que se acomoda sola: en escritorio caben tres o cuatro campos por renglón, y en
-  móvil cae a uno sin necesidad de una consulta de medios propia.
+  móvil cae a uno sin necesidad de una consulta de medios propia. El mínimo es corto de
+  propósito para que dos campos sigan cabiendo también en un diálogo angosto (Small).
 */
 .rejilla-campos {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(15rem, 1fr));
+    grid-template-columns: repeat(auto-fit, minmax(11rem, 1fr));
     gap: 0.75rem 1rem;
     margin-bottom: 0.5rem;
 }
@@ -37,9 +38,15 @@
 }
 
 /* ── Selector de permisos del panel ─────────────────────────────────────────────
-   Jerárquico: cada sección se abre con su «ver» y, dentro, sus acciones. Las acciones van
-   levemente indentadas y separadas del ver por una línea fina para leerse como un bloque que
-   cuelga de él, en vez de como un campo suelto más. */
+   Jerárquico: cada sección se abre con su «ver» y, dentro, sus acciones. Las secciones van en
+   una cuadrícula para no estirar el diálogo en alto, y las acciones se alinean bajo su sección
+   sin sangría: el ahorro de espacio es lo que pide la pantalla, no una jerarquía dibujada. */
+.permisos-secciones {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(12rem, 1fr));
+    gap: 0.25rem 1.5rem;
+}
+
 .seccion-permisos {
     padding: 0.35rem 0.5rem;
     border-radius: 6px;
@@ -49,14 +56,16 @@
     font-weight: 500;
 }
 
+.seccion-permisos.abierta {
+    background: var(--superficie);
+    border: 1px solid var(--borde);
+}
+
 .permisos-acciones {
-    margin-left: 2.25rem;
-    margin-top: 0.1rem;
-    padding-left: 0.75rem;
-    border-left: 1px solid var(--borde);
+    margin-left: 0.25rem;
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(15rem, 1fr));
-    gap: 0.1rem 1rem;
+    grid-template-columns: repeat(auto-fit, minmax(10rem, 1fr));
+    gap: 0 0.5rem;
 }
 
 /* ── Tarjeta de formulario ─────────────────────────────────────────────────────

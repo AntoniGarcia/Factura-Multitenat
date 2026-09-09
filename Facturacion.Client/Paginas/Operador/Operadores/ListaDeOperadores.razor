@@ -109,7 +109,7 @@
             { x => x.Modo, ModoFormulario.Crear }
         };
 
-        var referencia = await Dialogos.ShowAsync<FormularioDeOperador>("Nuevo operador", parametros, new DialogOptions { MaxWidth = MaxWidth.Medium, FullWidth = true });
+        var referencia = await Dialogos.ShowAsync<FormularioDeOperador>("Nuevo operador", parametros, new DialogOptions { MaxWidth = MaxWidth.Small, FullWidth = true });
         var resultado = await referencia.Result;
 
         if (resultado is { Canceled: false, Data: true })
@@ -127,7 +127,7 @@
             { x => x.Operador, operador }
         };
 
-        var referencia = await Dialogos.ShowAsync<FormularioDeOperador>("Editar operador", parametros, new DialogOptions { MaxWidth = MaxWidth.Medium, FullWidth = true });
+        var referencia = await Dialogos.ShowAsync<FormularioDeOperador>("Editar operador", parametros, new DialogOptions { MaxWidth = MaxWidth.Small, FullWidth = true });
         var resultado = await referencia.Result;
 
         if (resultado is { Canceled: false, Data: true })

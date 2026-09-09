@@ -10,32 +10,34 @@
     sin su sección, el servidor la rechaza igual (no es comodidad visual, es la defensa de fondo).
 *@
 
-@foreach (var seccion in PermisosDePanel.Secciones)
-{
-    var verMarcado = Value.Contains(seccion.Ver.Clave);
+<div class="permisos-secciones">
+    @foreach (var seccion in PermisosDePanel.Secciones)
+    {
+        var verMarcado = Value.Contains(seccion.Ver.Clave);
 
-    <div class="seccion-permisos @(verMarcado ? "abierta" : null)">
-        <MudCheckBox T="bool"
-                      Value="@verMarcado"
-                      ValueChanged="@(marcado => CambiarVer(seccion, marcado))"
-                      Label="@seccion.Ver.Etiqueta"
-                      Disabled="@Deshabilitado" />
+        <div class="seccion-permisos @(verMarcado ? "abierta" : null)">
+            <MudCheckBox T="bool"
+                          Value="@verMarcado"
+                          ValueChanged="@(marcado => CambiarVer(seccion, marcado))"
+                          Label="@seccion.Ver.Etiqueta"
+                          Disabled="@Deshabilitado" />
 
-        @if (verMarcado && seccion.Acciones.Count > 0)
-        {
-            <div class="permisos-acciones">
-                @foreach (var accion in seccion.Acciones)
-                {
-                    <MudCheckBox T="bool"
-                                  Value="@Value.Contains(accion.Clave)"
-                                  ValueChanged="@(marcado => CambiarAccion(seccion, accion.Clave, marcado))"
-                                  Label="@accion.Etiqueta"
-                                  Disabled="@Deshabilitado" />
-                }
-            </div>
-        }
-    </div>
-}
+            @if (verMarcado && seccion.Acciones.Count > 0)
+            {
+                <div class="permisos-acciones">
+                    @foreach (var accion in seccion.Acciones)
+                    {
+                        <MudCheckBox T="bool"
+                                      Value="@Value.Contains(accion.Clave)"
+                                      ValueChanged="@(marcado => CambiarAccion(seccion, accion.Clave, marcado))"
+                                      Label="@accion.Etiqueta"
+                                      Disabled="@Deshabilitado" />
+                    }
+                </div>
+            }
+        </div>
+    }
+</div>
 
 @code {
     [Parameter, EditorRequired]
