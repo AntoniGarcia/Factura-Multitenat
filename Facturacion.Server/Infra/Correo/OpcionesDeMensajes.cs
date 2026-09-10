@@ -1,10 +1,10 @@
 namespace Facturacion.Server.Infra.Correo;
 
 /// <summary>
-/// Plantillas de los correos de registro (código de verificación y contraseña generada).
-/// Se guardan en la sección <c>Mensajes</c> de appsettings y se editan desde la UI del operador
-/// como texto normal. Los marcadores son palabras en mayúsculas que el sistema sustituye por
-/// el dato real al enviar, y las líneas en blanco separan párrafos.
+/// Plantillas de los correos de registro (código de verificación y bienvenida).
+/// La sección <c>Mensajes</c> de appsettings aporta los valores iniciales; los cambios del
+/// operador se persisten en SQL Server. Los marcadores son palabras en mayúsculas que el
+/// sistema sustituye por el dato real al enviar, y las líneas en blanco separan párrafos.
 /// </summary>
 public sealed class OpcionesDeMensajes
 {
@@ -19,11 +19,14 @@ public sealed class OpcionesDeMensajes
     /// <summary>En el mensaje de verificación: los minutos que dura el código.</summary>
     public const string MarcadorMinutos = "MINUTOS";
 
-    /// <summary>En el mensaje de contraseña: el correo con el que se entra.</summary>
+    /// <summary>En el mensaje de bienvenida: el correo con el que se entra.</summary>
     public const string MarcadorCorreo = "CORREO";
 
-    /// <summary>En el mensaje de contraseña: la contraseña generada.</summary>
-    public const string MarcadorClave = "CLAVE";
+    /// <summary>
+    /// Compatibilidad con plantillas guardadas antes de que se eliminara el envío de
+    /// contraseñas. Nunca se sustituye por una credencial real.
+    /// </summary>
+    public const string MarcadorClaveObsoleto = "CLAVE";
 
     public const string AsuntoVerificacionPredeterminado = "Tu código de verificación";
 
@@ -34,24 +37,20 @@ public sealed class OpcionesDeMensajes
 
         CODIGO
 
-        Caduca en MINUTOS minutos. Cuando lo escribas, te mandamos la contraseña en otro mensaje.
+        Caduca en MINUTOS minutos. En la misma pantalla elegirás tu contraseña.
 
         Si no fuiste tú quien pidió esto, ignora este mensaje: sin el código no se crea
         ninguna cuenta con tu correo.
         """;
 
-    public const string AsuntoContrasenaPredeterminado = "Tus datos de acceso";
+    public const string AsuntoContrasenaPredeterminado = "Tu cuenta está lista";
 
     public const string CuerpoContrasenaPredeterminado = """
         Hola NOMBRE:
 
-        Tu cuenta ya está lista. Entra con estos datos:
+        Tu cuenta ya está lista. Entra con el correo que verificaste:
 
         Correo: CORREO
-        Contraseña: CLAVE
-
-        Cámbiala en cuanto entres, desde tu perfil. Este mensaje contiene tu contraseña:
-        bórralo después de guardarla en un lugar seguro.
 
         El siguiente paso es dar de alta tu empresa emisora para poder facturar.
         """;
@@ -61,7 +60,7 @@ public sealed class OpcionesDeMensajes
 
     public string CuerpoVerificacion { get; init; } = CuerpoVerificacionPredeterminado;
 
-    /// <summary>Asunto del correo que envía la contraseña generada.</summary>
+    /// <summary>Asunto del correo de bienvenida.</summary>
     public string AsuntoContrasena { get; init; } = AsuntoContrasenaPredeterminado;
 
     public string CuerpoContrasena { get; init; } = CuerpoContrasenaPredeterminado;

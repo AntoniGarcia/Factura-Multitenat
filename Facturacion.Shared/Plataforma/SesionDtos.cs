@@ -86,11 +86,16 @@ public sealed record PeticionRegistro(string Correo, string Nombre, string? Nomb
 public sealed record RespuestaRegistro(string Mensaje);
 
 /// <summary>
-/// Segundo paso del alta: el código que llegó al correo. El correo viaja otra vez porque
-/// entre los dos pasos no hay sesión ni cookie donde recordarlo, y el código por sí solo no
-/// identifica a nadie.
+/// Segundo paso del alta: el código que llegó al correo y la contraseña que la persona elige.
+/// El correo viaja otra vez porque entre los dos pasos no hay sesión ni cookie donde
+/// recordarlo, y el código por sí solo no identifica a nadie. La contraseña solo viaja por
+/// esta petición HTTPS; nunca se manda por correo ni se persiste en claro.
 /// </summary>
-public sealed record PeticionVerificarAlta(string Correo, string Codigo);
+public sealed record PeticionVerificarAlta(
+    string Correo,
+    string Codigo,
+    string Contrasena,
+    string ConfirmacionContrasena);
 
 /// <summary>
 /// Resultado de verificar el código. Aquí sí se distingue el éxito del fallo —no habría

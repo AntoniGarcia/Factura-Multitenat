@@ -20,6 +20,10 @@
     <PackageVersion Include="Microsoft.EntityFrameworkCore.Design" Version="10.0.10" />
     <PackageVersion Include="Microsoft.EntityFrameworkCore.SqlServer" Version="10.0.10" />
     <PackageVersion Include="Microsoft.Extensions.Http" Version="10.0.10" />
+    <!-- NPOI 2.8.0 arrastra SourceLink 8.0.0 y, con él, Microsoft.Build.Tasks.Git 8.0.0.
+         Esa versión expone datos sensibles del proceso de compilación (GHSA-23fw-v26w-5fgq).
+         Es una herramienta de build, pero se fija igual para que CI no use la vulnerable. -->
+    <PackageVersion Include="Microsoft.Build.Tasks.Git" Version="10.0.401" />
     <!-- Fijado por transitividad: Microsoft.AspNetCore.OpenApi 10.0.10 arrastra
          Microsoft.OpenApi 2.0.0, que tiene la vulnerabilidad GHSA-v5pm-xwqc-g5wc
          (corregida a partir de 2.7.5). -->

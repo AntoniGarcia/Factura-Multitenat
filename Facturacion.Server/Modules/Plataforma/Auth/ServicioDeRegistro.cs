@@ -9,7 +9,6 @@ using Facturacion.Shared.Comun;
 using Facturacion.Shared.Plataforma;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.Options;
 
 namespace Facturacion.Server.Modules.Plataforma.Auth;
 
@@ -18,16 +17,9 @@ namespace Facturacion.Server.Modules.Plataforma.Auth;
 ///
 /// <para><b>Va en dos pasos, y el orden importa</b></para>
 /// Primero se manda un código al correo y el alta queda esperando en <see cref="AltaPendiente"/>;
-/// la cuenta se crea cuando el código vuelve, y solo entonces sale la contraseña. Así la
-/// contraseña nunca viaja a un buzón que nadie ha demostrado controlar, y nadie puede llenar
-/// la base de cuentas a nombre de correos ajenos.
-///
-/// <para><b>La contraseña viaja por correo, y eso tiene un costo</b></para>
-/// El correo no es un canal seguro: queda en la bandeja de quien se registra, en el servidor
-/// que lo entregó y en cualquier respaldo de ambos. Se hizo así por decisión explícita. El
-/// código de verificación reduce el problema —ahora se sabe que el buzón es suyo— pero no lo
-/// quita: la alternativa sigue siendo mandar un enlace de un solo uso para que la fije él, y
-/// si algún día se cambia, se cambia aquí y en la plantilla, no en más sitios.
+/// la cuenta se crea cuando el código vuelve junto con la contraseña elegida por la persona.
+/// La contraseña solo cruza la petición HTTPS y entra directamente a Identity para obtener
+/// su hash: nunca viaja por correo ni se persiste en claro.
 ///
 /// <para><b>No se puede averiguar quién tiene cuenta</b></para>
 /// La respuesta del primer paso es idéntica exista o no el correo. Si el correo ya estaba
@@ -48,7 +40,7 @@ public sealed class ServicioDeRegistro(
     IServicioDeCorreo correo,
     IServicioDeBitacora bitacora,
     IControlDeIntentos intentos,
-    IOptionsMonitor<OpcionesDeMensajes> mensajes,
+    IProveedorDeConfiguracionDelSistema configuracionDelSistema,
     ILogger<ServicioDeRegistro> registro)
 {
     /// <summary>
@@ -179,8 +171,8 @@ public sealed class ServicioDeRegistro(
 
         var correoNormalizado = (peticion.Correo ?? string.Empty).Trim().ToLowerInvariant();
         var codigo = (peticion.Codigo ?? string.Empty).Trim();
-
-        intentos.RegistrarFallo(claveIp);
+        var contrasena = peticion.Contrasena ?? string.Empty;
+        var confirmacion = peticion.ConfirmacionContrasena ?? string.Empty;
 
         // Con varias del mismo correo se toma la última: es la del código que acaba de llegar.
         var alta = await baseDeDatos.AltasPendientes
@@ -189,10 +181,14 @@ public sealed class ServicioDeRegistro(
             .FirstOrDefaultAsync(ct);
 
         if (alta is null || alta.ExpiraUtc <= DateTime.UtcNow || alta.Intentos >= IntentosMaximos)
+        {
+            intentos.RegistrarFallo(claveIp);
             return ErrorNegocio.Validacion("codigo-invalido", MensajeCodigoInvalido);
+        }
 
         if (hasher.VerifyHashedPassword(alta, alta.HashCodigo, codigo) == PasswordVerificationResult.Failed)
         {
+            intentos.RegistrarFallo(claveIp);
             alta.Intentos++;
             await baseDeDatos.SaveChangesAsync(ct);
 
@@ -205,9 +201,16 @@ public sealed class ServicioDeRegistro(
                     : MensajeCodigoInvalido);
         }
 
+        var erroresDeContrasena = await ValidarContrasenaAsync(alta, contrasena, confirmacion);
+
+        if (erroresDeContrasena.Count > 0)
+            return ErrorNegocio.Validacion(
+                "contrasena-invalida", "Revisa la contraseña.", erroresDeContrasena);
+
         // Alguien pudo haberse quedado con el correo entre que se pidió el código y ahora.
         if (await usuarios.FindByEmailAsync(correoNormalizado) is not null)
         {
+            intentos.RegistrarFallo(claveIp);
             await MarcarConsumidaAsync(alta.Id, ct);
             return ErrorNegocio.Validacion("codigo-invalido", MensajeCodigoInvalido);
         }
@@ -216,16 +219,18 @@ public sealed class ServicioDeRegistro(
         // peticiones llegan con el mismo código a la vez, solo una toca fila y la otra se
         // encuentra con cero. Sin esto, un doble clic crearía dos cuentas con el mismo correo.
         if (await MarcarConsumidaAsync(alta.Id, ct) == 0)
+        {
+            intentos.RegistrarFallo(claveIp);
             return ErrorNegocio.Validacion("codigo-invalido", MensajeCodigoInvalido);
+        }
 
-        var creacion = await CrearCuentaAsync(alta, ct);
+        var creacion = await CrearCuentaAsync(alta, contrasena, ct);
 
         if (creacion.Error is { } fallo) return fallo;
 
         intentos.Limpiar(claveIp);
 
-        return new RespuestaAltaVerificada(
-            "Tu cuenta ya está lista. Te mandamos la contraseña por correo.");
+        return new RespuestaAltaVerificada("Tu cuenta ya está lista. Ya puedes iniciar sesión.");
     }
 
     /// <summary>
@@ -237,7 +242,51 @@ public sealed class ServicioDeRegistro(
             .Where(a => a.Id == altaId && a.ConsumidoUtc == null)
             .ExecuteUpdateAsync(s => s.SetProperty(a => a.ConsumidoUtc, DateTime.UtcNow), ct);
 
-    private async Task<Resultado> CrearCuentaAsync(AltaPendiente alta, CancellationToken ct)
+    private async Task<Dictionary<string, string[]>> ValidarContrasenaAsync(
+        AltaPendiente alta, string contrasena, string confirmacion)
+    {
+        var errores = new Dictionary<string, string[]>();
+
+        if (contrasena != confirmacion)
+            errores["confirmacionContrasena"] = ["Las dos contraseñas no coinciden."];
+
+        var candidato = new Usuario
+        {
+            Id = Guid.NewGuid(),
+            Nombre = alta.Nombre,
+            CuentaId = Guid.NewGuid(),
+            UserName = alta.Correo,
+            Email = alta.Correo,
+            FechaAltaUtc = DateTime.UtcNow
+        };
+
+        var mensajes = new List<string>();
+
+        foreach (var validador in usuarios.PasswordValidators)
+        {
+            var resultado = await validador.ValidateAsync(usuarios, candidato, contrasena);
+            mensajes.AddRange(resultado.Errors.Select(MensajeDeContrasena));
+        }
+
+        if (mensajes.Count > 0)
+            errores["contrasena"] = [.. mensajes.Distinct()];
+
+        return errores;
+    }
+
+    private static string MensajeDeContrasena(IdentityError error) => error.Code switch
+    {
+        "PasswordTooShort" => "Usa al menos 12 caracteres.",
+        "PasswordRequiresDigit" => "Incluye al menos un número.",
+        "PasswordRequiresLower" => "Incluye al menos una letra minúscula.",
+        "PasswordRequiresUpper" => "Incluye al menos una letra mayúscula.",
+        "PasswordRequiresNonAlphanumeric" => "Incluye al menos un símbolo.",
+        "PasswordRequiresUniqueChars" => "Usa más caracteres diferentes.",
+        _ => "La contraseña no cumple los requisitos de seguridad."
+    };
+
+    private async Task<Resultado> CrearCuentaAsync(
+        AltaPendiente alta, string contrasena, CancellationToken ct)
     {
         var ahora = DateTime.UtcNow;
 
@@ -263,8 +312,6 @@ public sealed class ServicioDeRegistro(
             // Se registró él mismo, así que puede cambiar su contraseña desde su perfil.
             CreadoPorAdministrador = false
         };
-
-        var contrasena = GenerarContrasena();
 
         baseDeDatos.Cuentas.Add(cuenta);
         await baseDeDatos.SaveChangesAsync(ct);
@@ -294,7 +341,7 @@ public sealed class ServicioDeRegistro(
 
         await baseDeDatos.SaveChangesAsync(ct);
 
-        await EnviarContrasenaAsync(alta.Correo, alta.Nombre, contrasena, ct);
+        await EnviarBienvenidaAsync(alta.Correo, alta.Nombre, ct);
 
         return Resultado.Exito();
     }
@@ -307,44 +354,9 @@ public sealed class ServicioDeRegistro(
     /// </summary>
     private static string GenerarCodigo() => RandomNumberGenerator.GetInt32(0, 1_000_000).ToString("D6");
 
-    /// <summary>
-    /// Contraseña generada. Arma una de cada clase exigida por Identity y rellena el resto al
-    /// azar, para no depender de que un azar puro acierte a incluirlas; después baraja, porque
-    /// dejar las obligatorias siempre al principio reduce el espacio de búsqueda real.
-    /// </summary>
-    private static string GenerarContrasena()
-    {
-        const string mayusculas = "ABCDEFGHJKLMNPQRSTUVWXYZ";
-        const string minusculas = "abcdefghijkmnopqrstuvwxyz";
-        const string digitos = "23456789";
-        const string simbolos = "@#$%&*+-";
-
-        // Sin I, l, 1, O ni 0: esta contraseña se lee de un correo y se teclea a mano, y esos
-        // cinco caracteres son los que se confunden al copiarlos.
-        var alfabeto = mayusculas + minusculas + digitos + simbolos;
-
-        var caracteres = new List<char>
-        {
-            Elegir(mayusculas), Elegir(minusculas), Elegir(digitos), Elegir(simbolos)
-        };
-
-        while (caracteres.Count < 16) caracteres.Add(Elegir(alfabeto));
-
-        // Barajado de Fisher-Yates con la fuente criptográfica, no con Random.
-        for (var i = caracteres.Count - 1; i > 0; i--)
-        {
-            var j = RandomNumberGenerator.GetInt32(i + 1);
-            (caracteres[i], caracteres[j]) = (caracteres[j], caracteres[i]);
-        }
-
-        return new string([.. caracteres]);
-    }
-
-    private static char Elegir(string fuente) => fuente[RandomNumberGenerator.GetInt32(fuente.Length)];
-
     private async Task EnviarCodigoAsync(string destinatario, string nombre, string codigo, CancellationToken ct)
     {
-        var plantillas = mensajes.CurrentValue;
+        var plantillas = (await configuracionDelSistema.ObtenerAsync(ct)).Mensajes;
 
         var cuerpo = Renderizar(plantillas.CuerpoVerificacion,
             (OpcionesDeMensajes.MarcadorNombre, nombre),
@@ -356,14 +368,14 @@ public sealed class ServicioDeRegistro(
         await EnviarSinTumbarElAltaAsync(destinatario, asunto, cuerpo, ct);
     }
 
-    private async Task EnviarContrasenaAsync(string destinatario, string nombre, string contrasena, CancellationToken ct)
+    private async Task EnviarBienvenidaAsync(string destinatario, string nombre, CancellationToken ct)
     {
-        var plantillas = mensajes.CurrentValue;
+        var plantillas = (await configuracionDelSistema.ObtenerAsync(ct)).Mensajes;
 
         var cuerpo = Renderizar(plantillas.CuerpoContrasena,
             (OpcionesDeMensajes.MarcadorNombre, nombre),
             (OpcionesDeMensajes.MarcadorCorreo, destinatario),
-            (OpcionesDeMensajes.MarcadorClave, contrasena));
+            (OpcionesDeMensajes.MarcadorClaveObsoleto, "la que elegiste durante el registro"));
 
         var asunto = Rellenar(plantillas.AsuntoContrasena, (OpcionesDeMensajes.MarcadorNombre, nombre));
 
@@ -431,7 +443,7 @@ public sealed class ServicioDeRegistro(
         }
         catch (Exception excepcion)
         {
-            registro.LogError(excepcion, "No se pudo enviar el correo del registro «{Asunto}»", asunto);
+            registro.LogError(excepcion, "No se pudo enviar el correo del registro");
         }
     }
 

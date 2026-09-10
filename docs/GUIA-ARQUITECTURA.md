@@ -379,14 +379,16 @@ El publicado del Server ya incluye la app Blazor compilada con Brotli.
 
 | Variable | Qué es |
 |---|---|
-| `ASPNETCORE_ENVIRONMENT` | `Production` (apaga el sembrado, enciende comprobaciones estrictas) |
+| `ASPNETCORE_ENVIRONMENT` | `Staging` para revisión o `Production` para el entorno real; nunca `Development` |
+| `AllowedHosts` | Dominio público exacto del servicio |
 | `ConnectionStrings__BaseDeDatos` | Cadena de conexión a SQL Server |
 | `Jwt__Emisor`, `Jwt__Audiencia`, `Jwt__ClaveDeFirma` | Token JWT (la clave >= 32 caracteres) |
 | `Almacen__LlaveMaestraPfx` | Clave maestra (se genera con `--generar-llave-maestra`) |
+| `Almacen__Raiz`, `Almacen__RutaLlavero` | Rutas absolutas y persistentes fuera de `wwwroot` |
 | `Correo__Servidor` | SMTP del SaaS (es obligatorio fuera de Development) |
 
-Recomendadas: `Almacen__Raiz` y `Almacen__RutaLlavero` (carpetas persistentes **fuera de
-wwwroot**), credenciales SMTP, correo/telefono de soporte.
+Recomendadas: credenciales SMTP y correo/teléfono de soporte. En Azure App Service Linux se
+agrega además `ASPNETCORE_FORWARDEDHEADERS_ENABLED=true`.
 
 ### 9.3 Base de datos
 

@@ -35,12 +35,15 @@ publicado, no deducidos.
 
 | Variable | Qué es |
 |---|---|
-| `ASPNETCORE_ENVIRONMENT` | `Production`. Cualquier valor distinto de `Development` apaga el sembrado y enciende las comprobaciones estrictas. |
+| `ASPNETCORE_ENVIRONMENT` | `Staging` para el entorno de revisión o `Production` para el real. Nunca `Development`: cualquier otro valor apaga el sembrado y enciende las comprobaciones estrictas. |
+| `AllowedHosts` | Dominio público exacto, por ejemplo `mi-app.azurewebsites.net`. Para varios dominios se separan con `;`. |
 | `ConnectionStrings__BaseDeDatos` | Cadena de conexión a SQL Server. |
 | `Jwt__Emisor` | Emisor de los tokens. |
 | `Jwt__Audiencia` | Audiencia de los tokens. |
 | `Jwt__ClaveDeFirma` | **Mínimo 32 caracteres.** Falla al arrancar si falta o es corta, a propósito: no es algo que se descubra cuando alguien intenta iniciar sesión. |
 | `Almacen__LlaveMaestraPfx` | Certificado en base 64 que protege el llavero de Data Protection. Ver §3. |
+| `Almacen__Raiz` | Ruta absoluta, persistente y fuera del paquete publicado para logos, XML y CSD cifrados. |
+| `Almacen__RutaLlavero` | Ruta absoluta y persistente del llavero de Data Protection. |
 | `Correo__Servidor` | Servidor SMTP del SaaS. |
 | `Correo__RemitenteCorreo` | Remitente de las invitaciones. |
 
@@ -48,8 +51,6 @@ publicado, no deducidos.
 
 | Variable | Qué es |
 |---|---|
-| `Almacen__Raiz` | Carpeta de logos y CSD cifrados. **Fuera de `wwwroot`** y en almacenamiento persistente. |
-| `Almacen__RutaLlavero` | Carpeta del llavero de Data Protection. Persistente: si se pierde, los CSD ya cargados quedan ilegibles. |
 | `Correo__Puerto`, `Correo__Usuario`, `Correo__Contrasena`, `Correo__UsarTls` | Credenciales SMTP. |
 | `Soporte__Correo`, `Soporte__Telefono` | Se muestran cuando una empresa llega al máximo de usuarios. |
 
@@ -238,10 +239,10 @@ lo habitual es que baste con `proxy_pass` sin tocar esa cabecera.
 
 ---
 
-## 9. Proxy inverso — léelo antes de poner uno
+## 9. Proxy inverso y Azure App Service
 
-Hoy **no hay configuración de encabezados reenviados** en el proyecto, y eso tiene
-consecuencias concretas (`docs/REPASO-SEGURIDAD.md` §5.1).
+El pipeline procesa `X-Forwarded-For` y `X-Forwarded-Proto` antes de HTTPS, autenticación y
+los límites por IP. De forma predeterminada ASP.NET Core solo confía en proxies de loopback.
 
 Detrás de un proxy que termina TLS, la aplicación ve las peticiones como `http://` aunque el
 usuario esté en HTTPS. Con eso:
@@ -252,19 +253,34 @@ usuario esté en HTTPS. Con eso:
 - la IP que ve el control de intentos es la del proxy, no la del cliente, así que el límite
   por IP de la fase 1 pasa a contar a todo el mundo junto.
 
-La corrección es `UseForwardedHeaders`, pero **no se activa a la ligera**: si se aceptan
-`X-Forwarded-*` de cualquier origen, un cliente puede falsificar su IP y su esquema, y con
-eso envenena tanto el control de intentos como la bitácora. Hay que acotarlo con
-`KnownProxies` o `KnownNetworks` al proxy real, nunca abierto.
+En Azure App Service Linux se debe agregar esta variable para que la integración administrada
+acepte los encabezados del proxy de la plataforma:
 
-Por eso quedó pendiente en vez de resuelto: depende de una topología que todavía no está
-decidida.
+```text
+ASPNETCORE_FORWARDEDHEADERS_ENABLED=true
+```
+
+No se debe usar esa variable en un servidor que también sea accesible directamente desde
+Internet: en ese caso se configuran `KnownProxies` o `KnownNetworks` para la red real.
+
+Las rutas persistentes recomendadas en App Service Linux son:
+
+```text
+Almacen__Raiz=/home/data/facturacion/archivos
+Almacen__RutaLlavero=/home/data/facturacion/llavero
+```
+
+En App Service Windows se usa el equivalente bajo `D:\home\data\facturacion`. El servidor
+rechaza el arranque fuera de Development si cualquiera de las dos rutas es relativa o queda
+dentro de `wwwroot`.
 
 ---
 
 ## 10. Lista de comprobación
 
-- [ ] `ASPNETCORE_ENVIRONMENT=Production`
+- [ ] `ASPNETCORE_ENVIRONMENT=Staging` para revisión o `Production` para el entorno real
+- [ ] `AllowedHosts` contiene solo los dominios públicos del servicio
+- [ ] En App Service Linux: `ASPNETCORE_FORWARDEDHEADERS_ENABLED=true`
 - [ ] Todas las variables obligatorias de §2 puestas
 - [ ] `Sembrado__*` **no** existe
 - [ ] Clave maestra generada, respaldada fuera del servidor, y llavero en disco persistente
@@ -273,5 +289,5 @@ decidida.
 - [ ] Esquemas y XSLT del SAT en su carpeta, incluidos los 33 XSLT de complemento (§5.1)
 - [ ] El log dice `0 servidos por un doble`
 - [ ] `content-encoding: br` comprobado con `curl` contra el dominio real
-- [ ] Si hay proxy inverso: §9 leído y decidido
+- [ ] El esquema y la IP observados por la aplicación coinciden con los del cliente
 - [ ] `appsettings.Development.json` **no** está en el artefacto publicado
