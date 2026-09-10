@@ -8,6 +8,7 @@
 @using Facturacion.Shared.Operador
 @inject ServicioDePaquetesDeOperador Paquetes
 @inject IServicioDeConfirmacion Confirmacion
+@inject IDialogService Dialogos
 @inject NavigationManager Navegacion
 
 <PageTitle>Paquetes de timbres</PageTitle>
@@ -15,9 +16,14 @@
 
 <PanelErrores Problema="_error" />
 
+@if (_aviso is not null)
+{
+    <div class="aviso-documentos" role="status">@_aviso</div>
+}
+
 <div class="acciones-formulario">
     <MudButton Variant="Variant.Filled" Color="Color.Primary" StartIcon="@Icons.Material.Filled.Add"
-               OnClick="@(() => Navegacion.NavigateTo("/operador/paquetes/nuevo"))">
+               OnClick="Nuevo">
         Nuevo paquete
     </MudButton>
 </div>
@@ -83,11 +89,30 @@ else
 @code {
     private IReadOnlyList<PaqueteDeOperadorDto>? _paquetes;
     private DetalleProblema? _error;
+    private string? _aviso;
     private bool _trabajando;
 
     protected override Task OnInitializedAsync() => CargarAsync();
 
     private async Task CargarAsync() => _paquetes = await Paquetes.ListarAsync();
+
+    private async Task Nuevo()
+    {
+        _error = null;
+        _aviso = null;
+
+        var referencia = await Dialogos.ShowAsync<DialogoDePaquete>(
+            "Nuevo paquete",
+            new DialogOptions { MaxWidth = MaxWidth.Medium, FullWidth = true });
+
+        var resultado = await referencia.Result;
+
+        if (resultado is { Canceled: false, Data: true })
+        {
+            _aviso = "Paquete creado.";
+            await CargarAsync();
+        }
+    }
 
     private async Task CambiarActivo(PaqueteDeOperadorDto paquete)
     {
