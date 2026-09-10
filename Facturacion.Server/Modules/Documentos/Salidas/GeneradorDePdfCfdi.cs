@@ -30,6 +30,7 @@ public sealed class GeneradorDePdfCfdi
     private static readonly string[] EncabezadosConceptos =
         ["CANTIDAD", "CLAVE UNIDAD", "CLAVE DEL PRODUCTO", "DESCRIPCIÓN", "OBJ. IMP.", "P. UNITARIO", "IMPORTE"];
 
+    /*
     public byte[] Generar(Comprobante comprobante, DatosDelPdf datos)
     {
         var qr = Qr(comprobante, datos.Decimales);
@@ -47,6 +48,29 @@ public sealed class GeneradorDePdfCfdi
                 pagina.Footer().Element(e => Pie(e, comprobante, qr));
             });
         }).GeneratePdf();
+    }
+    */
+
+    public byte[] Generar(Comprobante comprobante, DatosDelPdf datos)
+        => Construir(comprobante, datos).GeneratePdf();
+
+    public IDocument Construir(Comprobante comprobante, DatosDelPdf datos)
+    {
+        var qr = Qr(comprobante, datos.Decimales);
+
+        return Document.Create(documento =>
+        {
+            documento.Page(pagina =>
+            {
+                pagina.Size(PageSizes.Letter);
+                pagina.Margin(1.2f, Unit.Centimetre);
+                pagina.DefaultTextStyle(t => t.FontSize(8).FontFamily(Fonts.Calibri));
+
+                pagina.Header().Element(e => Encabezado(e, comprobante, datos));
+                pagina.Content().Element(e => Cuerpo(e, comprobante, datos));
+                pagina.Footer().Element(e => Pie(e, comprobante, qr));
+            });
+        });
     }
 
     // ── Encabezado: emisor, logo y los identificadores fiscales ─────────────────────────
