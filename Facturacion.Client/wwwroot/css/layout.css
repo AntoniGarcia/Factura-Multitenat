@@ -298,6 +298,12 @@ html, body {
     max-width: 60rem;
 }
 
+/* El operador tiene una navegación móvil deliberadamente corta; en escritorio se usa el
+   menú lateral agrupado. Se declara aquí para que no aparezca antes del corte responsivo. */
+.menu-inferior-operador {
+    display: none;
+}
+
 @media (max-width: 768px) {
     .barra-superior {
         padding: 0 1rem;
@@ -393,5 +399,109 @@ html, body {
         height: auto;
         padding: 0.375rem 0.5rem;
         font-size: var(--etiqueta-tam);
+    }
+
+    /* El panel del operador tiene siete destinos. En lugar de obligar a desplazar la barra
+       inferior, deja cuatro tareas frecuentes y concentra la administración en «Más». */
+    .menu-lateral-operador {
+        display: none;
+    }
+
+    .menu-inferior-operador {
+        position: fixed;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        z-index: 10;
+        display: block;
+        background: var(--superficie-menu);
+        border-top: 1px solid var(--borde);
+    }
+
+    .menu-inferior-operador > ul {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(3.5rem, 1fr));
+        max-width: 34rem;
+        margin: 0 auto;
+        padding: 0.25rem;
+        list-style: none;
+    }
+
+    .menu-inferior-operador > ul > li {
+        min-width: 0;
+    }
+
+    .menu-inferior-operador a,
+    .menu-mas-boton {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        gap: 0.125rem;
+        width: 100%;
+        min-height: 3rem;
+        padding: 0.25rem;
+        border: 0;
+        border-radius: var(--radio);
+        background: transparent;
+        color: var(--texto);
+        font: inherit;
+        font-size: var(--etiqueta-tam);
+        text-decoration: none;
+        cursor: pointer;
+    }
+
+    .menu-inferior-operador a:hover,
+    .menu-mas-boton:hover,
+    .menu-inferior-operador a.active,
+    .menu-mas-boton.active {
+        background: var(--acento-suave);
+        color: var(--acento);
+    }
+
+    .menu-inferior-operador a.active,
+    .menu-mas-boton.active {
+        font-weight: var(--peso-titulo);
+    }
+
+    .menu-inferior-operador a:focus-visible,
+    .menu-mas-boton:focus-visible {
+        outline: 2px solid var(--foco);
+        outline-offset: -2px;
+    }
+
+    .menu-mas-contenedor {
+        position: relative;
+    }
+
+    .menu-mas-lista {
+        position: absolute;
+        right: 0;
+        bottom: calc(100% + 0.375rem);
+        width: max-content;
+        min-width: 13rem;
+        padding: 0.25rem;
+        background: var(--superficie-elevada);
+        border: 1px solid var(--borde);
+        border-radius: var(--radio);
+        box-shadow: 0 0.25rem 1rem rgba(var(--texto-rgb), 0.16);
+    }
+
+    .menu-mas-lista ul {
+        display: flex;
+        flex-direction: column;
+        gap: 0.125rem;
+        margin: 0;
+        padding: 0;
+        list-style: none;
+    }
+
+    .menu-mas-lista a {
+        flex-direction: row;
+        justify-content: flex-start;
+        gap: 0.625rem;
+        min-height: var(--alto-control);
+        padding: 0 0.625rem;
+        font-size: var(--cuerpo-sm-tam);
     }
 }

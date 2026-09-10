@@ -9,7 +9,7 @@
 @*
     El cascarón del panel del proveedor. Es hermano de MainLayout, no una variante suya: no
     lleva selector de empresa ni indicador de timbres —el operador no tiene empresa ni bolsa—.
-    Sí filtra el menú por los permisos de la sesión: cada sección pide su «ver» y el Tablero
+    Sí filtra el menú por los permisos de la sesión: cada sección pide su «ver» y Resumen
     se muestra siempre. Ocultar una entrada es comodidad, no protección: el Server rechaza
     cada operación por su propio permiso.
 
@@ -29,7 +29,7 @@
             <MudIcon Icon="@Icons.Material.Filled.Menu" Size="Size.Small" />
         </button>
 
-        <span class="barra-superior-marca">Administrador</span>
+        <span class="barra-superior-marca">Panel del operador</span>
 
         <span class="separador-flexible"></span>
 
@@ -46,24 +46,72 @@
     </header>
 
     <div class="cuerpo @(_menuColapsado ? "menu-colapsado" : null)">
-        <nav id="menu-operador" class="menu-lateral" aria-label="Secciones del panel">
+        <nav id="menu-operador" class="menu-lateral menu-lateral-operador" aria-label="Secciones del panel">
             <div class="menu-navegacion">
-                <ul>
-                    @foreach (var elemento in ElementosVisibles)
-                    {
-                        <li>
-                            @* Match.All en el tablero para que "/operador" no quede resaltado
-                               estando en cualquiera de sus subrutas. *@
-                            <NavLink href="@elemento.Ruta"
-                                     Match="@(elemento.Ruta == "/operador" ? NavLinkMatch.All : NavLinkMatch.Prefix)"
-                                     title="@elemento.Etiqueta">
-                                <MudIcon Icon="@Icono(elemento.Icono)" Size="Size.Small" />
-                                <span>@elemento.Etiqueta</span>
-                            </NavLink>
-                        </li>
-                    }
-                </ul>
+                @foreach (var grupo in ElementosVisibles.GroupBy(e => e.Grupo))
+                {
+                    <h2 class="menu-grupo">@grupo.Key</h2>
+                    <ul>
+                        @foreach (var elemento in grupo)
+                        {
+                            <li>
+                                <NavLink href="@elemento.Ruta"
+                                         Match="@(elemento.Ruta == "/operador" ? NavLinkMatch.All : NavLinkMatch.Prefix)"
+                                         title="@elemento.Etiqueta">
+                                    <MudIcon Icon="@Icono(elemento.Icono)" Size="Size.Small" />
+                                    <span>@elemento.Etiqueta</span>
+                                </NavLink>
+                            </li>
+                        }
+                    </ul>
+                }
             </div>
+        </nav>
+
+        <nav class="menu-inferior-operador" aria-label="Secciones principales del panel">
+            <ul>
+                @foreach (var elemento in ElementosPrincipalesDeMovil)
+                {
+                    <li>
+                        <NavLink href="@elemento.Ruta"
+                                 Match="@(elemento.Ruta == "/operador" ? NavLinkMatch.All : NavLinkMatch.Prefix)"
+                                 title="@elemento.Etiqueta">
+                            <MudIcon Icon="@Icono(elemento.Icono)" Size="Size.Small" />
+                            <span>@EtiquetaMovil(elemento)</span>
+                        </NavLink>
+                    </li>
+                }
+
+                @if (ElementosSecundariosDeMovil.Count > 0)
+                {
+                    <li class="menu-mas-contenedor" @onkeydown="AlTeclaEnMenuMas">
+                        <button type="button" class="menu-mas-boton @ClaseActivaDeMenuMas"
+                                aria-expanded="@_menuMasAbierto" aria-controls="menu-mas-operador"
+                                @onclick="AlternarMenuMas">
+                            <MudIcon Icon="@Icons.Material.Filled.MoreHoriz" Size="Size.Small" />
+                            <span>Más</span>
+                        </button>
+
+                        @if (_menuMasAbierto)
+                        {
+                            <div id="menu-mas-operador" class="menu-mas-lista">
+                                <ul>
+                                    @foreach (var elemento in ElementosSecundariosDeMovil)
+                                    {
+                                        <li>
+                                            <NavLink href="@elemento.Ruta" Match="NavLinkMatch.Prefix"
+                                                     @onclick="CerrarMenuMas">
+                                                <MudIcon Icon="@Icono(elemento.Icono)" Size="Size.Small" />
+                                                <span>@elemento.Etiqueta</span>
+                                            </NavLink>
+                                        </li>
+                                    }
+                                </ul>
+                            </div>
+                        }
+                    </li>
+                }
+            </ul>
         </nav>
 
         <main class="area-principal">
@@ -83,17 +131,19 @@
     /// riel lo despliega temporalmente, y eso lo resuelve el CSS sin pasar por aquí.
     /// </summary>
     private bool _menuColapsado;
+    private bool _menuMasAbierto;
 
     protected override void OnInitialized()
     {
         Sesion.Cambio += Redibujar;
         Encabezado.Cambio += Redibujar;
+        Navegacion.LocationChanged += AlCambiarUbicacion;
     }
 
     private void AlternarMenu() => _menuColapsado = !_menuColapsado;
 
     /// <summary>
-    /// Las secciones que el operador puede ver, según los permisos de su sesión. El Tablero
+    /// Las secciones que el operador puede ver, según los permisos de su sesión. Resumen
     /// no pide permiso: cualquier operador activo lo ve.
     /// </summary>
     private IReadOnlyList<ElementoDeMenuOperador> ElementosVisibles
@@ -103,10 +153,20 @@
                 .ToList()
             : MenuDeOperador.Elementos;
 
+    private IReadOnlyList<ElementoDeMenuOperador> ElementosPrincipalesDeMovil
+        => ElementosVisibles.Where(e => e.PrincipalEnMovil).ToList();
+
+    private IReadOnlyList<ElementoDeMenuOperador> ElementosSecundariosDeMovil
+        => ElementosVisibles.Where(e => !e.PrincipalEnMovil).ToList();
+
+    private string ClaseActivaDeMenuMas
+        => ElementosSecundariosDeMovil.Any(e => RutaActualPerteneceA(e.Ruta)) ? "active" : string.Empty;
+
     public void Dispose()
     {
         Sesion.Cambio -= Redibujar;
         Encabezado.Cambio -= Redibujar;
+        Navegacion.LocationChanged -= AlCambiarUbicacion;
     }
 
     private async Task Salir()
@@ -124,11 +184,39 @@
         "dashboard" => Icons.Material.Filled.Dashboard,
         "sell" => Icons.Material.Filled.Sell,
         "receipt_long" => Icons.Material.Filled.ReceiptLong,
+        "pending_actions" => Icons.Material.Filled.PendingActions,
         "apartment" => Icons.Material.Filled.Apartment,
         "people" => Icons.Material.Filled.People,
+        "supervisor_account" => Icons.Material.Filled.SupervisorAccount,
         "settings" => Icons.Material.Filled.Settings,
         _ => Icons.Material.Filled.Circle
     };
+
+    private static string EtiquetaMovil(ElementoDeMenuOperador elemento)
+        => elemento.Ruta == "/operador/compras" ? "Pagos" : elemento.Etiqueta;
+
+    private void AlternarMenuMas() => _menuMasAbierto = !_menuMasAbierto;
+
+    private void CerrarMenuMas() => _menuMasAbierto = false;
+
+    private void AlTeclaEnMenuMas(KeyboardEventArgs evento)
+    {
+        if (evento.Key == "Escape") CerrarMenuMas();
+    }
+
+    private bool RutaActualPerteneceA(string ruta)
+    {
+        var actual = "/" + Navegacion.ToBaseRelativePath(Navegacion.Uri).TrimEnd('/');
+        return actual.StartsWith(ruta, StringComparison.OrdinalIgnoreCase);
+    }
+
+    private void AlCambiarUbicacion(
+        object? remitente,
+        Microsoft.AspNetCore.Components.Routing.LocationChangedEventArgs evento)
+    {
+        _menuMasAbierto = false;
+        Redibujar();
+    }
 
     private void Redibujar() => InvokeAsync(StateHasChanged);
 }

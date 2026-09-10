@@ -1,14 +1,14 @@
 @page "/operador"
 @layout LayoutDeOperador
 @attribute [Authorize(Policy = PoliticasDelPanel.PoliticaDeOperador)]
+@using System.Globalization
 @using Facturacion.Client.Componentes.Comunes
 @using Facturacion.Client.Servicios.Operador
 @using Facturacion.Shared.Operador
 @inject ServicioDeTableroDeOperador Tablero
-@inject NavigationManager Navegacion
 
-<PageTitle>Panel de operador</PageTitle>
-<TituloDePagina Texto="Tablero" />
+<PageTitle>Resumen · Panel del operador</PageTitle>
+<TituloDePagina Texto="Resumen" />
 
 @if (_datos is null)
 {
@@ -16,24 +16,69 @@
 }
 else
 {
-    @* Lo que exige acción va primero: una compra pendiente es dinero que ya entró al banco
-       y todavía no se convirtió en timbres para el cliente. *@
-    @if (_datos.ComprasPendientes > 0)
-    {
-        <div class="aviso-caducidad" role="status">
-            <p>
-                Hay <strong>@_datos.ComprasPendientes</strong>
-                @(_datos.ComprasPendientes == 1 ? "compra pendiente" : "compras pendientes")
-                de acreditar por <strong>@_datos.MontoPendiente.ToString("C2")</strong>.
-                <MudButton Variant="Variant.Text" Size="Size.Small"
-                           OnClick="@(() => Navegacion.NavigateTo("/operador/compras"))">
-                    Revisarlas
-                </MudButton>
-            </p>
-        </div>
-    }
+    <section class="panel panel-atencion" aria-labelledby="titulo-atencion">
+        <header class="panel-encabezado">
+            <h2 id="titulo-atencion" class="panel-titulo">Atención requerida</h2>
+            @if (!HayPendientes)
+            {
+                <span class="estado-al-dia">
+                    <MudIcon Icon="@Icons.Material.Filled.CheckCircle" Size="Size.Small" />
+                    Todo al día
+                </span>
+            }
+        </header>
 
-    <div class="rejilla-panel">
+        @if (HayPendientes)
+        {
+            <div class="lista-atencion">
+                @if (_datos.ComprasPendientes > 0)
+                {
+                    <article class="tarea-atencion tarea-atencion-prioritaria">
+                        <span class="tarea-atencion-icono" aria-hidden="true">
+                            <MudIcon Icon="@Icons.Material.Filled.PendingActions" Size="Size.Small" />
+                        </span>
+                        <div class="tarea-atencion-contenido">
+                            <strong>
+                                @_datos.ComprasPendientes
+                                @(_datos.ComprasPendientes == 1 ? "pago espera acreditación" : "pagos esperan acreditación")
+                            </strong>
+                            <span>@_datos.MontoPendiente.ToString("C2") en solicitudes pendientes</span>
+                        </div>
+                        <MudButton Href="/operador/compras" Variant="Variant.Text" Size="Size.Small">
+                            Revisar pagos
+                        </MudButton>
+                    </article>
+                }
+
+                @if (_datos.MembresiasPorVencer > 0)
+                {
+                    <article class="tarea-atencion">
+                        <span class="tarea-atencion-icono" aria-hidden="true">
+                            <MudIcon Icon="@Icons.Material.Filled.EventBusy" Size="Size.Small" />
+                        </span>
+                        <div class="tarea-atencion-contenido">
+                            <strong>
+                                @_datos.MembresiasPorVencer
+                                @(_datos.MembresiasPorVencer == 1 ? "membresía vence pronto" : "membresías vencen pronto")
+                            </strong>
+                            <span>Vencimiento dentro de los próximos 30 días</span>
+                        </div>
+                        <MudButton Href="/operador/cuentas" Variant="Variant.Text" Size="Size.Small">
+                            Ver cuentas
+                        </MudButton>
+                    </article>
+                }
+            </div>
+        }
+        else
+        {
+            <div class="panel-vacio-compacto">
+                No hay pagos pendientes ni membresías próximas a vencer.
+            </div>
+        }
+    </section>
+
+    <div class="rejilla-panel rejilla-indicadores-operador">
         <div class="tramo-3">
             <div class="indicador indicador-bien">
                 <span class="indicador-icono">
@@ -41,7 +86,7 @@ else
                 </span>
                 <span class="indicador-texto">
                     <span class="indicador-cifra">@_datos.IngresoDelMes.ToString("C0")</span>
-                    <span class="indicador-etiqueta">Ingreso del mes</span>
+                    <span class="indicador-etiqueta">Ingreso acreditado este mes</span>
                 </span>
             </div>
         </div>
@@ -53,31 +98,31 @@ else
                 </span>
                 <span class="indicador-texto">
                     <span class="indicador-cifra">@_datos.TimbresVendidosDelMes.ToString("N0")</span>
-                    <span class="indicador-etiqueta">Timbres vendidos</span>
+                    <span class="indicador-etiqueta">Timbres acreditados este mes</span>
                 </span>
             </div>
         </div>
 
         <div class="tramo-3">
-            <div class="indicador @(_datos.ComprasPendientes > 0 ? "indicador-pendiente" : null)">
+            <div class="indicador">
                 <span class="indicador-icono">
-                    <MudIcon Icon="@Icons.Material.Filled.HourglassTop" Size="Size.Small" />
+                    <MudIcon Icon="@Icons.Material.Filled.Groups" Size="Size.Small" />
                 </span>
                 <span class="indicador-texto">
-                    <span class="indicador-cifra">@_datos.MontoPendiente.ToString("C0")</span>
-                    <span class="indicador-etiqueta">Por cobrar</span>
+                    <span class="indicador-cifra">@_datos.CuentasActivas.ToString("N0")</span>
+                    <span class="indicador-etiqueta">Cuentas activas</span>
                 </span>
             </div>
         </div>
 
         <div class="tramo-3">
-            <div class="indicador @(_datos.MembresiasPorVencer > 0 ? "indicador-alerta" : null)">
+            <div class="indicador">
                 <span class="indicador-icono">
-                    <MudIcon Icon="@Icons.Material.Filled.CardMembership" Size="Size.Small" />
+                    <MudIcon Icon="@Icons.Material.Filled.Apartment" Size="Size.Small" />
                 </span>
                 <span class="indicador-texto">
-                    <span class="indicador-cifra">@_datos.MembresiasPorVencer</span>
-                    <span class="indicador-etiqueta">Membresías por vencer</span>
+                    <span class="indicador-cifra">@_datos.EmpresasActivas.ToString("N0")</span>
+                    <span class="indicador-etiqueta">Empresas emisoras activas</span>
                 </span>
             </div>
         </div>
@@ -85,110 +130,94 @@ else
 
     <div class="rejilla-panel">
         <div class="tramo-8">
-            <section class="panel">
+            <section class="panel panel-grafica-principal" aria-labelledby="titulo-ingresos">
                 <header class="panel-encabezado">
-                    <h2 class="panel-titulo">Ingreso por mes</h2>
-                    <span class="panel-nota">Últimos seis meses</span>
+                    <div>
+                        <h2 id="titulo-ingresos" class="panel-titulo">Ingresos acreditados</h2>
+                        <span class="panel-nota">Últimos seis meses</span>
+                    </div>
+                    <div class="panel-resumen-periodo">
+                        <strong>@IngresoDeSeisMeses.ToString("C0")</strong>
+                        <span>@TimbresDeSeisMeses.ToString("N0") timbres</span>
+                    </div>
                 </header>
                 <div class="panel-cuerpo">
-                    @if (_hayVentas)
+                    @if (HayVentas)
                     {
-                        <MudChart T="double" ChartType="ChartType.Bar"
-                                  ChartSeries="@_serieIngreso"
-                                  ChartLabels="@_etiquetasMes"
-                                  Width="100%" Height="260px" />
+                        <div class="grafica-mensual-contenedor">
+                            <div class="grafica-mensual"
+                                 role="img"
+                                 aria-label="@DescripcionDeIngresos">
+                                @foreach (var punto in _datos.PorMes)
+                                {
+                                    <div class="grafica-mensual-columna">
+                                        <span class="grafica-mensual-valor">@AbreviarImporte(punto.Ingreso)</span>
+                                        <div class="grafica-mensual-pista" aria-hidden="true">
+                                            <span class="grafica-mensual-barra"
+                                                  style="@EstiloDeAltura(punto.Ingreso)"></span>
+                                        </div>
+                                        <strong class="grafica-mensual-mes">@punto.Etiqueta</strong>
+                                        <span class="grafica-mensual-timbres">@punto.Timbres.ToString("N0") timbres</span>
+                                    </div>
+                                }
+                            </div>
+                        </div>
                     }
                     else
                     {
-                        <p class="tabla-datos-estado">Todavía no hay ventas que graficar.</p>
+                        <p class="tabla-datos-estado">Todavía no hay ingresos acreditados que comparar.</p>
                     }
                 </div>
             </section>
         </div>
 
         <div class="tramo-4">
-            <section class="panel">
+            <section class="panel" aria-labelledby="titulo-paquetes">
                 <header class="panel-encabezado">
-                    <h2 class="panel-titulo">Ingreso por paquete</h2>
+                    <div>
+                        <h2 id="titulo-paquetes" class="panel-titulo">Paquetes con más ingreso</h2>
+                        <span class="panel-nota">Acumulado histórico</span>
+                    </div>
                 </header>
                 <div class="panel-cuerpo">
                     @if (_datos.PorPaquete.Count > 0)
                     {
-                        <MudChart T="double" ChartType="ChartType.Donut"
-                                  ChartSeries="@_seriePaquete"
-                                  ChartLabels="@_etiquetasPaquete"
-                                  Width="100%" Height="260px" />
-                    }
-                    else
-                    {
-                        <p class="tabla-datos-estado">Sin ventas.</p>
-                    }
-                </div>
-            </section>
-        </div>
-    </div>
-
-    <div class="rejilla-panel">
-        <div class="tramo-6">
-            <section class="panel">
-                <header class="panel-encabezado">
-                    <h2 class="panel-titulo">Timbres vendidos por mes</h2>
-                </header>
-                <div class="panel-cuerpo">
-                    @if (_hayVentas)
-                    {
-                        <MudChart T="double" ChartType="ChartType.Line"
-                                  ChartSeries="@_serieTimbres"
-                                  ChartLabels="@_etiquetasMes"
-                                  Width="100%" Height="240px" />
-                    }
-                    else
-                    {
-                        <p class="tabla-datos-estado">Sin datos.</p>
-                    }
-                </div>
-            </section>
-        </div>
-
-        <div class="tramo-6">
-            <section class="panel">
-                <header class="panel-encabezado">
-                    <h2 class="panel-titulo">Qué se vende</h2>
-                </header>
-                <div class="panel-cuerpo panel-cuerpo-tabla">
-                    <MudSimpleTable Dense="true" Hover="true">
-                        <thead>
-                            <tr>
-                                <th>Paquete</th>
-                                <th class="cifra-tabular">Compras</th>
-                                <th class="cifra-tabular">Ingreso</th>
-                            </tr>
-                        </thead>
-                        <tbody>
+                        <ol class="ranking-paquetes">
                             @foreach (var paquete in _datos.PorPaquete)
                             {
-                                <tr>
-                                    <td>@paquete.Nombre</td>
-                                    <td class="cifra-tabular">@paquete.Compras</td>
-                                    <td class="cifra-tabular">@paquete.Ingreso.ToString("C2")</td>
-                                </tr>
+                                <li class="ranking-paquete">
+                                    <div class="ranking-paquete-encabezado">
+                                        <strong>@paquete.Nombre</strong>
+                                        <span class="cifra-tabular">@paquete.Ingreso.ToString("C0")</span>
+                                    </div>
+                                    <div class="ranking-paquete-pista" aria-hidden="true">
+                                        <span class="ranking-paquete-barra"
+                                              style="@EstiloDeAncho(paquete.Ingreso)"></span>
+                                    </div>
+                                    <span class="ranking-paquete-detalle">
+                                        @paquete.Compras.ToString("N0") @PluralizarCompra(paquete.Compras)
+                                    </span>
+                                </li>
                             }
-                            @if (_datos.PorPaquete.Count == 0)
-                            {
-                                <tr><td colspan="3" class="tabla-datos-estado">Sin ventas.</td></tr>
-                            }
-                        </tbody>
-                    </MudSimpleTable>
+                        </ol>
+                    }
+                    else
+                    {
+                        <p class="tabla-datos-estado">Todavía no hay ventas por paquete.</p>
+                    }
                 </div>
             </section>
         </div>
     </div>
 
     <div class="rejilla-panel">
-        <div class="tramo-8">
-            <section class="panel">
+        <div class="tramo-12">
+            <section class="panel" aria-labelledby="titulo-pagos">
                 <header class="panel-encabezado">
-                    <h2 class="panel-titulo">Últimos pagos acreditados</h2>
+                    <h2 id="titulo-pagos" class="panel-titulo">Pagos acreditados recientemente</h2>
+                    <MudButton Href="/operador/compras" Variant="Variant.Text" Size="Size.Small">
+                        Ver todos
+                    </MudButton>
                 </header>
                 <div class="panel-cuerpo panel-cuerpo-tabla">
                     <MudSimpleTable Dense="true" Hover="true">
@@ -216,39 +245,14 @@ else
                             }
                             @if (_datos.UltimasAcreditadas.Count == 0)
                             {
-                                <tr><td colspan="5" class="tabla-datos-estado">Todavía no se ha acreditado ningún pago.</td></tr>
+                                <tr>
+                                    <td colspan="5" class="tabla-datos-estado">
+                                        Todavía no se ha acreditado ningún pago.
+                                    </td>
+                                </tr>
                             }
                         </tbody>
                     </MudSimpleTable>
-                </div>
-            </section>
-        </div>
-
-        <div class="tramo-4">
-            <section class="panel">
-                <header class="panel-encabezado">
-                    <h2 class="panel-titulo">Clientes</h2>
-                </header>
-                <div class="panel-cuerpo">
-                    <div class="indicador indicador-apilado">
-                        <span class="indicador-icono">
-                            <MudIcon Icon="@Icons.Material.Filled.Groups" Size="Size.Small" />
-                        </span>
-                        <span class="indicador-texto">
-                            <span class="indicador-cifra">@_datos.CuentasActivas</span>
-                            <span class="indicador-etiqueta">Cuentas activas</span>
-                        </span>
-                    </div>
-
-                    <div class="indicador">
-                        <span class="indicador-icono">
-                            <MudIcon Icon="@Icons.Material.Filled.Apartment" Size="Size.Small" />
-                        </span>
-                        <span class="indicador-texto">
-                            <span class="indicador-cifra">@_datos.EmpresasActivas</span>
-                            <span class="indicador-etiqueta">Empresas emisoras</span>
-                        </span>
-                    </div>
                 </div>
             </section>
         </div>
@@ -257,52 +261,61 @@ else
 
 @code {
     private TableroDeOperadorDto? _datos;
-    private bool _hayVentas;
 
-    // Las series se arman una vez al cargar: reconstruirlas en cada render haría parpadear
-    // las gráficas.
-    private List<ChartSeries<double>> _serieIngreso = [];
-    private List<ChartSeries<double>> _serieTimbres = [];
-    private List<ChartSeries<double>> _seriePaquete = [];
-    private string[] _etiquetasMes = [];
-    private string[] _etiquetasPaquete = [];
+    private bool HayPendientes =>
+        _datos is { } datos &&
+        (datos.ComprasPendientes > 0 || datos.MembresiasPorVencer > 0);
+
+    private bool HayVentas =>
+        _datos?.PorMes.Any(punto => punto.Ingreso > 0) == true;
+
+    private decimal IngresoDeSeisMeses =>
+        _datos?.PorMes.Sum(punto => punto.Ingreso) ?? 0m;
+
+    private int TimbresDeSeisMeses =>
+        _datos?.PorMes.Sum(punto => punto.Timbres) ?? 0;
+
+    private decimal IngresoMensualMaximo =>
+        _datos is { PorMes.Count: > 0 } datos
+            ? datos.PorMes.Max(punto => punto.Ingreso)
+            : 0m;
+
+    private decimal IngresoPorPaqueteMaximo =>
+        _datos is { PorPaquete.Count: > 0 } datos
+            ? datos.PorPaquete.Max(paquete => paquete.Ingreso)
+            : 0m;
+
+    private string DescripcionDeIngresos =>
+        _datos is null
+            ? "Ingresos acreditados de los últimos seis meses."
+            : $"Ingresos acreditados por mes: {string.Join("; ", _datos.PorMes.Select(
+                punto => $"{punto.Etiqueta}: {punto.Ingreso:C2} y {punto.Timbres:N0} timbres"))}.";
 
     protected override async Task OnInitializedAsync()
     {
         _datos = await Tablero.ObtenerAsync();
-
-        if (_datos is null) return;
-
-        _hayVentas = _datos.PorMes.Any(p => p.Ingreso > 0);
-        _etiquetasMes = _datos.PorMes.Select(p => p.Etiqueta).ToArray();
-
-        _serieIngreso =
-        [
-            new ChartSeries<double>
-            {
-                Name = "Ingreso",
-                Data = _datos.PorMes.Select(p => (double)p.Ingreso).ToArray()
-            }
-        ];
-
-        _serieTimbres =
-        [
-            new ChartSeries<double>
-            {
-                Name = "Timbres",
-                Data = _datos.PorMes.Select(p => (double)p.Timbres).ToArray()
-            }
-        ];
-
-        _seriePaquete =
-        [
-            new ChartSeries<double>
-            {
-                Name = "Ingreso",
-                Data = _datos.PorPaquete.Select(p => (double)p.Ingreso).ToArray()
-            }
-        ];
-
-        _etiquetasPaquete = _datos.PorPaquete.Select(p => p.Nombre).ToArray();
     }
+
+    private string EstiloDeAltura(decimal ingreso) =>
+        $"--porcentaje: {CalcularPorcentaje(ingreso, IngresoMensualMaximo)}";
+
+    private string EstiloDeAncho(decimal ingreso) =>
+        $"--porcentaje: {CalcularPorcentaje(ingreso, IngresoPorPaqueteMaximo)}";
+
+    private static string CalcularPorcentaje(decimal valor, decimal maximo)
+    {
+        var porcentaje = maximo <= 0m ? 0m : decimal.Clamp(valor / maximo * 100m, 0m, 100m);
+        return porcentaje.ToString("0.##", CultureInfo.InvariantCulture);
+    }
+
+    private static string AbreviarImporte(decimal importe) =>
+        importe switch
+        {
+            >= 1_000_000m => $"{importe / 1_000_000m:0.#} M",
+            >= 1_000m => $"{importe / 1_000m:0.#} mil",
+            _ => importe.ToString("C0")
+        };
+
+    private static string PluralizarCompra(int compras) =>
+        compras == 1 ? "compra acreditada" : "compras acreditadas";
 }

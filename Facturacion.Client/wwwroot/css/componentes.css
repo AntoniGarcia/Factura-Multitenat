@@ -421,6 +421,775 @@
     margin-bottom: 0.75rem;
 }
 
+/* ── Resumen del operador ──────────────────────────────────────────────────────
+   Las gráficas conservan las cifras a la vista: el operador no debe depender de
+   pasar el puntero para saber cuánto se acreditó. */
+.panel-atencion {
+    margin-bottom: 1rem;
+}
+
+.estado-al-dia {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.375rem;
+    font-size: var(--etiqueta-tam);
+    font-weight: var(--peso-titulo);
+    color: var(--estado-timbrada-texto);
+}
+
+.lista-atencion {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.tarea-atencion {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    min-width: 0;
+    padding: 0.75rem 1rem;
+}
+
+.tarea-atencion + .tarea-atencion {
+    border-left: 1px solid var(--borde);
+}
+
+.tarea-atencion-prioritaria {
+    background: rgba(var(--estado-advertencia-rgb), 0.08);
+}
+
+.tarea-atencion-icono {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex: 0 0 auto;
+    width: 2.25rem;
+    height: 2.25rem;
+    border-radius: var(--radio);
+    background: rgba(var(--estado-advertencia-rgb), 0.12);
+    color: var(--estado-advertencia-texto);
+}
+
+.tarea-atencion-contenido {
+    display: flex;
+    flex: 1 1 auto;
+    flex-direction: column;
+    min-width: 0;
+    font-size: var(--etiqueta-tam);
+    color: var(--texto-suave);
+}
+
+.tarea-atencion-contenido strong {
+    color: var(--texto);
+    font-size: 0.875rem;
+    font-weight: var(--peso-titulo);
+}
+
+.panel-vacio-compacto {
+    padding: 0.75rem 1rem;
+    font-size: var(--etiqueta-tam);
+    color: var(--texto-suave);
+}
+
+.rejilla-indicadores-operador .indicador {
+    min-height: 4.75rem;
+}
+
+.panel-grafica-principal,
+.panel-grafica-principal .panel-cuerpo {
+    height: 100%;
+}
+
+.panel-resumen-periodo {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    line-height: 1.25;
+}
+
+.panel-resumen-periodo strong {
+    color: var(--texto);
+    font-family: var(--fuente-mono);
+    font-size: 1rem;
+    font-variant-numeric: tabular-nums;
+    font-weight: var(--peso-titulo);
+}
+
+.panel-resumen-periodo span {
+    color: var(--texto-suave);
+    font-size: var(--etiqueta-tam);
+}
+
+.grafica-mensual-contenedor {
+    min-width: 30rem;
+}
+
+.grafica-mensual {
+    display: grid;
+    grid-template-columns: repeat(6, minmax(0, 1fr));
+    gap: 0.75rem;
+    min-height: 15rem;
+}
+
+.grafica-mensual-columna {
+    display: grid;
+    grid-template-rows: 1.25rem 10rem auto auto;
+    gap: 0.25rem;
+    min-width: 0;
+    text-align: center;
+}
+
+.grafica-mensual-valor {
+    overflow: hidden;
+    color: var(--texto);
+    font-family: var(--fuente-mono);
+    font-size: var(--etiqueta-tam);
+    font-variant-numeric: tabular-nums;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.grafica-mensual-pista {
+    display: flex;
+    align-items: flex-end;
+    justify-content: center;
+    border-bottom: 1px solid var(--borde-fuerte);
+    background: var(--fondo);
+}
+
+.grafica-mensual-barra {
+    display: block;
+    width: min(3rem, 72%);
+    height: calc(var(--porcentaje) * 1%);
+    min-height: 0.125rem;
+    background: var(--acento);
+    border-radius: var(--radio) var(--radio) 0 0;
+}
+
+.grafica-mensual-mes {
+    overflow: hidden;
+    color: var(--texto);
+    font-size: var(--etiqueta-tam);
+    font-weight: var(--peso-titulo);
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.grafica-mensual-timbres {
+    color: var(--texto-suave);
+    font-family: var(--fuente-mono);
+    font-size: 0.6875rem;
+    font-variant-numeric: tabular-nums;
+    white-space: nowrap;
+}
+
+.ranking-paquetes {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+}
+
+.ranking-paquete {
+    min-width: 0;
+}
+
+.ranking-paquete-encabezado {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 0.75rem;
+    margin-bottom: 0.375rem;
+    color: var(--texto);
+    font-size: var(--etiqueta-tam);
+}
+
+.ranking-paquete-encabezado strong {
+    overflow: hidden;
+    font-weight: var(--peso-titulo);
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.ranking-paquete-pista {
+    height: 0.5rem;
+    overflow: hidden;
+    background: var(--acento-suave);
+    border-radius: var(--radio);
+}
+
+.ranking-paquete-barra {
+    display: block;
+    width: calc(var(--porcentaje) * 1%);
+    height: 100%;
+    background: var(--acento);
+    border-radius: inherit;
+}
+
+.ranking-paquete-detalle {
+    display: block;
+    margin-top: 0.25rem;
+    color: var(--texto-suave);
+    font-size: 0.6875rem;
+}
+
+@media (max-width: 700px) {
+    .lista-atencion {
+        grid-template-columns: 1fr;
+    }
+
+    .tarea-atencion {
+        flex-wrap: wrap;
+    }
+
+    .tarea-atencion + .tarea-atencion {
+        border-top: 1px solid var(--borde);
+        border-left: 0;
+    }
+
+    .tarea-atencion .mud-button-root {
+        margin-left: 3rem;
+    }
+
+    .panel-resumen-periodo {
+        align-items: flex-start;
+    }
+}
+
+/* ── Ficha de cuenta del operador ────────────────────────────────────────────── */
+.ficha-operador-volver {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.375rem;
+    margin-bottom: 0.75rem;
+    color: var(--texto-suave);
+    font-size: 0.8125rem;
+    text-decoration: none;
+}
+
+.ficha-operador-volver:hover {
+    color: var(--acento);
+}
+
+.ficha-cuenta-resumen {
+    margin-bottom: 1rem;
+    overflow: hidden;
+    background: var(--superficie);
+    border: 1px solid var(--borde);
+    border-radius: var(--radio);
+}
+
+.ficha-cuenta-identidad {
+    display: flex;
+    align-items: flex-end;
+    justify-content: space-between;
+    gap: 1rem;
+    padding: 1rem 1.25rem;
+}
+
+.ficha-cuenta-contacto {
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+}
+
+.ficha-cuenta-meta {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.5rem;
+    margin-bottom: 0.75rem;
+    color: var(--texto-suave);
+    font-size: var(--etiqueta-tam);
+}
+
+.ficha-cuenta-etiqueta {
+    margin-bottom: 0.125rem;
+    color: var(--texto-suave);
+    font-size: var(--etiqueta-tam);
+}
+
+.ficha-cuenta-contacto > a {
+    overflow: hidden;
+    color: var(--acento);
+    font-size: 1rem;
+    font-weight: var(--peso-titulo);
+    text-overflow: ellipsis;
+    text-decoration: none;
+    white-space: nowrap;
+}
+
+.ficha-cuenta-contacto > a:hover {
+    text-decoration: underline;
+}
+
+.ficha-cuenta-metricas {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    margin: 0;
+    border-top: 1px solid var(--borde);
+}
+
+.ficha-cuenta-metricas > div {
+    min-width: 0;
+    padding: 0.875rem 1.25rem;
+}
+
+.ficha-cuenta-metricas > div + div {
+    border-left: 1px solid var(--borde);
+}
+
+.ficha-cuenta-metricas dt {
+    margin-bottom: 0.25rem;
+    color: var(--texto-suave);
+    font-size: var(--etiqueta-tam);
+}
+
+.ficha-cuenta-metricas dd {
+    min-height: 1.75rem;
+    margin: 0;
+    color: var(--texto);
+    font-size: 1.25rem;
+    font-weight: var(--peso-titulo);
+}
+
+.ficha-cuenta-metricas dd.cifra-tabular {
+    font-family: var(--fuente-mono);
+    font-variant-numeric: tabular-nums;
+}
+
+.ficha-cuenta-metricas dd .indicador-estado {
+    max-width: 100%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.aviso-operador-accion {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    margin-bottom: 1rem;
+    padding: 0.625rem 0.875rem;
+    background: rgba(var(--estado-advertencia-rgb), 0.08);
+    border: 1px solid rgba(var(--estado-advertencia-rgb), 0.28);
+    border-radius: var(--radio);
+}
+
+.aviso-operador-accion-icono {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex: 0 0 auto;
+    width: 2rem;
+    height: 2rem;
+    color: var(--estado-advertencia-texto);
+}
+
+.aviso-operador-accion > div {
+    display: flex;
+    flex: 1 1 auto;
+    flex-direction: column;
+    min-width: 0;
+}
+
+.aviso-operador-accion strong {
+    color: var(--texto);
+    font-size: 0.875rem;
+    font-weight: var(--peso-titulo);
+}
+
+.aviso-operador-accion span {
+    color: var(--texto-suave);
+    font-size: var(--etiqueta-tam);
+}
+
+.pestanas-ficha-operador {
+    overflow: hidden;
+    background: var(--superficie);
+    border: 1px solid var(--borde);
+    border-radius: var(--radio);
+}
+
+.pestanas-ficha-operador .mud-tabs-tabbar {
+    background: var(--superficie);
+    border-bottom: 1px solid var(--borde);
+}
+
+.pestanas-ficha-operador .mud-tab {
+    min-height: 3rem;
+    color: var(--texto-suave);
+    font-size: 0.8125rem;
+    font-weight: var(--peso-titulo);
+    text-transform: none;
+}
+
+.pestanas-ficha-operador .mud-tab.mud-tab-active {
+    color: var(--acento);
+}
+
+.pestanas-ficha-operador .mud-tabs-panels {
+    background: var(--superficie);
+}
+
+.pestana-ficha-contenido {
+    padding: 1rem;
+}
+
+.cabecera-seccion-ficha {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    margin-bottom: 1rem;
+}
+
+.cabecera-seccion-ficha h2 {
+    margin: 0;
+    color: var(--texto);
+    font-size: 0.9375rem;
+    font-weight: var(--peso-titulo);
+}
+
+.cabecera-seccion-ficha p {
+    margin: 0.125rem 0 0;
+    color: var(--texto-suave);
+    font-size: var(--etiqueta-tam);
+}
+
+.tabla-ficha-operador {
+    border: 1px solid var(--borde);
+    border-radius: var(--radio);
+}
+
+.tabla-ficha-operador .mud-table-container {
+    border-radius: inherit;
+}
+
+.celda-accion-ficha {
+    text-align: right;
+}
+
+.accion-ir-ficha {
+    display: inline-flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 0.25rem;
+    color: var(--acento);
+    font-size: var(--etiqueta-tam);
+    font-weight: var(--peso-titulo);
+    text-decoration: none;
+    white-space: nowrap;
+}
+
+.accion-ir-ficha:hover span {
+    text-decoration: underline;
+}
+
+.estado-vacio-tabla {
+    width: 100%;
+    padding: 1.5rem;
+    color: var(--texto-suave);
+    text-align: center;
+}
+
+.suscripcion-actual {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    margin-bottom: 1rem;
+    padding: 0.75rem 0.875rem;
+    background: var(--fondo);
+    border: 1px solid var(--borde);
+    border-radius: var(--radio);
+}
+
+.suscripcion-actual-icono {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex: 0 0 auto;
+    width: 2.25rem;
+    height: 2.25rem;
+    background: var(--acento-suave);
+    border-radius: var(--radio);
+    color: var(--acento);
+}
+
+.suscripcion-actual > div {
+    display: flex;
+    flex-direction: column;
+}
+
+.suscripcion-actual span {
+    color: var(--texto-suave);
+    font-size: var(--etiqueta-tam);
+}
+
+.suscripcion-actual strong {
+    color: var(--texto);
+    font-size: 0.875rem;
+    font-weight: var(--peso-titulo);
+}
+
+.estado-vacio-ficha {
+    display: flex;
+    align-items: center;
+    flex-direction: column;
+    gap: 0.5rem;
+    padding: 3rem 1rem;
+    color: var(--texto-suave);
+    text-align: center;
+}
+
+.estado-vacio-ficha strong {
+    color: var(--texto);
+    font-size: 1rem;
+}
+
+.estado-vacio-ficha > span {
+    margin-bottom: 0.5rem;
+    font-size: 0.8125rem;
+}
+
+@media (max-width: 700px) {
+    .ficha-cuenta-identidad {
+        align-items: stretch;
+        flex-direction: column;
+    }
+
+    .ficha-cuenta-identidad .mud-button-root {
+        align-self: flex-start;
+    }
+
+    .ficha-cuenta-metricas {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .ficha-cuenta-metricas > div + div {
+        border-left: 0;
+    }
+
+    .ficha-cuenta-metricas > div:nth-child(even) {
+        border-left: 1px solid var(--borde);
+    }
+
+    .ficha-cuenta-metricas > div:nth-child(n + 3) {
+        border-top: 1px solid var(--borde);
+    }
+
+    .aviso-operador-accion {
+        align-items: flex-start;
+        flex-wrap: wrap;
+    }
+
+    .aviso-operador-accion .mud-button-root {
+        margin-left: 2.75rem;
+    }
+
+    .cabecera-seccion-ficha {
+        align-items: flex-start;
+        flex-direction: column;
+    }
+
+    .pestana-ficha-contenido {
+        padding: 0.75rem;
+    }
+
+    .tabla-ficha-operador {
+        border: 0;
+    }
+
+    .tabla-ficha-operador .mud-table-row {
+        margin-bottom: 0.75rem;
+        border: 1px solid var(--borde);
+        border-radius: var(--radio);
+    }
+
+    .celda-accion-ficha {
+        text-align: left;
+    }
+}
+
+/* La ficha de empresa comparte el armazón de la cuenta, pero prioriza saldo y
+   operaciones de soporte en lugar de datos de contacto. */
+.ficha-empresa-identidad {
+    display: flex;
+    align-items: flex-end;
+    justify-content: space-between;
+    gap: 1rem;
+    padding: 1rem 1.25rem;
+}
+
+.ficha-empresa-rfc {
+    display: block;
+    color: var(--texto);
+    font-family: var(--fuente-mono);
+    font-size: 1.125rem;
+    font-variant-numeric: tabular-nums;
+    font-weight: var(--peso-titulo);
+}
+
+.ficha-empresa-regimen {
+    display: block;
+    margin-top: 0.125rem;
+    color: var(--texto-suave);
+    font-size: var(--etiqueta-tam);
+}
+
+.ficha-empresa-acciones {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 0.5rem;
+}
+
+.ficha-cuenta-metricas .metrica-advertencia {
+    color: var(--estado-advertencia-texto);
+}
+
+.aviso-empresa-inactiva {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    margin-bottom: 1rem;
+    padding: 0.75rem 0.875rem;
+    background: rgba(var(--estado-error-rgb), 0.08);
+    border: 1px solid rgba(var(--estado-error-rgb), 0.28);
+    border-radius: var(--radio);
+    color: var(--estado-cancelada-texto);
+}
+
+.aviso-empresa-inactiva > div {
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+}
+
+.aviso-empresa-inactiva strong {
+    color: var(--texto);
+    font-size: 0.875rem;
+    font-weight: var(--peso-titulo);
+}
+
+.aviso-empresa-inactiva span {
+    color: var(--texto-suave);
+    font-size: var(--etiqueta-tam);
+}
+
+.usuario-ficha-identidad {
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+}
+
+.usuario-ficha-identidad strong {
+    overflow: hidden;
+    color: var(--texto);
+    font-weight: var(--peso-titulo);
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.usuario-ficha-identidad a {
+    overflow: hidden;
+    color: var(--texto-suave);
+    font-size: var(--etiqueta-tam);
+    text-overflow: ellipsis;
+    text-decoration: none;
+    white-space: nowrap;
+}
+
+.usuario-ficha-identidad a:hover {
+    color: var(--acento);
+    text-decoration: underline;
+}
+
+.celda-menu-ficha {
+    width: 3rem;
+    text-align: right;
+}
+
+.opcion-menu-peligrosa {
+    color: var(--estado-cancelada-texto);
+}
+
+.cabecera-compras-ficha {
+    align-items: flex-end;
+}
+
+.buscador-compras-ficha {
+    width: min(20rem, 100%);
+}
+
+.progreso-compras-ficha {
+    margin: -0.5rem 0 0.75rem;
+}
+
+.seccion-compras-ficha + .seccion-compras-ficha {
+    margin-top: 1.5rem;
+    padding-top: 1.25rem;
+    border-top: 1px solid var(--borde);
+}
+
+.cabecera-subseccion-ficha {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.75rem;
+    margin-bottom: 0.625rem;
+}
+
+.cabecera-subseccion-ficha h3 {
+    margin: 0;
+    color: var(--texto);
+    font-size: 0.875rem;
+    font-weight: var(--peso-titulo);
+}
+
+.acciones-compra-ficha {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 0.25rem;
+    white-space: nowrap;
+}
+
+@media (max-width: 700px) {
+    .ficha-empresa-identidad {
+        align-items: stretch;
+        flex-direction: column;
+    }
+
+    .ficha-empresa-acciones {
+        align-items: stretch;
+        flex-direction: column;
+    }
+
+    .ficha-empresa-acciones .mud-button-root {
+        justify-content: flex-start;
+    }
+
+    .cabecera-compras-ficha {
+        align-items: stretch;
+    }
+
+    .buscador-compras-ficha {
+        width: 100%;
+    }
+
+    .celda-menu-ficha {
+        width: auto;
+        text-align: left;
+    }
+
+    .acciones-compra-ficha {
+        justify-content: flex-start;
+    }
+}
+
 /* ── Chips de permisos ──────────────────────────────────────────────────────────
    Visualización compacta de los permisos en la tabla de operadores. */
 .permisos-chips {
