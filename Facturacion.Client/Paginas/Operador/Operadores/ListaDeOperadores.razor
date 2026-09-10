@@ -7,7 +7,6 @@
 @inject ServicioDeOperadores Operadores
 @inject IDialogService Dialogos
 @inject IServicioDeConfirmacion Confirmacion
-@inject ServicioDeSesionDeOperador Sesion
 
 <PageTitle>Operadores</PageTitle>
 <TituloDePagina Texto="Operadores" />
@@ -23,6 +22,14 @@
     <MudTextField T="string" Value="_texto" ValueChanged="AlBuscar" Label="Buscar"
                   Placeholder="Nombre o correo" Immediate="false" DebounceInterval="300"
                   Adornment="Adornment.Start" AdornmentIcon="@Icons.Material.Filled.Search" />
+    <MudSelect T="string"
+               Value="_filtroEstado"
+               ValueChanged="AlCambiarFiltroEstado"
+               Label="Estado">
+        <MudSelectItem T="string" Value="@("todos")">Todos</MudSelectItem>
+        <MudSelectItem T="string" Value="@("activos")">Activos</MudSelectItem>
+        <MudSelectItem T="string" Value="@("inactivos")">Inactivos</MudSelectItem>
+    </MudSelect>
     <MudButton Color="Color.Primary" Variant="Variant.Filled" StartIcon="@Icons.Material.Filled.PersonAdd"
                OnClick="Nuevo" Class="ml-4">Nuevo operador</MudButton>
 </div>
@@ -40,10 +47,9 @@
     private string? _aviso;
     private bool _trabajando;
     private string _texto = string.Empty;
+    private string _filtroEstado = "todos";
 
     private IReadOnlyList<ColumnaDeTabla<OperadorDto>> _columnas = [];
-
-    private bool EsPrincipalEnSesion => Sesion.Sesion?.EsPrincipal == true;
 
     protected override void OnInitialized() => _columnas =
     [
@@ -70,36 +76,26 @@
                                }
                            </span>),
         new("", u => @<div class="acciones-renglon">
-                           <MudButton Size="Size.Small" Disabled="@_trabajando"
-                                      OnClick="@(() => Editar(u))">
-                               Editar
-                           </MudButton>
-                            <MudButton Size="Size.Small" Disabled="@_trabajando"
-                                       OnClick="@(() => CambiarPermisos(u))">
-                                Permisos
-                            </MudButton>
-                            @if (EsPrincipalEnSesion && !u.EsPrincipal)
-                            {
-                                <MudButton Size="Size.Small" Disabled="@_trabajando"
-                                           OnClick="@(() => CambiarContrasena(u))">
-                                    Contraseña
-                                </MudButton>
-                            }
-                            @if (!u.EsPrincipal)
-                            {
+                           @if (!u.EsPrincipal)
+                           {
+                               <MudButton Size="Size.Small" Disabled="@_trabajando"
+                                          OnClick="@(() => Editar(u))">
+                                   Editar
+                               </MudButton>
                                 <MudButton Size="Size.Small" Disabled="@_trabajando"
                                            OnClick="@(() => CambiarActivo(u))"
                                            Color="@(u.Activo ? Color.Error : Color.Success)">
                                     @(u.Activo ? "Desactivar" : "Activar")
                                 </MudButton>
-                            }
+                           }
                        </div>)
     ];
 
     private async Task<ResultadoDePagina<OperadorDto>> CargarAsync(
         PeticionDePagina peticion, CancellationToken ct)
     {
-        var pagina = await Operadores.ListarAsync(_texto, null, peticion.Pagina, peticion.TamanoPagina, ct);
+        var pagina = await Operadores.ListarAsync(
+            _texto, FiltroDeActivos(), peticion.Pagina, peticion.TamanoPagina, ct);
 
         return new ResultadoDePagina<OperadorDto>(pagina.Elementos, pagina.Total);
     }
@@ -109,6 +105,19 @@
         _texto = texto;
         await RecargarAsync();
     }
+
+    private async Task AlCambiarFiltroEstado(string estado)
+    {
+        _filtroEstado = estado;
+        await RecargarAsync();
+    }
+
+    private bool? FiltroDeActivos() => _filtroEstado switch
+    {
+        "activos" => true,
+        "inactivos" => false,
+        _ => null
+    };
 
     private Task RecargarAsync() => _tabla?.RecargarAsync() ?? Task.CompletedTask;
 
@@ -145,69 +154,6 @@
             _aviso = "Operador actualizado correctamente.";
             await RecargarAsync();
         }
-    }
-
-    private async Task CambiarPermisos(OperadorDto operador)
-    {
-        var parametros = new DialogParameters<DialogoPermisosOperador>
-        {
-            { x => x.NombreOperador, operador.Nombre },
-            { x => x.PermisosActuales, operador.Permisos }
-        };
-
-        var referencia = await Dialogos.ShowAsync<DialogoPermisosOperador>("Permisos de " + operador.Nombre, parametros);
-        var resultado = await referencia.Result;
-
-        if (resultado is not { Canceled: false, Data: List<string> nuevosPermisos }) return;
-
-        _trabajando = true;
-        _error = null;
-        _aviso = null;
-
-        var contrasena = await PedirContrasenaOperadorAsync("cambiar los permisos de " + operador.Nombre);
-        if (contrasena is null) { _trabajando = false; return; }
-
-        var (exito, error) = await Operadores.CambiarPermisosAsync(operador.Id, new PeticionPermisosOperador(nuevosPermisos), contrasena, CancellationToken.None);
-
-        _error = error;
-        _trabajando = false;
-
-        if (_error is null)
-            _aviso = "Permisos actualizados.";
-
-        await RecargarAsync();
-    }
-
-    private async Task CambiarContrasena(OperadorDto operador)
-    {
-        var parametros = new DialogParameters<DialogoCambioContrasenaOperador>
-        {
-            { x => x.NombreOperador, operador.Nombre }
-        };
-
-        var referencia = await Dialogos.ShowAsync<DialogoCambioContrasenaOperador>(
-            "Cambiar contraseña de " + operador.Nombre, parametros);
-        var resultado = await referencia.Result;
-
-        if (resultado is not { Canceled: false, Data: DialogoCambioContrasenaOperador.ContrasenaACambiar datos }) return;
-
-        _trabajando = true;
-        _error = null;
-        _aviso = null;
-
-        var (exito, error) = await Operadores.CambiarContrasenaAsync(
-            operador.Id,
-            new PeticionContrasenaNuevaDeOperador(datos.ContrasenaNueva),
-            datos.ContrasenaOperador,
-            CancellationToken.None);
-
-        _error = error;
-        _trabajando = false;
-
-        if (exito)
-            _aviso = "Contraseña cambiada y sus sesiones fueron cerradas.";
-
-        await RecargarAsync();
     }
 
     private async Task CambiarActivo(OperadorDto operador)

@@ -26,8 +26,6 @@ public static class OperadoresEndpoints
         grupo.MapGet("/{id:guid}", Obtener).RequireAuthorization(PoliticasDeOperador.VerOperadores);
         grupo.MapPost("/", Crear).RequireAuthorization(PoliticasDeOperador.AdministrarOperadores);
         grupo.MapPut("/{id:guid}", Actualizar).RequireAuthorization(PoliticasDeOperador.AdministrarOperadores);
-        grupo.MapPost("/{id:guid}/permisos", CambiarPermisos).RequireAuthorization(PoliticasDeOperador.AdministrarOperadores);
-        grupo.MapPost("/{id:guid}/contrasena", CambiarContrasena).RequireAuthorization(PoliticasDeOperador.AdministrarOperadores);
         grupo.MapPost("/{id:guid}/activo", CambiarActivo).RequireAuthorization(PoliticasDeOperador.AdministrarOperadores);
     }
 
@@ -35,7 +33,7 @@ public static class OperadoresEndpoints
         ServicioDeOperadores operadores,
         CancellationToken ct,
         string? texto = null,
-        bool? activos = true,
+        bool? activos = null,
         int pagina = 0,
         int tamano = 25)
     {
@@ -88,23 +86,6 @@ public static class OperadoresEndpoints
             : resultado.Error!.AResultado(contexto);
     }
 
-    private static async Task<IResult> CambiarPermisos(
-        Guid id,
-        PeticionCambiarPermisosOperador peticion,
-        ServicioDeOperadores operadores,
-        HttpContext contexto,
-        CancellationToken ct)
-    {
-        if (!TryOperador(contexto, out var operadorId)) return Results.Unauthorized();
-
-        var resultado = await operadores.CambiarPermisosAsync(
-            operadorId, id, peticion.Peticion, peticion.ContrasenaOperador, ct);
-
-        return resultado.EsExito
-            ? Results.Ok(resultado.Valor)
-            : resultado.Error!.AResultado(contexto);
-    }
-
     private static async Task<IResult> CambiarActivo(
         Guid id,
         PeticionCambiarActivoOperadorWrapper peticion,
@@ -122,23 +103,6 @@ public static class OperadoresEndpoints
             : resultado.Error!.AResultado(contexto);
     }
 
-    private static async Task<IResult> CambiarContrasena(
-        Guid id,
-        PeticionCambiarContrasenaOperadorWrapper peticion,
-        ServicioDeOperadores operadores,
-        HttpContext contexto,
-        CancellationToken ct)
-    {
-        if (!TryOperador(contexto, out var operadorId)) return Results.Unauthorized();
-
-        var resultado = await operadores.CambiarContrasenaAsync(
-            operadorId, id, peticion.Peticion, peticion.ContrasenaOperador, ct);
-
-        return resultado.EsExito
-            ? Results.Ok(resultado.Valor)
-            : resultado.Error!.AResultado(contexto);
-    }
-
     private static bool TryOperador(HttpContext contexto, out Guid operadorId)
         => Guid.TryParse(contexto.User.FindFirstValue(ClavesDeClaim.Operador), out operadorId);
 }
@@ -148,17 +112,7 @@ public sealed record PeticionCrearOperador(
     PeticionGuardarOperador Peticion,
     [property: Required] string ContrasenaOperador);
 
-/// <summary>Wrapper para cambio de permisos con re-autenticación.</summary>
-public sealed record PeticionCambiarPermisosOperador(
-    PeticionPermisosOperador Peticion,
-    [property: Required] string ContrasenaOperador);
-
 /// <summary>Wrapper para cambio de activo con re-autenticación.</summary>
 public sealed record PeticionCambiarActivoOperadorWrapper(
     PeticionCambiarActivoOperador Peticion,
-    [property: Required] string ContrasenaOperador);
-
-/// <summary>Wrapper para el cambio de contraseña de otro operador, con re-autenticación.</summary>
-public sealed record PeticionCambiarContrasenaOperadorWrapper(
-    PeticionContrasenaNuevaDeOperador Peticion,
     [property: Required] string ContrasenaOperador);

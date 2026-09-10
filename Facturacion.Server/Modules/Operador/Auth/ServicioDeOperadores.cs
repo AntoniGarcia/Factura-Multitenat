@@ -124,7 +124,12 @@ public sealed class ServicioDeOperadores(
             : ErrorNegocio.Regla("operador-no-creado", "No se pudo leer el operador recién creado.");
     }
 
-    /// <summary>Actualiza nombre y correo de un operador. No cambia contraseña ni permisos.</summary>
+    /// <summary>
+    /// Actualiza un operador: nombre, correo, permisos y, si viene contraseña nueva, la
+    /// contraseña. Cambiar la contraseña de otro operador es la operación más delicada del
+    /// panel —equivale a entrar como otra persona—, por eso solo la puede ejecutar el principal
+    /// y, al hacerlo, se cierran todas las sesiones del operador afectado.
+    /// </summary>
     public async Task<Resultado<OperadorDto>> ActualizarAsync(
         Guid operadorActualId,
         Guid id,
@@ -142,14 +147,21 @@ public sealed class ServicioDeOperadores(
         if (operador is null)
             return ErrorNegocio.NoEncontrado("operador-no-encontrado", "Ese operador no existe.");
 
-        var error = ValidarActualizacion(peticion, operador);
+        var error = ValidarActualizacion(peticion);
         if (error is not null) return error;
+
+        if (ValidarPermisos(peticion.Permisos) is { } errorPermisos)
+            return errorPermisos;
 
         var antes = Retrato(operador);
 
         operador.Nombre = peticion.Nombre.Trim();
         operador.Correo = peticion.Correo.Trim();
         operador.CorreoNormalizado = peticion.Correo.Trim().ToUpperInvariant();
+
+        operador.Permisos.Clear();
+        foreach (var permiso in peticion.Permisos.Distinct(StringComparer.OrdinalIgnoreCase))
+            operador.Permisos.Add(new PermisoOperador { Permiso = permiso });
 
         bitacora.Registrar(
             EntidadesDeBitacora.OperadorPlataforma,
@@ -159,6 +171,28 @@ public sealed class ServicioDeOperadores(
             despues: Retrato(operador),
             operadorId: operadorActualId);
 
+        if (!string.IsNullOrWhiteSpace(peticion.Contrasena))
+        {
+            if (await SoloPrincipalParaContrasenaAsync(operadorActualId, id, ct) is { } errorSeguridad)
+                return errorSeguridad;
+
+            if (peticion.Contrasena.Length < 12 || peticion.Contrasena.Length > 128)
+                return ErrorNegocio.Validacion(
+                    "contrasena-invalida", "La contraseña debe tener entre 12 y 128 caracteres.");
+
+            operador.HashContrasena = hasher.HashPassword(operador, peticion.Contrasena);
+
+            await refrescos.InvalidarTodasLasFamiliasDelOperadorAsync(
+                id, "contraseña restablecida por el operador principal", ct);
+
+            bitacora.Registrar(
+                EntidadesDeBitacora.OperadorPlataforma,
+                operador.Id.ToString(),
+                AccionesDeBitacora.ContrasenaCambiada,
+                despues: new { SesionDelOperador = operador.Nombre, SesionesCerradas = true },
+                operadorId: operadorActualId);
+        }
+
         await baseDeDatos.SaveChangesAsync(ct);
 
         return await ReleerAsync(id, ct) is { } actualizado
@@ -166,58 +200,26 @@ public sealed class ServicioDeOperadores(
             : ErrorNegocio.NoEncontrado("operador-no-encontrado", "El operador no existe tras la actualización.");
     }
 
-    /// <summary>Reemplaza completamente los permisos de un operador.</summary>
-    public async Task<Resultado<OperadorDto>> CambiarPermisosAsync(
-        Guid operadorActualId,
-        Guid id,
-        PeticionPermisosOperador peticion,
-        string contrasenaOperadorActual,
-        CancellationToken ct)
+    /// <summary>
+    /// Las reglas de seguridad de cambiarle la contraseña a otro operador, antes de tocarla:
+    /// solo el principal puede, y no sobre sí mismo — eso vive en el perfil.
+    /// </summary>
+    private async Task<ErrorNegocio?> SoloPrincipalParaContrasenaAsync(
+        Guid operadorActualId, Guid id, CancellationToken ct)
     {
-        if (await ContrasenaIncorrecta(operadorActualId, contrasenaOperadorActual, ct))
-            return ErrorNegocio.Validacion("contrasena-incorrecta", "Tu contraseña de operador no es correcta.");
+        if (id == operadorActualId)
+            return ErrorNegocio.Regla(
+                "auto-cambio", "No puedes cambiarte la contraseña desde aquí: hazlo desde tu perfil.");
 
-        if (!peticion.Permisos.Any())
-            return ErrorNegocio.Validacion("sin-permisos", "El operador debe tener al menos un permiso.");
+        var operadorActual = await baseDeDatos.OperadoresPlataforma
+            .AsNoTracking()
+            .SingleOrDefaultAsync(o => o.Id == operadorActualId, ct);
 
-        foreach (var p in peticion.Permisos)
-        {
-            if (!_permisosValidos.Contains(p))
-                return ErrorNegocio.Validacion("permiso-invalido", $"Permiso desconocido: {p}");
+        if (operadorActual is null || !operadorActual.EsPrincipal)
+            return ErrorNegocio.Regla(
+                "solo-principal", "Solo el operador principal puede cambiar la contraseña de otro operador.");
 
-            // Una acción sin su sección no se sostiene: para administrar algo hay que poder verlo.
-            if (PermisosDePanel.VerQueExige(p) is { } ver && !peticion.Permisos.Contains(ver))
-                return ErrorNegocio.Validacion(
-                    "accion-sin-seccion",
-                    $"No puedes «{PermisosDePanel.EtiquetaCorta(p)}» sin «{PermisosDePanel.EtiquetaCorta(ver)}».");
-        }
-
-        var operador = await baseDeDatos.OperadoresPlataforma
-            .Include(o => o.Permisos)
-            .SingleOrDefaultAsync(o => o.Id == id, ct);
-
-        if (operador is null)
-            return ErrorNegocio.NoEncontrado("operador-no-encontrado", "Ese operador no existe.");
-
-        var antes = Retrato(operador);
-
-        operador.Permisos.Clear();
-        foreach (var permiso in peticion.Permisos.Distinct(StringComparer.OrdinalIgnoreCase))
-            operador.Permisos.Add(new PermisoOperador { Permiso = permiso });
-
-        bitacora.Registrar(
-            EntidadesDeBitacora.OperadorPlataforma,
-            operador.Id.ToString(),
-            AccionesDeBitacora.OperadorPermisosCambiados,
-            antes: antes,
-            despues: Retrato(operador),
-            operadorId: operadorActualId);
-
-        await baseDeDatos.SaveChangesAsync(ct);
-
-        return await ReleerAsync(id, ct) is { } conPermisos
-            ? conPermisos
-            : ErrorNegocio.NoEncontrado("operador-no-encontrado", "El operador no existe tras el cambio de permisos.");
+        return null;
     }
 
     /// <summary>Alta o baja lógica de un operador. Al dar de baja se invalidan sus sesiones.</summary>
@@ -275,61 +277,6 @@ public sealed class ServicioDeOperadores(
             : ErrorNegocio.NoEncontrado("operador-no-encontrado", "El operador no existe tras el cambio de estado.");
     }
 
-    /// <summary>
-    /// El operador principal le pone una contraseña nueva a otro operador y cierra todas sus
-    /// sesiones. Es la operación más delicada del panel —equivale a entrar como otra persona—,
-    /// por eso la puede ejecutar solo el principal y exige su re-autenticación.
-    /// </summary>
-    public async Task<Resultado<bool>> CambiarContrasenaAsync(
-        Guid operadorActualId,
-        Guid id,
-        PeticionContrasenaNuevaDeOperador peticion,
-        string contrasenaOperadorActual,
-        CancellationToken ct)
-    {
-        if (await ContrasenaIncorrecta(operadorActualId, contrasenaOperadorActual, ct))
-            return ErrorNegocio.Validacion("contrasena-incorrecta", "Tu contraseña de operador no es correcta.");
-
-        var operadorActual = await baseDeDatos.OperadoresPlataforma
-            .AsNoTracking()
-            .SingleOrDefaultAsync(o => o.Id == operadorActualId, ct);
-
-        // Solo el dueño del SaaS puede dejar fuera a alguien poniéndole otra contraseña.
-        if (operadorActual is null || !operadorActual.EsPrincipal)
-            return ErrorNegocio.Regla(
-                "solo-principal", "Solo el operador principal puede cambiar la contraseña de otro operador.");
-
-        if (id == operadorActualId)
-            return ErrorNegocio.Regla(
-                "auto-cambio", "No puedes cambiarte la contraseña desde aquí: hazlo desde tu perfil.");
-
-        if (peticion.ContrasenaNueva.Length < 12 || peticion.ContrasenaNueva.Length > 128)
-            return ErrorNegocio.Validacion(
-                "contrasena-invalida", "La contraseña debe tener entre 12 y 128 caracteres.");
-
-        var operador = await baseDeDatos.OperadoresPlataforma
-            .SingleOrDefaultAsync(o => o.Id == id, ct);
-
-        if (operador is null)
-            return ErrorNegocio.NoEncontrado("operador-no-encontrado", "Ese operador no existe.");
-
-        operador.HashContrasena = hasher.HashPassword(operador, peticion.ContrasenaNueva);
-
-        await refrescos.InvalidarTodasLasFamiliasDelOperadorAsync(
-            id, "contraseña restablecida por el operador principal", ct);
-
-        bitacora.Registrar(
-            EntidadesDeBitacora.OperadorPlataforma,
-            operador.Id.ToString(),
-            AccionesDeBitacora.ContrasenaCambiada,
-            despues: new { SesionDelOperador = operador.Nombre, SesionesCerradas = true },
-            operadorId: operadorActualId);
-
-        await baseDeDatos.SaveChangesAsync(ct);
-
-        return true;
-    }
-
     private static ErrorNegocio? ValidarCreacion(PeticionGuardarOperador p)
     {
         if (string.IsNullOrWhiteSpace(p.Nombre))
@@ -350,16 +297,28 @@ public sealed class ServicioDeOperadores(
         if (p.Contrasena.Length < 12 || p.Contrasena.Length > 128)
             return ErrorNegocio.Validacion("contrasena-invalida", "La contraseña debe tener entre 12 y 128 caracteres.");
 
-        if (!p.Permisos.Any())
+        var errorPermisos = ValidarPermisos(p.Permisos);
+        if (errorPermisos is not null) return errorPermisos;
+
+        return null;
+    }
+
+    /// <summary>
+    /// Reglas comunes de permisos al crear o al actualizar: al menos uno, conocidos y, si es
+    /// una acción, con su sección de ver incluida.
+    /// </summary>
+    private static ErrorNegocio? ValidarPermisos(IReadOnlyList<string> permisos)
+    {
+        if (!permisos.Any())
             return ErrorNegocio.Validacion("sin-permisos", "El operador debe tener al menos un permiso.");
 
-        foreach (var permiso in p.Permisos)
+        foreach (var permiso in permisos)
         {
             if (!_permisosValidos.Contains(permiso))
                 return ErrorNegocio.Validacion("permiso-invalido", $"Permiso desconocido: {permiso}");
 
             // Una acción sin su sección no se sostiene: para administrar algo hay que poder verlo.
-            if (PermisosDePanel.VerQueExige(permiso) is { } ver && !p.Permisos.Contains(ver))
+            if (PermisosDePanel.VerQueExige(permiso) is { } ver && !permisos.Contains(ver))
                 return ErrorNegocio.Validacion(
                     "accion-sin-seccion",
                     $"No puedes «{PermisosDePanel.EtiquetaCorta(permiso)}» sin «{PermisosDePanel.EtiquetaCorta(ver)}».");
@@ -368,7 +327,7 @@ public sealed class ServicioDeOperadores(
         return null;
     }
 
-    private static ErrorNegocio? ValidarActualizacion(PeticionGuardarOperador p, OperadorPlataforma operador)
+    private static ErrorNegocio? ValidarActualizacion(PeticionGuardarOperador p)
     {
         if (string.IsNullOrWhiteSpace(p.Nombre))
             return ErrorNegocio.Validacion("nombre-requerido", "El operador necesita un nombre.");

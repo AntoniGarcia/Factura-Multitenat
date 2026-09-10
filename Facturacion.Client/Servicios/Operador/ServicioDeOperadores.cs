@@ -52,15 +52,6 @@ public sealed class ServicioDeOperadores(IHttpClientFactory fabrica)
         return await LeerAsync<OperadorDto>(respuesta, ct);
     }
 
-    public async Task<(OperadorDto? Exito, DetalleProblema? Error)> CambiarPermisosAsync(
-        Guid id, PeticionPermisosOperador peticion, string contrasenaOperador, CancellationToken ct = default)
-    {
-        var wrapper = new { peticion, contrasenaOperador };
-        using var respuesta = await Cliente.PostAsJsonAsync($"/api/operador/operadores/{id}/permisos", wrapper, ct);
-
-        return await LeerAsync<OperadorDto>(respuesta, ct);
-    }
-
     public async Task<(OperadorDto? Exito, DetalleProblema? Error)> CambiarActivoAsync(
         Guid id, PeticionCambiarActivoOperador peticion, string contrasenaOperador, CancellationToken ct = default)
     {
@@ -68,18 +59,6 @@ public sealed class ServicioDeOperadores(IHttpClientFactory fabrica)
         using var respuesta = await Cliente.PostAsJsonAsync($"/api/operador/operadores/{id}/activo", wrapper, ct);
 
         return await LeerAsync<OperadorDto>(respuesta, ct);
-    }
-
-    public async Task<(bool Exito, DetalleProblema? Error)> CambiarContrasenaAsync(
-        Guid id, PeticionContrasenaNuevaDeOperador peticion, string contrasenaOperador, CancellationToken ct = default)
-    {
-        var wrapper = new { peticion, contrasenaOperador };
-        using var respuesta = await Cliente.PostAsJsonAsync($"/api/operador/operadores/{id}/contrasena", wrapper, ct);
-
-        if (respuesta.IsSuccessStatusCode)
-            return (true, null);
-
-        return (false, await respuesta.Content.ReadFromJsonAsync<DetalleProblema>(ct));
     }
 
     private static async Task<(T? Exito, DetalleProblema? Error)> LeerAsync<T>(

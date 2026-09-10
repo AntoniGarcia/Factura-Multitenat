@@ -2,9 +2,9 @@
 @layout LayoutDeOperador
 @attribute [Authorize(Policy = PoliticasDelPanel.PoliticaDeOperador)]
 @using Facturacion.Client.Componentes.Comunes
+@using Facturacion.Client.Paginas.Operador.Operadores
 @using Facturacion.Client.Servicios.Operador
 @using Facturacion.Client.Servicios.Plataforma
-@using Facturacion.Client.Paginas.Operador.Operadores
 @using Facturacion.Shared.Comun
 @using Facturacion.Shared.Operador
 @inject ServicioDeClientesDePlataforma Clientes
@@ -13,10 +13,8 @@
 @inject IServicioDeConfirmacion Confirmacion
 @inject IDialogService Dialogos
 
-<PageTitle>Ficha de empresa</PageTitle>
+<PageTitle>@(_ficha?.NombreFiscal ?? "Ficha de empresa") · Panel del operador</PageTitle>
 <TituloDePagina Texto="@(_ficha?.NombreFiscal ?? "Ficha de empresa")" />
-
-<TarjetaFormulario Ancha="true" RutaVolver="@($"/operador/cuentas/{CuentaId}")">
 
 @if (_cargando)
 {
@@ -24,107 +22,77 @@
 }
 else if (_ficha is null)
 {
-    <p class="tabla-datos-estado">No se encontró esa empresa.</p>
+    <div class="estado-vacio-ficha">
+        <MudIcon Icon="@Icons.Material.Filled.SearchOff" Size="Size.Large" />
+        <strong>No se encontró esa empresa</strong>
+        <span>La empresa no pertenece a esta cuenta o el enlace ya no es válido.</span>
+        <MudButton Href="@($"/operador/cuentas/{CuentaId}")" Variant="Variant.Outlined">
+            Volver a la cuenta
+        </MudButton>
+    </div>
 }
 else
 {
-    <div class="tarjetas-saldo">
-        <div class="tarjeta-saldo">
-            <span class="tarjeta-saldo-cifra cifra-tabular">@_ficha.Rfc</span>
-            <span class="tarjeta-saldo-etiqueta">R.F.C.</span>
+    <a href="@($"/operador/cuentas/{CuentaId}")" class="ficha-operador-volver">
+        <MudIcon Icon="@Icons.Material.Filled.ArrowBack" Size="Size.Small" />
+        Volver a la cuenta
+    </a>
+
+    <section class="ficha-cuenta-resumen ficha-empresa-resumen" aria-label="Resumen de la empresa">
+        <div class="ficha-empresa-identidad">
+            <div>
+                <div class="ficha-cuenta-meta">
+                    <span class="indicador-estado indicador-estado-@(_ficha.Activa ? "timbrada" : "borrador")">
+                        @(_ficha.Activa ? "Empresa activa" : "Empresa inactiva")
+                    </span>
+                    <span>Alta el @_ficha.FechaAltaUtc.ToLocalTime().ToString("dd MMM yyyy")</span>
+                </div>
+                <span class="ficha-cuenta-etiqueta">RFC</span>
+                <strong class="ficha-empresa-rfc">@_ficha.Rfc</strong>
+                <span class="ficha-empresa-regimen">Régimen fiscal @_ficha.RegimenFiscal</span>
+            </div>
+
+            <div class="ficha-empresa-acciones">
+                <MudButton Variant="Variant.Filled"
+                           Color="Color.Primary"
+                           StartIcon="@Icons.Material.Filled.AddCard"
+                           Disabled="@_trabajando"
+                           OnClick="AsignarTimbres">
+                    Asignar timbres
+                </MudButton>
+                <MudButton Variant="Variant.Text"
+                           Color="@(_ficha.Activa ? Color.Error : Color.Primary)"
+                           StartIcon="@(_ficha.Activa
+                               ? Icons.Material.Filled.Block
+                               : Icons.Material.Filled.CheckCircle)"
+                           Disabled="@_trabajando"
+                           OnClick="CambiarActivoEmpresa">
+                    @(_ficha.Activa ? "Desactivar" : "Reactivar empresa")
+                </MudButton>
+            </div>
         </div>
-        <div class="tarjeta-saldo">
-            <span class="tarjeta-saldo-cifra cifra-tabular">@_ficha.TimbresDisponibles.ToString("N0")</span>
-            <span class="tarjeta-saldo-etiqueta">Timbres disponibles</span>
-        </div>
-        <div class="tarjeta-saldo">
-            <span class="tarjeta-saldo-cifra cifra-tabular">@_ficha.TimbresReservados.ToString("N0")</span>
-            <span class="tarjeta-saldo-etiqueta">Timbres reservados</span>
-        </div>
-    </div>
 
-    <h2 class="seccion-titulo">Datos generales</h2>
-    <div class="rejilla-campos">
-        <MudTextField T="string" Label="Nombre fiscal" ReadOnly="true" Value="@_ficha.NombreFiscal" />
-        <MudTextField T="string" Label="Régimen fiscal" ReadOnly="true" Class="cifra-tabular"
-                      Value="@_ficha.RegimenFiscal" />
-        <MudTextField T="string" Label="Alta" ReadOnly="true" Class="cifra-tabular"
-                      Value="@_ficha.FechaAltaUtc.ToLocalTime().ToString("dd/MM/yyyy")" />
-        <MudTextField T="string" Label="Estado" ReadOnly="true"
-                      Value="@(_ficha.Activa ? "Activa" : "Inactiva")" />
-    </div>
-
-    <div class="acciones-formulario">
-        <MudButton Variant="@(_ficha.Activa ? Variant.Filled : Variant.Outlined)"
-                   Color="@(_ficha.Activa ? Color.Error : Color.Primary)" Disabled="@_trabajando"
-                   OnClick="CambiarActivoEmpresa">
-            @(_ficha.Activa ? "Dar de baja" : "Reactivar")
-        </MudButton>
-
-        <MudButton Variant="Variant.Outlined" StartIcon="@Icons.Material.Filled.CardGiftcard"
-                   Disabled="@_trabajando" OnClick="AsignarTimbres">
-            Asignar timbres
-        </MudButton>
-    </div>
-
-    <div class="filtros-documentos">
-        <MudTextField T="string" Value="_textoCompras" ValueChanged="AlBuscarCompras"
-                      Label="Buscar compras" Placeholder="Nombre del paquete" Immediate="false"
-                      DebounceInterval="300" Adornment="Adornment.Start"
-                      AdornmentIcon="@Icons.Material.Filled.Search" />
-    </div>
-
-    <h2 class="seccion-titulo">Usuarios con acceso</h2>
-
-    @if (_ficha.Usuarios.Count == 0)
-    {
-        <p class="tabla-datos-estado">Ningún usuario tiene acceso a esta empresa.</p>
-    }
-    else
-    {
-        <MudSimpleTable Dense="true" Hover="true" Class="tabla-impuestos">
-            <thead>
-                <tr><th>Usuario</th><th>Correo</th><th>Alta</th><th>Estado</th><th></th></tr>
-            </thead>
-            <tbody>
-                @foreach (var usuario in _ficha.Usuarios)
-                {
-                    <tr>
-                        <td>@usuario.Nombre</td>
-                        <td>@usuario.Correo</td>
-                        <td class="cifra-tabular">@usuario.FechaAltaUtc.ToLocalTime().ToString("dd/MM/yyyy")</td>
-                        <td>
-                            <span class="indicador-estado indicador-estado-@(usuario.Activo ? "timbrada" : "borrador")">
-                                @(usuario.Activo ? "Activo" : "Inactivo")
-                            </span>
-                        </td>
-                        <td>
-                            <div class="acciones-renglon">
-                                <MudButton Size="Size.Small" Disabled="@_trabajando"
-                                           OnClick="@(() => RestablecerContrasena(usuario))">
-                                    Contraseña
-                                </MudButton>
-                                <MudButton Size="Size.Small" Disabled="@_trabajando"
-                                           OnClick="@(() => CambiarCorreo(usuario))">
-                                    Correo
-                                </MudButton>
-                                <MudButton Size="Size.Small" Disabled="@_trabajando"
-                                           OnClick="@(() => CambiarActivo(usuario))">
-                                    @(usuario.Activo ? "Dar de baja" : "Reactivar")
-                                </MudButton>
-                                <MudButton Size="Size.Small" Disabled="@_trabajando"
-                                           OnClick="@(() => EliminarAcceso(usuario))">
-                                    Eliminar
-                                </MudButton>
-                            </div>
-                        </td>
-                    </tr>
-                }
-            </tbody>
-        </MudSimpleTable>
-    }
-
-    <h2 class="seccion-titulo">Compras pendientes de acreditar</h2>
+        <dl class="ficha-cuenta-metricas">
+            <div>
+                <dt>Timbres disponibles</dt>
+                <dd class="cifra-tabular">@_ficha.TimbresDisponibles.ToString("N0")</dd>
+            </div>
+            <div>
+                <dt>Timbres reservados</dt>
+                <dd class="cifra-tabular">@_ficha.TimbresReservados.ToString("N0")</dd>
+            </div>
+            <div>
+                <dt>Usuarios con acceso</dt>
+                <dd class="cifra-tabular">@_ficha.Usuarios.Count.ToString("N0")</dd>
+            </div>
+            <div>
+                <dt>Pagos pendientes</dt>
+                <dd class="cifra-tabular @(_totalPendientes > 0 ? "metrica-advertencia" : null)">
+                    @_totalPendientes.ToString("N0")
+                </dd>
+            </div>
+        </dl>
+    </section>
 
     <PanelErrores Problema="_error" />
 
@@ -133,88 +101,261 @@ else
         <div class="aviso-documentos" role="status">@_aviso</div>
     }
 
-    @if (_ficha.ComprasPendientes.Count == 0)
+    @if (!_ficha.Activa)
     {
-        <p class="tabla-datos-estado">@(_buscandoCompras ? "Ninguna compra pendiente coincide con la búsqueda." : "No hay compras por acreditar o descartar.")</p>
+        <div class="aviso-empresa-inactiva" role="status">
+            <MudIcon Icon="@Icons.Material.Filled.Block" Size="Size.Small" />
+            <div>
+                <strong>Esta empresa está inactiva</strong>
+                <span>No puede emitir nuevos comprobantes, pero su información permanece intacta.</span>
+            </div>
+        </div>
     }
-    else
+    else if (_totalPendientes > 0)
     {
-        <MudSimpleTable Dense="true" Hover="true" Class="tabla-impuestos">
-            <thead>
-                <tr>
-                    <th>Solicitada</th>
-                    <th>Paquete</th>
-                    <th class="cifra-tabular">Timbres</th>
-                    <th class="cifra-tabular">Total</th>
-                    <th></th>
-                </tr>
-            </thead>
-            <tbody>
-                @foreach (var compra in _ficha.ComprasPendientes)
-                {
-                    <tr>
-                        <td class="cifra-tabular">@compra.CreadaUtc.ToLocalTime().ToString("dd/MM/yyyy HH:mm")</td>
-                        <td>@compra.NombrePaquete</td>
-                        <td class="cifra-tabular">@compra.CantidadTimbres.ToString("N0")</td>
-                        <td class="cifra-tabular">@compra.PrecioTotal.ToString("C2")</td>
-                        <td>
-                            <div class="acciones-renglon">
-                                <MudButton Size="Size.Small" Variant="Variant.Filled" Color="Color.Primary"
-                                           Disabled="@_trabajando" OnClick="@(() => Acreditar(compra))">
-                                    Acreditar
-                                </MudButton>
-                                <MudButton Size="Size.Small" Disabled="@_trabajando"
-                                           OnClick="@(() => Rechazar(compra))">
-                                    Descartar
-                                </MudButton>
+        <div class="aviso-operador-accion" role="status">
+            <span class="aviso-operador-accion-icono" aria-hidden="true">
+                <MudIcon Icon="@Icons.Material.Filled.PendingActions" Size="Size.Small" />
+            </span>
+            <div>
+                <strong>
+                    @_totalPendientes
+                    @(_totalPendientes == 1 ? "pago espera acreditación" : "pagos esperan acreditación")
+                </strong>
+                <span>Confirma que el dinero haya llegado antes de entregar los timbres.</span>
+            </div>
+            <MudButton Variant="Variant.Text"
+                       Size="Size.Small"
+                       OnClick="@(() => _pestanaActiva = 1)">
+                Revisar pagos
+            </MudButton>
+        </div>
+    }
+
+    <MudTabs @bind-ActivePanelIndex="_pestanaActiva"
+             Elevation="0"
+             ApplyEffectsToContainer="true"
+             Class="pestanas-ficha-operador">
+        <MudTabPanel Text="@($"Usuarios ({_ficha.Usuarios.Count})")">
+            <div class="pestana-ficha-contenido">
+                <div class="cabecera-seccion-ficha">
+                    <div>
+                        <h2>Usuarios con acceso</h2>
+                        <p>Personas que pueden entrar y trabajar con esta empresa.</p>
+                    </div>
+                </div>
+
+                <MudTable T="UsuarioDeCuentaDto"
+                          Items="@_ficha.Usuarios"
+                          Dense="true"
+                          Hover="true"
+                          Elevation="0"
+                          Breakpoint="Breakpoint.Sm"
+                          Class="tabla-ficha-operador">
+                    <HeaderContent>
+                        <MudTh>Usuario</MudTh>
+                        <MudTh>Fecha de alta</MudTh>
+                        <MudTh>Estado</MudTh>
+                        <MudTh></MudTh>
+                    </HeaderContent>
+                    <RowTemplate>
+                        <MudTd DataLabel="Usuario">
+                            <div class="usuario-ficha-identidad">
+                                <strong>@context.Nombre</strong>
+                                <a href="@($"mailto:{context.Correo}")">@context.Correo</a>
                             </div>
-                        </td>
-                    </tr>
-                }
-            </tbody>
-        </MudSimpleTable>
-    }
+                        </MudTd>
+                        <MudTd DataLabel="Fecha de alta" Class="cifra-tabular">
+                            @context.FechaAltaUtc.ToLocalTime().ToString("dd/MM/yyyy")
+                        </MudTd>
+                        <MudTd DataLabel="Estado">
+                            <span class="indicador-estado indicador-estado-@(context.Activo ? "timbrada" : "borrador")">
+                                @(context.Activo ? "Activo" : "Inactivo")
+                            </span>
+                        </MudTd>
+                        <MudTd DataLabel="Acciones" Class="celda-menu-ficha">
+                            <MudMenu Icon="@Icons.Material.Filled.MoreVert"
+                                     Size="Size.Small"
+                                     Disabled="@_trabajando"
+                                     AnchorOrigin="Origin.BottomRight"
+                                     AriaLabel="@($"Acciones para {context.Nombre}")">
+                                <MudMenuItem OnClick="@(() => RestablecerContrasena(context))">
+                                    <MudIcon Icon="@Icons.Material.Filled.Password" Size="Size.Small" />
+                                    Restablecer contraseña
+                                </MudMenuItem>
+                                <MudMenuItem OnClick="@(() => CambiarCorreo(context))">
+                                    <MudIcon Icon="@Icons.Material.Filled.AlternateEmail" Size="Size.Small" />
+                                    Modificar correo
+                                </MudMenuItem>
+                                <MudMenuItem OnClick="@(() => CambiarActivo(context))">
+                                    <MudIcon Icon="@(context.Activo
+                                                      ? Icons.Material.Filled.PersonOff
+                                                      : Icons.Material.Filled.PersonAdd)"
+                                             Size="Size.Small" />
+                                    @(context.Activo ? "Dar de baja" : "Reactivar")
+                                </MudMenuItem>
+                                <MudMenuItem Class="opcion-menu-peligrosa"
+                                             OnClick="@(() => EliminarAcceso(context))">
+                                    <MudIcon Icon="@Icons.Material.Filled.LinkOff" Size="Size.Small" />
+                                    Eliminar acceso
+                                </MudMenuItem>
+                            </MudMenu>
+                        </MudTd>
+                    </RowTemplate>
+                    <NoRecordsContent>
+                        <div class="estado-vacio-tabla">
+                            Ningún usuario tiene acceso a esta empresa.
+                        </div>
+                    </NoRecordsContent>
+                </MudTable>
+            </div>
+        </MudTabPanel>
 
-    <h2 class="seccion-titulo">Últimas compras</h2>
+        <MudTabPanel Text="@($"Compras ({_totalPendientes} pendientes)")">
+            <div class="pestana-ficha-contenido">
+                <div class="cabecera-seccion-ficha cabecera-compras-ficha">
+                    <div>
+                        <h2>Compras de timbres</h2>
+                        <p>Solicitudes que requieren atención e historial acreditado.</p>
+                    </div>
+                    <MudTextField T="string"
+                                  Value="_textoCompras"
+                                  ValueChanged="AlBuscarCompras"
+                                  Label="Buscar compras"
+                                  Placeholder="Nombre del paquete"
+                                  Immediate="false"
+                                  DebounceInterval="300"
+                                  Adornment="Adornment.Start"
+                                  AdornmentIcon="@Icons.Material.Filled.Search"
+                                  Variant="Variant.Outlined"
+                                  Margin="Margin.Dense"
+                                  Class="buscador-compras-ficha" />
+                </div>
 
-    @if (_ficha.UltimasCompras.Count == 0)
-    {
-        <p class="tabla-datos-estado">@(_buscandoCompras ? "Ninguna compra pagada coincide con la búsqueda." : "Todavía no se ha acreditado ninguna compra.")</p>
-    }
-    else
-    {
-        <MudSimpleTable Dense="true" Hover="true" Class="tabla-impuestos">
-            <thead>
-                <tr>
-                    <th>Fecha</th>
-                    <th>Paquete</th>
-                    <th class="cifra-tabular">Timbres</th>
-                    <th class="cifra-tabular">Total</th>
-                    <th>Estado</th>
-                    <th class="cifra-tabular">Vence</th>
-                </tr>
-            </thead>
-            <tbody>
-                @foreach (var compra in _ficha.UltimasCompras)
+                @if (_cargandoCompras)
                 {
-                    <tr>
-                        <td class="cifra-tabular">@compra.CreadaUtc.ToLocalTime().ToString("dd/MM/yyyy")</td>
-                        <td>@compra.NombrePaquete</td>
-                        <td class="cifra-tabular">@compra.CantidadTimbres.ToString("N0")</td>
-                        <td class="cifra-tabular">@compra.PrecioTotal.ToString("C2")</td>
-                        <td>
-                            <span class="indicador-estado indicador-estado-timbrada">Pagada</span>
-                        </td>
-                        <td class="cifra-tabular">@(compra.VenceUtc?.ToLocalTime().ToString("dd/MM/yyyy") ?? "—")</td>
-                    </tr>
+                    <MudProgressLinear Indeterminate="true" Color="Color.Primary" Class="progreso-compras-ficha" />
                 }
-            </tbody>
-        </MudSimpleTable>
-    }
 
-    }
+                <section class="seccion-compras-ficha" aria-labelledby="titulo-pendientes-empresa">
+                    <div class="cabecera-subseccion-ficha">
+                        <h3 id="titulo-pendientes-empresa">Por acreditar</h3>
+                        @if (_ficha.ComprasPendientes.Count > 0)
+                        {
+                            <span class="indicador-estado indicador-estado-advertencia">
+                                @_ficha.ComprasPendientes.Count
+                            </span>
+                        }
+                    </div>
 
-</TarjetaFormulario>
+                    <MudTable T="CompraDeOperadorDto"
+                              Items="@_ficha.ComprasPendientes"
+                              Dense="true"
+                              Hover="true"
+                              Elevation="0"
+                              Breakpoint="Breakpoint.Sm"
+                              Class="tabla-ficha-operador">
+                        <HeaderContent>
+                            <MudTh>Solicitada</MudTh>
+                            <MudTh>Paquete</MudTh>
+                            <MudTh class="cifra-tabular">Timbres</MudTh>
+                            <MudTh class="cifra-tabular">Total</MudTh>
+                            <MudTh></MudTh>
+                        </HeaderContent>
+                        <RowTemplate>
+                            <MudTd DataLabel="Solicitada" Class="cifra-tabular">
+                                @context.CreadaUtc.ToLocalTime().ToString("dd/MM/yyyy HH:mm")
+                            </MudTd>
+                            <MudTd DataLabel="Paquete">@context.NombrePaquete</MudTd>
+                            <MudTd DataLabel="Timbres" Class="cifra-tabular">
+                                @context.CantidadTimbres.ToString("N0")
+                            </MudTd>
+                            <MudTd DataLabel="Total" Class="cifra-tabular">
+                                @context.PrecioTotal.ToString("C2")
+                            </MudTd>
+                            <MudTd DataLabel="Acciones" Class="celda-accion-ficha">
+                                <div class="acciones-compra-ficha">
+                                    <MudButton Size="Size.Small"
+                                               Variant="Variant.Filled"
+                                               Color="Color.Primary"
+                                               Disabled="@_trabajando"
+                                               OnClick="@(() => Acreditar(context))">
+                                        Acreditar
+                                    </MudButton>
+                                    <MudButton Size="Size.Small"
+                                               Variant="Variant.Text"
+                                               Color="Color.Error"
+                                               Disabled="@_trabajando"
+                                               OnClick="@(() => Rechazar(context))">
+                                        Descartar
+                                    </MudButton>
+                                </div>
+                            </MudTd>
+                        </RowTemplate>
+                        <NoRecordsContent>
+                            <div class="estado-vacio-tabla">
+                                @(_buscandoCompras
+                                    ? "Ningún pago pendiente coincide con la búsqueda."
+                                    : "No hay pagos pendientes por acreditar.")
+                            </div>
+                        </NoRecordsContent>
+                    </MudTable>
+                </section>
+
+                <section class="seccion-compras-ficha" aria-labelledby="titulo-historial-empresa">
+                    <div class="cabecera-subseccion-ficha">
+                        <h3 id="titulo-historial-empresa">Historial reciente</h3>
+                        <span class="texto-secundario">
+                            @(_buscandoCompras ? "Hasta 100 coincidencias" : "Últimas 10 compras")
+                        </span>
+                    </div>
+
+                    <MudTable T="CompraDeOperadorDto"
+                              Items="@_ficha.UltimasCompras"
+                              Dense="true"
+                              Hover="true"
+                              Elevation="0"
+                              Breakpoint="Breakpoint.Sm"
+                              Class="tabla-ficha-operador">
+                        <HeaderContent>
+                            <MudTh>Fecha</MudTh>
+                            <MudTh>Paquete</MudTh>
+                            <MudTh class="cifra-tabular">Timbres</MudTh>
+                            <MudTh class="cifra-tabular">Total</MudTh>
+                            <MudTh>Estado</MudTh>
+                            <MudTh class="cifra-tabular">Vence</MudTh>
+                        </HeaderContent>
+                        <RowTemplate>
+                            <MudTd DataLabel="Fecha" Class="cifra-tabular">
+                                @context.CreadaUtc.ToLocalTime().ToString("dd/MM/yyyy")
+                            </MudTd>
+                            <MudTd DataLabel="Paquete">@context.NombrePaquete</MudTd>
+                            <MudTd DataLabel="Timbres" Class="cifra-tabular">
+                                @context.CantidadTimbres.ToString("N0")
+                            </MudTd>
+                            <MudTd DataLabel="Total" Class="cifra-tabular">
+                                @context.PrecioTotal.ToString("C2")
+                            </MudTd>
+                            <MudTd DataLabel="Estado">
+                                <span class="indicador-estado indicador-estado-timbrada">Acreditada</span>
+                            </MudTd>
+                            <MudTd DataLabel="Vence" Class="cifra-tabular">
+                                @(context.VenceUtc?.ToLocalTime().ToString("dd/MM/yyyy") ?? "—")
+                            </MudTd>
+                        </RowTemplate>
+                        <NoRecordsContent>
+                            <div class="estado-vacio-tabla">
+                                @(_buscandoCompras
+                                    ? "Ninguna compra acreditada coincide con la búsqueda."
+                                    : "Todavía no se ha acreditado ninguna compra.")
+                            </div>
+                        </NoRecordsContent>
+                    </MudTable>
+                </section>
+            </div>
+        </MudTabPanel>
+    </MudTabs>
+}
 
 @code {
     [Parameter]
@@ -227,7 +368,10 @@ else
     private DetalleProblema? _error;
     private string? _aviso;
     private bool _cargando = true;
+    private bool _cargandoCompras;
     private bool _trabajando;
+    private int _pestanaActiva;
+    private int _totalPendientes;
     private string _textoCompras = string.Empty;
 
     private bool _buscandoCompras => !string.IsNullOrWhiteSpace(_textoCompras);
@@ -242,14 +386,17 @@ else
     private async Task CargarAsync()
     {
         _ficha = await Clientes.ObtenerEmpresaAsync(CuentaId, EmpresaId, _textoCompras);
+
+        if (!_buscandoCompras && _ficha is not null)
+            _totalPendientes = _ficha.ComprasPendientes.Count;
     }
 
     private async Task AlBuscarCompras(string texto)
     {
         _textoCompras = texto;
-        _cargando = true;
+        _cargandoCompras = true;
         await CargarAsync();
-        _cargando = false;
+        _cargandoCompras = false;
     }
 
     private async Task Acreditar(CompraDeOperadorDto compra)
@@ -273,7 +420,10 @@ else
         _trabajando = false;
 
         if (_error is null)
+        {
             _aviso = $"Pago acreditado: {compra.CantidadTimbres:N0} timbres para {_ficha.NombreFiscal}.";
+            if (_buscandoCompras) _totalPendientes = Math.Max(0, _totalPendientes - 1);
+        }
 
         await CargarAsync();
     }
@@ -302,7 +452,11 @@ else
 
         _trabajando = false;
 
-        if (_error is null) _aviso = "Compra descartada.";
+        if (_error is null)
+        {
+            _aviso = "Compra descartada.";
+            if (_buscandoCompras) _totalPendientes = Math.Max(0, _totalPendientes - 1);
+        }
 
         await CargarAsync();
     }
@@ -318,7 +472,7 @@ else
                 { x => x.NombreEmpresa, _ficha.NombreFiscal }
             };
 
-            var referencia = await Dialogos.ShowAsync<DialogoDeBajaDeEmpresa>("Dar de baja la empresa", parametros);
+            var referencia = await Dialogos.ShowAsync<DialogoDeBajaDeEmpresa>("Desactivar empresa", parametros);
             var resultado = await referencia.Result;
 
             if (resultado is not { Canceled: false, Data: ValueTuple<string, string> baja }) return;
@@ -333,7 +487,7 @@ else
 
             _trabajando = false;
 
-            if (_error is null) _aviso = "Empresa dada de baja. Los comprobantes ya timbrados quedan intactos.";
+            if (_error is null) _aviso = "Empresa desactivada. Sus datos y comprobantes se conservan.";
 
             await CargarAsync();
             return;
