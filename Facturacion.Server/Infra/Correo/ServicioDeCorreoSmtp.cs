@@ -1,17 +1,17 @@
 using System.Net;
 using System.Net.Mail;
-using Microsoft.Extensions.Options;
 
 namespace Facturacion.Server.Infra.Correo;
 
 /// <summary>Envío real por SMTP, con la cuenta propia del SaaS (ARQUITECTURA.md §6).</summary>
 public sealed class ServicioDeCorreoSmtp(
-    IOptionsMonitor<OpcionesDeCorreo> opciones, ILogger<ServicioDeCorreoSmtp> registro) : IServicioDeCorreo
+    IProveedorDeConfiguracionDelSistema configuracion,
+    ILogger<ServicioDeCorreoSmtp> registro) : IServicioDeCorreo
 {
     public async Task EnviarAsync(
         string destinatario, string asunto, string cuerpoHtml, CancellationToken ct, string? responderA = null)
     {
-        var config = opciones.CurrentValue;
+        var config = (await configuracion.ObtenerAsync(ct)).Correo;
 
         using var cliente = new SmtpClient(config.Servidor, config.Puerto)
         {
@@ -42,8 +42,19 @@ public sealed class ServicioDeCorreoSmtp(
         {
             // No se relanza como error de negocio: quien invita no puede corregir un SMTP
             // caído, y lo que lo disparó ya quedó guardado. Se registra para que el operador lo vea.
-            registro.LogError(excepcion, "Falló el envío de correo a {Destinatario}", destinatario);
+            registro.LogError(
+                excepcion,
+                "Falló el envío de correo al dominio {DominioDestinatario}",
+                DominioDe(destinatario));
             throw;
         }
+    }
+
+    private static string DominioDe(string destinatario)
+    {
+        var separador = destinatario.LastIndexOf('@');
+        return separador >= 0 && separador < destinatario.Length - 1
+            ? destinatario[(separador + 1)..]
+            : "no-disponible";
     }
 }

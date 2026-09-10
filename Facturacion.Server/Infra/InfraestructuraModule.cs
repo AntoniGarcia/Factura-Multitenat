@@ -10,6 +10,7 @@ using Facturacion.Server.Infra.Seguridad;
 using Facturacion.Server.Infra.Tenencia;
 using Facturacion.Shared.Contratos;
 using Microsoft.AspNetCore.DataProtection;
+using Microsoft.AspNetCore.HttpOverrides;
 using Microsoft.EntityFrameworkCore;
 using Serilog;
 
@@ -25,6 +26,13 @@ public static class InfraestructuraModule
         this IServiceCollection servicios, IConfiguration configuracion, IHostEnvironment entorno)
     {
         servicios.AddHttpContextAccessor();
+
+        servicios.Configure<ForwardedHeadersOptions>(opciones =>
+        {
+            opciones.ForwardedHeaders =
+                ForwardedHeaders.XForwardedFor | ForwardedHeaders.XForwardedProto;
+            opciones.ForwardLimit = 1;
+        });
 
         // Una sola instancia por petición sirve a las dos interfaces: la de la mitad B
         // (congelada) y la extendida que usa la mitad A.
@@ -48,7 +56,7 @@ public static class InfraestructuraModule
 
         servicios.AddScoped<IServicioDeBitacora, ServicioDeBitacora>();
 
-        servicios.AgregarAlmacenCifrado(configuracion);
+        servicios.AgregarAlmacenCifrado(configuracion, entorno);
         servicios.AgregarCorreo(configuracion, entorno);
 
         servicios.AddMemoryCache();
@@ -63,6 +71,11 @@ public static class InfraestructuraModule
 
     public static WebApplication UsePipelineDeInfraestructura(this WebApplication aplicacion)
     {
+        // Tiene que correr antes de HTTPS, autenticación y límites por IP. Por omisión solo
+        // se confía en proxies de loopback; Azure Linux habilita su proxy administrado con
+        // ASPNETCORE_FORWARDEDHEADERS_ENABLED=true, documentado en DESPLIEGUE.md.
+        aplicacion.UseForwardedHeaders();
+
         // El más externo: nada de lo que venga después puede escapar sin convertirse en
         // Problem Details.
         aplicacion.UseMiddleware<MiddlewareDeExcepciones>();
@@ -125,7 +138,7 @@ public static class InfraestructuraModule
     /// </para>
     /// </summary>
     private static IServiceCollection AgregarAlmacenCifrado(
-        this IServiceCollection servicios, IConfiguration configuracion)
+        this IServiceCollection servicios, IConfiguration configuracion, IHostEnvironment entorno)
     {
         var opciones = configuracion.GetSection(OpcionesDeAlmacen.Seccion).Get<OpcionesDeAlmacen>() ?? new OpcionesDeAlmacen();
 
@@ -137,12 +150,26 @@ public static class InfraestructuraModule
                 "'dotnet run -- --generar-llave-maestra' y ponla en appsettings.Development.json " +
                 "o en una variable de entorno; nunca en el repositorio.");
 
+        if (!entorno.IsDevelopment()
+            && (!Path.IsPathRooted(opciones.Raiz) || !Path.IsPathRooted(opciones.RutaLlavero)))
+            throw new InvalidOperationException(
+                "Fuera de Development, 'Almacen:Raiz' y 'Almacen:RutaLlavero' deben ser " +
+                "rutas absolutas en almacenamiento persistente.");
+
+        var raiz = ResolverRuta(opciones.Raiz, entorno);
+        var rutaLlavero = ResolverRuta(opciones.RutaLlavero, entorno);
+        var wwwroot = Path.Combine(entorno.ContentRootPath, "wwwroot");
+
+        if (EstaDentroDe(raiz, wwwroot) || EstaDentroDe(rutaLlavero, wwwroot))
+            throw new InvalidOperationException(
+                "'Almacen:Raiz' y 'Almacen:RutaLlavero' deben quedar fuera de wwwroot.");
+
         servicios.AddOptions<OpcionesDeAlmacen>()
             .Bind(configuracion.GetSection(OpcionesDeAlmacen.Seccion))
             .ValidateDataAnnotations()
             .ValidateOnStart();
 
-        var llavero = new DirectoryInfo(opciones.RutaLlavero);
+        var llavero = new DirectoryInfo(rutaLlavero);
         llavero.Create();
 
         servicios.AddDataProtection()
@@ -154,8 +181,29 @@ public static class InfraestructuraModule
 
         servicios.AddSingleton<IAlmacenDeArchivos, AlmacenDeArchivos>();
         servicios.AddSingleton<IProtectorDeSecretos, ProtectorDeSecretos>();
+        servicios.AddSingleton<IProtectorDeSecretosDelSistema, ProtectorDeSecretosDelSistema>();
 
         return servicios;
+    }
+
+    private static string ResolverRuta(string configurada, IHostEnvironment entorno)
+        => Path.GetFullPath(Path.IsPathRooted(configurada)
+            ? configurada
+            : Path.Combine(entorno.ContentRootPath, configurada));
+
+    private static bool EstaDentroDe(string candidata, string directorio)
+    {
+        var comparacion = OperatingSystem.IsWindows()
+            ? StringComparison.OrdinalIgnoreCase
+            : StringComparison.Ordinal;
+        var raiz = Path.GetFullPath(directorio)
+            .TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar)
+            + Path.DirectorySeparatorChar;
+        var ruta = Path.GetFullPath(candidata)
+            .TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar)
+            + Path.DirectorySeparatorChar;
+
+        return ruta.StartsWith(raiz, comparacion);
     }
 
     /// <summary>
@@ -174,6 +222,8 @@ public static class InfraestructuraModule
         servicios.AddOptions<OpcionesDeMensajes>()
             .Bind(configuracion.GetSection(OpcionesDeMensajes.Seccion))
             .ValidateOnStart();
+
+        servicios.AddScoped<IProveedorDeConfiguracionDelSistema, ProveedorDeConfiguracionDelSistema>();
 
         var servidorConfigurado = !string.IsNullOrWhiteSpace(
             configuracion[$"{OpcionesDeCorreo.Seccion}:{nameof(OpcionesDeCorreo.Servidor)}"]);
@@ -197,7 +247,10 @@ public static class InfraestructuraModule
     {
         try
         {
-            return X509CertificateLoader.LoadPkcs12(Convert.FromBase64String(pfxEnBase64), password: null);
+            return X509CertificateLoader.LoadPkcs12(
+                Convert.FromBase64String(pfxEnBase64),
+                password: null,
+                X509KeyStorageFlags.EphemeralKeySet);
         }
         catch (Exception ex)
         {

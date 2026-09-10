@@ -1,58 +1,43 @@
-using System.Text.Json;
-using System.Text.Json.Nodes;
 using Facturacion.Server.Data;
 using Facturacion.Server.Data.Entidades.Plataforma;
+using Facturacion.Server.Infra.Almacen;
 using Facturacion.Server.Infra.Correo;
 using Facturacion.Shared.Comun;
 using Facturacion.Shared.Operador;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.Configuration;
 
 namespace Facturacion.Server.Modules.Operador.Configuracion;
 
 /// <summary>
-/// Lee y escribe la configuración del sistema (SMTP y nombre) directamente en
-/// appsettings.Development.json. Es una operación del operador del SaaS, no del inquilino:
-/// solo quien puede acreditar pagos debería poder cambiar el remitente de los correos.
-/// <para>
-/// Después de escribir el archivo se llama a <c>IConfigurationRoot.Reload()</c> para que los
-/// cambios apliquen sin reiniciar el proceso. Los servicios que usan <c>IOptionsMonitor</c>
-/// (como <see cref="ServicioDeCorreoSmtp"/>) ven el nuevo valor en la siguiente llamada.
-/// </para>
+/// Administra la configuración global del SaaS. Se persiste en SQL Server para que funcione
+/// igual en desarrollo y en Azure; la contraseña SMTP se cifra y nunca se devuelve al Client.
 /// </summary>
 public sealed class ServicioDeConfiguracionDelSistema(
     AppDbContext baseDeDatos,
-    IConfiguration configuracion,
     IPasswordHasher<OperadorPlataforma> hasher,
-    IWebHostEnvironment entorno)
+    IProveedorDeConfiguracionDelSistema proveedor,
+    IProtectorDeSecretosDelSistema protector)
 {
-    public async Task<ConfiguracionDelSistemaDto?> ObtenerAsync(CancellationToken ct)
+    public async Task<ConfiguracionDelSistemaDto> ObtenerAsync(CancellationToken ct)
     {
-        var ruta = RutaDelArchivo();
-        if (!File.Exists(ruta)) return null;
-
-        var texto = await File.ReadAllTextAsync(ruta, ct);
-        var nodo = JsonNode.Parse(texto);
-        if (nodo is null) return null;
-
-        var correo = nodo["Correo"] ?? new JsonObject();
-        var sistema = nodo["Sistema"] ?? new JsonObject();
-        var mensajes = nodo[OpcionesDeMensajes.Seccion] ?? new JsonObject();
+        var efectiva = await proveedor.ObtenerAsync(ct);
+        var correo = efectiva.Correo;
+        var mensajes = efectiva.Mensajes;
 
         return new ConfiguracionDelSistemaDto(
-            Servidor: correo["Servidor"]?.GetValue<string>() ?? string.Empty,
-            Puerto: correo["Puerto"]?.GetValue<int>() ?? 587,
-            Usuario: correo["Usuario"]?.GetValue<string>() ?? string.Empty,
-            Contrasena: correo["Contrasena"]?.GetValue<string>() ?? string.Empty,
-            RemitenteCorreo: correo["RemitenteCorreo"]?.GetValue<string>() ?? string.Empty,
-            RemitenteNombre: correo["RemitenteNombre"]?.GetValue<string>() ?? "Sistema de facturación",
-            UsarTls: correo["UsarTls"]?.GetValue<bool>() ?? true,
-            NombreDelSistema: sistema["Nombre"]?.GetValue<string>() ?? "Sistema de facturación",
-            AsuntoVerificacion: mensajes["AsuntoVerificacion"]?.GetValue<string>() ?? OpcionesDeMensajes.AsuntoVerificacionPredeterminado,
-            CuerpoVerificacion: mensajes["CuerpoVerificacion"]?.GetValue<string>() ?? OpcionesDeMensajes.CuerpoVerificacionPredeterminado,
-            AsuntoContrasena: mensajes["AsuntoContrasena"]?.GetValue<string>() ?? OpcionesDeMensajes.AsuntoContrasenaPredeterminado,
-            CuerpoContrasena: mensajes["CuerpoContrasena"]?.GetValue<string>() ?? OpcionesDeMensajes.CuerpoContrasenaPredeterminado);
+            correo.Servidor,
+            correo.Puerto,
+            correo.Usuario,
+            efectiva.ContrasenaSmtpConfigurada,
+            correo.RemitenteCorreo,
+            correo.RemitenteNombre,
+            correo.UsarTls,
+            efectiva.NombreDelSistema,
+            mensajes.AsuntoVerificacion,
+            mensajes.CuerpoVerificacion,
+            mensajes.AsuntoContrasena,
+            mensajes.CuerpoContrasena);
     }
 
     public async Task<Resultado<bool>> GuardarAsync(
@@ -67,6 +52,19 @@ public sealed class ServicioDeConfiguracionDelSistema(
         if (string.IsNullOrWhiteSpace(peticion.Servidor))
             return ErrorNegocio.Validacion("servidor-requerido", "Escribe el servidor SMTP.");
 
+        if (peticion.Servidor.Trim().Length > 253
+            || peticion.Usuario.Trim().Length > 254
+            || peticion.RemitenteNombre.Trim().Length is 0 or > 128
+            || peticion.NombreDelSistema.Trim().Length is 0 or > 128
+            || peticion.AsuntoVerificacion.Trim().Length is 0 or > 128
+            || peticion.AsuntoContrasena.Trim().Length is 0 or > 128
+            || peticion.CuerpoVerificacion.Trim().Length > 8000
+            || peticion.CuerpoContrasena.Trim().Length > 8000
+            || peticion.ContrasenaSmtpNueva?.Length > 512)
+            return ErrorNegocio.Validacion(
+                "configuracion-demasiado-larga",
+                "Uno o más valores de la configuración exceden la longitud permitida.");
+
         if (string.IsNullOrWhiteSpace(peticion.CuerpoVerificacion)
             || !peticion.CuerpoVerificacion.Contains(OpcionesDeMensajes.MarcadorCodigo, StringComparison.Ordinal))
             return ErrorNegocio.Validacion(
@@ -74,73 +72,55 @@ public sealed class ServicioDeConfiguracionDelSistema(
                 "El mensaje del correo de verificación debe conservar la palabra CODIGO: es donde el sistema escribe el número.");
 
         if (string.IsNullOrWhiteSpace(peticion.CuerpoContrasena)
-            || !peticion.CuerpoContrasena.Contains(OpcionesDeMensajes.MarcadorCorreo, StringComparison.Ordinal)
-            || !peticion.CuerpoContrasena.Contains(OpcionesDeMensajes.MarcadorClave, StringComparison.Ordinal))
+            || !peticion.CuerpoContrasena.Contains(OpcionesDeMensajes.MarcadorCorreo, StringComparison.Ordinal))
             return ErrorNegocio.Validacion(
-                "contrasena-sin-marcador",
-                "El mensaje del correo de contraseña debe conservar las palabras CORREO y CLAVE: es donde el sistema escribe los datos de acceso.");
+                "bienvenida-sin-marcador",
+                "El mensaje de bienvenida debe conservar la palabra CORREO.");
 
         if (await ContrasenaDelOperadorEsIncorrecta(operadorId, peticion.ContrasenaDelOperador, ct))
             return ErrorNegocio.Validacion("contrasena-incorrecta", "Tu contraseña de operador no es correcta.");
 
-        var ruta = RutaDelArchivo();
-        if (!File.Exists(ruta))
-            return ErrorNegocio.Regla("configuracion-no-encontrada", "No se encontró appsettings.Development.json.");
+        var guardada = await baseDeDatos.ConfiguracionesDelSistema
+            .SingleOrDefaultAsync(c => c.Id == 1, ct);
 
-        var texto = await File.ReadAllTextAsync(ruta, ct);
-        var nodo = JsonNode.Parse(texto) ?? new JsonObject();
-
-        // Sección Correo
-        nodo["Correo"] ??= new JsonObject();
-        nodo["Correo"]!["Servidor"] = peticion.Servidor;
-        nodo["Correo"]!["Puerto"] = peticion.Puerto;
-        nodo["Correo"]!["Usuario"] = peticion.Usuario; 
-        nodo["Correo"]!["Contrasena"] = peticion.Contrasena;
-        nodo["Correo"]!["RemitenteCorreo"] = peticion.RemitenteCorreo;
-        nodo["Correo"]!["RemitenteNombre"] = peticion.RemitenteNombre;
-        nodo["Correo"]!["UsarTls"] = peticion.UsarTls;
-
-        // Sección Sistema
-        nodo["Sistema"] ??= new JsonObject();
-        nodo["Sistema"]!["Nombre"] = peticion.NombreDelSistema;
-
-        // Sección Mensajes
-        nodo[OpcionesDeMensajes.Seccion] ??= new JsonObject();
-        nodo[OpcionesDeMensajes.Seccion]!["AsuntoVerificacion"] = peticion.AsuntoVerificacion;
-        nodo[OpcionesDeMensajes.Seccion]!["CuerpoVerificacion"] = peticion.CuerpoVerificacion;
-        nodo[OpcionesDeMensajes.Seccion]!["AsuntoContrasena"] = peticion.AsuntoContrasena;
-        nodo[OpcionesDeMensajes.Seccion]!["CuerpoContrasena"] = peticion.CuerpoContrasena;
-
-        var opciones = new JsonSerializerOptions { WriteIndented = true };
-        var textoNuevo = nodo.ToJsonString(opciones);
-        await File.WriteAllTextAsync(ruta, textoNuevo, ct);
-
-        // Recargar la configuración para que los cambios apliquen al vuelo.
-        if (configuracion is IConfigurationRoot root)
-            root.Reload();
-
-        return true;
-    }
-  
-    private string RutaDelArchivo()
-    {
-        // En desarrollo, appsettings.Development.json está junto al bin, no junto al .csproj.
-        // Pero el WorkingDirectory del proceso es la raíz del proyecto (o la del publish).
-        // La forma más fiable es buscar desde ContentRoot.
-        var nombre = "appsettings.Development.json";
-        var ruta = Path.Combine(entorno.ContentRootPath, nombre);
-        if (File.Exists(ruta)) return ruta;
-
-        // Fallback: subir desde ContentRoot hasta encontrar el archivo.
-        var dir = new DirectoryInfo(entorno.ContentRootPath);
-        for (var i = 0; i < 5 && dir is not null; i++)
+        if (guardada is null)
         {
-            var candidata = Path.Combine(dir.FullName, nombre);
-            if (File.Exists(candidata)) return candidata;
-            dir = dir.Parent;
+            guardada = new ConfiguracionDelSistema
+            {
+                Id = 1,
+                ServidorSmtp = string.Empty,
+                UsuarioSmtp = string.Empty,
+                RemitenteCorreo = string.Empty,
+                RemitenteNombre = string.Empty,
+                NombreDelSistema = string.Empty,
+                AsuntoVerificacion = string.Empty,
+                CuerpoVerificacion = string.Empty,
+                AsuntoContrasena = string.Empty,
+                CuerpoContrasena = string.Empty
+            };
+            baseDeDatos.ConfiguracionesDelSistema.Add(guardada);
         }
 
-        return ruta;
+        guardada.ServidorSmtp = peticion.Servidor.Trim();
+        guardada.PuertoSmtp = peticion.Puerto;
+        guardada.UsuarioSmtp = peticion.Usuario.Trim();
+        guardada.RemitenteCorreo = peticion.RemitenteCorreo.Trim();
+        guardada.RemitenteNombre = peticion.RemitenteNombre.Trim();
+        guardada.UsarTls = peticion.UsarTls;
+        guardada.NombreDelSistema = peticion.NombreDelSistema.Trim();
+        guardada.AsuntoVerificacion = peticion.AsuntoVerificacion.Trim();
+        guardada.CuerpoVerificacion = peticion.CuerpoVerificacion.Trim();
+        guardada.AsuntoContrasena = peticion.AsuntoContrasena.Trim();
+        guardada.CuerpoContrasena = peticion.CuerpoContrasena.Trim();
+        guardada.ActualizadaUtc = DateTime.UtcNow;
+        guardada.ActualizadaPorOperadorId = operadorId;
+
+        if (!string.IsNullOrWhiteSpace(peticion.ContrasenaSmtpNueva))
+            guardada.ContrasenaSmtpCifrada = protector.Cifrar(peticion.ContrasenaSmtpNueva);
+
+        await baseDeDatos.SaveChangesAsync(ct);
+
+        return true;
     }
 
     private async Task<bool> ContrasenaDelOperadorEsIncorrecta(
@@ -156,7 +136,17 @@ public sealed class ServicioDeConfiguracionDelSistema(
     }
 
     private static bool EsCorreoValido(string? correo)
-        => correo is not null
-           && correo.Length <= 254
-           && new System.Net.Mail.MailAddress(correo.Trim()).Address == correo.Trim();
+    {
+        if (string.IsNullOrWhiteSpace(correo) || correo.Length > 254) return false;
+
+        try
+        {
+            var normalizado = correo.Trim();
+            return new System.Net.Mail.MailAddress(normalizado).Address == normalizado;
+        }
+        catch (FormatException)
+        {
+            return false;
+        }
+    }
 }

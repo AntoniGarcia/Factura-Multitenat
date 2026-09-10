@@ -26,7 +26,7 @@ public static class ConfiguracionDelSistemaEndpoints
         ServicioDeConfiguracionDelSistema servicio, CancellationToken ct)
     {
         var configuracion = await servicio.ObtenerAsync(ct);
-        return configuracion is null ? Results.NotFound() : Results.Ok(configuracion);
+        return Results.Ok(configuracion);
     }
 
     private static async Task<IResult> Guardar(

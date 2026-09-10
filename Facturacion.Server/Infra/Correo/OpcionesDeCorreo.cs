@@ -4,10 +4,8 @@ namespace Facturacion.Server.Infra.Correo;
 /// El remitente es del SaaS, no del cliente (ARQUITECTURA.md §6): no se guarda configuración SMTP
 /// por empresa, todo sale de esta única cuenta con dominio verificado.
 /// <para>
-/// Sin <see cref="Servidor"/> configurado, el registro de infraestructura decide qué
-/// implementación usar: en <c>Development</c> cae a <see cref="ServicioDeCorreoConsola"/>
-/// (no hay por qué exigirle SMTP a quien solo está probando en su máquina); fuera de
-/// <c>Development</c>, su ausencia impide arrancar, igual que la clave de firma del JWT.
+/// Estos valores son la configuración inicial. Cuando el operador guarda cambios, la versión
+/// persistida en SQL Server pasa a ser la efectiva y la contraseña queda cifrada.
 /// </para>
 /// </summary>
 public sealed class OpcionesDeCorreo
