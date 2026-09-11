@@ -18,11 +18,11 @@ public class GeneradorDePdfCfdiPreview
     [Fact]//(Skip = "Herramienta manual de diseño: correr solo a mano desde el IDE, con el QuestPDF Companion abierto.")]
     public void Previsualizar_Factura_Normal()
     {
-        var comprobante = ComprobanteDeEjemplo.Crear();
+        var comprobante = ComprobanteDeEjemplo.CrearPago();
         var datos = new DatosDelPdf(DateTime.Now, 2, Logo: null);
 
         var generador = new GeneradorDePdfCfdi();
-        var documento = generador.Construir(comprobante, datos); // ver nota abajo
+        var documento = generador.Construir(comprobante, datos);
         
         documento.ShowInCompanion();
     }

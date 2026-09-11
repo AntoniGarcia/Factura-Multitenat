@@ -1,9 +1,11 @@
 using System.Globalization;
 using Facturacion.Server.Data.Entidades.Documentos;
+using Facturacion.Server.Modules.Documentos.Impuestos;
 using QRCoder;
 using QuestPDF.Fluent;
 using QuestPDF.Helpers;
 using QuestPDF.Infrastructure;
+
 
 namespace Facturacion.Server.Modules.Documentos.Salidas;
 
@@ -104,19 +106,26 @@ public sealed class GeneradorDePdfCfdi
     // ── Cuerpo: receptor, conceptos y totales ───────────────────────────────────────────
 
     private static void Cuerpo(IContainer contenedor, Comprobante c, DatosDelPdf datos)
-        => contenedor.Column(columna =>
+    => contenedor.Column(columna =>
+    {
+        columna.Item().Border(0.5f).Padding(5).Column(receptor =>
         {
-            columna.Item().Border(0.5f).Padding(5).Column(receptor =>
-            {
-                receptor.Item().Text("RECEPTOR").Bold();
-                receptor.Item().Text(c.ReceptorNombre).Bold();
-                receptor.Item().Text($"RFC {c.ReceptorRfc}   ·   Régimen fiscal {c.ReceptorRegimenFiscal}");
-                receptor.Item().Text($"Domicilio fiscal {c.ReceptorDomicilioFiscal}   ·   Uso del CFDI {c.ReceptorUsoCfdi}");
-            });
+            receptor.Item().Text("RECEPTOR").Bold();
+            receptor.Item().Text(c.ReceptorNombre).Bold();
+            receptor.Item().Text($"RFC {c.ReceptorRfc}   ·   Régimen fiscal {c.ReceptorRegimenFiscal}");
+            receptor.Item().Text($"Domicilio fiscal {c.ReceptorDomicilioFiscal}   ·   Uso del CFDI {c.ReceptorUsoCfdi}");
+        });
 
+        if (c.TipoDeComprobante == "P")
+        {
+            columna.Item().PaddingTop(6).Element(e => ComplementoDePago(e, c.Pagos, datos.Decimales));
+        }
+        else
+        {
             columna.Item().PaddingTop(6).Element(e => Conceptos(e, c, datos.Decimales));
             columna.Item().PaddingTop(6).Element(e => Totales(e, c, datos.Decimales));
-        });
+        }
+    });
 
     private static void Conceptos(IContainer contenedor, Comprobante c, int decimales)
         => contenedor.Table(tabla =>
@@ -291,4 +300,160 @@ public sealed class GeneradorDePdfCfdi
         "P" => "COMPLEMENTO DE PAGO",
         _ => "COMPROBANTE"
     };
+
+    // ── Complemento de pago ─────────────────────────────────────────────────────────────
+
+    private static void ComplementoDePago(IContainer contenedor, List<Pago> pagos, int decimales)
+        => contenedor.Column(columna =>
+        {
+            foreach (var pago in pagos)
+            {
+                columna.Item().PaddingBottom(6).Border(0.5f).Padding(5).Column(bloque =>
+                {
+                    bloque.Item().Text("DATOS DEL PAGO").Bold();
+
+                    bloque.Item().PaddingTop(3).Row(fila =>
+                    {
+                        fila.RelativeItem().Element(e => Dato(e, "Fecha de pago", pago.FechaPagoUtc.ToString("dd/MM/yyyy HH:mm:ss", CultureInfo.InvariantCulture)));
+                        fila.RelativeItem().Element(e => Dato(e, "Forma de pago", pago.FormaDePagoP));
+                        fila.RelativeItem().Element(e => Dato(e, "Moneda", pago.MonedaP));
+                    });
+
+                    bloque.Item().Row(fila =>
+                    {
+                        fila.RelativeItem().Element(e => Dato(e, "Monto", Cifra(pago.Monto, decimales)));
+                        fila.RelativeItem().Element(e => Dato(e, "Tipo de cambio", pago.TipoCambioP is { } tc ? Cifra(tc, 6) : "—"));
+                        fila.RelativeItem().Element(e => Dato(e, "No. de operación", pago.NumOperacion ?? "—"));
+                    });
+
+                    // Los datos bancarios son opcionales en el complemento: solo se muestran si vienen capturados.
+                    if (pago.CtaOrdenante is not null || pago.CtaBeneficiario is not null)
+                    {
+                        bloque.Item().PaddingTop(2).Row(fila =>
+                        {
+                            fila.RelativeItem().Element(e => Dato(e, "Cuenta ordenante", pago.CtaOrdenante ?? "—"));
+                            fila.RelativeItem().Element(e => Dato(e, "Banco ordenante", pago.RfcEmisorCtaOrd ?? pago.NomBancoOrdExt ?? "—"));
+                            fila.RelativeItem().Element(e => Dato(e, "Cuenta beneficiaria", pago.CtaBeneficiario ?? "—"));
+                        });
+                    }
+
+                    bloque.Item().PaddingTop(4).Element(e => DocumentosPagados(e, pago.Documentos, decimales));
+                });
+            }
+            columna.Item().PaddingTop(4).Element(e => TotalesDelComplemento(e, pagos, decimales));
+        });
+
+    private static void TotalesDelComplemento(IContainer contenedor, List<Pago> pagos, int decimales)
+    => contenedor.Column(columna =>
+    {
+        var impuestos = pagos
+            .SelectMany(p => p.Documentos)
+            .SelectMany(d => d.Impuestos)
+            .ToArray();
+
+        var retenciones = impuestos
+            .Where(i => i.EsRetencion)
+            .GroupBy(i => i.Impuesto)
+            .Select(g => (Etiqueta: NombreDeImpuesto(g.Key, esRetencion: true), Importe: g.Sum(i => i.Importe ?? 0m)))
+            .OrderBy(r => r.Etiqueta);
+
+        var traslados = impuestos
+            .Where(i => !i.EsRetencion)
+            .GroupBy(i => (i.Impuesto, i.TipoFactor, i.TasaOCuota))
+            .Select(g => (
+                Etiqueta: EtiquetaDeTraslado(g.Key.Impuesto, g.Key.TipoFactor, g.Key.TasaOCuota),
+                Base: g.Sum(i => i.Base),
+                Importe: g.Sum(i => i.Importe ?? 0m)))
+            .OrderBy(t => t.Etiqueta);
+
+        columna.Item().BorderTop(0.5f).PaddingTop(3).Text("TOTALES DEL COMPLEMENTO").Bold();
+
+        foreach (var (etiqueta, importe) in retenciones)
+        {
+            if (importe <= 0) continue;
+            columna.Item().Element(e => Dato(e, $"Retención {etiqueta}", Cifra(importe, decimales)));
+        }
+
+        foreach (var (etiqueta, baseImportes, importe) in traslados)
+        {
+            if (importe <= 0 && baseImportes <= 0) continue;
+            columna.Item().Element(e => Dato(e, $"Traslado {etiqueta} (base {Cifra(baseImportes, decimales)})", Cifra(importe, decimales)));
+        }
+
+        columna.Item().PaddingTop(2).BorderTop(0.5f).Element(e =>
+            Dato(e, "Monto total de pagos", Cifra(pagos.Sum(p => p.Monto), decimales), negrita: true));
+    });
+
+    private static string EtiquetaDeTraslado(string impuesto, string tipoFactor, decimal? tasaOCuota)
+    {
+        var nombre = NombreDeImpuesto(impuesto, esRetencion: false);
+
+        if (tipoFactor == TiposDeFactor.Exento) return $"{nombre} exento";
+
+        return tasaOCuota is { } t ? $"{nombre} {t:P2}" : nombre;
+    }
+
+    private static readonly string[] EncabezadosDocumentosPagados =
+    ["FOLIO FISCAL", "SERIE/FOLIO", "PARCIALIDAD", "SALDO ANTERIOR", "IMPORTE PAGADO", "SALDO INSOLUTO"];
+
+    private static void DocumentosPagados(IContainer contenedor, List<DocumentoPagado> documentos, int decimales)
+        => contenedor.Table(tabla =>
+        {
+            tabla.ColumnsDefinition(columnas =>
+            {
+                columnas.RelativeColumn(2);   // folio fiscal
+                columnas.ConstantColumn(55);  // serie/folio
+                columnas.ConstantColumn(55);  // parcialidad
+                columnas.ConstantColumn(65);  // saldo anterior
+                columnas.ConstantColumn(65);  // importe pagado
+                columnas.ConstantColumn(65);  // saldo insoluto
+            });
+
+            tabla.Header(encabezado =>
+            {
+                foreach (var titulo in EncabezadosDocumentosPagados)
+                    encabezado.Cell().Background(Colors.Grey.Lighten3).Padding(3).Text(titulo).Bold().FontSize(7);
+            });
+
+            foreach (var doc in documentos)
+            {
+                tabla.Cell().Padding(3).Text(doc.IdDocumento.ToString().ToUpperInvariant()).FontSize(7);
+                tabla.Cell().Padding(3).Text(FolioDeDocumento(doc));
+                tabla.Cell().Padding(3).AlignCenter().Text(doc.NumParcialidad.ToString());
+                tabla.Cell().Padding(3).AlignRight().Text(Cifra(doc.ImpSaldoAnt, decimales));
+                tabla.Cell().Padding(3).AlignRight().Text(Cifra(doc.ImpPagado, decimales));
+                tabla.Cell().Padding(3).AlignRight().Text(Cifra(doc.ImpSaldoInsoluto, decimales));
+
+                if (doc.Impuestos.Count == 0) continue;
+
+                // Misma idea que en Conceptos: el desglose de impuestos de este documento pagado,
+                // proporcional a lo abonado en este pago (no al total de la factura original).
+                tabla.Cell().ColumnSpan(6).PaddingLeft(15).PaddingBottom(3).Table(sub =>
+                {
+                    sub.ColumnsDefinition(columnas =>
+                    {
+                        columnas.ConstantColumn(70);
+                        columnas.ConstantColumn(60);
+                        columnas.ConstantColumn(60);
+                        columnas.ConstantColumn(70);
+                        columnas.ConstantColumn(70);
+                    });
+
+                    foreach (var titulo in new[] { "BASE", "IMPUESTO", "TIPO FACTOR", "TASA O CUOTA", "IMPORTE" })
+                        sub.Cell().Padding(2).Text(titulo).FontSize(6).Light();
+
+                    foreach (var impuesto in doc.Impuestos)
+                    {
+                        sub.Cell().Padding(2).Text(Cifra(impuesto.Base, decimales)).FontSize(7);
+                        sub.Cell().Padding(2).Text(NombreDeImpuesto(impuesto.Impuesto, impuesto.EsRetencion)).FontSize(7);
+                        sub.Cell().Padding(2).Text(impuesto.TipoFactor).FontSize(7);
+                        sub.Cell().Padding(2).Text(impuesto.TasaOCuota is { } t ? Cifra(t, 6) : "—").FontSize(7);
+                        sub.Cell().Padding(2).Text(impuesto.Importe is { } i ? Cifra(i, decimales) : "—").FontSize(7);
+                    }
+                });
+            }
+        });
+
+    private static string FolioDeDocumento(DocumentoPagado doc)
+        => doc.Serie is null && doc.Folio is null ? "—" : $"{doc.Serie}{doc.Folio}";
 }
