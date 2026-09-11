@@ -28,6 +28,14 @@
 }
 else
 {
+    @if (_integracionFiscal is { TimbradoDisponible: false })
+    {
+        <div class="aviso-documentos" role="status">
+            El timbrado está pendiente de integración con el PAC. Puedes capturar y guardar
+            borradores; no se generarán folios fiscales ni se consumirán timbres.
+        </div>
+    }
+
     <MudTabs Elevation="0" ApplyEffectsToContainer="true" Class="pestanas-pago">
         <MudTabPanel Text="General">
             <section class="seccion-formulario">
@@ -217,7 +225,8 @@ else
         <div class="tarjeta-formulario-acciones">
             <MudButton OnClick="@(() => Navegacion.NavigateTo("/documentos"))">Cancelar</MudButton>
             <MudButton OnClick="Guardar" Disabled="@_trabajando">Guardar borrador</MudButton>
-            <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="Timbrar" Disabled="@_trabajando">
+            <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="Timbrar"
+                       Disabled="@(_trabajando || !PuedeTimbrar)">
                 Generar pago
             </MudButton>
         </div>
@@ -236,6 +245,7 @@ else
     private DetalleProblema? _error;
     private string? _aviso;
     private bool _trabajando;
+    private EstadoDeIntegracionFiscalDto? _integracionFiscal;
 
     private ClienteEnListaDto? _cliente;
     private Guid? _clienteId;
@@ -268,6 +278,8 @@ else
 
     private bool EsEditable => _pago?.Estatus is "borrador" or "error";
 
+    private bool PuedeTimbrar => _integracionFiscal?.TimbradoDisponible == true;
+
     private bool ExigeBanco => FormasQueExigenBanco.Contains(_formaDePago);
 
     private decimal Repartido => _renglones.Sum(r => r.ImpPagado);
@@ -280,6 +292,8 @@ else
 
     protected override async Task OnParametersSetAsync()
     {
+        _integracionFiscal = await Emision.ObtenerEstadoDeIntegracionAsync();
+
         _pago = Id is { } id
             ? await Pagos.ObtenerAsync(id)
             : await Pagos.CrearBorradorAsync();
@@ -424,6 +438,8 @@ else
 
     private async Task Timbrar()
     {
+        if (!PuedeTimbrar) return;
+
         _trabajando = true;
         _aviso = null;
 

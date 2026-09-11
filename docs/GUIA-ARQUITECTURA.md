@@ -386,6 +386,7 @@ El publicado del Server ya incluye la app Blazor compilada con Brotli.
 | `Almacen__LlaveMaestraPfx` | Clave maestra (se genera con `--generar-llave-maestra`) |
 | `Almacen__Raiz`, `Almacen__RutaLlavero` | Rutas absolutas y persistentes fuera de `wwwroot` |
 | `Correo__Servidor` | SMTP del SaaS (es obligatorio fuera de Development) |
+| `Pac__Modo` | `Deshabilitado` en un `Staging` sin PAC, o `Real` con URL y credenciales del proveedor |
 
 Recomendadas: credenciales SMTP y correo/teléfono de soporte. En Azure App Service Linux se
 agrega además `ASPNETCORE_FORWARDEDHEADERS_ENABLED=true`.

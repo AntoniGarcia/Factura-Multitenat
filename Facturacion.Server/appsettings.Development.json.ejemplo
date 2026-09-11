@@ -26,8 +26,9 @@
     "Contrasena": "PonUnaContrasena123"
   },
 
-  "//Pac": "Proveedor de timbrado (SW sapien). Opcional en Development: sin credenciales el sistema arranca y todo funciona salvo timbrar. Fuera de Development es obligatorio. Sandbox: https://services.test.sw.com.mx con la cuenta de pruebas. Producción: https://services.sw.com.mx con la cuenta de contrato — son cuentas distintas.",
+  "//Pac": "Proveedor de timbrado (SW sapien). En Development puede quedar sin credenciales. En Staging usa Modo Deshabilitado para revisar sin simular CFDI. Production siempre exige Modo Real y credenciales. Sandbox y producción usan cuentas distintas.",
   "Pac": {
+    "Modo": "Real",
     "UrlBase": "https://services.test.sw.com.mx",
     "Usuario": "",
     "Contrasena": "",

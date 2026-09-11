@@ -75,15 +75,13 @@ public static class DocumentosModule
     }
 
     /// <summary>
-    /// Registra el proveedor de timbrado solo si hay credenciales. Sin ellas, el sistema
-    /// arranca y todo lo demás funciona: <see cref="ServicioDeTimbrado"/> rechaza el timbrado
-    /// antes de apartar folio o timbre, y lo dice con esas palabras.
+    /// Registra el proveedor de timbrado solo si el modo es real y hay credenciales. El modo
+    /// deshabilitado existe para entornos de revisión: no registra un doble ni inventa UUID;
+    /// <see cref="ServicioDeTimbrado"/> rechaza antes de apartar folio o timbre.
     ///
     /// <para>
-    /// Fuera de <c>Development</c> la ausencia impide arrancar, igual que el correo o la clave
-    /// de firma del JWT: un despliegue de producción que no puede timbrar no es un despliegue
-    /// degradado, es uno roto, y hay que verlo el día del despliegue y no cuando el primer
-    /// usuario intente facturar.
+    /// En <c>Production</c> el modo deshabilitado está prohibido. Un despliegue real que no
+    /// puede timbrar está roto y debe fallar al arrancar; para revisión se usa <c>Staging</c>.
     /// </para>
     /// </summary>
     private static IServiceCollection AgregarPac(
@@ -92,6 +90,20 @@ public static class DocumentosModule
         servicios.AddOptions<OpcionesDePac>().Bind(configuracion.GetSection(OpcionesDePac.Seccion));
 
         var opciones = configuracion.GetSection(OpcionesDePac.Seccion).Get<OpcionesDePac>() ?? new OpcionesDePac();
+
+        if (opciones.Modo == ModoDePac.Deshabilitado)
+        {
+            if (entorno.IsProduction())
+                throw new InvalidOperationException(
+                    "'Pac:Modo=Deshabilitado' no se permite en Production. Configura el PAC real o " +
+                    "usa ASPNETCORE_ENVIRONMENT=Staging para un entorno de revisión.");
+
+            return servicios;
+        }
+
+        if (opciones.Modo != ModoDePac.Real)
+            throw new InvalidOperationException(
+                $"El valor '{opciones.Modo}' de 'Pac:Modo' no es válido. Usa 'Real' o 'Deshabilitado'.");
 
         if (!opciones.EstaConfigurado)
         {

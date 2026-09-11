@@ -21,6 +21,12 @@ public sealed class ServicioDeEmision(IHttpClientFactory fabrica)
     public Task<ComprobanteDto?> ObtenerAsync(Guid id, CancellationToken ct = default)
         => Cliente.GetFromJsonAsync<ComprobanteDto>($"api/documentos/{id}", ct);
 
+    public async Task<EstadoDeIntegracionFiscalDto> ObtenerEstadoDeIntegracionAsync(
+        CancellationToken ct = default)
+        => await Cliente.GetFromJsonAsync<EstadoDeIntegracionFiscalDto>(
+            "api/documentos/integracion-fiscal", ct)
+           ?? new EstadoDeIntegracionFiscalDto(false);
+
     public async Task<(ComprobanteDto? Exito, DetalleProblema? Error)> GuardarAsync(
         Guid id, PeticionGuardarBorrador peticion, CancellationToken ct = default)
     {

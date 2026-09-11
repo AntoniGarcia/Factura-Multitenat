@@ -48,6 +48,14 @@ else if (!EsEditable)
 }
 else
 {
+    @if (_integracionFiscal is { TimbradoDisponible: false })
+    {
+        <div class="aviso-documentos" role="status">
+            El timbrado está pendiente de integración con el PAC. Puedes capturar y guardar
+            borradores; no se generarán folios fiscales ni se consumirán timbres.
+        </div>
+    }
+
     <MudTabs>
         <MudTabPanel Text="Detalle">
             <h2 class="seccion-titulo">General</h2>
@@ -253,7 +261,8 @@ else
             @(_guardando ? "Guardando…" : "Guardar borrador")
         </MudButton>
         <MudButton ButtonType="ButtonType.Submit" Variant="Variant.Filled" Color="Color.Primary"
-                   OnClick="GenerarFacturaAsync" Disabled="@(_guardando || _generando || _renglones.Count == 0)">
+                   OnClick="GenerarFacturaAsync"
+                   Disabled="@(_guardando || _generando || _renglones.Count == 0 || !PuedeTimbrar)">
             @(_generando ? "Generando…" : "Generar factura")
         </MudButton>
     </div>
@@ -273,6 +282,7 @@ else
     private bool _guardando;
     private bool _generando;
     private DetalleProblema? _error;
+    private EstadoDeIntegracionFiscalDto? _integracionFiscal;
 
     // Cabecera
     private string _moneda = "MXN";
@@ -301,6 +311,8 @@ else
     private int? _globalAnio = DateTime.UtcNow.Year;
 
     private bool EsEditable => _comprobante is { Estatus: "borrador" or "error" };
+
+    private bool PuedeTimbrar => _integracionFiscal?.TimbradoDisponible == true;
 
     private bool EsPublicoEnGeneral => _cliente?.Rfc == RfcPublicoEnGeneral;
 
@@ -331,6 +343,7 @@ else
     {
         _cargando = true;
         _error = null;
+        _integracionFiscal = await Emision.ObtenerEstadoDeIntegracionAsync();
 
         if (EsNuevo)
         {
@@ -517,7 +530,7 @@ else
 
     private async Task GenerarFacturaAsync()
     {
-        if (_comprobante is null) return;
+        if (_comprobante is null || !PuedeTimbrar) return;
 
         if (!await GuardarAsync()) return;
 

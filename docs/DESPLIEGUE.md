@@ -46,6 +46,14 @@ publicado, no deducidos.
 | `Almacen__RutaLlavero` | Ruta absoluta y persistente del llavero de Data Protection. |
 | `Correo__Servidor` | Servidor SMTP del SaaS. |
 | `Correo__RemitenteCorreo` | Remitente de las invitaciones. |
+| `Pac__Modo` | `Deshabilitado` únicamente en `Staging` mientras se revisa el sistema, o `Real` cuando se conecte el PAC. |
+
+Con `Pac__Modo=Deshabilitado` la aplicación permite trabajar con catálogos y borradores,
+pero bloquea emisión, complementos y llamadas al PAC. No produce UUID ni documentos fiscales
+ficticios. `Production` rechaza este modo al arrancar.
+
+Cuando el ingeniero conecte el PAC se cambia a `Pac__Modo=Real` y también se configuran
+`Pac__UrlBase`, `Pac__Usuario` y `Pac__Contrasena`. Las tres son obligatorias en ese modo.
 
 ### Recomendadas
 
@@ -279,6 +287,7 @@ dentro de `wwwroot`.
 ## 10. Lista de comprobación
 
 - [ ] `ASPNETCORE_ENVIRONMENT=Staging` para revisión o `Production` para el entorno real
+- [ ] En revisión: `Pac__Modo=Deshabilitado`; con PAC: `Pac__Modo=Real` y sus tres credenciales
 - [ ] `AllowedHosts` contiene solo los dominios públicos del servicio
 - [ ] En App Service Linux: `ASPNETCORE_FORWARDEDHEADERS_ENABLED=true`
 - [ ] Todas las variables obligatorias de §2 puestas

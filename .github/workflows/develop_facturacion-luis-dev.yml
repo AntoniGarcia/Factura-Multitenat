@@ -23,17 +23,20 @@ jobs:
         with:
           dotnet-version: '10.x'
 
-      - name: Build with dotnet
-        run: dotnet build --configuration Release
+      - name: Restore dependencies
+        run: dotnet restore Facturacion.sln
 
-      - name: dotnet publish
-        run: dotnet publish -c Release -o "${{env.DOTNET_ROOT}}/myapp"
+      - name: Build solution
+        run: dotnet build Facturacion.sln --configuration Release --no-restore
+
+      - name: Publish server and client
+        run: dotnet publish Facturacion.Server/Facturacion.Server.csproj --configuration Release --no-restore -o "${{ runner.temp }}\facturacion-publicada"
 
       - name: Upload artifact for deployment job
         uses: actions/upload-artifact@v4
         with:
           name: .net-app
-          path: ${{env.DOTNET_ROOT}}/myapp
+          path: ${{ runner.temp }}\facturacion-publicada
 
   deploy:
     runs-on: windows-latest
@@ -47,6 +50,7 @@ jobs:
         uses: actions/download-artifact@v4
         with:
           name: .net-app
+          path: ./publicacion
       
       - name: Login to Azure
         uses: azure/login@v2
@@ -61,5 +65,4 @@ jobs:
         with:
           app-name: 'facturacion-luis-dev'
           slot-name: 'Production'
-          package: .
-          
+          package: ./publicacion

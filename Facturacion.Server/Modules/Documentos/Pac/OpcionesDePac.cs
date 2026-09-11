@@ -19,6 +19,12 @@ public sealed class OpcionesDePac
 {
     public const string Seccion = "Pac";
 
+    /// <summary>
+    /// <c>Deshabilitado</c> permite levantar un entorno de revisión sin credenciales y sin
+    /// simular documentos fiscales. <c>Real</c> exige la configuración completa del PAC.
+    /// </summary>
+    public ModoDePac Modo { get; init; } = ModoDePac.Real;
+
     /// <summary>Sandbox: <c>https://services.test.sw.com.mx</c>. Producción: <c>https://services.sw.com.mx</c>.</summary>
     public string UrlBase { get; init; } = string.Empty;
 
@@ -38,4 +44,10 @@ public sealed class OpcionesDePac
         !string.IsNullOrWhiteSpace(UrlBase) &&
         !string.IsNullOrWhiteSpace(Usuario) &&
         !string.IsNullOrWhiteSpace(Contrasena);
+}
+
+public enum ModoDePac
+{
+    Real,
+    Deshabilitado
 }
