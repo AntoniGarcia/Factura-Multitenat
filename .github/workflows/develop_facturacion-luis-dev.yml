@@ -32,11 +32,40 @@ jobs:
       - name: Publish server and client
         run: dotnet publish Facturacion.Server/Facturacion.Server.csproj --configuration Release --no-restore -o "${{ runner.temp }}\facturacion-publicada"
 
+      # QuestPDF incluye binarios nativos para macOS, ARM y variantes de Linux que App
+      # Service no ejecuta. El paquete completo supera 600 MB al extraerse y puede agotar el
+      # almacenamiento temporal de los planes económicos. Se conservan las tres plataformas
+      # posibles de App Service y se quitan únicamente símbolos de depuración.
+      - name: Prepare Azure package
+        shell: pwsh
+        run: |
+          $publish = [IO.Path]::GetFullPath("${{ runner.temp }}\facturacion-publicada")
+          $runtimeRoot = Join-Path $publish "runtimes"
+          $allowedRuntimes = @("linux-x64", "unix", "win", "win-x64", "win-x86")
+
+          Get-ChildItem -LiteralPath $runtimeRoot -Directory |
+            Where-Object { $_.Name -notin $allowedRuntimes } |
+            ForEach-Object {
+              if (-not $_.FullName.StartsWith("$runtimeRoot\", [StringComparison]::OrdinalIgnoreCase)) {
+                throw "Runtime fuera del directorio de publicación: $($_.FullName)"
+              }
+
+              Remove-Item -LiteralPath $_.FullName -Recurse -Force
+            }
+
+          Get-ChildItem -LiteralPath $publish -Recurse -Filter "*.pdb" -File |
+            Remove-Item -Force
+
+          Compress-Archive -Path "$publish\*" `
+            -DestinationPath "${{ runner.temp }}\facturacion-publicada.zip" `
+            -CompressionLevel Optimal
+
       - name: Upload artifact for deployment job
         uses: actions/upload-artifact@v4
         with:
           name: .net-app
-          path: ${{ runner.temp }}\facturacion-publicada
+          path: ${{ runner.temp }}\facturacion-publicada.zip
+          compression-level: 0
 
   deploy:
     runs-on: windows-latest
@@ -65,4 +94,4 @@ jobs:
         with:
           app-name: 'facturacion-luis-dev'
           slot-name: 'Production'
-          package: ./publicacion
+          package: ./publicacion/facturacion-publicada.zip
