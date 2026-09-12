@@ -250,12 +250,15 @@ public static class InfraestructuraModule
             return X509CertificateLoader.LoadPkcs12(
                 Convert.FromBase64String(pfxEnBase64),
                 password: null,
-                X509KeyStorageFlags.EphemeralKeySet);
+                // App Service en Windows necesita el almacén de máquina aunque la clave
+                // permanezca efímera y nunca se persista en el servidor.
+                X509KeyStorageFlags.MachineKeySet | X509KeyStorageFlags.EphemeralKeySet);
         }
         catch (Exception ex)
         {
             throw new InvalidOperationException(
-                "'Almacen:LlaveMaestraPfx' no es un certificado válido en base 64. " +
+                "'Almacen:LlaveMaestraPfx' no contiene un certificado PKCS#12 válido " +
+                "en base 64 o no pudo importarse. " +
                 "Vuelve a generarla con 'dotnet run -- --generar-llave-maestra'.", ex);
         }
     }
