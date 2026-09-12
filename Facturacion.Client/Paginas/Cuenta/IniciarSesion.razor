@@ -78,6 +78,6 @@
         await Catalogos.InicializarAsync();
 
         // Con una sola empresa el token ya salió con ella activa; con varias hay que elegir.
-        Navegacion.NavigateTo(Sesion.Sesion?.EmpresaActivaId is null ? "/seleccionar-empresa" : "/");
+        Navegacion.NavigateTo("/");
     }
 }
