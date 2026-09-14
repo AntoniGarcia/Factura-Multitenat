@@ -111,13 +111,12 @@ public sealed class ServicioDeComprasDeOperador(
 
     /// <summary>
     /// Entrega timbres directo a una sola empresa, sin pasar por un paquete del catálogo.
-    /// Sirve de compensación o de ajuste del proveedor (una garantía, una reposición).
+    /// Registra una venta negociada directamente por el proveedor.
     /// <para>
-    /// La cantidad y la vigencia las captura el operador; la empresa se deduce de la ruta y
-    /// se valida que exista dentro de la cuenta. La compra nace y se acredita al instante:
-    /// entra al historial de compras como pagada y con precio cero, porque aquí el proveedor
-    /// regala saldo, no vende. El trabajo de la bolsa lo hace el mismo procedimiento
-    /// almacenado de cualquier acreditación, transaccional e idempotente.
+    /// La cantidad, el precio unitario y la vigencia los captura el operador; el total se
+    /// calcula en el servidor. La empresa se valida contra la cuenta. La compra nace y se
+    /// acredita al instante, usando el mismo procedimiento transaccional e idempotente que
+    /// cualquier acreditación.
     /// </para>
     /// </summary>
     public async Task<Resultado<CompraDto>> AsignarTimbresAsync(
@@ -125,6 +124,38 @@ public sealed class ServicioDeComprasDeOperador(
     {
         if (await ContrasenaDelOperadorEsIncorrecta(operadorId, peticion.ContrasenaDelOperador, ct))
             return ErrorNegocio.Validacion("contrasena-incorrecta", "Tu contraseña de operador no es correcta.");
+
+        if (peticion.CantidadTimbres is < 1 or > 1_000_000)
+            return ErrorNegocio.Validacion(
+                "cantidad-invalida", "La cantidad debe estar entre 1 y 1,000,000 de timbres.");
+
+        if (peticion.VigenciaMeses is < 1 or > 24)
+            return ErrorNegocio.Validacion(
+                "vigencia-invalida", "La vigencia debe estar entre 1 y 24 meses.");
+
+        var precioPorTimbre = Math.Round(
+            peticion.PrecioPorTimbre,
+            6,
+            MidpointRounding.AwayFromZero);
+
+        if (precioPorTimbre is <= 0 or > 10_000_000m)
+            return ErrorNegocio.Validacion(
+                "precio-unitario-invalido", "El precio por timbre debe ser mayor que cero y no superar $10,000,000.");
+
+        const decimal maximoImporte = 999_999_999_999.999999m;
+
+        if (precioPorTimbre > maximoImporte / peticion.CantidadTimbres)
+            return ErrorNegocio.Validacion(
+                "precio-total-invalido", "El total de la venta supera el importe permitido.");
+
+        var precioTotal = Math.Round(
+            precioPorTimbre * peticion.CantidadTimbres,
+            6,
+            MidpointRounding.AwayFromZero);
+
+        if (precioTotal > maximoImporte)
+            return ErrorNegocio.Validacion(
+                "precio-total-invalido", "El total de la venta supera el importe permitido.");
 
         // La empresa se deduce de la ruta y se valida que pertenezca a la cuenta. El operador
         // nunca manda un identificador de empresa suelto (ARQUITECTURA.md §4).
@@ -140,10 +171,10 @@ public sealed class ServicioDeComprasDeOperador(
             EmpresaId = empresaId,
             PaqueteId = Guid.Empty, // Asignación directa: no viene de un paquete del catálogo.
             UsuarioId = Guid.Empty,
-            NombrePaquete = "Asignación del operador",
+            NombrePaquete = "Venta directa de timbres",
             CantidadTimbres = peticion.CantidadTimbres,
-            PrecioPorTimbre = 0m,
-            PrecioTotal = 0m,
+            PrecioPorTimbre = precioPorTimbre,
+            PrecioTotal = precioTotal,
             VigenciaMeses = peticion.VigenciaMeses,
             Estado = EstadosDeCompra.PendienteDePago,
             CreadaUtc = DateTime.UtcNow
@@ -161,6 +192,8 @@ public sealed class ServicioDeComprasDeOperador(
                 EmpresaId = empresaId,
                 NombrePaquete = compra.NombrePaquete,
                 compra.CantidadTimbres,
+                compra.PrecioPorTimbre,
+                compra.PrecioTotal,
                 compra.VigenciaMeses,
                 PorOperadorDelServicio = true
             },

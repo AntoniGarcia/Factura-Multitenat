@@ -531,7 +531,7 @@ else
         var referencia = await Dialogos.ShowAsync<DialogoDeAsignacionDeTimbres>("Asignar timbres", parametros);
         var resultado = await referencia.Result;
 
-        if (resultado is not { Canceled: false, Data: ValueTuple<int, int, string> asignacion }) return;
+        if (resultado is not { Canceled: false, Data: PeticionAsignarTimbres asignacion }) return;
 
         _trabajando = true;
         _error = null;
@@ -539,12 +539,13 @@ else
 
         var error = await Clientes.AsignarTimbresAsync(
             CuentaId, EmpresaId,
-            new PeticionAsignarTimbres(asignacion.Item1, asignacion.Item2, asignacion.Item3));
+            asignacion);
 
         _trabajando = false;
 
         if (error is null)
-            _aviso = $"Se asignaron {asignacion.Item1:N0} timbres a {_ficha.NombreFiscal}.";
+            _aviso = $"Se asignaron {asignacion.CantidadTimbres:N0} timbres a {_ficha.NombreFiscal} " +
+                     $"por {(asignacion.CantidadTimbres * asignacion.PrecioPorTimbre):C2}.";
         else
             _error = error;
 

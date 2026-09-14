@@ -1,20 +1,29 @@
 @using MudBlazor
+@using Facturacion.Shared.Operador
 
 @*
-    Asignación directa de timbres a una empresa por el operador: cuántos, por cuánto tiempo
-    valen, y la contraseña del operador. Es una compensación del proveedor, no una venta.
+    Venta directa de timbres a una empresa por el operador: cantidad, precio, vigencia y la
+    contraseña que confirma la operación.
 *@
 
 <MudDialog>
     <DialogContent>
         <p class="dialogo-cancelacion-aviso">
-            Asigna <strong>timbres sin cobro</strong>. El saldo queda disponible de inmediato.
+            Registra una venta para <strong>@NombreEmpresa</strong>. Los timbres se acreditan
+            de inmediato y el importe queda en su historial de compras.
         </p>
 
         <div class="rejilla-campos">
             <MudNumericField @bind-Value="_cantidad" Label="Cantidad de timbres"
                              Min="1" Max="1000000" Immediate="true"
                              Adornment="Adornment.End" AdornmentText="timbres" />
+
+            <CampoMoneda Valor="_precioPorTimbre"
+                         ValorCambiado="v => _precioPorTimbre = v"
+                         Label="Precio por timbre"
+                         Minimo="0.000001m"
+                         Maximo="10000000m"
+                         Requerido="true" />
 
             <MudNumericField @bind-Value="_vigencia" Label="Vigencia"
                              Min="1" Max="24" Immediate="true"
@@ -23,6 +32,13 @@
             <MudTextField @bind-Value="_deLOperador" Label="Tu contraseña de operador"
                           InputType="InputType.Password" Immediate="true" />
         </div>
+
+        @if (_cantidad is > 0 && _precioPorTimbre > 0)
+        {
+            <p class="dialogo-cancelacion-aviso">
+                Total de la venta: <strong class="cifra-tabular">@PrecioTotal.ToString("C2")</strong>
+            </p>
+        }
     </DialogContent>
     <DialogActions>
         <MudButton OnClick="@(() => Dialogo.Cancel())">Cancelar</MudButton>
@@ -42,11 +58,22 @@
 
     private int? _cantidad;
     private int? _vigencia;
+    private decimal _precioPorTimbre;
     private string _deLOperador = string.Empty;
 
+    private decimal PrecioTotal => Math.Round(
+        _cantidad.GetValueOrDefault() * _precioPorTimbre,
+        6,
+        MidpointRounding.AwayFromZero);
+
     private bool SePuedeConfirmar =>
-        _cantidad is > 0 && _vigencia is > 0 && !string.IsNullOrWhiteSpace(_deLOperador);
+        _cantidad is > 0 && _precioPorTimbre > 0 && _vigencia is > 0 &&
+        !string.IsNullOrWhiteSpace(_deLOperador);
 
     private void Confirmar() =>
-        Dialogo.Close(DialogResult.Ok((_cantidad!.Value, _vigencia!.Value, _deLOperador)));
+        Dialogo.Close(DialogResult.Ok(new PeticionAsignarTimbres(
+            _cantidad!.Value,
+            _precioPorTimbre,
+            _vigencia!.Value,
+            _deLOperador)));
 }

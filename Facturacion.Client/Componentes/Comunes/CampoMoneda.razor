@@ -14,6 +14,7 @@
                   Class="cifra-tabular campo-moneda"
                   Immediate="true"
                   Min="@Minimo"
+                  Max="@Maximo"
                   Adornment="Adornment.Start"
                   AdornmentText="$"
                   Required="@Requerido"
@@ -33,6 +34,9 @@
 
     [Parameter]
     public decimal Minimo { get; set; } = 0m;
+
+    [Parameter]
+    public decimal Maximo { get; set; } = decimal.MaxValue;
 
     [Parameter]
     public bool Requerido { get; set; }
