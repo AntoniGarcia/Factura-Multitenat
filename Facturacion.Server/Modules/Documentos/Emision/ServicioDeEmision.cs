@@ -109,11 +109,21 @@ public sealed class ServicioDeEmision(
         if (calculado.EsFallo) return calculado.Error!;
 
         AplicarCabecera(comprobante, peticion, receptor.Valor);
-        AplicarConceptos(comprobante, conceptosResueltos.Valor, calculado.Valor);
+        AplicarConceptos(baseDeDatos, comprobante, conceptosResueltos.Valor, calculado.Valor); 
         AplicarRelacionados(comprobante, peticion.Relacionados);
         AplicarTotales(comprobante, calculado.Valor);
 
         comprobante.ModificadoUtc = DateTime.UtcNow;
+
+        /*
+        foreach (var e in baseDeDatos.ChangeTracker.Entries<Concepto>())
+        {
+            Console.WriteLine(
+                $"Concepto {e.Entity.Id} | Estado={e.State} | " +
+                $"EmpresaId original={(e.State == EntityState.Added ? "(nuevo, sin original)" : e.OriginalValues[nameof(Concepto.EmpresaId)])} | " +
+                $"EmpresaId actual={e.CurrentValues[nameof(Concepto.EmpresaId)]}");
+        }
+        */
 
         await baseDeDatos.SaveChangesAsync(ct);
 
@@ -346,7 +356,8 @@ public sealed class ServicioDeEmision(
     }
 
     private static void AplicarConceptos(
-        Comprobante comprobante, IReadOnlyList<ConceptoResuelto> resueltos, ComprobanteCalculado calculado)
+    AppDbContext baseDeDatos, Comprobante comprobante,
+    IReadOnlyList<ConceptoResuelto> resueltos, ComprobanteCalculado calculado)
     {
         comprobante.Conceptos.Clear();
 
@@ -375,7 +386,7 @@ public sealed class ServicioDeEmision(
 
             foreach (var impuestoCalculado in calculo.Impuestos)
             {
-                concepto.Impuestos.Add(new ImpuestoConcepto
+                var impuesto = new ImpuestoConcepto
                 {
                     Id = Guid.NewGuid(),
                     ConceptoId = concepto.Id,
@@ -385,10 +396,13 @@ public sealed class ServicioDeEmision(
                     Base = impuestoCalculado.Base,
                     Importe = impuestoCalculado.Importe,
                     EsRetencion = impuestoCalculado.EsRetencion
-                });
+                };
+                concepto.Impuestos.Add(impuesto);
+                baseDeDatos.ConceptosImpuestos.Add(impuesto);   
             }
 
             comprobante.Conceptos.Add(concepto);
+            baseDeDatos.Conceptos.Add(concepto);            
         }
     }
 
