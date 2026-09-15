@@ -895,6 +895,57 @@
     text-align: center;
 }
 
+/* El PDF se mantiene dentro del flujo autenticado: el iframe recibe una URL Blob creada
+   en memoria y se destruye al cerrar el diálogo. */
+.vista-previa-comprobante {
+    width: min(100%, 62rem);
+    height: min(72vh, 48rem);
+    min-height: 30rem;
+    overflow: hidden;
+    background: var(--fondo);
+    border: 1px solid var(--borde);
+    border-radius: var(--radio);
+}
+
+.vista-previa-comprobante iframe {
+    width: 100%;
+    height: 100%;
+    background: var(--superficie);
+    border: 0;
+}
+
+.vista-previa-cargando {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-direction: column;
+    gap: 0.75rem;
+    width: 100%;
+    height: 100%;
+    color: var(--texto-suave);
+}
+
+.comprobante-aviso-fiscal {
+    margin: 0.75rem 0 0;
+}
+
+.fila-previsualizable {
+    cursor: pointer;
+}
+
+.tabla-filas-previsualizables .mud-table-body .mud-table-row {
+    cursor: pointer;
+}
+
+.filas-previsualizables .mud-table-body .mud-table-row {
+    cursor: pointer;
+}
+
+.fila-previsualizable:focus-visible {
+    outline: 2px solid var(--foco);
+    outline-offset: -2px;
+}
+
 .suscripcion-actual {
     display: flex;
     align-items: center;
@@ -1010,6 +1061,11 @@
 
     .celda-accion-ficha {
         text-align: left;
+    }
+
+    .vista-previa-comprobante {
+        height: 68vh;
+        min-height: 24rem;
     }
 }
 
@@ -1147,6 +1203,38 @@
     color: var(--texto);
     font-size: 0.875rem;
     font-weight: var(--peso-titulo);
+}
+
+.resumen-desglose-iva {
+    margin: 1rem 0 0;
+    padding: .75rem;
+    border: 1px solid var(--borde);
+    border-radius: var(--radio);
+    background: var(--superficie-elevada);
+}
+
+.resumen-desglose-iva div {
+    display: flex;
+    justify-content: space-between;
+    gap: 1rem;
+    padding: .2rem 0;
+}
+
+.resumen-desglose-iva dt,
+.resumen-desglose-iva dd {
+    margin: 0;
+}
+
+.resumen-desglose-iva dd {
+    font-family: var(--tipografia-monoespaciada);
+    font-variant-numeric: tabular-nums;
+}
+
+.resumen-desglose-total {
+    margin-top: .35rem;
+    padding-top: .55rem !important;
+    border-top: 1px solid var(--borde);
+    font-weight: 500;
 }
 
 .acciones-compra-ficha {

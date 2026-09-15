@@ -20,6 +20,7 @@
           Hover="true"
           Loading="_cargando"
           OnRowClick="OnRowClickMud"
+          Class="@(AlHacerClic.HasDelegate ? "tabla-filas-previsualizables" : null)"
           RowsPerPage="@TamanoPagina">
     <HeaderContent>
         @foreach (var columna in Columnas)

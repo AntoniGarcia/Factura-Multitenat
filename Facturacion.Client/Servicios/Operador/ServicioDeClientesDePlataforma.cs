@@ -56,11 +56,36 @@ public sealed class ServicioDeClientesDePlataforma(IHttpClientFactory fabrica)
             : await respuesta.Content.ReadFromJsonAsync<DetalleProblema>(ct);
     }
 
-    public async Task<DetalleProblema?> AsignarTimbresAsync(
-        Guid cuentaId, Guid empresaId, PeticionAsignarTimbres peticion, CancellationToken ct = default)
+    public async Task<DetalleProblema?> CrearPaquetePersonalizadoAsync(
+        Guid cuentaId, Guid empresaId, PeticionGuardarPaquetePersonalizado peticion,
+        CancellationToken ct = default)
     {
         using var respuesta = await Cliente.PostAsJsonAsync(
-            $"api/operador/cuentas/{cuentaId}/empresas/{empresaId}/timbres", peticion, ct);
+            $"api/operador/cuentas/{cuentaId}/empresas/{empresaId}/paquetes", peticion, ct);
+
+        return respuesta.IsSuccessStatusCode
+            ? null
+            : await respuesta.Content.ReadFromJsonAsync<DetalleProblema>(ct);
+    }
+
+    public async Task<DetalleProblema?> ActualizarPaquetePersonalizadoAsync(
+        Guid cuentaId, Guid empresaId, Guid paqueteId,
+        PeticionGuardarPaquetePersonalizado peticion, CancellationToken ct = default)
+    {
+        using var respuesta = await Cliente.PutAsJsonAsync(
+            $"api/operador/cuentas/{cuentaId}/empresas/{empresaId}/paquetes/{paqueteId}", peticion, ct);
+
+        return respuesta.IsSuccessStatusCode
+            ? null
+            : await respuesta.Content.ReadFromJsonAsync<DetalleProblema>(ct);
+    }
+
+    public async Task<DetalleProblema?> CambiarActivoPaquetePersonalizadoAsync(
+        Guid cuentaId, Guid empresaId, Guid paqueteId, bool activo, CancellationToken ct = default)
+    {
+        using var respuesta = await Cliente.PostAsJsonAsync(
+            $"api/operador/cuentas/{cuentaId}/empresas/{empresaId}/paquetes/{paqueteId}/activo",
+            new PeticionCambiarActivoPaquete(activo), ct);
 
         return respuesta.IsSuccessStatusCode
             ? null

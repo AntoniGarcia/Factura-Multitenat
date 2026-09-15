@@ -34,14 +34,3 @@ public sealed record PaginaDeComprasDeOperador(
 /// </summary>
 public sealed record PeticionRechazarCompra(
     [property: Required, MaxLength(300)] string Motivo);
-
-/// <summary>
-/// Asignación directa de timbres a una sola empresa por el operador. No pasa por un paquete
-/// del catálogo: el operador decide cuántos timbres, su precio unitario y cuánta vigencia.
-/// La compra queda pagada de inmediato y conserva esos importes en el historial.
-/// </summary>
-public sealed record PeticionAsignarTimbres(
-    [property: Required, Range(1, 1000000)] int CantidadTimbres,
-    [property: Range(0.000001, 10_000_000)] decimal PrecioPorTimbre,
-    [property: Required, Range(1, 24)] int VigenciaMeses,
-    [property: Required] string ContrasenaDelOperador);

@@ -1,0 +1,92 @@
+@using MudBlazor
+@using Facturacion.Shared.Operador
+
+<MudDialog>
+    <DialogContent>
+        <p class="dialogo-cancelacion-aviso">
+            Este paquete será exclusivo para <strong>@NombreEmpresa</strong>. El cliente deberá
+            pulsar Comprar y la solicitud quedará pendiente hasta que el operador confirme el pago.
+        </p>
+
+        <div class="rejilla-campos">
+            <MudTextField T="string" Value="_nombre" ValueChanged="AlCambiarNombre"
+                          Label="Nombre del paquete" Immediate="true" MaxLength="100" />
+
+            <MudNumericField T="int?" Value="_cantidad" ValueChanged="AlCambiarCantidad"
+                             Label="Cantidad de timbres" Min="1" Max="1000000" Immediate="true"
+                             Adornment="Adornment.End" AdornmentText="timbres" />
+
+            <CampoMoneda Valor="_precioTotal"
+                         ValorCambiado="v => _precioTotal = v"
+                         Label="Precio total (IVA incluido)"
+                         Minimo="0.01m"
+                         Maximo="10000000m"
+                         Requerido="true" />
+
+            <MudNumericField T="int?" Value="_vigencia" ValueChanged="AlCambiarVigencia"
+                             Label="Vigencia" Min="1" Max="24" Immediate="true"
+                             Adornment="Adornment.End" AdornmentText="meses" />
+        </div>
+
+        @if (_precioTotal > 0)
+        {
+            <dl class="resumen-desglose-iva">
+                <div><dt>Subtotal</dt><dd>@Subtotal.ToString("C2")</dd></div>
+                <div><dt>IVA 16%</dt><dd>@Iva.ToString("C2")</dd></div>
+                <div class="resumen-desglose-total"><dt>Total</dt><dd>@_precioTotal.ToString("C2")</dd></div>
+            </dl>
+        }
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="@(() => Dialogo.Cancel())">Cancelar</MudButton>
+        <MudButton Variant="Variant.Filled" Color="Color.Primary" Disabled="@(!SePuedeConfirmar)"
+                   OnClick="Confirmar">
+            @(_edicion ? "Guardar cambios" : "Crear paquete")
+        </MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter]
+    private IMudDialogInstance Dialogo { get; set; } = default!;
+
+    [Parameter]
+    public string NombreEmpresa { get; set; } = string.Empty;
+
+    [Parameter]
+    public PaquetePersonalizadoDto? Paquete { get; set; }
+
+    private string _nombre = "Paquete personalizado";
+    private int? _cantidad;
+    private int? _vigencia = 12;
+    private decimal _precioTotal;
+    private bool _edicion;
+
+    private decimal Subtotal => Math.Round(_precioTotal / 1.16m, 6, MidpointRounding.AwayFromZero);
+    private decimal Iva => _precioTotal - Subtotal;
+
+    protected override void OnInitialized()
+    {
+        if (Paquete is null) return;
+
+        _edicion = true;
+        _nombre = Paquete.Nombre;
+        _cantidad = Paquete.CantidadTimbres;
+        _precioTotal = Paquete.PrecioTotal;
+        _vigencia = Paquete.VigenciaMeses;
+    }
+
+    private bool SePuedeConfirmar =>
+        !string.IsNullOrWhiteSpace(_nombre) && _nombre.Trim().Length <= 100 &&
+        _cantidad is > 0 and <= 1_000_000 &&
+        _precioTotal is >= 0.01m and <= 10_000_000m &&
+        _vigencia is > 0 and <= 24;
+
+    private void AlCambiarNombre(string? valor) => _nombre = valor ?? string.Empty;
+    private void AlCambiarCantidad(int? valor) => _cantidad = valor;
+    private void AlCambiarVigencia(int? valor) => _vigencia = valor;
+
+    private void Confirmar() => Dialogo.Close(DialogResult.Ok(
+        new PeticionGuardarPaquetePersonalizado(
+            _nombre.Trim(), _cantidad!.Value, _precioTotal, _vigencia!.Value)));
+}

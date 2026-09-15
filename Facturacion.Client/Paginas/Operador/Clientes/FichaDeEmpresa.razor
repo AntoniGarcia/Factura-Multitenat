@@ -57,8 +57,8 @@ else
                            Color="Color.Primary"
                            StartIcon="@Icons.Material.Filled.AddCard"
                            Disabled="@_trabajando"
-                           OnClick="AsignarTimbres">
-                    Asignar timbres
+                           OnClick="CrearPaquetePersonalizado">
+                    Crear paquete
                 </MudButton>
                 <MudButton Variant="Variant.Text"
                            Color="@(_ficha.Activa ? Color.Error : Color.Primary)"
@@ -237,6 +237,67 @@ else
                     <MudProgressLinear Indeterminate="true" Color="Color.Primary" Class="progreso-compras-ficha" />
                 }
 
+                <section class="seccion-compras-ficha" aria-labelledby="titulo-paquetes-personalizados">
+                    <div class="cabecera-subseccion-ficha">
+                        <div>
+                            <h3 id="titulo-paquetes-personalizados">Paquetes personalizados</h3>
+                            <span class="texto-secundario">Solo aparecen para esta empresa.</span>
+                        </div>
+                        <MudButton Size="Size.Small" Variant="Variant.Outlined"
+                                   StartIcon="@Icons.Material.Filled.Add"
+                                   Disabled="@_trabajando"
+                                   OnClick="CrearPaquetePersonalizado">
+                            Crear paquete
+                        </MudButton>
+                    </div>
+
+                    <MudTable T="PaquetePersonalizadoDto"
+                              Items="@_ficha.PaquetesPersonalizados"
+                              Dense="true" Hover="true" Elevation="0"
+                              Breakpoint="Breakpoint.Sm" Class="tabla-ficha-operador">
+                        <HeaderContent>
+                            <MudTh>Paquete</MudTh>
+                            <MudTh class="cifra-tabular">Timbres</MudTh>
+                            <MudTh class="cifra-tabular">Total con IVA</MudTh>
+                            <MudTh>Vigencia</MudTh>
+                            <MudTh>Estado</MudTh>
+                            <MudTh></MudTh>
+                        </HeaderContent>
+                        <RowTemplate>
+                            <MudTd DataLabel="Paquete">
+                                <strong>@context.Nombre</strong>
+                                @if (context.Compras > 0)
+                                {
+                                    <div class="texto-secundario">@(context.Compras == 1 ? "1 compra" : $"{context.Compras} compras")</div>
+                                }
+                            </MudTd>
+                            <MudTd DataLabel="Timbres" Class="cifra-tabular">@context.CantidadTimbres.ToString("N0")</MudTd>
+                            <MudTd DataLabel="Total con IVA" Class="cifra-tabular">@context.PrecioTotal.ToString("C2")</MudTd>
+                            <MudTd DataLabel="Vigencia">@context.VigenciaMeses meses</MudTd>
+                            <MudTd DataLabel="Estado">
+                                <span class="indicador-estado indicador-estado-@(context.Activo ? "timbrada" : "borrador")">
+                                    @(context.Activo ? "Disponible" : "Inactivo")
+                                </span>
+                            </MudTd>
+                            <MudTd DataLabel="Acciones" Class="celda-accion-ficha">
+                                <MudButton Size="Size.Small" Variant="Variant.Text" Disabled="@_trabajando"
+                                           OnClick="@(() => EditarPaquetePersonalizado(context))">
+                                    Editar
+                                </MudButton>
+                                <MudButton Size="Size.Small" Variant="Variant.Text"
+                                           Color="@(context.Activo ? Color.Error : Color.Primary)"
+                                           Disabled="@_trabajando"
+                                           OnClick="@(() => CambiarActivoPaquetePersonalizado(context))">
+                                    @(context.Activo ? "Desactivar" : "Reactivar")
+                                </MudButton>
+                            </MudTd>
+                        </RowTemplate>
+                        <NoRecordsContent>
+                            <div class="estado-vacio-tabla">Esta empresa aún no tiene paquetes exclusivos.</div>
+                        </NoRecordsContent>
+                    </MudTable>
+                </section>
+
                 <section class="seccion-compras-ficha" aria-labelledby="titulo-pendientes-empresa">
                     <div class="cabecera-subseccion-ficha">
                         <h3 id="titulo-pendientes-empresa">Por acreditar</h3>
@@ -316,7 +377,8 @@ else
                               Hover="true"
                               Elevation="0"
                               Breakpoint="Breakpoint.Sm"
-                              Class="tabla-ficha-operador">
+                              OnRowClick="AlSeleccionarCompra"
+                              Class="tabla-ficha-operador filas-previsualizables">
                         <HeaderContent>
                             <MudTh>Fecha</MudTh>
                             <MudTh>Paquete</MudTh>
@@ -324,6 +386,7 @@ else
                             <MudTh class="cifra-tabular">Total</MudTh>
                             <MudTh>Estado</MudTh>
                             <MudTh class="cifra-tabular">Vence</MudTh>
+                            <MudTh>Acciones</MudTh>
                         </HeaderContent>
                         <RowTemplate>
                             <MudTd DataLabel="Fecha" Class="cifra-tabular">
@@ -341,6 +404,20 @@ else
                             </MudTd>
                             <MudTd DataLabel="Vence" Class="cifra-tabular">
                                 @(context.VenceUtc?.ToLocalTime().ToString("dd/MM/yyyy") ?? "—")
+                            </MudTd>
+                            <MudTd DataLabel="Acciones" Class="celda-accion-ficha">
+                                <span @onclick:stopPropagation="true">
+                                    <MudButton Size="Size.Small" Variant="Variant.Text"
+                                               Disabled="@(_previsualizandoCompra is not null)"
+                                               OnClick="@(() => PrevisualizarComprobante(context))">
+                                        @(_previsualizandoCompra == context.Id ? "Abriendo…" : "Ver")
+                                    </MudButton>
+                                    <MudButton Size="Size.Small" Variant="Variant.Text"
+                                               Disabled="@(_descargandoCompra is not null)"
+                                               OnClick="@(() => DescargarComprobante(context))">
+                                        @(_descargandoCompra == context.Id ? "Descargando…" : "Descargar PDF")
+                                    </MudButton>
+                                </span>
                             </MudTd>
                         </RowTemplate>
                         <NoRecordsContent>
@@ -370,6 +447,8 @@ else
     private bool _cargando = true;
     private bool _cargandoCompras;
     private bool _trabajando;
+    private Guid? _descargandoCompra;
+    private Guid? _previsualizandoCompra;
     private int _pestanaActiva;
     private int _totalPendientes;
     private string _textoCompras = string.Empty;
@@ -461,6 +540,58 @@ else
         await CargarAsync();
     }
 
+    private async Task DescargarComprobante(CompraDeOperadorDto compra)
+    {
+        if (_descargandoCompra is not null) return;
+
+        _descargandoCompra = compra.Id;
+        _error = null;
+        _aviso = null;
+
+        try
+        {
+            _error = await Compras.DescargarComprobanteAsync(compra.Id);
+        }
+        finally
+        {
+            _descargandoCompra = null;
+        }
+    }
+
+    private Task AlSeleccionarCompra(TableRowClickEventArgs<CompraDeOperadorDto> evento)
+        => evento.Item is null ? Task.CompletedTask : PrevisualizarComprobante(evento.Item);
+
+    private async Task PrevisualizarComprobante(CompraDeOperadorDto compra)
+    {
+        if (_previsualizandoCompra is not null) return;
+
+        _previsualizandoCompra = compra.Id;
+        _error = null;
+        _aviso = null;
+
+        try
+        {
+            var (archivo, error) = await Compras.ObtenerComprobanteAsync(compra.Id);
+            _error = error;
+
+            if (archivo is null) return;
+
+            var parametros = new DialogParameters<DialogoDeComprobanteDeCompra>
+            {
+                { x => x.Archivo, archivo }
+            };
+
+            await Dialogos.ShowAsync<DialogoDeComprobanteDeCompra>(
+                "Comprobante de compra",
+                parametros,
+                new DialogOptions { MaxWidth = MaxWidth.ExtraLarge, FullWidth = true, CloseOnEscapeKey = true });
+        }
+        finally
+        {
+            _previsualizandoCompra = null;
+        }
+    }
+
     private async Task CambiarActivoEmpresa()
     {
         if (_trabajando || _ficha is null) return;
@@ -519,35 +650,78 @@ else
         await CargarAsync();
     }
 
-    private async Task AsignarTimbres()
+    private async Task CrearPaquetePersonalizado()
     {
         if (_trabajando || _ficha is null) return;
 
-        var parametros = new DialogParameters<DialogoDeAsignacionDeTimbres>
+        var parametros = new DialogParameters<DialogoDePaquetePersonalizado>
         {
             { x => x.NombreEmpresa, _ficha.NombreFiscal }
         };
 
-        var referencia = await Dialogos.ShowAsync<DialogoDeAsignacionDeTimbres>("Asignar timbres", parametros);
+        var referencia = await Dialogos.ShowAsync<DialogoDePaquetePersonalizado>("Crear paquete personalizado", parametros);
         var resultado = await referencia.Result;
 
-        if (resultado is not { Canceled: false, Data: PeticionAsignarTimbres asignacion }) return;
+        if (resultado is not { Canceled: false, Data: PeticionGuardarPaquetePersonalizado peticion }) return;
 
         _trabajando = true;
         _error = null;
         _aviso = null;
 
-        var error = await Clientes.AsignarTimbresAsync(
-            CuentaId, EmpresaId,
-            asignacion);
+        _error = await Clientes.CrearPaquetePersonalizadoAsync(CuentaId, EmpresaId, peticion);
 
         _trabajando = false;
 
-        if (error is null)
-            _aviso = $"Se asignaron {asignacion.CantidadTimbres:N0} timbres a {_ficha.NombreFiscal} " +
-                     $"por {(asignacion.CantidadTimbres * asignacion.PrecioPorTimbre):C2}.";
-        else
-            _error = error;
+        if (_error is null)
+            _aviso = "Paquete creado. El cliente ya puede comprarlo; la compra quedará pendiente de pago.";
+
+        await CargarAsync();
+    }
+
+    private async Task EditarPaquetePersonalizado(PaquetePersonalizadoDto paquete)
+    {
+        if (_trabajando || _ficha is null) return;
+
+        var parametros = new DialogParameters<DialogoDePaquetePersonalizado>
+        {
+            { x => x.NombreEmpresa, _ficha.NombreFiscal },
+            { x => x.Paquete, paquete }
+        };
+
+        var referencia = await Dialogos.ShowAsync<DialogoDePaquetePersonalizado>("Editar paquete personalizado", parametros);
+        var resultado = await referencia.Result;
+
+        if (resultado is not { Canceled: false, Data: PeticionGuardarPaquetePersonalizado peticion }) return;
+
+        _trabajando = true;
+        _error = await Clientes.ActualizarPaquetePersonalizadoAsync(
+            CuentaId, EmpresaId, paquete.Id, peticion);
+        _trabajando = false;
+
+        if (_error is null) _aviso = "Paquete actualizado. Las compras anteriores conservan sus importes.";
+        await CargarAsync();
+    }
+
+    private async Task CambiarActivoPaquetePersonalizado(PaquetePersonalizadoDto paquete)
+    {
+        if (_trabajando) return;
+
+        var nuevoEstado = !paquete.Activo;
+        if (!nuevoEstado)
+        {
+            var confirmado = await Confirmacion.ConfirmarAsync(
+                "Desactivar paquete",
+                $"«{paquete.Nombre}» dejará de aparecer para esta empresa. Las compras existentes no cambiarán.",
+                "Desactivar");
+            if (!confirmado) return;
+        }
+
+        _trabajando = true;
+        _error = await Clientes.CambiarActivoPaquetePersonalizadoAsync(
+            CuentaId, EmpresaId, paquete.Id, nuevoEstado);
+        _trabajando = false;
+
+        if (_error is null) _aviso = nuevoEstado ? "Paquete reactivado." : "Paquete desactivado.";
 
         await CargarAsync();
     }

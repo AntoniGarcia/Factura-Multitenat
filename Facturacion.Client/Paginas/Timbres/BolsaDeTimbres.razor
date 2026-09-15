@@ -3,6 +3,7 @@
 @inject ServicioDeTimbres Timbres
 @inject IServicioDeConfirmacion Confirmacion
 @inject NavigationManager Navegacion
+@inject IDialogService Dialogos
 
 <PageTitle>Timbres</PageTitle>
 <TituloDePagina Texto="Timbres /Membresía" />
@@ -88,7 +89,14 @@
         <div class="tarjeta-paquete">
             <h3>@paquete.Nombre</h3>
 
+            @if (paquete.EsPersonalizado)
+            {
+                <span class="indicador-estado indicador-estado-advertencia">Exclusivo para esta empresa</span>
+            }
+
             <p class="paquete-total cifra-tabular">@paquete.PrecioTotal.ToString("C2")</p>
+
+            <p class="paquete-vigencia">IVA incluido</p>
 
             <p class="paquete-unitario cifra-tabular">
                 @paquete.PrecioPorTimbre.ToString("C2") por timbre
@@ -121,12 +129,14 @@ else
                 <th class="cifra-tabular">Timbres</th>
                 <th class="cifra-tabular">Total</th>
                 <th>Estado</th>
+                <th>Acciones</th>
             </tr>
         </thead>
         <tbody>
             @foreach (var compra in _compras)
             {
-                <tr>
+                <tr class="@(compra.Estado == "pagada" ? "fila-previsualizable" : null)"
+                    @onclick="@(() => PrevisualizarComprobante(compra))">
                     <td class="cifra-tabular">@compra.CreadaUtc.ToLocalTime().ToString("yyyy-MM-dd HH:mm")</td>
                     <td>@compra.NombrePaquete</td>
                     <td class="cifra-tabular">@compra.CantidadTimbres</td>
@@ -135,6 +145,23 @@ else
                         <span class="indicador-estado indicador-estado-@EstiloDeCompra(compra.Estado)">
                             @TextoDeCompra(compra.Estado)
                         </span>
+                    </td>
+                    <td>
+                        @if (compra.Estado == "pagada")
+                        {
+                            <span @onclick:stopPropagation="true">
+                                <MudButton Size="Size.Small" Variant="Variant.Text"
+                                           Disabled="@(_previsualizando is not null)"
+                                           OnClick="@(() => PrevisualizarComprobante(compra))">
+                                    @(_previsualizando == compra.Id ? "Abriendo…" : "Ver")
+                                </MudButton>
+                                <MudButton Size="Size.Small" Variant="Variant.Text"
+                                           Disabled="@(_descargando is not null)"
+                                           OnClick="@(() => DescargarComprobante(compra))">
+                                    @(_descargando == compra.Id ? "Descargando…" : "Descargar PDF")
+                                </MudButton>
+                            </span>
+                        }
                     </td>
                 </tr>
             }
@@ -156,6 +183,8 @@ else
     private MembresiaDto? _membresia;
     private DetalleProblema? _error;
     private Guid? _comprando;
+    private Guid? _descargando;
+    private Guid? _previsualizando;
 
     /// <summary>Mismo margen que aplica el servidor para decidir si conviene avisar.</summary>
     private const int DiasDeAviso = 30;
@@ -179,7 +208,7 @@ else
     {
         var confirmado = await Confirmacion.ConfirmarAsync(
             "Confirmar compra",
-            $"Se registrará la compra de «{paquete.Nombre}» por {paquete.PrecioTotal:C2}. " +
+            $"Se registrará la compra de «{paquete.Nombre}» por {paquete.PrecioTotal:C2}, IVA incluido. " +
             "Los timbres entran cuando se confirme el pago.",
             "Comprar");
 
@@ -204,6 +233,53 @@ else
         finally
         {
             _comprando = null;
+        }
+    }
+
+    private async Task DescargarComprobante(CompraDto compra)
+    {
+        if (_descargando is not null) return;
+
+        _descargando = compra.Id;
+        _error = null;
+
+        try
+        {
+            _error = await Timbres.DescargarComprobanteAsync(compra.Id);
+        }
+        finally
+        {
+            _descargando = null;
+        }
+    }
+
+    private async Task PrevisualizarComprobante(CompraDto compra)
+    {
+        if (compra.Estado != "pagada" || _previsualizando is not null) return;
+
+        _previsualizando = compra.Id;
+        _error = null;
+
+        try
+        {
+            var (archivo, error) = await Timbres.ObtenerComprobanteAsync(compra.Id);
+            _error = error;
+
+            if (archivo is null) return;
+
+            var parametros = new DialogParameters<DialogoDeComprobanteDeCompra>
+            {
+                { x => x.Archivo, archivo }
+            };
+
+            await Dialogos.ShowAsync<DialogoDeComprobanteDeCompra>(
+                "Comprobante de compra",
+                parametros,
+                new DialogOptions { MaxWidth = MaxWidth.ExtraLarge, FullWidth = true, CloseOnEscapeKey = true });
+        }
+        finally
+        {
+            _previsualizando = null;
         }
     }
 

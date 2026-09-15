@@ -66,6 +66,7 @@ builder.Services.AddScoped<IServicioDeConfirmacion, ServicioDeConfirmacion>();
 builder.Services.AddScoped<IServicioModalCatalogo, ServicioModalCatalogo>();
 builder.Services.AddSingleton<IServicioDeVersion, ServicioDeVersion>();
 builder.Services.AddSingleton<ServicioDeInstalacion>();
+builder.Services.AddSingleton<ServicioDeDescargas>();
 
 // Las mismas seis políticas que el Server, desde la misma lista: el Client las necesita para
 // enrutar y para ocultar lo que no aplica. Es comodidad visual, NO protección — el Server

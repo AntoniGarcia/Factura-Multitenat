@@ -6,7 +6,9 @@ using Facturacion.Shared.Operador;
 namespace Facturacion.Client.Servicios.Operador;
 
 /// <summary>Llama a <c>/api/operador/compras</c>: consultar, acreditar y descartar.</summary>
-public sealed class ServicioDeComprasDeOperador(IHttpClientFactory fabrica)
+public sealed class ServicioDeComprasDeOperador(
+    IHttpClientFactory fabrica,
+    ServicioDeDescargas descargas)
 {
     private HttpClient Cliente => fabrica.CreateClient(ClientesHttp.ApiOperador);
 
@@ -49,5 +51,30 @@ public sealed class ServicioDeComprasDeOperador(IHttpClientFactory fabrica)
         return respuesta.IsSuccessStatusCode
             ? null
             : await respuesta.Content.ReadFromJsonAsync<DetalleProblema>(ct);
+    }
+
+    public async Task<DetalleProblema?> DescargarComprobanteAsync(
+        Guid compraId, CancellationToken ct = default)
+    {
+        var (archivo, error) = await ObtenerComprobanteAsync(compraId, ct);
+
+        if (archivo is not null)
+            await descargas.GuardarAsync(archivo);
+
+        return error;
+    }
+
+    public async Task<(ArchivoParaDescarga? Archivo, DetalleProblema? Error)> ObtenerComprobanteAsync(
+        Guid compraId, CancellationToken ct = default)
+    {
+        using var respuesta = await Cliente.GetAsync(
+            $"api/operador/compras/{compraId}/comprobante", ct);
+
+        if (!respuesta.IsSuccessStatusCode)
+            return (null, await respuesta.Content.ReadFromJsonAsync<DetalleProblema>(ct));
+
+        var contenido = await respuesta.Content.ReadAsByteArrayAsync(ct);
+        return (new ArchivoParaDescarga(
+            $"comprobante-compra-{compraId:N}.pdf", "application/pdf", contenido), null);
     }
 }
