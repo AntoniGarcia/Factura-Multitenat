@@ -38,15 +38,26 @@ public sealed class ServicioDeCompras(
             .ToListAsync(ct);
 
     public async Task<SaldoTimbresDto> SaldoAsync(CancellationToken ct)
-        => await baseDeDatos.BolsasTimbres
-               .AsNoTracking()
-               .Where(b => b.EmpresaId == contexto.EmpresaId)
-               .Select(b => new SaldoTimbresDto(b.Disponibles, b.Reservados))
-               .FirstOrDefaultAsync(ct)
-           // Una empresa que nunca compró no tiene renglón de bolsa. Es un saldo de cero, no
-           // un error: la bolsa nace al acreditarse la primera compra.
-           ?? new SaldoTimbresDto(0, 0);
+    /*
+    => await baseDeDatos.BolsasTimbres
+           .AsNoTracking()
+           .Where(b => b.EmpresaId == contexto.EmpresaId)
+           .Select(b => new SaldoTimbresDto(b.Disponibles, b.Reservados))
+           .FirstOrDefaultAsync(ct)
+       // Una empresa que nunca compró no tiene renglón de bolsa. Es un saldo de cero, no
+       // un error: la bolsa nace al acreditarse la primera compra.
+       ?? new SaldoTimbresDto(0, 0);
+    */
+    {
+        if (!contexto.HayEmpresa) return new SaldoTimbresDto(0, 0);
 
+        return await baseDeDatos.BolsasTimbres
+            .AsNoTracking()
+            .Where(b => b.EmpresaId == contexto.EmpresaId)
+            .Select(b => new SaldoTimbresDto(b.Disponibles, b.Reservados))
+            .FirstOrDefaultAsync(ct)
+            ?? new SaldoTimbresDto(0, 0);
+    }
     public async Task<Resultado<CompraDto>> ComprarAsync(PeticionDeCompra peticion, CancellationToken ct)
     {
         var paquete = await baseDeDatos.Paquetes
