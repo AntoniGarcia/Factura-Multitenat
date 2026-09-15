@@ -22,7 +22,7 @@
 
 <EditForm Model="this" OnValidSubmit="Crear">
     <div class="rejilla-campos">
-        <CampoRfc Valor="_rfc" ValorCambiado="v => _rfc = v" Label="R.F.C." />
+        <CampoRfc Valor="@_rfc" ValorCambiado="v => _rfc = v" Label="R.F.C." />
 
         <MudTextField @bind-Value="_nombreFiscal" Label="Nombre o razón social" Immediate="true" MaxLength="300" />
 
