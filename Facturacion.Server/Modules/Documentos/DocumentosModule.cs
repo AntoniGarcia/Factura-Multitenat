@@ -28,7 +28,7 @@ public static class DocumentosModule
         {
             servicios.AddScoped<IServicioCatalogosSat, DobleServicioCatalogosSat>();
             servicios.AddScoped<IServicioClientes, DobleServicioClientes>();
-            servicios.AddScoped<IServicioProductos, DobleServicioProductos>();
+            //servicios.AddScoped<IServicioProductos, DobleServicioProductos>();
             servicios.AddScoped<IServicioEmpresaEmisora, DobleServicioEmpresaEmisora>();
             servicios.AddScoped<IServicioFolios, DobleServicioFolios>();
             servicios.AddScoped<IServicioTimbres, DobleServicioTimbres>();
