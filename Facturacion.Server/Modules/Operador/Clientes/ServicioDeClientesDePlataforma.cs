@@ -163,6 +163,17 @@ public sealed class ServicioDeClientesDePlataforma(
 
         if (empresa is null) return null;
 
+        var paquetesPersonalizados = await baseDeDatos.Paquetes
+            .AsNoTracking()
+            .Where(p => p.EmpresaId == empresaId)
+            .OrderByDescending(p => p.Activo)
+            .ThenBy(p => p.Orden)
+            .Select(p => new PaquetePersonalizadoDto(
+                p.Id, p.Nombre, p.CantidadTimbres, p.PrecioPorTimbre, p.PrecioTotal,
+                p.VigenciaMeses, p.Activo,
+                baseDeDatos.ComprasTimbres.IgnoreQueryFilters().Count(c => c.PaqueteId == p.Id)))
+            .ToListAsync(ct);
+
         // Búsqueda opcional de compras por nombre de paquete. Vacía o nula conserva el
         // comportamiento por defecto: todas las pendientes y las diez pagadas recientes.
         string? patron = string.IsNullOrWhiteSpace(texto) ? null : $"%{texto.Trim()}%";
@@ -216,7 +227,7 @@ public sealed class ServicioDeClientesDePlataforma(
             empresa.Id, empresa.Rfc, empresa.NombreFiscal, empresa.RegimenFiscal,
             empresa.Activa, empresa.FechaAltaUtc,
             empresa.TimbresDisponibles, empresa.TimbresReservados,
-            comprasPendientes, ultimasCompras, usuarios);
+            paquetesPersonalizados, comprasPendientes, ultimasCompras, usuarios);
     }
 
     /// <summary>

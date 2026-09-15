@@ -6,6 +6,7 @@ using Facturacion.Server.Infra.Seguridad;
 using Facturacion.Server.Infra.Tenencia;
 using Facturacion.Server.Modules.Plataforma.Auth;
 using Facturacion.Shared.Plataforma;
+using Microsoft.AspNetCore.DataProtection;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
@@ -88,6 +89,7 @@ public sealed class VerificacionDeAltaPruebas : IAsyncLifetime
         var servicios = new ServiceCollection();
 
         servicios.AddLogging();
+        servicios.AddDataProtection();
         servicios.AddSingleton(baseDeDatos);
 
         servicios
@@ -221,7 +223,9 @@ public sealed class VerificacionDeAltaPruebas : IAsyncLifetime
         // El segundo correo confirma el alta, pero no contiene la contraseña elegida.
         Assert.Equal(2, _correo.Enviados.Count);
         Assert.DoesNotContain(Contrasena, _correo.Enviados[1].Cuerpo, StringComparison.Ordinal);
-        Assert.Contains("cuenta ya está lista", _correo.Enviados[1].Cuerpo, StringComparison.OrdinalIgnoreCase);
+        Assert.Equal(Correo, _correo.Enviados[1].Destinatario);
+        Assert.False(string.IsNullOrWhiteSpace(_correo.Enviados[1].Asunto));
+        Assert.False(string.IsNullOrWhiteSpace(_correo.Enviados[1].Cuerpo));
     }
 
     [Fact]

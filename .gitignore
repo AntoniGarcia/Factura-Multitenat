@@ -523,6 +523,10 @@ almacenamiento/
 # docs/ARRANQUE-LOCAL.md.
 /certs-dev/
 
+# Artefactos de verificación local (PDF y renderizados); nunca forman parte del despliegue.
+/output/
+/tmp/
+
 # Documentación de la residencia profesional: cronograma, reporte y sus imágenes. Es
 # entregable de la escuela, no del sistema, y lleva datos personales; se queda en la máquina.
 /docs/*Residencia*

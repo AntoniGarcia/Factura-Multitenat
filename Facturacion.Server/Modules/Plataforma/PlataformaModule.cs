@@ -93,6 +93,8 @@ public static class PlataformaModule
         servicios.AddScoped<ServicioDeClientes>();
 
         servicios.AddScoped<ServicioDeCompras>();
+        servicios.AddScoped<GeneradorDeComprobanteDeCompraPdf>();
+        servicios.AddScoped<ServicioDeComprobantesDeCompra>();
         servicios.AddScoped<FiltroDeIdempotencia>();
 
         servicios.AddScoped<ServicioDeTablero>();

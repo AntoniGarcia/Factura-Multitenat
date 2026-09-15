@@ -14,6 +14,7 @@ public sealed record FichaDeEmpresaDto(
     DateTime FechaAltaUtc,
     int TimbresDisponibles,
     int TimbresReservados,
+    IReadOnlyList<PaquetePersonalizadoDto> PaquetesPersonalizados,
     IReadOnlyList<CompraDeOperadorDto> ComprasPendientes,
     IReadOnlyList<CompraDeOperadorDto> UltimasCompras,
     IReadOnlyList<UsuarioDeCuentaDto> Usuarios);

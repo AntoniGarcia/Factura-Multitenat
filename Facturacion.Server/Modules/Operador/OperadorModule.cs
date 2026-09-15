@@ -34,6 +34,7 @@ public static class OperadorModule
         servicios.AddScoped<ServicioDePerfilDeOperador>();
         servicios.AddScoped<ServicioDeOperadores>();
         servicios.AddScoped<ServicioDePaquetesDeOperador>();
+        servicios.AddScoped<ServicioDePaquetesPersonalizados>();
         servicios.AddScoped<ServicioDeComprasDeOperador>();
         servicios.AddScoped<ServicioDeClientesDePlataforma>();
         servicios.AddScoped<ServicioDeUsuariosDePlataforma>();

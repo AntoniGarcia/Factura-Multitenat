@@ -1,5 +1,6 @@
 using Facturacion.Server.Infra.Errores;
 using Facturacion.Server.Modules.Operador.Auth;
+using Facturacion.Server.Modules.Plataforma.Timbres;
 using Facturacion.Shared.Operador;
 
 namespace Facturacion.Server.Modules.Operador.Compras;
@@ -17,6 +18,8 @@ public static class ComprasDeOperadorEndpoints
             .RequireAuthorization(PoliticasDeOperador.Operador);
 
         grupo.MapGet("/", Listar).RequireAuthorization(PoliticasDeOperador.VerCompras);
+        grupo.MapGet("/{id:guid}/comprobante", Comprobante)
+            .RequireAuthorization(PoliticasDeOperador.VerCompras);
 
         // Acreditar y rechazar mueven dinero/saldo → permiso AcreditarCompras
         grupo.MapPost("/{id:guid}/acreditar", Acreditar).RequireAuthorization(PoliticasDeOperador.AcreditarCompras);
@@ -31,6 +34,19 @@ public static class ComprasDeOperadorEndpoints
         int pagina = 0,
         int tamano = 25)
         => Results.Ok(await compras.ListarAsync(estado, texto, pagina, Math.Clamp(tamano, 1, 100), ct));
+
+    private static async Task<IResult> Comprobante(
+        Guid id,
+        ServicioDeComprobantesDeCompra comprobantes,
+        HttpContext contexto,
+        CancellationToken ct)
+    {
+        var resultado = await comprobantes.GenerarParaOperadorAsync(id, ct);
+
+        return resultado.EsExito
+            ? Results.File(resultado.Valor.Contenido, "application/pdf", resultado.Valor.Nombre)
+            : resultado.Error!.AResultado(contexto);
+    }
 
     private static async Task<IResult> Acreditar(
         Guid id,

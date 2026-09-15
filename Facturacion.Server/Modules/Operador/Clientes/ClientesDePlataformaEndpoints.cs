@@ -1,7 +1,7 @@
 using System.Security.Claims;
 using Facturacion.Server.Infra.Errores;
 using Facturacion.Server.Modules.Operador.Auth;
-using Facturacion.Server.Modules.Operador.Compras;
+using Facturacion.Server.Modules.Operador.Paquetes;
 using Facturacion.Shared.Comun;
 using Facturacion.Shared.Operador;
 
@@ -31,7 +31,11 @@ public static class ClientesDePlataformaEndpoints
             .RequireAuthorization(PoliticasDeOperador.AdministrarClientes);
         grupo.MapPost("/{id:guid}/correo-contacto", CambiarCorreoDeContacto)
             .RequireAuthorization(PoliticasDeOperador.AdministrarClientes);
-        grupo.MapPost("/{id:guid}/empresas/{empresaId:guid}/timbres", AsignarTimbres)
+        grupo.MapPost("/{id:guid}/empresas/{empresaId:guid}/paquetes", CrearPaquete)
+            .RequireAuthorization(PoliticasDeOperador.AsignarTimbres);
+        grupo.MapPut("/{id:guid}/empresas/{empresaId:guid}/paquetes/{paqueteId:guid}", ActualizarPaquete)
+            .RequireAuthorization(PoliticasDeOperador.AsignarTimbres);
+        grupo.MapPost("/{id:guid}/empresas/{empresaId:guid}/paquetes/{paqueteId:guid}/activo", CambiarActivoPaquete)
             .RequireAuthorization(PoliticasDeOperador.AsignarTimbres);
     }
 
@@ -92,17 +96,51 @@ public static class ClientesDePlataformaEndpoints
             : resultado.Error!.AResultado(contexto);
     }
 
-    private static async Task<IResult> AsignarTimbres(
+    private static async Task<IResult> CrearPaquete(
         Guid id,
         Guid empresaId,
-        PeticionAsignarTimbres peticion,
-        ServicioDeComprasDeOperador compras,
+        PeticionGuardarPaquetePersonalizado peticion,
+        ServicioDePaquetesPersonalizados paquetes,
         HttpContext contexto,
         CancellationToken ct)
     {
         if (!TryOperador(contexto, out var operadorId)) return Results.Unauthorized();
 
-        var resultado = await compras.AsignarTimbresAsync(operadorId, id, empresaId, peticion, ct);
+        var resultado = await paquetes.CrearAsync(operadorId, id, empresaId, peticion, ct);
+
+        return resultado.EsExito
+            ? Results.Ok(resultado.Valor)
+            : resultado.Error!.AResultado(contexto);
+    }
+
+    private static async Task<IResult> ActualizarPaquete(
+        Guid id, Guid empresaId, Guid paqueteId,
+        PeticionGuardarPaquetePersonalizado peticion,
+        ServicioDePaquetesPersonalizados paquetes,
+        HttpContext contexto,
+        CancellationToken ct)
+    {
+        if (!TryOperador(contexto, out var operadorId)) return Results.Unauthorized();
+
+        var resultado = await paquetes.ActualizarAsync(
+            operadorId, id, empresaId, paqueteId, peticion, ct);
+
+        return resultado.EsExito
+            ? Results.Ok(resultado.Valor)
+            : resultado.Error!.AResultado(contexto);
+    }
+
+    private static async Task<IResult> CambiarActivoPaquete(
+        Guid id, Guid empresaId, Guid paqueteId,
+        PeticionCambiarActivoPaquete peticion,
+        ServicioDePaquetesPersonalizados paquetes,
+        HttpContext contexto,
+        CancellationToken ct)
+    {
+        if (!TryOperador(contexto, out var operadorId)) return Results.Unauthorized();
+
+        var resultado = await paquetes.CambiarActivoAsync(
+            operadorId, id, empresaId, paqueteId, peticion.Activo, ct);
 
         return resultado.EsExito
             ? Results.Ok(resultado.Valor)

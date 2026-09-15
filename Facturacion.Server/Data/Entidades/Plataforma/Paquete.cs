@@ -1,8 +1,8 @@
 namespace Facturacion.Server.Data.Entidades.Plataforma;
 
 /// <summary>
-/// Un paquete de timbres a la venta. Es catálogo del SaaS, no de una empresa: no lleva
-/// <c>EmpresaId</c> ni entra al filtro global.
+/// Una oferta de timbres. Si <see cref="EmpresaId"/> es nulo pertenece al catálogo general;
+/// si tiene valor es una oferta exclusiva de esa empresa.
 ///
 /// <para><b>El precio vive aquí y solo aquí</b></para>
 /// ARQUITECTURA.md §4 lo dice sin margen: los precios los devuelve el servidor y el cliente solo
@@ -12,6 +12,10 @@ namespace Facturacion.Server.Data.Entidades.Plataforma;
 public sealed class Paquete
 {
     public Guid Id { get; set; }
+
+    public Guid? EmpresaId { get; set; }
+
+    public Empresa? Empresa { get; set; }
 
     public required string Nombre { get; set; }
 

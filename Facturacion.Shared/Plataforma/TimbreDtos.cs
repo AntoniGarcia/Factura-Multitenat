@@ -15,7 +15,8 @@ public sealed record PaqueteDto(
     int CantidadTimbres,
     decimal PrecioPorTimbre,
     decimal PrecioTotal,
-    int VigenciaMeses);
+    int VigenciaMeses,
+    bool EsPersonalizado);
 
 /// <summary>Lo único que manda el cliente para comprar: cuál paquete.</summary>
 public sealed record PeticionDeCompra(Guid PaqueteId);

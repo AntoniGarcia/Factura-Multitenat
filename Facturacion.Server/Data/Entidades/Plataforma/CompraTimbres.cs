@@ -25,6 +25,14 @@ public sealed class CompraTimbres : IEntidadDeEmpresa
     /// <summary>Quién la solicitó.</summary>
     public Guid UsuarioId { get; set; }
 
+    /// <summary>
+    /// Identidad de la empresa en el momento de comprar. Se copia porque el comprobante de
+    /// compra debe conservar lo ocurrido aunque después se modifique la razón social.
+    /// </summary>
+    public required string EmpresaNombreAlComprar { get; set; }
+
+    public required string EmpresaRfcAlComprar { get; set; }
+
     public required string NombrePaquete { get; set; }
 
     public int CantidadTimbres { get; set; }
@@ -32,6 +40,13 @@ public sealed class CompraTimbres : IEntidadDeEmpresa
     public decimal PrecioPorTimbre { get; set; }
 
     public decimal PrecioTotal { get; set; }
+
+    /// <summary>Desglose congelado del total, cuyo precio publicado ya incluye IVA.</summary>
+    public decimal Subtotal { get; set; }
+
+    public decimal Iva { get; set; }
+
+    public decimal TasaIva { get; set; }
 
     /// <summary>
     /// Vigencia que tenía el paquete al comprarlo, copiada por la misma razón que los

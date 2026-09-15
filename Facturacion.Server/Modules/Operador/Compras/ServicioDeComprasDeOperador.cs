@@ -1,12 +1,10 @@
 using Facturacion.Server.Data;
 using Facturacion.Server.Data.Entidades.Plataforma;
 using Facturacion.Server.Infra.Bitacora;
-using Facturacion.Server.Modules.Operador.Auth;
 using Facturacion.Server.Modules.Plataforma.Timbres;
 using Facturacion.Shared.Comun;
 using Facturacion.Shared.Operador;
 using Facturacion.Shared.Plataforma;
-using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 
 namespace Facturacion.Server.Modules.Operador.Compras;
@@ -30,7 +28,6 @@ namespace Facturacion.Server.Modules.Operador.Compras;
 public sealed class ServicioDeComprasDeOperador(
     AppDbContext baseDeDatos,
     ServicioDeCompras compras,
-    IPasswordHasher<OperadorPlataforma> hasher,
     IServicioDeBitacora bitacora)
 {
     /// <summary>
@@ -108,115 +105,6 @@ public sealed class ServicioDeComprasDeOperador(
     /// </summary>
     public async Task<Resultado<CompraDto>> AcreditarAsync(Guid compraId, CancellationToken ct)
         => await compras.AcreditarAsync(compraId, ct);
-
-    /// <summary>
-    /// Entrega timbres directo a una sola empresa, sin pasar por un paquete del catálogo.
-    /// Registra una venta negociada directamente por el proveedor.
-    /// <para>
-    /// La cantidad, el precio unitario y la vigencia los captura el operador; el total se
-    /// calcula en el servidor. La empresa se valida contra la cuenta. La compra nace y se
-    /// acredita al instante, usando el mismo procedimiento transaccional e idempotente que
-    /// cualquier acreditación.
-    /// </para>
-    /// </summary>
-    public async Task<Resultado<CompraDto>> AsignarTimbresAsync(
-        Guid operadorId, Guid cuentaId, Guid empresaId, PeticionAsignarTimbres peticion, CancellationToken ct)
-    {
-        if (await ContrasenaDelOperadorEsIncorrecta(operadorId, peticion.ContrasenaDelOperador, ct))
-            return ErrorNegocio.Validacion("contrasena-incorrecta", "Tu contraseña de operador no es correcta.");
-
-        if (peticion.CantidadTimbres is < 1 or > 1_000_000)
-            return ErrorNegocio.Validacion(
-                "cantidad-invalida", "La cantidad debe estar entre 1 y 1,000,000 de timbres.");
-
-        if (peticion.VigenciaMeses is < 1 or > 24)
-            return ErrorNegocio.Validacion(
-                "vigencia-invalida", "La vigencia debe estar entre 1 y 24 meses.");
-
-        var precioPorTimbre = Math.Round(
-            peticion.PrecioPorTimbre,
-            6,
-            MidpointRounding.AwayFromZero);
-
-        if (precioPorTimbre is <= 0 or > 10_000_000m)
-            return ErrorNegocio.Validacion(
-                "precio-unitario-invalido", "El precio por timbre debe ser mayor que cero y no superar $10,000,000.");
-
-        const decimal maximoImporte = 999_999_999_999.999999m;
-
-        if (precioPorTimbre > maximoImporte / peticion.CantidadTimbres)
-            return ErrorNegocio.Validacion(
-                "precio-total-invalido", "El total de la venta supera el importe permitido.");
-
-        var precioTotal = Math.Round(
-            precioPorTimbre * peticion.CantidadTimbres,
-            6,
-            MidpointRounding.AwayFromZero);
-
-        if (precioTotal > maximoImporte)
-            return ErrorNegocio.Validacion(
-                "precio-total-invalido", "El total de la venta supera el importe permitido.");
-
-        // La empresa se deduce de la ruta y se valida que pertenezca a la cuenta. El operador
-        // nunca manda un identificador de empresa suelto (ARQUITECTURA.md §4).
-        var existeEmpresa = await baseDeDatos.Empresas
-            .AnyAsync(e => e.Id == empresaId && e.CuentaId == cuentaId, ct);
-
-        if (!existeEmpresa)
-            return ErrorNegocio.NoEncontrado("empresa-no-encontrada", "Esa empresa no existe en esta cuenta.");
-
-        var compra = new CompraTimbres
-        {
-            Id = Guid.NewGuid(),
-            EmpresaId = empresaId,
-            PaqueteId = Guid.Empty, // Asignación directa: no viene de un paquete del catálogo.
-            UsuarioId = Guid.Empty,
-            NombrePaquete = "Venta directa de timbres",
-            CantidadTimbres = peticion.CantidadTimbres,
-            PrecioPorTimbre = precioPorTimbre,
-            PrecioTotal = precioTotal,
-            VigenciaMeses = peticion.VigenciaMeses,
-            Estado = EstadosDeCompra.PendienteDePago,
-            CreadaUtc = DateTime.UtcNow
-        };
-
-        baseDeDatos.ComprasTimbres.Add(compra);
-        await baseDeDatos.SaveChangesAsync(ct);
-
-        bitacora.Registrar(
-            EntidadesDeBitacora.CompraTimbres,
-            compra.Id.ToString(),
-            AccionesDeBitacora.TimbresAsignados,
-            despues: new
-            {
-                EmpresaId = empresaId,
-                NombrePaquete = compra.NombrePaquete,
-                compra.CantidadTimbres,
-                compra.PrecioPorTimbre,
-                compra.PrecioTotal,
-                compra.VigenciaMeses,
-                PorOperadorDelServicio = true
-            },
-            empresaId: empresaId,
-            cuentaId: cuentaId,
-            operadorId: operadorId);
-
-        // Reutiliza el mismo alta de saldo que cualquier compra: mete los timbres a la bolsa
-        // de forma transaccional e idempotente con el procedimiento almacenado.
-        return await compras.AcreditarAsync(compra.Id, ct);
-    }
-
-    private async Task<bool> ContrasenaDelOperadorEsIncorrecta(
-        Guid operadorId, string contrasena, CancellationToken ct)
-    {
-        var operador = await baseDeDatos.OperadoresPlataforma
-            .SingleOrDefaultAsync(o => o.Id == operadorId && o.Activo, ct);
-
-        if (operador is null) return true;
-
-        return hasher.VerifyHashedPassword(operador, operador.HashContrasena, contrasena)
-            is PasswordVerificationResult.Failed;
-    }
 
     /// <summary>
     /// Descarta una compra que no se va a cobrar. No toca la bolsa: una compra pendiente nunca

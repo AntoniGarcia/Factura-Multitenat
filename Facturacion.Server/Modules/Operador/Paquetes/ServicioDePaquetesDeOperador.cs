@@ -10,11 +10,8 @@ namespace Facturacion.Server.Modules.Operador.Paquetes;
 /// <summary>
 /// Administración del catálogo de paquetes que el SaaS vende.
 ///
-/// <para><b>Sin filtro de empresa que esquivar</b></para>
-/// <c>Paquete</c> es catálogo del producto, no dato de un inquilino: no lleva <c>EmpresaId</c>
-/// y por eso queda fuera del filtro global. Aquí <b>no hace falta</b>
-/// <c>IgnoreQueryFilters</c>, y añadirlo por costumbre solo confundiría a quien audite dónde
-/// se está esquivando el aislamiento de verdad.
+/// Esta vista administra únicamente los paquetes generales. Las ofertas exclusivas se
+/// administran dentro de la ficha de su empresa.
 ///
 /// <para><b>Cambiar un precio no reescribe la historia</b></para>
 /// <c>CompraTimbres</c> copia nombre, cantidad y precios en el momento de comprar, así que
@@ -29,6 +26,7 @@ public sealed class ServicioDePaquetesDeOperador(
     public async Task<IReadOnlyList<PaqueteDeOperadorDto>> ListarAsync(CancellationToken ct)
         => await baseDeDatos.Paquetes
             .AsNoTracking()
+            .Where(p => p.EmpresaId == null)
             .OrderBy(p => p.Orden)
             .Select(p => new PaqueteDeOperadorDto(
                 p.Id, p.Nombre, p.CantidadTimbres, p.PrecioPorTimbre, p.PrecioTotal,
@@ -42,7 +40,7 @@ public sealed class ServicioDePaquetesDeOperador(
     public async Task<PaqueteDeOperadorDto?> ObtenerAsync(Guid id, CancellationToken ct)
         => await baseDeDatos.Paquetes
             .AsNoTracking()
-            .Where(p => p.Id == id)
+            .Where(p => p.Id == id && p.EmpresaId == null)
             .Select(p => new PaqueteDeOperadorDto(
                 p.Id, p.Nombre, p.CantidadTimbres, p.PrecioPorTimbre, p.PrecioTotal,
                 p.VigenciaMeses, p.Activo, p.Orden,
@@ -59,6 +57,7 @@ public sealed class ServicioDePaquetesDeOperador(
         var paquete = new Paquete
         {
             Id = Guid.NewGuid(),
+            EmpresaId = null,
             Nombre = peticion.Nombre.Trim(),
             CantidadTimbres = peticion.CantidadTimbres,
             PrecioTotal = peticion.PrecioTotal,
@@ -89,7 +88,8 @@ public sealed class ServicioDePaquetesDeOperador(
     {
         if (Validar(peticion) is { } error) return error;
 
-        var paquete = await baseDeDatos.Paquetes.SingleOrDefaultAsync(p => p.Id == id, ct);
+        var paquete = await baseDeDatos.Paquetes
+            .SingleOrDefaultAsync(p => p.Id == id && p.EmpresaId == null, ct);
 
         if (paquete is null)
             return ErrorNegocio.NoEncontrado("paquete-no-encontrado", "Ese paquete no existe.");
@@ -122,7 +122,8 @@ public sealed class ServicioDePaquetesDeOperador(
     public async Task<Resultado<PaqueteDeOperadorDto>> CambiarActivoAsync(
         Guid id, bool activo, CancellationToken ct)
     {
-        var paquete = await baseDeDatos.Paquetes.SingleOrDefaultAsync(p => p.Id == id, ct);
+        var paquete = await baseDeDatos.Paquetes
+            .SingleOrDefaultAsync(p => p.Id == id && p.EmpresaId == null, ct);
 
         if (paquete is null)
             return ErrorNegocio.NoEncontrado("paquete-no-encontrado", "Ese paquete no existe.");

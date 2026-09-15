@@ -4,6 +4,7 @@ using Facturacion.Server.Data;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 #nullable disable
@@ -11,9 +12,11 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace Facturacion.Server.Migrations
 {
     [DbContext(typeof(AppDbContext))]
-    partial class AppDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260914164057_A_ComprobanteDeCompra")]
+    partial class A_ComprobanteDeCompra
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -1681,10 +1684,6 @@ namespace Facturacion.Server.Migrations
                         .HasMaxLength(20)
                         .HasColumnType("nvarchar(20)");
 
-                    b.Property<decimal>("Iva")
-                        .HasPrecision(18, 6)
-                        .HasColumnType("decimal(18,6)");
-
                     b.Property<string>("MotivoCancelacion")
                         .HasMaxLength(300)
                         .HasColumnType("nvarchar(300)");
@@ -1702,14 +1701,6 @@ namespace Facturacion.Server.Migrations
                         .HasColumnType("decimal(18,6)");
 
                     b.Property<decimal>("PrecioTotal")
-                        .HasPrecision(18, 6)
-                        .HasColumnType("decimal(18,6)");
-
-                    b.Property<decimal>("Subtotal")
-                        .HasPrecision(18, 6)
-                        .HasColumnType("decimal(18,6)");
-
-                    b.Property<decimal>("TasaIva")
                         .HasPrecision(18, 6)
                         .HasColumnType("decimal(18,6)");
 
@@ -2125,9 +2116,6 @@ namespace Facturacion.Server.Migrations
                     b.Property<int>("CantidadTimbres")
                         .HasColumnType("int");
 
-                    b.Property<Guid?>("EmpresaId")
-                        .HasColumnType("uniqueidentifier");
-
                     b.Property<string>("Nombre")
                         .IsRequired()
                         .HasMaxLength(100)
@@ -2149,7 +2137,7 @@ namespace Facturacion.Server.Migrations
 
                     b.HasKey("Id");
 
-                    b.HasIndex("EmpresaId", "Activo", "Orden");
+                    b.HasIndex("Activo", "Orden");
 
                     b.ToTable("Paquetes", (string)null);
 
@@ -3037,16 +3025,6 @@ namespace Facturacion.Server.Migrations
                         .IsRequired();
 
                     b.Navigation("Cuenta");
-                });
-
-            modelBuilder.Entity("Facturacion.Server.Data.Entidades.Plataforma.Paquete", b =>
-                {
-                    b.HasOne("Facturacion.Server.Data.Entidades.Plataforma.Empresa", "Empresa")
-                        .WithMany()
-                        .HasForeignKey("EmpresaId")
-                        .OnDelete(DeleteBehavior.Restrict);
-
-                    b.Navigation("Empresa");
                 });
 
             modelBuilder.Entity("Facturacion.Server.Data.Entidades.Plataforma.PermisoOperador", b =>
