@@ -57,7 +57,7 @@ public static class MenuPrincipal
         new("/productos", "Productos", "inventory", Permiso: null),
 
         // ── Mi empresa: se configura una vez y se revisa de vez en cuando ───────────────
-        new("/empresa/nueva", "Agregar empresa", "person", Permiso: null, Grupos.Empresa),
+        new("/empresa/nueva", "Agregar empresa", "person", Permisos.ConfigurarEmpresa, Grupos.Empresa),
         new("/empresa", "Datos fiscales", "business", Permisos.ConfigurarEmpresa, Grupos.Empresa),
         new("/empresa/series", "Series de folios", "tag", Permisos.ConfigurarEmpresa, Grupos.Empresa),
         new("/empresa/certificados", "Certificados", "verified_user", Permisos.ConfigurarEmpresa, Grupos.Empresa),
@@ -66,6 +66,6 @@ public static class MenuPrincipal
         // ── Administración: cuenta, gente y datos del SAT ───────────────────────────────
         new("/timbres", "Timbres", "confirmation_number", Permisos.ComprarTimbres, Grupos.Administracion),
         new("/usuarios", "Usuarios", "people", Permisos.AdministrarUsuarios, Grupos.Administracion),
-        new("/admin/catalogos-sat", "Catálogos del SAT", "inventory_2", Permiso: null, Grupos.Administracion)
+        //new("/admin/catalogos-sat", "Catálogos del SAT", "inventory_2", Permiso: null, Grupos.Administracion)
     ];
 }

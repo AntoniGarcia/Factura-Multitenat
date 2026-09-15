@@ -72,7 +72,7 @@
                         {
                             <li>
                                 <NavLink href="@elemento.Ruta" Match="NavLinkMatch.All" title="@elemento.Etiqueta">
-                                    <MudIcon Icon="@elemento.Icono" Size="Size.Small" />
+                                    <MudIcon Icon="@ObtenerIcono(elemento.Icono)" Size="Size.Small" />
                                     <span>@elemento.Etiqueta</span>
                                 </NavLink>
                             </li>
@@ -193,4 +193,19 @@
         => elemento.Permiso is null || Sesion.TienePermiso(elemento.Permiso);
 
     private void Redibujar() => InvokeAsync(StateHasChanged);
+
+    private string ObtenerIcono(string nombre) => nombre switch
+    {
+        "home" => Icons.Material.Filled.Home,
+        "description" => Icons.Material.Filled.Description,
+        "groups" => Icons.Material.Filled.Groups,
+        "inventory" => Icons.Material.Filled.Inventory,
+        "business" => Icons.Material.Filled.Business,
+        "tag" => Icons.Material.Filled.Tag,
+        "verified_user" => Icons.Material.Filled.VerifiedUser,
+        "settings" => Icons.Material.Filled.Settings,
+        "confirmation_number" => Icons.Material.Filled.ConfirmationNumber,
+        "people" => Icons.Material.Filled.People,
+        _ => Icons.Material.Filled.Circle
+    };
 }
