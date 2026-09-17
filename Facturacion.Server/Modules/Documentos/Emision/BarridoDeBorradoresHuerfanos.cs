@@ -38,7 +38,7 @@ public sealed class BarridoDeBorradoresHuerfanos(
     /// de más —una captura a medias que alguien pensaba retomar el lunes— es mucho más caro
     /// que el de esperar unos días de más.
     /// </summary>
-    private static readonly TimeSpan Plazo = TimeSpan.FromDays(7);
+    private static readonly TimeSpan Plazo = TimeSpan.FromDays(1);
 
     protected override async Task ExecuteAsync(CancellationToken ct)
     {
