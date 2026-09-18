@@ -194,6 +194,19 @@ public sealed class ServicioDeEmision(
     /// <param name="tipoComprobante">
     /// Clave de <c>c_TipoDeComprobante</c>: <c>I</c> ingreso, <c>P</c> pago. Nulo trae todo.
     /// </param>
+
+    /*
+     // Filtro por boloque de archivos de un cliente
+    public async Task<PaginaDeComprobantes> ListarAsync(
+    string? busca, EstatusComprobante? estatus, IReadOnlyList<Guid>? clienteIds, string? tipoComprobante,
+    DateTime? desdeUtc, DateTime? hastaUtc,
+    int pagina, int tamano, string? orden, bool descendente, CancellationToken ct)
+{
+    var consulta = baseDeDatos.Comprobantes.AsNoTracking();
+
+    if (clienteIds is { Count: > 0 } clientes)
+        consulta = consulta.Where(c => c.ClienteId != null && clientes.Contains(c.ClienteId.Value)); 
+    */
     public async Task<PaginaDeComprobantes> ListarAsync(
         string? busca, EstatusComprobante? estatus, Guid? clienteId, string? tipoComprobante,
         DateTime? desdeUtc, DateTime? hastaUtc,
@@ -256,6 +269,19 @@ public sealed class ServicioDeEmision(
     /// Lo más reciente primero por omisión: en una jornada de captura, el documento que se
     /// busca casi siempre es de hoy.
     /// </summary>
+    /// 
+    /*
+    // Filtro por boloque de archivos de un cliente
+    private static IQueryable<Comprobante> Ordenar(
+    IQueryable<Comprobante> consulta, string? orden, bool descendente) => orden switch
+{
+    "cliente" => descendente
+        ? consulta.OrderByDescending(c => c.ClienteId).ThenByDescending(c => c.FechaEmisionUtc)
+        : consulta.OrderBy(c => c.ClienteId).ThenByDescending(c => c.FechaEmisionUtc),
+    "folio" => descendente
+        ? consulta.OrderByDescending(c => c.Folio)
+        : consulta.OrderBy(c => c.Folio),
+    */
     private static IQueryable<Comprobante> Ordenar(
         IQueryable<Comprobante> consulta, string? orden, bool descendente) => orden switch
     {

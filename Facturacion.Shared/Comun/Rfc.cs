@@ -19,28 +19,6 @@ namespace Facturacion.Shared.Comun;
 /// </summary>
 public static class Rfc
 {
-    // Mapeo oficial de caracteres según la tabla del SAT
-    private static readonly Dictionary<char, int> TablaSat = new Dictionary<char, int>
-    {
-        {' ', 0},
-        {'0', 0}, {'1', 1}, {'2', 2}, {'3', 3}, {'4', 4}, {'5', 5}, {'6', 6}, {'7', 7}, {'8', 8}, {'9', 9},
-        {'A', 10}, {'B', 11}, {'C', 12}, {'D', 13}, {'E', 14}, {'F', 15}, {'G', 16}, {'H', 17}, {'I', 18},
-        {'J', 19}, {'K', 20}, {'L', 21}, {'M', 22}, {'N', 23}, {'O', 24}, {'P', 25}, {'Q', 26}, {'R', 27},
-        {'S', 28}, {'T', 29}, {'U', 30}, {'V', 31}, {'W', 32}, {'X', 33}, {'Y', 34}, {'Z', 35},
-        {'Ñ', 36},
-        {'&', 37}
-    };
-
-    // Palabras inconvenientes que el SAT no permite como siglas
-    private static readonly string[] PalabrasProhibidas = new[]
-    {
-        "BUEI","BUEY","CACA","CACO","CAGA","CAGO","CAKA","CAKO","COGE","COJA",
-        "COJE","COJI","COJO","CULO","FETO","GUEY","JOTO","KACA","KACO","KAGA",
-        "KAGO","KAKA","KAKO","KOGE","KOJO","KULO","MAME","MAMO","MEAR",
-        "MEAS","MEON","MION","MOCO","MULA","PEDA","PEDO","PENE","PUTA","PUTO",
-        "QULO","RATA","RUIN"
-    };
-
     /// <summary>Público en general. Ver <see cref="EsGenerico"/> para por qué se exceptúa.</summary>
     public const string GenericoNacional = "XAXX010101000";
     //bool esValido = ValidadorRFC.ValidarRFC("XAXX010101000");
@@ -64,11 +42,9 @@ public static class Rfc
     /// algoritmo del dígito verificador puede producir.
     /// </summary>
     private static readonly Regex Forma = new(
-        @"^[A-ZÑ&]{3,4}[0-9]{2}[0-1][0-9][0-3][0-9][A-Z0-9]{2}[0-9A]$",
+        @"^[A-ZÑ&]{3,4}\d{2}(0[1-9]|1[0-2])(0[1-9]|[12]\d|3[01])[A-Z\d]{2}[A\d]$",
         RegexOptions.Compiled | RegexOptions.CultureInvariant);
-        
-    //    @"^([A-ZÑ&]{3,4})([\d]{2})(0[1-9]|1[0-2])(0[1-9]|[12]\d|3[01])([A-Z\d]{2})([A\d])$",
-
+    
     /// <summary>Doce caracteres es persona moral; trece, persona física.</summary>
     public static bool EsPersonaMoral(string rfc) => rfc.Length == 12;
 
