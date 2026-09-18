@@ -7,9 +7,9 @@ namespace Facturacion.Server.Modules.Operador.Paquetes;
 /// <summary>
 /// El catálogo de paquetes visto desde el panel del proveedor.
 /// <para>
-/// Todo el grupo exige la política de operador. Nótese que el inquilino tiene su propio
-/// <c>GET /api/timbres/paquetes</c>, que solo devuelve los activos y sin el orden ni el
-/// estado: son dos vistas distintas del mismo catálogo, y por eso son dos endpoints.
+/// Lectura: permiso <c>ver_paquetes</c>. Escritura: permiso <c>administrar_paquetes</c>.
+/// Nótese que el inquilino tiene su propio <c>GET /api/timbres/paquetes</c>, que solo devuelve
+/// los activos y sin el orden ni el estado: son dos vistas distintas del mismo catálogo.
 /// </para>
 /// </summary>
 public static class PaquetesDeOperadorEndpoints
@@ -20,11 +20,11 @@ public static class PaquetesDeOperadorEndpoints
             .WithTags("Operador · Paquetes")
             .RequireAuthorization(PoliticasDeOperador.Operador);
 
-        grupo.MapGet("/", Listar);
-        grupo.MapGet("/{id:guid}", Obtener);
-        grupo.MapPost("/", Crear);
-        grupo.MapPut("/{id:guid}", Actualizar);
-        grupo.MapPost("/{id:guid}/activo", CambiarActivo);
+        grupo.MapGet("/", Listar).RequireAuthorization(PoliticasDeOperador.VerPaquetes);
+        grupo.MapGet("/{id:guid}", Obtener).RequireAuthorization(PoliticasDeOperador.VerPaquetes);
+        grupo.MapPost("/", Crear).RequireAuthorization(PoliticasDeOperador.AdministrarPaquetes);
+        grupo.MapPut("/{id:guid}", Actualizar).RequireAuthorization(PoliticasDeOperador.AdministrarPaquetes);
+        grupo.MapPost("/{id:guid}/activo", CambiarActivo).RequireAuthorization(PoliticasDeOperador.AdministrarPaquetes);
     }
 
     private static async Task<IResult> Listar(

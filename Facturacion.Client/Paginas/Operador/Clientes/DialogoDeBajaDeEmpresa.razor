@@ -1,0 +1,45 @@
+@using MudBlazor
+
+@*
+    La desactivación es reversible, pero exige motivo y reautenticación porque impide emitir.
+*@
+
+<MudDialog>
+    <DialogContent>
+        <p class="dialogo-cancelacion-aviso">
+            <strong>@NombreEmpresa</strong> dejará de emitir. Sus datos y comprobantes se conservan
+            para poder reactivarla después.
+        </p>
+
+        <div class="rejilla-campos">
+            <MudTextField @bind-Value="_motivo" Label="Motivo de la desactivación" Immediate="true"
+                          Lines="3" MaxLength="300" Counter="300" />
+
+            <MudTextField @bind-Value="_deLOperador" Label="Tu contraseña de operador"
+                          InputType="InputType.Password" Immediate="true" />
+        </div>
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="@(() => Dialogo.Cancel())">Cancelar</MudButton>
+        <MudButton Variant="Variant.Filled" Color="Color.Error" Disabled="@(!SePuedeConfirmar)"
+                   OnClick="Confirmar">
+            Desactivar
+        </MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter]
+    private IMudDialogInstance Dialogo { get; set; } = default!;
+
+    [Parameter]
+    public string NombreEmpresa { get; set; } = string.Empty;
+
+    private string _motivo = string.Empty;
+    private string _deLOperador = string.Empty;
+
+    private bool SePuedeConfirmar =>
+        !string.IsNullOrWhiteSpace(_motivo) && !string.IsNullOrWhiteSpace(_deLOperador);
+
+    private void Confirmar() => Dialogo.Close(DialogResult.Ok((_motivo.Trim(), _deLOperador)));
+}

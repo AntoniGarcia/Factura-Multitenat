@@ -29,27 +29,43 @@ public sealed class ServicioDeCompras(
     public async Task<IReadOnlyList<PaqueteDto>> PaquetesAsync(CancellationToken ct)
         => await baseDeDatos.Paquetes
             .AsNoTracking()
-            .Where(p => p.Activo)
-            .OrderBy(p => p.Orden)
+            .Where(p => p.Activo && (p.EmpresaId == null || p.EmpresaId == contexto.EmpresaId))
+            .OrderBy(p => p.EmpresaId == null ? 0 : 1)
+            .ThenBy(p => p.Orden)
             .Select(p => new PaqueteDto(
-                p.Id, p.Nombre, p.CantidadTimbres, p.PrecioPorTimbre, p.PrecioTotal, p.VigenciaMeses))
+                p.Id, p.Nombre, p.CantidadTimbres, p.PrecioPorTimbre, p.PrecioTotal,
+                p.VigenciaMeses, p.EmpresaId != null))
             .ToListAsync(ct);
 
     public async Task<SaldoTimbresDto> SaldoAsync(CancellationToken ct)
-        => await baseDeDatos.BolsasTimbres
-               .AsNoTracking()
-               .Where(b => b.EmpresaId == contexto.EmpresaId)
-               .Select(b => new SaldoTimbresDto(b.Disponibles, b.Reservados))
-               .FirstOrDefaultAsync(ct)
-           // Una empresa que nunca compró no tiene renglón de bolsa. Es un saldo de cero, no
-           // un error: la bolsa nace al acreditarse la primera compra.
-           ?? new SaldoTimbresDto(0, 0);
+    /*
+    => await baseDeDatos.BolsasTimbres
+           .AsNoTracking()
+           .Where(b => b.EmpresaId == contexto.EmpresaId)
+           .Select(b => new SaldoTimbresDto(b.Disponibles, b.Reservados))
+           .FirstOrDefaultAsync(ct)
+       // Una empresa que nunca compró no tiene renglón de bolsa. Es un saldo de cero, no
+       // un error: la bolsa nace al acreditarse la primera compra.
+       ?? new SaldoTimbresDto(0, 0);
+    */
+    {
+        if (!contexto.HayEmpresa) return new SaldoTimbresDto(0, 0);
 
+        return await baseDeDatos.BolsasTimbres
+            .AsNoTracking()
+            .Where(b => b.EmpresaId == contexto.EmpresaId)
+            .Select(b => new SaldoTimbresDto(b.Disponibles, b.Reservados))
+            .FirstOrDefaultAsync(ct)
+            ?? new SaldoTimbresDto(0, 0);
+    }
     public async Task<Resultado<CompraDto>> ComprarAsync(PeticionDeCompra peticion, CancellationToken ct)
     {
         var paquete = await baseDeDatos.Paquetes
             .AsNoTracking()
-            .FirstOrDefaultAsync(p => p.Id == peticion.PaqueteId, ct);
+            .FirstOrDefaultAsync(
+                p => p.Id == peticion.PaqueteId
+                     && (p.EmpresaId == null || p.EmpresaId == contexto.EmpresaId),
+                ct);
 
         if (paquete is null)
             return ErrorNegocio.NoEncontrado("paquete-no-encontrado", "Ese paquete de timbres no existe.");
@@ -61,18 +77,33 @@ public sealed class ServicioDeCompras(
                 $"El paquete «{paquete.Nombre}» ya no está a la venta. Elige uno de los disponibles.");
         }
 
+        var empresa = await baseDeDatos.Empresas
+            .AsNoTracking()
+            .Where(e => e.Id == contexto.EmpresaId && e.CuentaId == contexto.CuentaActual)
+            .Select(e => new { e.NombreFiscal, e.Rfc })
+            .SingleOrDefaultAsync(ct);
+
+        if (empresa is null)
+            return ErrorNegocio.NoEncontrado("empresa-no-encontrada", "La empresa activa ya no existe.");
+
+        var (subtotal, iva) = DesgloseDeIva.CalcularDesdeTotal(paquete.PrecioTotal);
         var compra = new CompraTimbres
         {
             Id = Guid.NewGuid(),
             EmpresaId = contexto.EmpresaId,
             PaqueteId = paquete.Id,
             UsuarioId = contexto.UsuarioActual ?? Guid.Empty,
+            EmpresaNombreAlComprar = empresa.NombreFiscal,
+            EmpresaRfcAlComprar = empresa.Rfc,
 
             // Copias, no referencias: lo que se cobra queda congelado aunque el catálogo cambie.
             NombrePaquete = paquete.Nombre,
             CantidadTimbres = paquete.CantidadTimbres,
             PrecioPorTimbre = paquete.PrecioPorTimbre,
             PrecioTotal = paquete.PrecioTotal,
+            Subtotal = subtotal,
+            Iva = iva,
+            TasaIva = DesgloseDeIva.TasaGeneral,
             VigenciaMeses = paquete.VigenciaMeses,
 
             Estado = EstadosDeCompra.PendienteDePago,

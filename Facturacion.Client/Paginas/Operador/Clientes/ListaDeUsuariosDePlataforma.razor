@@ -60,6 +60,10 @@
                               Contraseña
                           </MudButton>
                           <MudButton Size="Size.Small" Disabled="@_trabajando"
+                                     OnClick="@(() => CambiarCorreo(u))">
+                              Correo
+                          </MudButton>
+                          <MudButton Size="Size.Small" Disabled="@_trabajando"
                                      OnClick="@(() => CambiarActivo(u))">
                               @(u.Activo ? "Dar de baja" : "Reactivar")
                           </MudButton>
@@ -110,6 +114,34 @@
         if (_error is null)
             _aviso = $"Contraseña restablecida. Comunícasela a {usuario.Nombre} por un medio seguro; " +
                      "sus sesiones abiertas ya se cerraron.";
+
+        await RecargarAsync();
+    }
+
+    private async Task CambiarCorreo(UsuarioDePlataformaDto usuario)
+    {
+        if (_trabajando) return;
+
+        var parametros = new DialogParameters<DialogoDeCambioDeCorreo>
+        {
+            { x => x.Mensaje, $"Correo de «{usuario.Nombre}» ({usuario.Correo}). " +
+                              "El usuario entra con este correo; comunícaselo si cambia." }
+        };
+
+        var referencia = await Dialogos.ShowAsync<DialogoDeCambioDeCorreo>("Modificar correo", parametros);
+        var resultado = await referencia.Result;
+
+        if (resultado is not { Canceled: false, Data: ValueTuple<string, string> datos }) return;
+
+        _trabajando = true;
+        _error = null;
+        _aviso = null;
+
+        _error = await Usuarios.CambiarCorreoAsync(usuario.Id, datos.Item1, datos.Item2);
+
+        _trabajando = false;
+
+        if (_error is null) _aviso = $"Correo de {usuario.Nombre} actualizado.";
 
         await RecargarAsync();
     }

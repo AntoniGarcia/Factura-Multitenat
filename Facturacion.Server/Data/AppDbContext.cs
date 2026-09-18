@@ -42,6 +42,7 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> opciones, IConte
     public DbSet<AltaPendiente> AltasPendientes => Set<AltaPendiente>();
     public DbSet<OperadorPlataforma> OperadoresPlataforma => Set<OperadorPlataforma>();
     public DbSet<RefreshTokenOperador> RefreshTokensOperador => Set<RefreshTokenOperador>();
+    public DbSet<ConfiguracionDelSistema> ConfiguracionesDelSistema => Set<ConfiguracionDelSistema>();
     public DbSet<ClaveIdempotencia> ClavesIdempotencia => Set<ClaveIdempotencia>();
     public DbSet<RegistroBitacora> Bitacora => Set<RegistroBitacora>();
     public DbSet<ConfiguracionEmpresa> ConfiguracionesEmpresa => Set<ConfiguracionEmpresa>();

@@ -1666,10 +1666,24 @@ namespace Facturacion.Server.Migrations
                     b.Property<Guid>("EmpresaId")
                         .HasColumnType("uniqueidentifier");
 
+                    b.Property<string>("EmpresaNombreAlComprar")
+                        .IsRequired()
+                        .HasMaxLength(254)
+                        .HasColumnType("nvarchar(254)");
+
+                    b.Property<string>("EmpresaRfcAlComprar")
+                        .IsRequired()
+                        .HasMaxLength(13)
+                        .HasColumnType("nvarchar(13)");
+
                     b.Property<string>("Estado")
                         .IsRequired()
                         .HasMaxLength(20)
                         .HasColumnType("nvarchar(20)");
+
+                    b.Property<decimal>("Iva")
+                        .HasPrecision(18, 6)
+                        .HasColumnType("decimal(18,6)");
 
                     b.Property<string>("MotivoCancelacion")
                         .HasMaxLength(300)
@@ -1691,6 +1705,14 @@ namespace Facturacion.Server.Migrations
                         .HasPrecision(18, 6)
                         .HasColumnType("decimal(18,6)");
 
+                    b.Property<decimal>("Subtotal")
+                        .HasPrecision(18, 6)
+                        .HasColumnType("decimal(18,6)");
+
+                    b.Property<decimal>("TasaIva")
+                        .HasPrecision(18, 6)
+                        .HasColumnType("decimal(18,6)");
+
                     b.Property<Guid>("UsuarioId")
                         .HasColumnType("uniqueidentifier");
 
@@ -1708,6 +1730,80 @@ namespace Facturacion.Server.Migrations
                     b.HasIndex("EmpresaId", "CreadaUtc");
 
                     b.ToTable("ComprasTimbres", (string)null);
+                });
+
+            modelBuilder.Entity("Facturacion.Server.Data.Entidades.Plataforma.ConfiguracionDelSistema", b =>
+                {
+                    b.Property<byte>("Id")
+                        .HasColumnType("tinyint");
+
+                    b.Property<Guid>("ActualizadaPorOperadorId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTime>("ActualizadaUtc")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("AsuntoContrasena")
+                        .IsRequired()
+                        .HasMaxLength(128)
+                        .HasColumnType("nvarchar(128)");
+
+                    b.Property<string>("AsuntoVerificacion")
+                        .IsRequired()
+                        .HasMaxLength(128)
+                        .HasColumnType("nvarchar(128)");
+
+                    b.Property<string>("ContrasenaSmtpCifrada")
+                        .HasMaxLength(2048)
+                        .HasColumnType("nvarchar(2048)");
+
+                    b.Property<string>("CuerpoContrasena")
+                        .IsRequired()
+                        .HasMaxLength(8000)
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("CuerpoVerificacion")
+                        .IsRequired()
+                        .HasMaxLength(8000)
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("NombreDelSistema")
+                        .IsRequired()
+                        .HasMaxLength(128)
+                        .HasColumnType("nvarchar(128)");
+
+                    b.Property<int>("PuertoSmtp")
+                        .HasColumnType("int");
+
+                    b.Property<string>("RemitenteCorreo")
+                        .IsRequired()
+                        .HasMaxLength(254)
+                        .HasColumnType("nvarchar(254)");
+
+                    b.Property<string>("RemitenteNombre")
+                        .IsRequired()
+                        .HasMaxLength(128)
+                        .HasColumnType("nvarchar(128)");
+
+                    b.Property<string>("ServidorSmtp")
+                        .IsRequired()
+                        .HasMaxLength(253)
+                        .HasColumnType("nvarchar(253)");
+
+                    b.Property<bool>("UsarTls")
+                        .HasColumnType("bit");
+
+                    b.Property<string>("UsuarioSmtp")
+                        .IsRequired()
+                        .HasMaxLength(254)
+                        .HasColumnType("nvarchar(254)");
+
+                    b.HasKey("Id");
+
+                    b.ToTable("ConfiguracionDelSistema", null, t =>
+                        {
+                            t.HasCheckConstraint("CK_ConfiguracionDelSistema_Unica", "[Id] = 1");
+                        });
                 });
 
             modelBuilder.Entity("Facturacion.Server.Data.Entidades.Plataforma.ConfiguracionEmpresa", b =>
@@ -1989,6 +2085,9 @@ namespace Facturacion.Server.Migrations
                         .HasMaxLength(254)
                         .HasColumnType("nvarchar(254)");
 
+                    b.Property<bool>("EsPrincipal")
+                        .HasColumnType("bit");
+
                     b.Property<DateTime>("FechaAltaUtc")
                         .HasColumnType("datetime2");
 
@@ -2026,6 +2125,9 @@ namespace Facturacion.Server.Migrations
                     b.Property<int>("CantidadTimbres")
                         .HasColumnType("int");
 
+                    b.Property<Guid?>("EmpresaId")
+                        .HasColumnType("uniqueidentifier");
+
                     b.Property<string>("Nombre")
                         .IsRequired()
                         .HasMaxLength(100)
@@ -2047,7 +2149,7 @@ namespace Facturacion.Server.Migrations
 
                     b.HasKey("Id");
 
-                    b.HasIndex("Activo", "Orden");
+                    b.HasIndex("EmpresaId", "Activo", "Orden");
 
                     b.ToTable("Paquetes", (string)null);
 
@@ -2155,6 +2257,23 @@ namespace Facturacion.Server.Migrations
                             Clave = "configurar_empresa",
                             Descripcion = "Configurar la empresa, sus series y sus certificados"
                         });
+                });
+
+            modelBuilder.Entity("Facturacion.Server.Data.Entidades.Plataforma.PermisoOperador", b =>
+                {
+                    b.Property<Guid>("OperadorId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("Permiso")
+                        .HasMaxLength(64)
+                        .HasColumnType("nvarchar(64)");
+
+                    b.HasKey("OperadorId", "Permiso");
+
+                    b.HasIndex("Permiso")
+                        .HasDatabaseName("IX_OperadoresPermisos_Permiso");
+
+                    b.ToTable("OperadoresPermisos", (string)null);
                 });
 
             modelBuilder.Entity("Facturacion.Server.Data.Entidades.Plataforma.Producto", b =>
@@ -2920,6 +3039,27 @@ namespace Facturacion.Server.Migrations
                     b.Navigation("Cuenta");
                 });
 
+            modelBuilder.Entity("Facturacion.Server.Data.Entidades.Plataforma.Paquete", b =>
+                {
+                    b.HasOne("Facturacion.Server.Data.Entidades.Plataforma.Empresa", "Empresa")
+                        .WithMany()
+                        .HasForeignKey("EmpresaId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.Navigation("Empresa");
+                });
+
+            modelBuilder.Entity("Facturacion.Server.Data.Entidades.Plataforma.PermisoOperador", b =>
+                {
+                    b.HasOne("Facturacion.Server.Data.Entidades.Plataforma.OperadorPlataforma", "Operador")
+                        .WithMany("Permisos")
+                        .HasForeignKey("OperadorId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Operador");
+                });
+
             modelBuilder.Entity("Facturacion.Server.Data.Entidades.Plataforma.Producto", b =>
                 {
                     b.HasOne("Facturacion.Server.Data.Entidades.Plataforma.Empresa", "Empresa")
@@ -3102,6 +3242,8 @@ namespace Facturacion.Server.Migrations
 
             modelBuilder.Entity("Facturacion.Server.Data.Entidades.Plataforma.OperadorPlataforma", b =>
                 {
+                    b.Navigation("Permisos");
+
                     b.Navigation("RefreshTokens");
                 });
 

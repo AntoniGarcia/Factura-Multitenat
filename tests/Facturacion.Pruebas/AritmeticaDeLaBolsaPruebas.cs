@@ -53,9 +53,9 @@ public sealed class AritmeticaDeLaBolsaPruebas : IAsyncLifetime
         return new ServicioDeTimbres(db, tenencia, new ServicioDeBitacora(db, tenencia, ContextoDeOperadorFijo.SinOperador, new HttpContextAccessor()));
     }
 
-    private static ServicioDeCompras Compras(AppDbContext db, Guid empresa)
+    private ServicioDeCompras Compras(AppDbContext db, Guid empresa)
     {
-        var tenencia = new ContextoEmpresaFijo(empresa);
+        var tenencia = new ContextoEmpresaFijo(empresa, _cuenta);
         return new ServicioDeCompras(db, tenencia, new ServicioDeBitacora(db, tenencia, ContextoDeOperadorFijo.SinOperador, new HttpContextAccessor()));
     }
 

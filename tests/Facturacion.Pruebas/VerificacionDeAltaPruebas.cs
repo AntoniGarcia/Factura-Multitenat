@@ -6,6 +6,7 @@ using Facturacion.Server.Infra.Seguridad;
 using Facturacion.Server.Infra.Tenencia;
 using Facturacion.Server.Modules.Plataforma.Auth;
 using Facturacion.Shared.Plataforma;
+using Microsoft.AspNetCore.DataProtection;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
@@ -21,8 +22,8 @@ namespace Facturacion.Pruebas;
 ///
 /// <para>
 /// Si el código valiera dos veces, o si la cuenta existiera antes de canjearlo, todo el
-/// circuito sobraría: la contraseña saldría hacia un buzón que nadie ha demostrado controlar,
-/// que es exactamente lo que se quería evitar.
+/// circuito sobraría. La contraseña elegida solo debe aceptarse junto con un código válido y
+/// nunca debe salir por correo.
 /// </para>
 /// <para>
 /// Se prueba contra SQL Server, con Identity montado como lo monta la aplicación: lo que
@@ -35,6 +36,7 @@ public sealed class VerificacionDeAltaPruebas : IAsyncLifetime
         "Server=.;Database=FacturacionPruebasAlta;Trusted_Connection=True;TrustServerCertificate=True;Encrypt=False";
 
     private const string Correo = "alta@ejemplo.mx";
+    private const string Contrasena = "FraseSegura2026";
 
     /// <summary>
     /// Se queda con lo que se habría mandado. El código solo existe en el cuerpo del correo
@@ -51,6 +53,20 @@ public sealed class VerificacionDeAltaPruebas : IAsyncLifetime
             Enviados.Add((destinatario, asunto, cuerpoHtml));
             return Task.CompletedTask;
         }
+    }
+
+    /// <summary>
+    /// Plantillas fijas con los valores predeterminados: la prueba extrae el código del
+    /// cuerpo del correo, que es de donde lo lee una persona.
+    /// </summary>
+    private sealed class ConfiguracionDelSistemaFija : IProveedorDeConfiguracionDelSistema
+    {
+        public Task<ConfiguracionEfectivaDelSistema> ObtenerAsync(CancellationToken ct)
+            => Task.FromResult(new ConfiguracionEfectivaDelSistema(
+                new OpcionesDeCorreo(),
+                new OpcionesDeMensajes(),
+                "Sistema de facturación",
+                false));
     }
 
     private readonly CorreoDeMemoria _correo = new();
@@ -73,6 +89,7 @@ public sealed class VerificacionDeAltaPruebas : IAsyncLifetime
         var servicios = new ServiceCollection();
 
         servicios.AddLogging();
+        servicios.AddDataProtection();
         servicios.AddSingleton(baseDeDatos);
 
         servicios
@@ -104,6 +121,7 @@ public sealed class VerificacionDeAltaPruebas : IAsyncLifetime
             _correo,
             bitacora,
             new ControlDeIntentos(new MemoryCache(new MemoryCacheOptions())),
+            new ConfiguracionDelSistemaFija(),
             NullLogger<ServicioDeRegistro>.Instance);
     }
 
@@ -152,7 +170,8 @@ public sealed class VerificacionDeAltaPruebas : IAsyncLifetime
         await using (var baseDeDatos = Contexto())
         {
             var fallido = await Servicio(baseDeDatos).VerificarAsync(
-                new PeticionVerificarAlta(Correo, SiguienteCodigo(codigo)), "127.0.0.1", CancellationToken.None);
+                new PeticionVerificarAlta(Correo, SiguienteCodigo(codigo), Contrasena, Contrasena),
+                "127.0.0.1", CancellationToken.None);
 
             Assert.True(fallido.EsFallo);
             Assert.False(await baseDeDatos.Users.AnyAsync(u => u.Email == Correo));
@@ -161,11 +180,26 @@ public sealed class VerificacionDeAltaPruebas : IAsyncLifetime
             Assert.Equal(1, alta.Intentos);
         }
 
+        // Una contraseña inválida no quema un código que sí era correcto.
+        await using (var baseDeDatos = Contexto())
+        {
+            var debil = await Servicio(baseDeDatos).VerificarAsync(
+                new PeticionVerificarAlta(Correo, codigo, "corta", "corta"),
+                "127.0.0.1", CancellationToken.None);
+
+            Assert.True(debil.EsFallo);
+            Assert.False(await baseDeDatos.Users.AnyAsync(u => u.Email == Correo));
+
+            var alta = await baseDeDatos.AltasPendientes.SingleAsync(a => a.Correo == Correo);
+            Assert.Null(alta.ConsumidoUtc);
+        }
+
         // Paso dos: el código bueno. Aquí sí nace la cuenta.
         await using (var baseDeDatos = Contexto())
         {
             var verificado = await Servicio(baseDeDatos).VerificarAsync(
-                new PeticionVerificarAlta(Correo, codigo), "127.0.0.1", CancellationToken.None);
+                new PeticionVerificarAlta(Correo, codigo, Contrasena, Contrasena),
+                "127.0.0.1", CancellationToken.None);
 
             Assert.True(verificado.EsExito);
         }
@@ -176,15 +210,22 @@ public sealed class VerificacionDeAltaPruebas : IAsyncLifetime
 
             // Confirmado de verdad: hizo falta leer el código del buzón para llegar hasta aquí.
             Assert.True(usuario.EmailConfirmed);
+            Assert.Equal(
+                PasswordVerificationResult.Success,
+                new PasswordHasher<Usuario>().VerifyHashedPassword(
+                    usuario, usuario.PasswordHash!, Contrasena));
             Assert.Single(await baseDeDatos.Cuentas.ToListAsync());
 
             var alta = await baseDeDatos.AltasPendientes.SingleAsync(a => a.Correo == Correo);
             Assert.NotNull(alta.ConsumidoUtc);
         }
 
-        // La contraseña sale en un correo aparte, después del código y no antes.
+        // El segundo correo confirma el alta, pero no contiene la contraseña elegida.
         Assert.Equal(2, _correo.Enviados.Count);
-        Assert.Contains("Contraseña", _correo.Enviados[1].Cuerpo, StringComparison.OrdinalIgnoreCase);
+        Assert.DoesNotContain(Contrasena, _correo.Enviados[1].Cuerpo, StringComparison.Ordinal);
+        Assert.Equal(Correo, _correo.Enviados[1].Destinatario);
+        Assert.False(string.IsNullOrWhiteSpace(_correo.Enviados[1].Asunto));
+        Assert.False(string.IsNullOrWhiteSpace(_correo.Enviados[1].Cuerpo));
     }
 
     [Fact]
@@ -201,7 +242,8 @@ public sealed class VerificacionDeAltaPruebas : IAsyncLifetime
         await using (var baseDeDatos = Contexto())
         {
             var primera = await Servicio(baseDeDatos).VerificarAsync(
-                new PeticionVerificarAlta(Correo, codigo), "127.0.0.1", CancellationToken.None);
+                new PeticionVerificarAlta(Correo, codigo, Contrasena, Contrasena),
+                "127.0.0.1", CancellationToken.None);
 
             Assert.True(primera.EsExito);
         }
@@ -211,7 +253,8 @@ public sealed class VerificacionDeAltaPruebas : IAsyncLifetime
         await using (var baseDeDatos = Contexto())
         {
             var segunda = await Servicio(baseDeDatos).VerificarAsync(
-                new PeticionVerificarAlta(Correo, codigo), "127.0.0.1", CancellationToken.None);
+                new PeticionVerificarAlta(Correo, codigo, Contrasena, Contrasena),
+                "127.0.0.1", CancellationToken.None);
 
             Assert.True(segunda.EsFallo);
             Assert.Single(await baseDeDatos.Users.Where(u => u.Email == Correo).ToListAsync());
@@ -224,7 +267,7 @@ public sealed class VerificacionDeAltaPruebas : IAsyncLifetime
     /// </summary>
     private static string ExtraerCodigo(string cuerpo)
     {
-        var codigo = System.Text.RegularExpressions.Regex.Match(cuerpo, @"<strong>(\d{6})</strong>");
+        var codigo = System.Text.RegularExpressions.Regex.Match(cuerpo, @"\b(\d{6})\b");
 
         Assert.True(codigo.Success, "El correo del código tiene que llevar los seis dígitos.");
 

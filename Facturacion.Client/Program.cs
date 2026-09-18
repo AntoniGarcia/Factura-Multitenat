@@ -38,6 +38,8 @@ builder.Services.AddScoped<ServicioDeClientesDePlataforma>();
 builder.Services.AddScoped<ServicioDeUsuariosDePlataforma>();
 builder.Services.AddScoped<ServicioDeTableroDeOperador>();
 builder.Services.AddScoped<ServicioDePerfilDeOperador>();
+builder.Services.AddScoped<ServicioDeOperadores>();
+builder.Services.AddScoped<ServicioDeConfiguracionDelSistema>();
 builder.Services.AddSingleton<ServicioDeTema>();
 builder.Services.AddSingleton<EstadoDeEncabezado>();
 
@@ -64,13 +66,21 @@ builder.Services.AddScoped<IServicioDeConfirmacion, ServicioDeConfirmacion>();
 builder.Services.AddScoped<IServicioModalCatalogo, ServicioModalCatalogo>();
 builder.Services.AddSingleton<IServicioDeVersion, ServicioDeVersion>();
 builder.Services.AddSingleton<ServicioDeInstalacion>();
+builder.Services.AddSingleton<ServicioDeDescargas>();
 
 // Las mismas seis políticas que el Server, desde la misma lista: el Client las necesita para
 // enrutar y para ocultar lo que no aplica. Es comodidad visual, NO protección — el Server
 // rechaza igual la operación aunque alguien llegue a la ruta a mano (ARQUITECTURA.md §4).
 builder.Services.AddAuthorizationCore(opciones =>
 {
-    foreach (var permiso in Permisos.Todos)
+    foreach (var permiso in Facturacion.Shared.Comun.Permisos.Todos)
+        opciones.AddPolicy(permiso, politica => politica
+            .RequireAuthenticatedUser()
+            .RequireClaim(ClavesDeClaim.Permiso, permiso));
+
+    // Las trece del panel del proveedor, igual que el Server: ver/administrar por sección.
+    // Misma advertencia que las de arriba: aquí solo sirven para enrutar y ocultar.
+    foreach (var permiso in Facturacion.Shared.Operador.PermisosDePanel.Todos)
         opciones.AddPolicy(permiso, politica => politica
             .RequireAuthenticatedUser()
             .RequireClaim(ClavesDeClaim.Permiso, permiso));

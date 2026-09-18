@@ -3,6 +3,7 @@ using Facturacion.Server.Modules.Documentos.Salidas;
 using Facturacion.Server.Modules.Operador.Auth;
 using Facturacion.Server.Modules.Operador.Clientes;
 using Facturacion.Server.Modules.Operador.Compras;
+using Facturacion.Server.Modules.Operador.Configuracion;
 using Facturacion.Server.Modules.Operador.Membresias;
 using Facturacion.Server.Modules.Operador.Paquetes;
 using Facturacion.Server.Modules.Operador.Tablero;
@@ -12,7 +13,7 @@ namespace Facturacion.Server.Modules.Operador;
 
 /// <summary>
 /// Punto de entrada del panel del proveedor del SaaS: administración de los paquetes que se
-/// venden, acreditación de pagos y consulta de las cuentas contratantes.
+/// venden, acreditación de pagos, consulta de las cuentas contratantes y gestión de operadores.
 ///
 /// <para>
 /// Es un módulo aparte del de plataforma aunque compartan base de datos, porque atiende a la
@@ -32,12 +33,15 @@ public static class OperadorModule
         servicios.AddScoped<ServicioDeRefreshTokensDeOperador>();
         servicios.AddScoped<ServicioDeAutenticacionDeOperador>();
         servicios.AddScoped<ServicioDePerfilDeOperador>();
+        servicios.AddScoped<ServicioDeOperadores>();
         servicios.AddScoped<ServicioDePaquetesDeOperador>();
+        servicios.AddScoped<ServicioDePaquetesPersonalizados>();
         servicios.AddScoped<ServicioDeComprasDeOperador>();
         servicios.AddScoped<ServicioDeClientesDePlataforma>();
         servicios.AddScoped<ServicioDeUsuariosDePlataforma>();
         servicios.AddScoped<ServicioDeMembresias>();
         servicios.AddScoped<ServicioDeTableroDeOperador>();
+        servicios.AddScoped<ServicioDeConfiguracionDelSistema>();
 
         return servicios;
     }
@@ -45,11 +49,13 @@ public static class OperadorModule
     public static WebApplication MapOperador(this WebApplication aplicacion)
     {
         aplicacion.MapOperadorAuth();
+        aplicacion.MapOperadores();
         aplicacion.MapPaquetesDeOperador();
         aplicacion.MapComprasDeOperador();
         aplicacion.MapClientesDePlataforma();
         aplicacion.MapUsuariosDePlataforma();
         aplicacion.MapMembresiasYTablero();
+        aplicacion.MapConfiguracionDelSistema();
 
         return aplicacion;
     }

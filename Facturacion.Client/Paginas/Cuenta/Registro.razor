@@ -39,7 +39,7 @@
                     <label for="correo">Correo</label>
                     <input id="correo" type="email" autocomplete="email" maxlength="254"
                            value="@_correo" @oninput="AlEscribirCorreo" />
-                    <p class="campo-ayuda">Aquí llegará tu código y, después, tu contraseña.</p>
+                    <p class="campo-ayuda">Aquí llegará tu código de verificación.</p>
                 </div>
             </div>
 
@@ -88,6 +88,32 @@
                 <p class="campo-ayuda">Seis dígitos. Caduca a los 20 minutos.</p>
             </div>
 
+            <div class="acceso-rejilla">
+                <div class="campo">
+                    <label for="contrasena">Contraseña</label>
+                    <input id="contrasena" type="password" autocomplete="new-password" maxlength="128"
+                           value="@_contrasena" @oninput="AlEscribirContrasena" />
+                    <p class="campo-ayuda">12 caracteres, con mayúscula, minúscula y número.</p>
+                </div>
+
+                <div class="campo">
+                    <label for="confirmacion-contrasena">Repite la contraseña</label>
+                    <input id="confirmacion-contrasena" type="password" autocomplete="new-password"
+                           maxlength="128" value="@_confirmacionContrasena"
+                           @oninput="AlEscribirConfirmacion" />
+                </div>
+            </div>
+
+            @if (!string.IsNullOrEmpty(_contrasena) && !ContrasenaCumpleForma)
+            {
+                <p class="texto-error">La contraseña todavía no cumple los requisitos.</p>
+            }
+
+            @if (!string.IsNullOrEmpty(_confirmacionContrasena) && _contrasena != _confirmacionContrasena)
+            {
+                <p class="texto-error">Las dos contraseñas no coinciden.</p>
+            }
+
             <PanelErrores Problema="_problema" />
         }
 
@@ -125,15 +151,15 @@
             }
             else
             {
-                <button type="button" @onclick="Verificar" disabled="@(_enviando || !CodigoCompleto)">
-                    @(_enviando ? "Verificando…" : "Verificar")
+                <button type="button" @onclick="Verificar" disabled="@(_enviando || !PuedeVerificar)">
+                    @(_enviando ? "Creando…" : "Crear cuenta")
                 </button>
             }
         </div>
     }
     else
     {
-        <h1>Revisa tu correo</h1>
+        <h1>Cuenta lista</h1>
         <p class="acceso-nota" role="status">@_mensaje</p>
 
         <div class="acciones-acceso">
@@ -151,6 +177,8 @@
     private string _correo = string.Empty;
     private string _nombreCuenta = string.Empty;
     private string _codigo = string.Empty;
+    private string _contrasena = string.Empty;
+    private string _confirmacionContrasena = string.Empty;
 
     private DetalleProblema? _problema;
 
@@ -167,7 +195,7 @@
         0 => "Crear cuenta",
         1 => "Nombra tu cuenta",
         2 => "Revisa y confirma",
-        _ => "Verifica tu correo"
+        _ => "Verifica y protege tu cuenta"
     };
 
     private string AyudaDelPaso => _paso switch
@@ -175,7 +203,7 @@
         0 => "Con estos datos entras al sistema.",
         1 => "Las empresas con las que vas a facturar se dan de alta después, en «Datos fiscales».",
         2 => "Te mandamos un código para comprobar que el correo es tuyo.",
-        _ => $"Escribe el código que mandamos a {_correo}."
+        _ => $"Escribe el código que mandamos a {_correo} y elige tu contraseña."
     };
 
     /// <summary>Comprobación de forma, no de existencia; la de verdad la hace el servidor.</summary>
@@ -190,6 +218,15 @@
 
     private bool CodigoCompleto => _codigo.Length == 6;
 
+    private bool ContrasenaCumpleForma =>
+        _contrasena.Length >= 12 &&
+        _contrasena.Any(char.IsUpper) &&
+        _contrasena.Any(char.IsLower) &&
+        _contrasena.Any(char.IsDigit);
+
+    private bool PuedeVerificar =>
+        CodigoCompleto && ContrasenaCumpleForma && _contrasena == _confirmacionContrasena;
+
     private string NombreDeCuenta =>
         string.IsNullOrWhiteSpace(_nombreCuenta) ? _nombre : _nombreCuenta.Trim();
 
@@ -198,6 +235,12 @@
     private void AlEscribirCorreo(ChangeEventArgs e) => _correo = e.Value?.ToString() ?? string.Empty;
 
     private void AlEscribirCuenta(ChangeEventArgs e) => _nombreCuenta = e.Value?.ToString() ?? string.Empty;
+
+    private void AlEscribirContrasena(ChangeEventArgs e)
+        => _contrasena = e.Value?.ToString() ?? string.Empty;
+
+    private void AlEscribirConfirmacion(ChangeEventArgs e)
+        => _confirmacionContrasena = e.Value?.ToString() ?? string.Empty;
 
     /// <summary>
     /// Se queda solo con los dígitos: quien copia el código del correo se trae espacios o un
@@ -253,7 +296,8 @@
         _problema = null;
 
         var (exito, error) = await Sesion.VerificarAltaAsync(
-            new PeticionVerificarAlta(_correo.Trim(), _codigo));
+            new PeticionVerificarAlta(
+                _correo.Trim(), _codigo, _contrasena, _confirmacionContrasena));
 
         _enviando = false;
         _problema = error;

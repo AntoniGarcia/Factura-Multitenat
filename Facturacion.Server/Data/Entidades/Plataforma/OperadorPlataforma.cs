@@ -45,6 +45,13 @@ public sealed class OperadorPlataforma
     /// </summary>
     public bool Activo { get; set; } = true;
 
+    /// <summary>
+    /// Dueño del SaaS (el que creó la BD). No se puede desactivar ni eliminar desde el panel
+    /// para evitar que cualquier sesión, incluyendo la suya, deje la plataforma sin administrador.
+    /// Se marca el primer operador creado por consola.
+    /// </summary>
+    public bool EsPrincipal { get; set; }
+
     public DateTime FechaAltaUtc { get; set; }
 
     public DateTime? UltimoAccesoUtc { get; set; }
@@ -63,4 +70,7 @@ public sealed class OperadorPlataforma
     public int BloqueosConsecutivos { get; set; }
 
     public ICollection<RefreshTokenOperador> RefreshTokens { get; set; } = [];
+
+    /// <summary>Permisos asignados a este operador. Claves de <see cref="Facturacion.Shared.Comun.Permisos"/>.</summary>
+    public ICollection<PermisoOperador> Permisos { get; set; } = [];
 }

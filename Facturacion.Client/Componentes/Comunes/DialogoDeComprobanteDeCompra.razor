@@ -1,0 +1,58 @@
+@implements IAsyncDisposable
+@inject ServicioDeDescargas Descargas
+
+<MudDialog Class="dialogo-comprobante-compra">
+    <DialogContent>
+        <div class="vista-previa-comprobante" aria-busy="@(_url is null)">
+            @if (_url is null)
+            {
+                <div class="vista-previa-cargando">
+                    <MudProgressCircular Indeterminate="true" Color="Color.Primary" />
+                    <span>Preparando vista previa…</span>
+                </div>
+            }
+            else
+            {
+                <iframe src="@_url" title="Vista previa del comprobante de compra"></iframe>
+            }
+        </div>
+
+        <p class="seccion-ayuda comprobante-aviso-fiscal">
+            Documento interno sin validez fiscal. Todavía no incluye IVA ni timbrado.
+        </p>
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="Cerrar">Cerrar</MudButton>
+        <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="Descargar">
+            Descargar PDF
+        </MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter]
+    private IMudDialogInstance Dialogo { get; set; } = default!;
+
+    [Parameter, EditorRequired]
+    public ArchivoParaDescarga Archivo { get; set; } = default!;
+
+    private string? _url;
+
+    protected override async Task OnAfterRenderAsync(bool primeraRenderizacion)
+    {
+        if (!primeraRenderizacion) return;
+
+        _url = await Descargas.CrearVistaPreviaAsync(Archivo);
+        StateHasChanged();
+    }
+
+    private async Task Descargar() => await Descargas.GuardarAsync(Archivo);
+
+    private void Cerrar() => Dialogo.Close();
+
+    public async ValueTask DisposeAsync()
+    {
+        if (_url is not null)
+            await Descargas.LiberarVistaPreviaAsync(_url);
+    }
+}

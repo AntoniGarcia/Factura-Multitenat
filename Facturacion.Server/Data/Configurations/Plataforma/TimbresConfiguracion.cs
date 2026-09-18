@@ -20,7 +20,12 @@ public sealed class PaqueteConfiguracion : IEntityTypeConfiguration<Paquete>
         constructor.Property(p => p.PrecioPorTimbre).HasPrecision(18, 6);
         constructor.Property(p => p.PrecioTotal).HasPrecision(18, 6);
 
-        constructor.HasIndex(p => new { p.Activo, p.Orden });
+        constructor.HasOne(p => p.Empresa)
+            .WithMany()
+            .HasForeignKey(p => p.EmpresaId)
+            .OnDelete(DeleteBehavior.Restrict);
+
+        constructor.HasIndex(p => new { p.EmpresaId, p.Activo, p.Orden });
 
         // Los paquetes son catálogo del producto, no datos de un inquilino: van en la
         // migración igual que los permisos, para que existan en cualquier entorno sin
@@ -176,10 +181,15 @@ public sealed class CompraTimbresConfiguracion : IEntityTypeConfiguration<Compra
 
         constructor.HasKey(c => c.Id);
 
+        constructor.Property(c => c.EmpresaNombreAlComprar).HasMaxLength(254);
+        constructor.Property(c => c.EmpresaRfcAlComprar).HasMaxLength(13);
         constructor.Property(c => c.NombrePaquete).HasMaxLength(100);
         constructor.Property(c => c.Estado).HasMaxLength(20);
         constructor.Property(c => c.PrecioPorTimbre).HasPrecision(18, 6);
         constructor.Property(c => c.PrecioTotal).HasPrecision(18, 6);
+        constructor.Property(c => c.Subtotal).HasPrecision(18, 6);
+        constructor.Property(c => c.Iva).HasPrecision(18, 6);
+        constructor.Property(c => c.TasaIva).HasPrecision(18, 6);
         constructor.Property(c => c.MotivoCancelacion).HasMaxLength(300);
 
         // Sin llave foránea al paquete: el paquete es catálogo vivo y la compra ya copió lo

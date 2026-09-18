@@ -1,6 +1,7 @@
 using System.Security.Cryptography;
 using Facturacion.Server.Data;
 using Facturacion.Server.Data.Entidades.Plataforma;
+using Facturacion.Shared.Operador;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 
@@ -60,7 +61,11 @@ public static class OperadoresCli
             CorreoNormalizado = normalizado,
             HashContrasena = string.Empty,
             Activo = true,
-            FechaAltaUtc = DateTime.UtcNow
+            FechaAltaUtc = DateTime.UtcNow,
+            // El primer operador creado por consola es el dueño del SaaS: nace con los
+            // trece permisos del panel y la marca de principal (no se puede desactivar).
+            EsPrincipal = !await baseDeDatos.OperadoresPlataforma.AnyAsync(o => o.EsPrincipal),
+            Permisos = PermisosDePanel.Todos.Select(p => new PermisoOperador { Permiso = p }).ToList()
         };
 
         operador.HashContrasena = hasher.HashPassword(operador, contrasena);
@@ -74,6 +79,53 @@ public static class OperadoresCli
         Console.WriteLine($"  Contraseña: {contrasena}");
         Console.WriteLine();
         Console.WriteLine("Esta contraseña no se vuelve a mostrar. Entrégala por un medio seguro.");
+        Console.WriteLine(); 
+
+        return 0;
+    }
+
+    /// <summary>
+    /// Restablece la contraseña de un operador por su correo. Igual que el alta, esto vive en
+    /// consola: quien puede cambiarla es el dueño del servidor, no una sesión del panel.
+    /// </summary>
+    public static async Task<int> CambiarContrasenaAsync(
+        IServiceProvider servicios, string correo, string contrasena)
+    {
+        if (string.IsNullOrWhiteSpace(correo) || !correo.Contains('@'))
+        {
+            Console.Error.WriteLine("El correo no es válido.");
+            return 1;
+        }
+
+        if (string.IsNullOrWhiteSpace(contrasena))
+        {
+            Console.Error.WriteLine("Falta la contraseña.");
+            return 1;
+        }
+
+        using var ambito = servicios.CreateScope();
+        var proveedor = ambito.ServiceProvider;
+
+        var baseDeDatos = proveedor.GetRequiredService<AppDbContext>();
+        var hasher = proveedor.GetRequiredService<IPasswordHasher<OperadorPlataforma>>();
+
+        var normalizado = correo.Trim().ToUpperInvariant();
+        var operador = await baseDeDatos.OperadoresPlataforma
+            .SingleOrDefaultAsync(o => o.CorreoNormalizado == normalizado);
+
+        if (operador is null)
+        {
+            Console.Error.WriteLine($"No existe un operador con el correo {correo}.");
+            return 1;
+        }
+
+        operador.HashContrasena = hasher.HashPassword(operador, contrasena);
+
+        await baseDeDatos.SaveChangesAsync();
+
+        Console.WriteLine();
+        Console.WriteLine("Contraseña restablecida.");
+        Console.WriteLine($"  Correo: {operador.Correo}");
         Console.WriteLine();
 
         return 0;

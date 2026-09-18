@@ -121,6 +121,12 @@ public sealed record RespuestaDeTimbradoDto(
     string Estatus);
 
 /// <summary>
+/// Capacidad fiscal real del servidor. <c>false</c> significa que el entorno permite trabajar
+/// con borradores, pero no debe ofrecer acciones que contacten al PAC.
+/// </summary>
+public sealed record EstadoDeIntegracionFiscalDto(bool TimbradoDisponible);
+
+/// <summary>
 /// Un renglón del listado de documentos (§1.2 del documento funcional). El folio va nulo
 /// mientras el comprobante no se timbre: no se muestra antes (ARQUITECTURA.md §5).
 /// </summary>

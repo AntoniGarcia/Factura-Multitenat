@@ -1,0 +1,16 @@
+<MudDialog>
+    <DialogContent>
+        <EditorDePaquete EnDialogo="true"
+                         Guardado="CerrarConExito"
+                         Cancelado="Cancelar" />
+    </DialogContent>
+</MudDialog>
+
+@code {
+    [CascadingParameter]
+    private IMudDialogInstance Dialogo { get; set; } = default!;
+
+    private void CerrarConExito() => Dialogo.Close(DialogResult.Ok(true));
+
+    private void Cancelar() => Dialogo.Cancel();
+}

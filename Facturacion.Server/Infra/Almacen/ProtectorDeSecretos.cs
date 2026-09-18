@@ -18,6 +18,17 @@ public interface IProtectorDeSecretos
     string Descifrar(Guid empresaId, string cifrado);
 }
 
+/// <summary>
+/// Protege secretos globales del SaaS. Usa un propósito distinto al de los CSD para que una
+/// credencial SMTP no pueda descifrarse con el protector ligado a una empresa.
+/// </summary>
+public interface IProtectorDeSecretosDelSistema
+{
+    string Cifrar(string secreto);
+
+    string Descifrar(string cifrado);
+}
+
 public sealed class ProtectorDeSecretos(IDataProtectionProvider protecciones) : IProtectorDeSecretos
 {
     public string Cifrar(Guid empresaId, string secreto) => Protector(empresaId).Protect(secreto);
@@ -26,4 +37,15 @@ public sealed class ProtectorDeSecretos(IDataProtectionProvider protecciones) : 
 
     private IDataProtector Protector(Guid empresaId)
         => protecciones.CreateProtector("Facturacion.Secretos.v1", empresaId.ToString());
+}
+
+public sealed class ProtectorDeSecretosDelSistema(IDataProtectionProvider protecciones)
+    : IProtectorDeSecretosDelSistema
+{
+    private readonly IDataProtector _protector =
+        protecciones.CreateProtector("Facturacion.SecretosDelSistema.v1");
+
+    public string Cifrar(string secreto) => _protector.Protect(secreto);
+
+    public string Descifrar(string cifrado) => _protector.Unprotect(cifrado);
 }

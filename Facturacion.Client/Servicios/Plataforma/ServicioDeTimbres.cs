@@ -14,7 +14,9 @@ namespace Facturacion.Client.Servicios.Plataforma;
 /// modificable, así que nada de lo que salga de aquí puede decidir cuánto se cobra
 /// (ARQUITECTURA.md §3 y §4).
 /// </summary>
-public sealed class ServicioDeTimbres(IHttpClientFactory fabrica) : IIndicadorDeTimbres
+public sealed class ServicioDeTimbres(
+    IHttpClientFactory fabrica,
+    ServicioDeDescargas descargas) : IIndicadorDeTimbres
 {
     private HttpClient Cliente => fabrica.CreateClient(ClientesHttp.Api);
 
@@ -33,6 +35,30 @@ public sealed class ServicioDeTimbres(IHttpClientFactory fabrica) : IIndicadorDe
 
     public async Task<IReadOnlyList<CompraDto>> ComprasAsync(CancellationToken ct = default)
         => await Cliente.GetFromJsonAsync<IReadOnlyList<CompraDto>>("api/timbres/compras", ct) ?? [];
+
+    public async Task<DetalleProblema?> DescargarComprobanteAsync(
+        Guid compraId, CancellationToken ct = default)
+    {
+        var (archivo, error) = await ObtenerComprobanteAsync(compraId, ct);
+
+        if (archivo is not null)
+            await descargas.GuardarAsync(archivo);
+
+        return error;
+    }
+
+    public async Task<(ArchivoParaDescarga? Archivo, DetalleProblema? Error)> ObtenerComprobanteAsync(
+        Guid compraId, CancellationToken ct = default)
+    {
+        using var respuesta = await Cliente.GetAsync($"api/timbres/compras/{compraId}/comprobante", ct);
+
+        if (!respuesta.IsSuccessStatusCode)
+            return (null, await respuesta.Content.ReadFromJsonAsync<DetalleProblema>(ct));
+
+        var contenido = await respuesta.Content.ReadAsByteArrayAsync(ct);
+        return (new ArchivoParaDescarga(
+            $"comprobante-compra-{compraId:N}.pdf", "application/pdf", contenido), null);
+    }
 
     /// <summary>
     /// La membresía puede no existir todavía, y el servidor responde 204 en ese caso. Sin este

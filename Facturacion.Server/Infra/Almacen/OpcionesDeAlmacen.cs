@@ -13,11 +13,15 @@ public sealed class OpcionesDeAlmacen
     /// <summary>
     /// Carpeta raíz de los archivos cifrados. <b>Fuera de <c>wwwroot</c></b>: nada aquí
     /// dentro se sirve como archivo estático, todo pasa por un endpoint autorizado.
-    /// Relativa se resuelve contra la raíz de contenido de la aplicación.
+    /// En Development una ruta relativa se resuelve contra la raíz de contenido. Fuera de
+    /// Development debe configurarse una ruta absoluta y persistente.
     /// </summary>
     public string Raiz { get; init; } = "almacenamiento";
 
-    /// <summary>Carpeta del llavero de Data Protection. También fuera de <c>wwwroot</c>.</summary>
+    /// <summary>
+    /// Carpeta del llavero de Data Protection. También fuera de <c>wwwroot</c>; fuera de
+    /// Development debe ser absoluta y persistente.
+    /// </summary>
     public string RutaLlavero { get; init; } = "almacenamiento/llavero";
 
     /// <summary>

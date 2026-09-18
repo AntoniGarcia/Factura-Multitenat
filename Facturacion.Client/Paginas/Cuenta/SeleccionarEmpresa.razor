@@ -33,6 +33,14 @@
     private DetalleProblema? _problema;
     private bool _cambiando;
 
+    protected override void OnInitialized()
+    {
+        // También protege el acceso directo o un marcador viejo: una cuenta sin empresas
+        // no tiene nada que elegir y debe completar primero el alta de la emisora.
+        if (Sesion.Sesion is { Empresas.Count: 0 })
+            Navegacion.NavigateTo("/empresa/nueva", replace: true);
+    }
+
     private async Task Elegir(Guid empresaId)
     {
         _cambiando = true;

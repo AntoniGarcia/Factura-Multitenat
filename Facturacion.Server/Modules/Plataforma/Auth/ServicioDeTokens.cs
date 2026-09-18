@@ -65,18 +65,20 @@ public sealed class ServicioDeTokens(IOptions<OpcionesDeJwt> opciones)
     }
 
     /// <summary>
-    /// Emite el access token del operador del SaaS. Lleva exactamente tres claims —operador,
-    /// familia y jti— y ninguno de tenencia.
+    /// Emite el access token del operador del SaaS. Lleva claims de operador, familia,
+    /// jti y permisos del operador.
     ///
     /// <para><b>Por qué un método aparte y no un parámetro de <see cref="Emitir"/></b></para>
     /// Con una sola ruta de emisión, cualquier cambio futuro podría añadirle un claim de
     /// empresa al token del operador sin que nadie lo note. Separados, el token del operador
     /// se arma en un sitio donde la empresa ni siquiera está disponible.
+    /// </para>
     ///
     /// <para><b>Audiencia distinta</b></para>
     /// El sufijo hace que los dos tipos de token no sean intercambiables ni aunque compartan
     /// la clave de firma: presentar uno del inquilino al panel falla en la validación de la
     /// audiencia, o sea un 401 antes de llegar a mirar ningún claim.
+    /// </para>
     /// </summary>
     public TokenEmitido EmitirDeOperador(OperadorPlataforma operador, Guid familiaId)
     {
@@ -89,6 +91,11 @@ public sealed class ServicioDeTokens(IOptions<OpcionesDeJwt> opciones)
             new(ClavesDeClaim.Familia, familiaId.ToString()),
             new(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString())
         };
+
+        // Permisos del operador: misma clave que los inquilinos, así las políticas
+        // RequireClaim(ClavesDeClaim.Permiso, "configurar_empresa") funcionan igual.
+        var permisos = operador.Permisos.Select(p => p.Permiso).ToList();
+        claims.AddRange(permisos.Select(p => new Claim(ClavesDeClaim.Permiso, p)));
 
         var credenciales = new SigningCredentials(
             new SymmetricSecurityKey(Encoding.UTF8.GetBytes(_opciones.ClaveDeFirma)),

@@ -153,4 +153,22 @@ public sealed class ServicioDeRefreshTokensDeOperador(
 
     private static string? Recortar(string? valor, int tope)
         => valor is null || valor.Length <= tope ? valor : valor[..tope];
+
+    /// <summary>Revoca todas las familias de refresh tokens de un operador. Se usa al desactivarlo.</summary>
+    public async Task<int> InvalidarTodasLasFamiliasDelOperadorAsync(
+        Guid operadorId, string motivo, CancellationToken ct)
+    {
+        var familias = await baseDeDatos.RefreshTokensOperador
+            .Where(t => t.OperadorId == operadorId && t.RevocadoUtc == null)
+            .Select(t => t.FamiliaId)
+            .Distinct()
+            .ToListAsync(ct);
+
+        var totalRevocados = 0;
+
+        foreach (var familiaId in familias)
+            totalRevocados += await InvalidarFamiliaAsync(familiaId, motivo, ct);
+
+        return totalRevocados;
+    }
 }

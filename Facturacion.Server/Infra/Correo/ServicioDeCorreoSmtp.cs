@@ -1,27 +1,27 @@
 using System.Net;
 using System.Net.Mail;
-using Microsoft.Extensions.Options;
 
 namespace Facturacion.Server.Infra.Correo;
 
 /// <summary>Envío real por SMTP, con la cuenta propia del SaaS (ARQUITECTURA.md §6).</summary>
 public sealed class ServicioDeCorreoSmtp(
-    IOptions<OpcionesDeCorreo> opciones, ILogger<ServicioDeCorreoSmtp> registro) : IServicioDeCorreo
+    IProveedorDeConfiguracionDelSistema configuracion,
+    ILogger<ServicioDeCorreoSmtp> registro) : IServicioDeCorreo
 {
-    private readonly OpcionesDeCorreo _opciones = opciones.Value;
-
     public async Task EnviarAsync(
         string destinatario, string asunto, string cuerpoHtml, CancellationToken ct, string? responderA = null)
     {
-        using var cliente = new SmtpClient(_opciones.Servidor, _opciones.Puerto)
+        var config = (await configuracion.ObtenerAsync(ct)).Correo;
+
+        using var cliente = new SmtpClient(config.Servidor, config.Puerto)
         {
-            EnableSsl = _opciones.UsarTls,
-            Credentials = new NetworkCredential(_opciones.Usuario, _opciones.Contrasena)
+            EnableSsl = config.UsarTls,
+            Credentials = new NetworkCredential(config.Usuario, config.Contrasena)
         };
 
         using var mensaje = new MailMessage
         {
-            From = new MailAddress(_opciones.RemitenteCorreo, _opciones.RemitenteNombre),
+            From = new MailAddress(config.RemitenteCorreo, config.RemitenteNombre),
             Subject = asunto,
             Body = cuerpoHtml,
             IsBodyHtml = true
@@ -42,8 +42,19 @@ public sealed class ServicioDeCorreoSmtp(
         {
             // No se relanza como error de negocio: quien invita no puede corregir un SMTP
             // caído, y lo que lo disparó ya quedó guardado. Se registra para que el operador lo vea.
-            registro.LogError(excepcion, "Falló el envío de correo a {Destinatario}", destinatario);
+            registro.LogError(
+                excepcion,
+                "Falló el envío de correo al dominio {DominioDestinatario}",
+                DominioDe(destinatario));
             throw;
         }
+    }
+
+    private static string DominioDe(string destinatario)
+    {
+        var separador = destinatario.LastIndexOf('@');
+        return separador >= 0 && separador < destinatario.Length - 1
+            ? destinatario[(separador + 1)..]
+            : "no-disponible";
     }
 }

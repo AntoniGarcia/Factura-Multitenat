@@ -20,11 +20,12 @@
 
 /*
   Rejilla que se acomoda sola: en escritorio caben tres o cuatro campos por renglón, y en
-  móvil cae a uno sin necesidad de una consulta de medios propia.
+  móvil cae a uno sin necesidad de una consulta de medios propia. El mínimo es corto de
+  propósito para que dos campos sigan cabiendo también en un diálogo angosto (Small).
 */
 .rejilla-campos {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(15rem, 1fr));
+    grid-template-columns: repeat(auto-fit, minmax(11rem, 1fr));
     gap: 0.75rem 1rem;
     margin-bottom: 0.5rem;
 }
@@ -36,14 +37,46 @@
     margin: 1.25rem 0;
 }
 
+/* ── Selector de permisos del panel ─────────────────────────────────────────────
+   Jerárquico: cada sección se abre con su «ver» y, dentro, sus acciones. Las secciones van en
+   una cuadrícula para no estirar el diálogo en alto, y las acciones se alinean bajo su sección
+   sin sangría: el ahorro de espacio es lo que pide la pantalla, no una jerarquía dibujada. */
+.permisos-secciones {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(12rem, 1fr));
+    gap: 0.25rem 1.5rem;
+}
+
+.seccion-permisos {
+    padding: 0.35rem 0.5rem;
+    border-radius: 6px;
+}
+
+.seccion-permisos > .mud-checkbox {
+    font-weight: 500;
+}
+
+.seccion-permisos.abierta {
+    background: var(--superficie);
+    border: 1px solid var(--borde);
+}
+
+.permisos-acciones {
+    margin-left: 0.25rem;
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(10rem, 1fr));
+    gap: 0 0.5rem;
+}
+
 /* ── Tarjeta de formulario ─────────────────────────────────────────────────────
    Marco centrado tipo tarjeta para los formularios de captura. El fondo de la página
    (--fondo) hace de lienzo; la tarjeta es la superficie donde se escribe. */
 .tarjeta-formulario {
     max-width: 60rem;
-    /* Alineada al mismo borde que el titulo de la pagina, no centrada: centrada dejaba la
-       tarjeta flotando respecto del h1 que la encabeza, y las dos cosas se leen como una. */
-    margin: 0;
+    /* Centrada, igual que el h1 que la encabeza en las páginas de formulario: título y
+       tarjeta se leen como una sola columna. En pantallas menores a 60rem la tarjeta ocupa
+       todo el ancho disponible y el margen automático no desplaza nada. */
+    margin: 0 auto;
     background: var(--superficie);
     border: 1px solid var(--borde);
     border-radius: var(--radio);
@@ -86,6 +119,16 @@
     gap: 0.75rem;
     margin-top: 1.5rem;
     padding-top: 1rem;
+    border-top: 1px solid var(--borde);
+}
+
+.acciones-editor-dialogo {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 0.75rem;
+    margin-top: 1.25rem;
+    padding-top: 0.875rem;
     border-top: 1px solid var(--borde);
 }
 
@@ -185,6 +228,16 @@
     display: flex;
     gap: 0.25rem;
     white-space: nowrap;
+}
+
+/* Fila de tabla que navega al hacer clic: el cursor lo anuncia y el enlace dentro de la
+   primera celda mantiene la operación con teclado. */
+.fila-navegable {
+    cursor: pointer;
+}
+
+.fila-navegable:hover {
+    background: var(--superficie-elevada);
 }
 
 .resumen-importacion {

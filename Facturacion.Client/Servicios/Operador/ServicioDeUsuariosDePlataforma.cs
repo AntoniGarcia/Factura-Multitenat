@@ -45,4 +45,32 @@ public sealed class ServicioDeUsuariosDePlataforma(IHttpClientFactory fabrica)
             ? null
             : await respuesta.Content.ReadFromJsonAsync<DetalleProblema>(ct);
     }
+
+    public async Task<DetalleProblema?> EliminarAccesoAsync(
+        Guid usuarioId, Guid empresaId, string motivo, CancellationToken ct = default)
+    {
+        var peticion = new HttpRequestMessage(HttpMethod.Delete,
+            $"api/operador/usuarios/{usuarioId}/empresas/{empresaId}/acceso")
+        {
+            Content = JsonContent.Create(new PeticionEliminarAccesoDeUsuario(motivo))
+        };
+
+        using var respuesta = await Cliente.SendAsync(peticion, ct);
+
+        return respuesta.IsSuccessStatusCode
+            ? null
+            : await respuesta.Content.ReadFromJsonAsync<DetalleProblema>(ct);
+    }
+
+    public async Task<DetalleProblema?> CambiarCorreoAsync(
+        Guid usuarioId, string correoNuevo, string contrasenaDelOperador, CancellationToken ct = default)
+    {
+        using var respuesta = await Cliente.PutAsJsonAsync(
+            $"api/operador/usuarios/{usuarioId}/correo",
+            new PeticionCambiarCorreoDeUsuario(correoNuevo, contrasenaDelOperador), ct);
+
+        return respuesta.IsSuccessStatusCode
+            ? null
+            : await respuesta.Content.ReadFromJsonAsync<DetalleProblema>(ct);
+    }
 }

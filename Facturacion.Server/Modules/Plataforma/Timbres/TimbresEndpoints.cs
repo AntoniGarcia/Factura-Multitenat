@@ -27,6 +27,8 @@ public static class TimbresEndpoints
 
         grupo.MapGet("/paquetes", Paquetes).RequireAuthorization(Permisos.ComprarTimbres);
         grupo.MapGet("/compras", Compras).RequireAuthorization(Permisos.ComprarTimbres);
+        grupo.MapGet("/compras/{id:guid}/comprobante", ComprobanteDeCompra)
+            .RequireAuthorization(Permisos.ComprarTimbres);
         grupo.MapGet("/movimientos", Movimientos).RequireAuthorization(Permisos.ComprarTimbres);
         grupo.MapGet("/movimientos/exportar", ExportarMovimientos).RequireAuthorization(Permisos.ComprarTimbres);
 
@@ -45,6 +47,19 @@ public static class TimbresEndpoints
 
     private static async Task<IResult> Compras(ServicioDeCompras compras, CancellationToken ct)
         => Results.Ok(await compras.ComprasAsync(ct));
+
+    private static async Task<IResult> ComprobanteDeCompra(
+        Guid id,
+        ServicioDeComprobantesDeCompra comprobantes,
+        HttpContext http,
+        CancellationToken ct)
+    {
+        var resultado = await comprobantes.GenerarParaEmpresaAsync(id, ct);
+
+        return resultado.EsExito
+            ? Results.File(resultado.Valor.Contenido, "application/pdf", resultado.Valor.Nombre)
+            : resultado.Error!.AResultado(http);
+    }
 
     private static async Task<IResult> Membresia(ServicioDeCompras compras, CancellationToken ct)
     {

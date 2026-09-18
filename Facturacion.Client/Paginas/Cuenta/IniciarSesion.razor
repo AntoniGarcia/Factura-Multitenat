@@ -77,7 +77,16 @@
         // Si algún día aparece otra forma de iniciar sesión, tiene que hacer lo mismo.
         await Catalogos.InicializarAsync();
 
-        // Con una sola empresa el token ya salió con ella activa; con varias hay que elegir.
-        Navegacion.NavigateTo("/");
+        // Una cuenta nueva todavía no tiene empresas: mandarla al selector dejaría una
+        // pantalla vacía porque no hay nada que elegir. Con una sola, el token ya sale con
+        // ella activa; solo las cuentas con varias y ninguna activa necesitan el selector.
+        var destino = Sesion.Sesion switch
+        {
+            { Empresas.Count: 0 } => "/empresa/nueva",
+            { EmpresaActivaId: null } => "/seleccionar-empresa",
+            _ => "/"
+        };
+
+        Navegacion.NavigateTo(destino);
     }
 }

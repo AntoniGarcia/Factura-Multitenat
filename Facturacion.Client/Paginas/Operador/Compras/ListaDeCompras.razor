@@ -37,6 +37,7 @@
             @ref="_tabla"
             Columnas="_columnas"
             CargarPagina="CargarAsync"
+            AlHacerClic="Previsualizar"
             TextoEntidad="compras"
             TextoSinDatos="No hay compras que coincidan." />
 
@@ -57,6 +58,7 @@
     private DetalleProblema? _error;
     private string? _aviso;
     private bool _trabajando;
+    private Guid? _previsualizando;
 
     // Arranca en lo pendiente, que es a lo que se entra a esta pantalla; para eso existe el
     // índice filtrado por ese estado en la base.
@@ -87,6 +89,20 @@
                                          OnClick="@(() => Rechazar(c))">
                                   Descartar
                               </MudButton>
+                          }
+                          else if (c.Estado == Estados.Pagada)
+                          {
+                              <span @onclick:stopPropagation="true">
+                                  <MudButton Size="Size.Small" Variant="Variant.Text"
+                                             Disabled="@(_trabajando || _previsualizando is not null)"
+                                             OnClick="@(() => Previsualizar(c))">
+                                      Ver
+                                  </MudButton>
+                                  <MudButton Size="Size.Small" Variant="Variant.Text"
+                                             Disabled="@_trabajando" OnClick="@(() => Descargar(c))">
+                                      Descargar PDF
+                                  </MudButton>
+                              </span>
                           }
                           else if (c.MotivoCancelacion is { } motivo)
                           {
@@ -174,6 +190,55 @@
         if (_error is null) _aviso = "Compra descartada.";
 
         await RecargarAsync();
+    }
+
+    private async Task Descargar(CompraDeOperadorDto compra)
+    {
+        if (_trabajando) return;
+
+        _trabajando = true;
+        _error = null;
+        _aviso = null;
+
+        try
+        {
+            _error = await Compras.DescargarComprobanteAsync(compra.Id);
+        }
+        finally
+        {
+            _trabajando = false;
+        }
+    }
+
+    private async Task Previsualizar(CompraDeOperadorDto compra)
+    {
+        if (compra.Estado != Estados.Pagada || _previsualizando is not null) return;
+
+        _previsualizando = compra.Id;
+        _error = null;
+        _aviso = null;
+
+        try
+        {
+            var (archivo, error) = await Compras.ObtenerComprobanteAsync(compra.Id);
+            _error = error;
+
+            if (archivo is null) return;
+
+            var parametros = new DialogParameters<DialogoDeComprobanteDeCompra>
+            {
+                { x => x.Archivo, archivo }
+            };
+
+            await Dialogos.ShowAsync<DialogoDeComprobanteDeCompra>(
+                $"Comprobante · {compra.EmpresaNombre}",
+                parametros,
+                new DialogOptions { MaxWidth = MaxWidth.ExtraLarge, FullWidth = true, CloseOnEscapeKey = true });
+        }
+        finally
+        {
+            _previsualizando = null;
+        }
     }
 
     private static string EstiloDe(string estado) => estado switch

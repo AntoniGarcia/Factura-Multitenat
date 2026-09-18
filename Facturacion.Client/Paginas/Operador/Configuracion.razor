@@ -2,11 +2,15 @@
 @layout LayoutDeOperador
 @attribute [Authorize(Policy = PoliticasDelPanel.PoliticaDeOperador)]
 @using Facturacion.Client.Componentes.Comunes
+@using Facturacion.Client.Paginas.Operador.Operadores
 @using Facturacion.Client.Servicios.Operador
 @using Facturacion.Client.Servicios.Plataforma
 @using Facturacion.Shared.Comun
+@using Facturacion.Shared.Operador
 @inject ServicioDePerfilDeOperador Perfil
 @inject ServicioDeSesionDeOperador Sesion
+@inject ServicioDeConfiguracionDelSistema ConfiguracionDelSistema
+@inject IDialogService Dialogos
 @inject NavigationManager Navegacion
 
 <PageTitle>Configuración</PageTitle>
@@ -50,7 +54,7 @@
     </div>
 
     <h2 class="seccion-titulo">Contraseña</h2>
-    <p class="seccion-ayuda">Al cambiarla se cierran todas las sesiones y tendrás que entrar de nuevo.</p>
+    <p class="seccion-ayuda">El cambio cierra tus sesiones abiertas.</p>
 
     <div class="rejilla-campos">
         <MudTextField @bind-Value="_contrasenaActual" Label="Contraseña actual"
@@ -77,6 +81,65 @@
         </MudButton>
     </div>
 
+    <h2 class="seccion-titulo">Correo saliente</h2>
+    <p class="seccion-ayuda">Remitente para los correos del sistema.</p>
+
+    @if (_sistemaCargando)
+    {
+        <p class="tabla-datos-estado">Cargando…</p>
+    }
+    else
+    {
+        <div class="rejilla-campos">
+            <MudTextField @bind-Value="_servidor" Label="Servidor SMTP" Placeholder="smtp.ejemplo.com" />
+            <MudTextField @bind-Value="_puertoTexto" Label="Puerto" Class="cifra-tabular" />
+            <MudTextField @bind-Value="_usuarioSmtp" Label="Usuario" />
+            <MudTextField @bind-Value="_contrasenaSmtpNueva" Label="Nueva contraseña SMTP"
+                          InputType="InputType.Password"
+                          HelperText="@(_contrasenaSmtpConfigurada ? "Configurada; déjala vacía para conservarla." : "Sin credencial configurada.")" />
+            <MudTextField @bind-Value="_remitenteCorreo" Label="Correo del remitente"
+                          InputType="InputType.Email" />
+            <MudTextField @bind-Value="_remitenteNombre" Label="Nombre del remitente" />
+        </div>
+
+        <div class="rejilla-campos">
+            <MudSwitch @bind-Value="_usarTls" Label="Usar conexión segura" Color="Color.Primary" />
+        </div>
+    }
+
+    <h2 class="seccion-titulo">Identidad del sistema</h2>
+
+    <div class="rejilla-campos">
+        <MudTextField @bind-Value="_nombreDelSistema" Label="Nombre del sistema"
+                      HelperText="Visible en correos y documentos."
+                      MaxLength="128" />
+    </div>
+
+    <h2 class="seccion-titulo">Mensajes del registro</h2>
+    <p class="seccion-ayuda">Variables disponibles: NOMBRE, CODIGO, MINUTOS y CORREO.</p>
+
+    <h3 class="seccion-subtitulo">Correo de verificación</h3>
+
+    <div class="rejilla-campos">
+        <MudTextField @bind-Value="_asuntoVerificacion" Label="Asunto" MaxLength="128" />
+    </div>
+    <MudTextField @bind-Value="_cuerpoVerificacion" Label="Mensaje" Lines="7" MaxLength="8000" />
+
+    <h3 class="seccion-subtitulo">Correo de bienvenida</h3>
+
+    <div class="rejilla-campos">
+        <MudTextField @bind-Value="_asuntoContrasena" Label="Asunto" MaxLength="128" />
+    </div>
+    <MudTextField @bind-Value="_cuerpoContrasena" Label="Mensaje" Lines="7" MaxLength="8000" />
+
+    <div class="acciones-formulario">
+        <MudButton Variant="Variant.Filled" Color="Color.Primary"
+                   Disabled="@(_sistemaCargando || _trabajando)"
+                   OnClick="GuardarConfiguracionDelSistema">
+            Guardar configuración del sistema
+        </MudButton>
+    </div>
+
 </TarjetaFormulario>
 
 @code {
@@ -92,6 +155,21 @@
     private string _contrasenaNueva = string.Empty;
     private string _contrasenaRepetida = string.Empty;
 
+    private bool _sistemaCargando = true;
+    private string _servidor = string.Empty;
+    private string _puertoTexto = string.Empty;
+    private string _usuarioSmtp = string.Empty;
+    private string _contrasenaSmtpNueva = string.Empty;
+    private bool _contrasenaSmtpConfigurada;
+    private string _remitenteCorreo = string.Empty;
+    private string _remitenteNombre = string.Empty;
+    private bool _usarTls = true;
+    private string _nombreDelSistema = string.Empty;
+    private string _asuntoVerificacion = string.Empty;
+    private string _cuerpoVerificacion = string.Empty;
+    private string _asuntoContrasena = string.Empty;
+    private string _cuerpoContrasena = string.Empty;
+
     private bool PuedeCambiarContrasena =>
         !_trabajando &&
         !string.IsNullOrWhiteSpace(_contrasenaActual) &&
@@ -104,6 +182,32 @@
 
         _nombre = sesion.Nombre;
         _correo = sesion.Correo;
+    }
+
+    protected override async Task OnAfterRenderAsync(bool primeraVez)
+    {
+        if (!primeraVez) return;
+
+        var configuracion = await ConfiguracionDelSistema.ObtenerAsync();
+
+        if (configuracion is not null)
+        {
+            _servidor = configuracion.Servidor;
+            _puertoTexto = configuracion.Puerto.ToString();
+            _usuarioSmtp = configuracion.Usuario;
+            _contrasenaSmtpConfigurada = configuracion.ContrasenaSmtpConfigurada;
+            _remitenteCorreo = configuracion.RemitenteCorreo;
+            _remitenteNombre = configuracion.RemitenteNombre;
+            _usarTls = configuracion.UsarTls;
+            _nombreDelSistema = configuracion.NombreDelSistema;
+            _asuntoVerificacion = configuracion.AsuntoVerificacion;
+            _cuerpoVerificacion = configuracion.CuerpoVerificacion;
+            _asuntoContrasena = configuracion.AsuntoContrasena;
+            _cuerpoContrasena = configuracion.CuerpoContrasena;
+        }
+
+        _sistemaCargando = false;
+        StateHasChanged();
     }
 
     private async Task GuardarNombre()
@@ -159,6 +263,68 @@
         // queda en memoria ya no sirve para nada.
         Sesion.Olvidar();
         Navegacion.NavigateTo("/operador/iniciar-sesion", replace: true);
+    }
+
+    private async Task GuardarConfiguracionDelSistema()
+    {
+        if (_trabajando || _sistemaCargando) return;
+
+        if (!int.TryParse(_puertoTexto, out var puerto) || puerto is < 1 or > 65535)
+        {
+            _error = new DetalleProblema(
+                Titulo: "Puerto no válido",
+                Detalle: "El puerto debe ser un número entre 1 y 65535.",
+                Estado: 400,
+                Tipo: "https://facturacion.com/errors/puerto-invalido",
+                Instancia: null,
+                TraceId: Guid.NewGuid().ToString("N"),
+                Errores: null);
+            return;
+        }
+
+        var parametros = new DialogParameters<DialogoConfirmarContrasenaOperador>
+        {
+            { x => x.Mensaje, "Vas a cambiar la configuración del correo saliente, el nombre del sistema y los mensajes del registro. Esto afecta a todos los correos que envía el SaaS." },
+            { x => x.TextoConfirmar, "Guardar cambios" }
+        };
+
+        var referencia = await Dialogos.ShowAsync<DialogoConfirmarContrasenaOperador>(
+            "Configuración del sistema", parametros);
+        var resultado = await referencia.Result;
+
+        if (resultado is not { Canceled: false, Data: string contrasena }) return;
+
+        _trabajando = true;
+        _error = null;
+        _aviso = null;
+
+        var peticion = new PeticionGuardarConfiguracionDelSistema(
+            _servidor.Trim(),
+            puerto,
+            _usuarioSmtp.Trim(),
+            string.IsNullOrWhiteSpace(_contrasenaSmtpNueva) ? null : _contrasenaSmtpNueva,
+            _remitenteCorreo.Trim(),
+            _remitenteNombre.Trim(),
+            _usarTls,
+            _nombreDelSistema.Trim(),
+            _asuntoVerificacion.Trim(),
+            _cuerpoVerificacion.Trim(),
+            _asuntoContrasena.Trim(),
+            _cuerpoContrasena.Trim(),
+            contrasena);
+
+        _error = await ConfiguracionDelSistema.GuardarAsync(peticion);
+
+        _trabajando = false;
+
+        if (_error is null)
+        {
+            if (!string.IsNullOrWhiteSpace(_contrasenaSmtpNueva))
+                _contrasenaSmtpConfigurada = true;
+
+            _contrasenaSmtpNueva = string.Empty;
+            _aviso = "Configuración del sistema guardada y aplicada.";
+        }
     }
 
 }

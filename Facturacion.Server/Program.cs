@@ -66,6 +66,15 @@ if (args is ["--crear-operador", var correoOperador, var nombreOperador])
     return;
 }
 
+// Restablecimiento de la contraseña de un operador. Va por consola por la misma razón que el
+// alta (ver OperadoresCli): quien puede hacerlo es el dueño del servidor.
+if (args is ["--cambiar-contrasena", var correoOperadorCon, var contrasenaOperador])
+{
+    Environment.ExitCode = await OperadoresCli.CambiarContrasenaAsync(
+        aplicacion.Services, correoOperadorCon, contrasenaOperador);
+    return;
+}
+
 // Antes de atender la primera petición: si un doble de prueba quedó registrado fuera de
 // Development, aquí revienta. Un doble que llega a producción no se nota — el sistema
 // responde y los datos son inventados (fase 9).

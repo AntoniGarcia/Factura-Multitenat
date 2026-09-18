@@ -54,19 +54,22 @@
     verdad, no leyendo el código (ARQUITECTURA.md §9): con este bug, "blazor.webassembly.js"
     del index.html publicado literalmente decía "blazor.webassembly#[.{fingerprint}].js".
 
-    La fase de "build" del Client sí resuelve los marcadores correctamente, y con el
-    mismo nombre huellado que termina existiendo de verdad en _framework/ —se comprobó
-    comparando los dos—, así que ese resultado se copia encima del index.html sin
-    procesar que deja la publicación.
+    La fase de "publish" del Client sí resuelve los marcadores con las mismas huellas
+    que terminan existiendo en _framework/. No sirve reutilizar el index de "build":
+    el enlazado de WebAssembly cambia algunas huellas durante la publicación.
   -->
   <Target Name="CorregirMarcadoresDeIndexHtml" AfterTargets="Publish">
+    <MSBuild
+      Projects="..\Facturacion.Client\Facturacion.Client.csproj"
+      Targets="Publish"
+      Properties="Configuration=$(Configuration);TargetFramework=$(TargetFramework)"
+      RemoveProperties="PublishDir;PublishUrl" />
     <ItemGroup>
       <_IndexHtmlResuelto Include="..\Facturacion.Client\obj\$(Configuration)\$(TargetFramework)\staticwebassets\htmlassetplaceholders\publish\*.html" />
-      <_IndexHtmlResuelto Include="..\Facturacion.Client\obj\$(Configuration)\$(TargetFramework)\staticwebassets\htmlassetplaceholders\build\*.html" Condition="'@(_IndexHtmlResuelto)' == ''" />
     </ItemGroup>
     <Error
       Condition="'@(_IndexHtmlResuelto)' == ''"
-      Text="No se encontró el index.html con los marcadores resueltos del Client (¿dotnet/runtime#121993 ya se corrigió? Si es así, esta corrección manual sobra y hay que quitarla)." />
+      Text="No se encontró el index.html publicado del Client con los marcadores resueltos (¿dotnet/runtime#121993 ya se corrigió? Si es así, esta corrección manual sobra y hay que quitarla)." />
     <Error
       Condition="'@(_IndexHtmlResuelto->Count())' &gt; 1"
       Text="Hay más de un index.html resuelto en obj/ del Client —probablemente restos de una publicación anterior—. Ejecuta 'dotnet clean' en Facturacion.Client antes de publicar." />

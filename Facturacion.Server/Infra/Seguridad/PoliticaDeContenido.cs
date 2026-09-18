@@ -61,6 +61,9 @@ public static partial class PoliticaDeContenido
         "connect-src 'self'; " +
         "manifest-src 'self'; " +
         "worker-src 'self'; " +
+        // La vista previa de comprobantes carga exclusivamente un Blob creado en memoria
+        // con bytes obtenidos por el cliente autenticado. No abre marcos externos.
+        "frame-src 'self' blob:; " +
         "frame-ancestors 'none'; " +
         "base-uri 'self'; " +
         "form-action 'self'; " +

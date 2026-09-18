@@ -1,5 +1,6 @@
 using Facturacion.Server.Infra.Errores;
 using Facturacion.Server.Infra.Idempotencia;
+using Facturacion.Server.Modules.Documentos.Pac;
 using Facturacion.Shared.Comun;
 using Facturacion.Shared.Documentos;
 
@@ -27,10 +28,17 @@ public static class TimbradoEndpoints
     {
         var grupo = rutas.MapGroup("/api/documentos").WithTags("Documentos");
 
+        grupo.MapGet("/integracion-fiscal", ObtenerEstadoDeIntegracion)
+            .RequireAuthorization(Permisos.Timbrar);
+
         grupo.MapPost("/{id:guid}/timbrar", Timbrar)
             .RequireAuthorization(Permisos.Timbrar)
             .AddEndpointFilter<FiltroDeIdempotencia>();
     }
+
+    private static IResult ObtenerEstadoDeIntegracion(IServiceProvider servicios)
+        => Results.Ok(new EstadoDeIntegracionFiscalDto(
+            servicios.GetService<IProveedorPac>() is not null));
 
     private static async Task<IResult> Timbrar(
         Guid id, ServicioDeTimbrado timbrado, HttpContext http, CancellationToken ct)

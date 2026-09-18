@@ -1,0 +1,49 @@
+@using MudBlazor
+
+@*
+    Diálogo genérico para pedir la contraseña del operador actual.
+    Se usa antes de operaciones sensibles: crear/editar operadores, cambiar permisos, activar/desactivar.
+*@
+
+<MudDialog>
+    <DialogContent>
+        <p class="seccion-ayuda">@Mensaje</p>
+
+        <MudTextField @bind-Value="_contrasena" Label="@EtiquetaCampo"
+                      InputType="@(_ver ? InputType.Text : InputType.Password)"
+                      Adornment="Adornment.End"
+                      AdornmentIcon="@(_ver ? Icons.Material.Filled.VisibilityOff : Icons.Material.Filled.Visibility)"
+                      OnAdornmentClick="@(() => _ver = !_ver)"
+                      Immediate="true" MaxLength="128"
+                      Required="true" />
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="Cancelar">Cancelar</MudButton>
+        <MudButton Variant="Variant.Filled" Color="Color.Primary" Disabled="@(!_puedeConfirmar)" OnClick="Confirmar">
+            @TextoConfirmar
+        </MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter]
+    private IMudDialogInstance Dialogo { get; set; } = default!;
+
+    [Parameter]
+    public string Mensaje { get; set; } = "Escribe tu contraseña de operador para continuar.";
+
+    [Parameter]
+    public string EtiquetaCampo { get; set; } = "Tu contraseña";
+
+    [Parameter]
+    public string TextoConfirmar { get; set; } = "Confirmar";
+
+    private string _contrasena = string.Empty;
+    private bool _ver;
+
+    private bool _puedeConfirmar => _contrasena.Length >= 12;
+
+    private void Confirmar() => Dialogo.Close(DialogResult.Ok(_contrasena));
+
+    private void Cancelar() => Dialogo.Cancel();
+}

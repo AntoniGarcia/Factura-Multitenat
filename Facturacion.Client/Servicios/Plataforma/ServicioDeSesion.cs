@@ -75,9 +75,9 @@ public sealed class ServicioDeSesion(IHttpClientFactory fabrica)
     }
 
     /// <summary>
-    /// Segundo paso del alta: canjea el código. Si el código es bueno, es aquí donde el
-    /// servidor crea la cuenta y manda la contraseña por correo. Tampoco inicia sesión: la
-    /// contraseña está en el correo, no en esta respuesta.
+    /// Segundo paso del alta: canjea el código y entrega la contraseña elegida. Si el código
+    /// es bueno, el servidor crea la cuenta y guarda únicamente el hash. No inicia sesión:
+    /// la persona entra después con las credenciales que acaba de establecer.
     /// </summary>
     public async Task<(RespuestaAltaVerificada? Exito, DetalleProblema? Error)> VerificarAltaAsync(
         PeticionVerificarAlta peticion)
