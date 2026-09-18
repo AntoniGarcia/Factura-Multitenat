@@ -21,6 +21,18 @@ public sealed class ServicioDeEmision(IHttpClientFactory fabrica)
     public Task<ComprobanteDto?> ObtenerAsync(Guid id, CancellationToken ct = default)
         => Cliente.GetFromJsonAsync<ComprobanteDto>($"api/documentos/{id}", ct);
 
+    /// <summary>
+    /// Versión sin excepción para paneles de consulta. El formulario conserva
+    /// <see cref="ObtenerAsync"/> porque ahí un documento inexistente impide continuar; en el
+    /// listado, en cambio, el error debe mostrarse sin desmontar toda la página.
+    /// </summary>
+    public async Task<(ComprobanteDto? Exito, DetalleProblema? Error)> ObtenerParaVistaPreviaAsync(
+        Guid id, CancellationToken ct = default)
+    {
+        using var respuesta = await Cliente.GetAsync($"api/documentos/{id}", ct);
+        return await LeerAsync<ComprobanteDto>(respuesta, ct);
+    }
+
     public async Task<EstadoDeIntegracionFiscalDto> ObtenerEstadoDeIntegracionAsync(
         CancellationToken ct = default)
         => await Cliente.GetFromJsonAsync<EstadoDeIntegracionFiscalDto>(

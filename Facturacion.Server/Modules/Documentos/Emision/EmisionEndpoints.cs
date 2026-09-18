@@ -35,10 +35,15 @@ public static class EmisionEndpoints
     private static async Task<IResult> CrearBorrador(ServicioDeEmision emision, CancellationToken ct)
         => Results.Ok(await emision.CrearBorradorAsync(ct));
 
-    private static async Task<IResult> Obtener(Guid id, ServicioDeEmision emision, CancellationToken ct)
+    private static async Task<IResult> Obtener(
+        Guid id, ServicioDeEmision emision, HttpContext http, CancellationToken ct)
     {
         var comprobante = await emision.ObtenerAsync(id, ct);
-        return comprobante is null ? Results.NotFound() : Results.Ok(comprobante);
+        return comprobante is null
+            ? ErrorNegocio
+                .NoEncontrado("comprobante-no-encontrado", "Ese comprobante no existe.")
+                .AResultado(http)
+            : Results.Ok(comprobante);
     }
 
     private static async Task<IResult> Guardar(

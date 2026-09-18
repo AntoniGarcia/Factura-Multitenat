@@ -4,6 +4,7 @@
 @using Facturacion.Shared.Comun
 @using Facturacion.Shared.Documentos
 @inject ServicioDeListado Listado
+@inject ServicioDeEmision Emision
 @inject ServicioDeCancelacion Cancelacion
 @inject NavigationManager Navegacion
 @inject IDialogService Dialogos
@@ -18,6 +19,20 @@
     <div class="aviso-documentos" role="status">@_aviso</div>
 }
 
+<div class="documentos-cabecera-acciones">
+    <MudButton Variant="Variant.Filled" Color="Color.Primary"
+               StartIcon="@Icons.Material.Filled.Add"
+               OnClick="@(() => Navegacion.NavigateTo("/facturas/nueva"))">
+        Nueva factura
+    </MudButton>
+    <MudButton Variant="Variant.Outlined"
+               StartIcon="@Icons.Material.Filled.Payments"
+               OnClick="@(() => Navegacion.NavigateTo("/pagos/nuevo"))">
+        Nuevo pago
+    </MudButton>
+</div>
+
+<section class="documentos-filtros" aria-label="Filtros de documentos">
 <div class="filtros-documentos">
     <MudTextField T="string"
                   Label="Buscar"
@@ -69,28 +84,140 @@
     <CampoFecha Label="Desde" ValorUtc="_desdeUtc" ValorUtcCambiado="AlCambiarDesde" />
     <CampoFecha Label="Hasta" ValorUtc="_hastaUtc" ValorUtcCambiado="AlCambiarHasta" />
 
-    @* Las dos acciones de emisión viven aquí desde que el menú dejó de tener «Nueva
-       factura» y «Nuevo pago»: se entra por donde se ve lo emitido y se crea desde ahí. *@
-    <div class="acciones-listado">
-        <MudButton Variant="Variant.Filled" Color="Color.Primary"
-                   StartIcon="@Icons.Material.Filled.Add"
-                   OnClick="@(() => Navegacion.NavigateTo("/facturas/nueva"))">
-            Nueva factura
-        </MudButton>
-        <MudButton Variant="Variant.Outlined"
-                   StartIcon="@Icons.Material.Filled.Payments"
-                   OnClick="@(() => Navegacion.NavigateTo("/pagos/nuevo"))">
-            Nuevo pago
-        </MudButton>
-    </div>
 </div>
+</section>
 
-<TablaDatos T="ComprobanteEnListaDto"
-            @ref="_tabla"
-            Columnas="_columnas"
-            CargarPagina="CargarAsync"
-            TextoEntidad="documentos"
-            TextoSinDatos="No hay documentos que coincidan." />
+<div class="documentos-area @(_seleccionado is null ? null : "documentos-area-con-vista")">
+    <section class="documentos-listado" aria-label="Resultados">
+        <TablaDatos T="ComprobanteEnListaDto"
+                    @ref="_tabla"
+                    Columnas="_columnas"
+                    CargarPagina="CargarAsync"
+                    AlHacerClic="Previsualizar"
+                    EsSeleccionado="EsSeleccionado"
+                    TextoEntidad="documentos"
+                    TextoSinDatos="No hay documentos que coincidan." />
+    </section>
+
+    @if (_seleccionado is { } seleccionado)
+    {
+        <aside class="vista-documento" aria-label="Vista previa del documento">
+            <header class="vista-documento-cabecera">
+                <div>
+                    <span class="vista-documento-sobretitulo">Vista previa</span>
+                    <h2>@Folio(seleccionado)</h2>
+                    <span>@seleccionado.ReceptorNombre</span>
+                </div>
+                <button type="button" class="vista-documento-cerrar" @onclick="CerrarVistaPrevia"
+                        aria-label="Cerrar vista previa" title="Cerrar">
+                    <MudIcon Icon="@Icons.Material.Filled.Close" Size="Size.Small" />
+                </button>
+            </header>
+
+            <div class="vista-documento-estado">
+                <IndicadorEstado Estatus="seleccionado.Estatus" />
+                <span class="cifra-tabular">@seleccionado.FechaEmisionUtc.ToLocalTime().ToString("dd/MM/yyyy")</span>
+            </div>
+
+            @if (_cargandoVista)
+            {
+                <div class="vista-documento-cargando" role="status">
+                    <MudProgressCircular Indeterminate="true" Size="Size.Small" />
+                    <span>Cargando documento…</span>
+                </div>
+            }
+            else if (_detalleSeleccionado is { } detalle)
+            {
+                <div class="vista-documento-cuerpo">
+                    <section>
+                        <h3>Receptor</h3>
+                        <strong>@detalle.ReceptorNombre</strong>
+                        <span class="cifra-tabular">@detalle.ReceptorRfc</span>
+                        @if (!string.IsNullOrWhiteSpace(detalle.ReceptorDomicilioFiscal))
+                        {
+                            <span>CP @detalle.ReceptorDomicilioFiscal · Régimen @detalle.ReceptorRegimenFiscal</span>
+                        }
+                        @if (!string.IsNullOrWhiteSpace(detalle.ReceptorUsoCfdi))
+                        {
+                            <span>Uso CFDI: @detalle.ReceptorUsoCfdi</span>
+                        }
+                    </section>
+
+                    <section>
+                        <h3>Conceptos</h3>
+                        @if (detalle.Conceptos.Count > 0)
+                        {
+                            <div class="vista-documento-conceptos">
+                                @foreach (var concepto in detalle.Conceptos)
+                                {
+                                    <div class="vista-documento-concepto">
+                                        <div>
+                                            <strong>@concepto.Descripcion</strong>
+                                            <span class="cifra-tabular">@concepto.Cantidad.ToString("N2") × @concepto.ValorUnitario.ToString("N2")</span>
+                                        </div>
+                                        <strong class="cifra-tabular">@concepto.Importe.ToString("N2")</strong>
+                                    </div>
+                                }
+                            </div>
+                        }
+                        else
+                        {
+                            <span>Consulta el documento completo para ver su información de pago.</span>
+                        }
+                    </section>
+
+                    <dl class="vista-documento-totales">
+                        <div><dt>Subtotal</dt><dd>@detalle.SubTotal.ToString("N2")</dd></div>
+                        @if (detalle.Descuento > 0)
+                        {
+                            <div><dt>Descuento</dt><dd>−@detalle.Descuento.ToString("N2")</dd></div>
+                        }
+                        <div><dt>Impuestos trasladados</dt><dd>@detalle.TotalImpuestosTrasladados.ToString("N2")</dd></div>
+                        @if (detalle.TotalImpuestosRetenidos > 0)
+                        {
+                            <div><dt>Impuestos retenidos</dt><dd>−@detalle.TotalImpuestosRetenidos.ToString("N2")</dd></div>
+                        }
+                        <div class="vista-documento-total"><dt>Total @detalle.Moneda</dt><dd>@detalle.Total.ToString("N2")</dd></div>
+                    </dl>
+
+                    @if (detalle.Uuid is { } uuid)
+                    {
+                        <section class="vista-documento-fiscal">
+                            <h3>Folio fiscal</h3>
+                            <span class="cifra-tabular">@uuid</span>
+                        </section>
+                    }
+                </div>
+            }
+
+            <footer class="vista-documento-acciones">
+                <MudButton Variant="Variant.Filled" Color="Color.Primary"
+                           StartIcon="@Icons.Material.Filled.OpenInNew"
+                           Disabled="@(_detalleSeleccionado is null)"
+                           OnClick="AbrirSeleccionado">
+                    Abrir
+                </MudButton>
+
+                <SiTienePermiso Permiso="@Permisos.Cancelar">
+                    @if (seleccionado.Estatus == EstatusComprobante.Timbrado)
+                    {
+                        <MudButton Variant="Variant.Outlined" Color="Color.Error"
+                                   Disabled="@_dialogoAbierto" OnClick="@(() => Cancelar(seleccionado))">
+                            Cancelar
+                        </MudButton>
+                    }
+
+                    @if (seleccionado.Uuid is not null)
+                    {
+                        <MudButton Variant="Variant.Text" OnClick="@(() => VerificarAnteSat(seleccionado))">
+                            Verificar SAT
+                        </MudButton>
+                    }
+                </SiTienePermiso>
+            </footer>
+        </aside>
+    }
+</div>
 
 @code {
     private static readonly EstatusComprobante[] Estatus = Enum.GetValues<EstatusComprobante>();
@@ -98,6 +225,10 @@
     private TablaDatos<ComprobanteEnListaDto>? _tabla;
     private DetalleProblema? _error;
     private string? _aviso;
+    private ComprobanteEnListaDto? _seleccionado;
+    private ComprobanteDto? _detalleSeleccionado;
+    private bool _cargandoVista;
+    private int _versionDeVista;
 
     // Evita apilar diálogos de cancelación al doble clic.
     private bool _dialogoAbierto;
@@ -128,31 +259,50 @@
         new("Receptor", d => @<text>@d.ReceptorNombre</text>, ClaveOrden: "receptor"),
         new("Total", d => @<span class="cifra-tabular">@d.Total.ToString("N2")</span>, ClaveOrden: "total", Tabular: true),
         new("Estatus", d => @<IndicadorEstado Estatus="d.Estatus" />),
-        new("", d => @<div class="acciones-renglon">
-                          <MudButton Size="Size.Small" OnClick="@(() => Navegacion.NavigateTo($"/facturas/{d.Id}"))">
-                              Abrir
-                          </MudButton>
-
-                          @* Cancelar solo lo timbrado; verificar, cualquier cosa que tenga
-                             folio fiscal, que es lo único que el SAT conoce. *@
-                          <SiTienePermiso Permiso="@Permisos.Cancelar">
-                              @if (d.Estatus == EstatusComprobante.Timbrado)
-                              {
-                                  <MudButton Size="Size.Small" Color="Color.Error" Disabled="@_dialogoAbierto"
-                                             OnClick="@(() => Cancelar(d))">
-                                      Cancelar
-                                  </MudButton>
-                              }
-
-                              @if (d.Uuid is not null)
-                              {
-                                  <MudButton Size="Size.Small" OnClick="@(() => VerificarAnteSat(d))">
-                                      Verificar SAT
-                                  </MudButton>
-                              }
-                          </SiTienePermiso>
-                      </div>)
+        new("", d => @<button type="button" class="accion-vista-documento"
+                              @onclick="@(() => Previsualizar(d))" @onclick:stopPropagation="true"
+                              aria-label="Vista previa de @Folio(d)" title="Vista previa">
+                          <MudIcon Icon="@Icons.Material.Filled.Visibility" Size="Size.Small" />
+                      </button>)
     ];
+
+    private bool EsSeleccionado(ComprobanteEnListaDto documento)
+        => documento.Id == _seleccionado?.Id;
+
+    private async Task Previsualizar(ComprobanteEnListaDto documento)
+    {
+        _seleccionado = documento;
+        _detalleSeleccionado = null;
+        _cargandoVista = true;
+        _error = null;
+        var version = ++_versionDeVista;
+
+        var (detalle, error) = await Emision.ObtenerParaVistaPreviaAsync(documento.Id);
+
+        // Si el usuario eligió otro renglón mientras llegaba la respuesta, la anterior ya
+        // no tiene derecho a reemplazar el panel nuevo.
+        if (version != _versionDeVista) return;
+
+        _detalleSeleccionado = detalle;
+        _error = error;
+        _cargandoVista = false;
+    }
+
+    private void CerrarVistaPrevia()
+    {
+        _versionDeVista++;
+        _seleccionado = null;
+        _detalleSeleccionado = null;
+        _cargandoVista = false;
+    }
+
+    private void AbrirSeleccionado()
+    {
+        if (_seleccionado is not { } documento || _detalleSeleccionado is not { } detalle) return;
+
+        var ruta = detalle.TipoDeComprobante == "P" ? "pagos" : "facturas";
+        Navegacion.NavigateTo($"/{ruta}/{documento.Id}");
+    }
 
     /// <summary>
     /// Un borrador todavía no tiene folio y no debe aparentar tenerlo (ARQUITECTURA.md §5): el folio
@@ -177,6 +327,9 @@
             peticion.Pagina, peticion.TamanoPagina, peticion.ClaveOrden, peticion.Descendente, ct);
 
         _error = error;
+
+        if (pagina is null || (_seleccionado is not null && pagina.Elementos.All(d => d.Id != _seleccionado.Id)))
+            CerrarVistaPrevia();
 
         return pagina is null
             ? ResultadoDePagina<ComprobanteEnListaDto>.Vacio
@@ -293,7 +446,11 @@
 
             _error = error;
 
-            if (exito is not null) _aviso = MensajeDe(exito);
+            if (exito is not null)
+            {
+                _aviso = MensajeDe(exito);
+                CerrarVistaPrevia();
+            }
 
             await RecargarAsync();
         }
@@ -312,8 +469,11 @@
         _error = error;
 
         if (estatus is not null)
+        {
             _aviso = $"El SAT reporta: {estatus.EstadoCfdi ?? "sin dato"}. " +
-                     $"{estatus.EsCancelable ?? "Sin información de cancelabilidad"}.";
+                      $"{estatus.EsCancelable ?? "Sin información de cancelabilidad"}.";
+            CerrarVistaPrevia();
+        }
 
         await RecargarAsync();
     }
