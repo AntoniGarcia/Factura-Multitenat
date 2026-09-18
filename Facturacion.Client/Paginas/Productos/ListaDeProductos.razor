@@ -9,28 +9,33 @@
 
 <PanelErrores Problema="_error" />
 
-<BarraHerramientasCatalogo Texto="@_texto"
-                           TextoCambiado="AlBuscar"
-                           MuestraEstatus="true"
-                           Activos="_activos"
-                           ActivosCambiado="AlFiltrarActivos"
-                           TextoNuevo="Nuevo producto"
-                           OnNuevo="@(() => Navegacion.NavigateTo("/productos/nuevo"))"
-                           OnExportar="Exportar" />
+<section class="catalogo-panel" aria-label="Catálogo de productos y servicios">
+    <p class="catalogo-descripcion">
+        Conceptos reutilizables con sus claves del SAT, precio e impuestos configurados.
+    </p>
 
-<div class="acciones-formulario">
-    <MudButton Variant="Variant.Outlined" StartIcon="@Icons.Material.Filled.UploadFile"
-               OnClick="@(() => Navegacion.NavigateTo("/productos/importar"))">
-        Importar desde CSV
-    </MudButton>
-</div>
+    <BarraHerramientasCatalogo Texto="@_texto"
+                               TextoCambiado="AlBuscar"
+                               Placeholder="Buscar por código, descripción o clave SAT…"
+                               MuestraEstatus="true"
+                               Activos="_activos"
+                               ActivosCambiado="AlFiltrarActivos"
+                               TextoNuevo="Nuevo producto"
+                               OnNuevo="@(() => Navegacion.NavigateTo("/productos/nuevo"))"
+                               OnExportar="Exportar"
+                               TextoSecundario="Importar CSV"
+                               IconoSecundario="@Icons.Material.Filled.UploadFile"
+                               OnSecundario="@(() => Navegacion.NavigateTo("/productos/importar"))" />
 
-<TablaDatos T="ProductoEnListaDto"
-            @ref="_tabla"
-            Columnas="_columnas"
-            CargarPagina="CargarAsync"
-            TextoEntidad="productos"
-            TextoSinDatos="No hay productos que coincidan." />
+    <div class="catalogo-tabla">
+        <TablaDatos T="ProductoEnListaDto"
+                    @ref="_tabla"
+                    Columnas="_columnas"
+                    CargarPagina="CargarAsync"
+                    TextoEntidad="productos"
+                    TextoSinDatos="No hay productos que coincidan." />
+    </div>
+</section>
 
 @code {
     private TablaDatos<ProductoEnListaDto>? _tabla;
@@ -43,11 +48,15 @@
     protected override void OnInitialized() => _columnas =
     [
         new("Código", p => @<span class="cifra-tabular">@p.CodigoInterno</span>, ClaveOrden: "codigo", Tabular: true),
-        new("Descripción", p => @<text>@p.Descripcion</text>, ClaveOrden: "descripcion"),
-        new("Unidad", p => @<text>@p.UnidadTexto</text>),
-        new("Precio", p => @<span class="cifra-tabular">@p.ValorUnitario.ToString("N2")</span>, ClaveOrden: "precio", Tabular: true),
-        new("Peso kg", p => @<span class="cifra-tabular">@(p.PesoKg?.ToString("N3") ?? "—")</span>, Tabular: true),
+        new("Producto o servicio", p => @<div class="catalogo-celda-principal">
+                                            <strong>@p.Descripcion</strong>
+                                            <span>@p.UnidadTexto</span>
+                                        </div>, ClaveOrden: "descripcion"),
         new("Clave SAT", p => @<span class="cifra-tabular">@p.ClaveProdServ</span>, Tabular: true),
+        new("Precio", p => @<div class="catalogo-celda-precio">
+                               <strong class="cifra-tabular">@p.ValorUnitario.ToString("N2")</strong>
+                               <span>@(p.PesoKg is { } peso ? $"{peso:N3} kg" : "Sin peso")</span>
+                           </div>, ClaveOrden: "precio", Tabular: true),
         new("Estado", p => @<span class="indicador-estado indicador-estado-@(p.Activo ? "timbrada" : "borrador")">
                                 @(p.Activo ? "Activo" : "Inactivo")
                             </span>),

@@ -1,5 +1,6 @@
 @using Facturacion.Shared.Contratos
 @inject IBusquedaDeCatalogo Busqueda
+@inject IServicioModalCatalogo ModalCatalogo
 
 @*
     Autocompletado contra el servidor: mínimo 3 caracteres, debounce 300 ms, "clave —
@@ -8,25 +9,32 @@
     escribir de nuevo.
 *@
 
-<MudAutocomplete T="ClaveSatDto"
-                  Label="@Label"
-                  Value="@Valor"
-                  ValueChanged="@(v => ValorCambiado.InvokeAsync(v))"
-                  SearchFunc="Buscar"
-                  ToStringFunc="@Formatear"
-                  MinCharacters="3"
-                  DebounceInterval="300"
-                  ResetValueOnEmptyText="true"
-                  CoerceText="false"
-                  Clearable="true"
-                  Required="@Requerido"
-                  Disabled="@Deshabilitado"
-                  Placeholder="Escribe al menos 3 caracteres…">
-    <ItemTemplate Context="clave">
-        <span class="cifra-tabular buscador-catalogo-clave">@clave.Clave</span>
-        <span class="buscador-catalogo-descripcion">@clave.Descripcion</span>
-    </ItemTemplate>
-</MudAutocomplete>
+<div class="buscador-catalogo-compuesto">
+    <MudAutocomplete T="ClaveSatDto"
+                      Label="@Label"
+                      Value="@Valor"
+                      ValueChanged="@(v => ValorCambiado.InvokeAsync(v))"
+                      SearchFunc="Buscar"
+                      ToStringFunc="@Formatear"
+                      MinCharacters="3"
+                      DebounceInterval="300"
+                      ResetValueOnEmptyText="true"
+                      CoerceText="false"
+                      Clearable="true"
+                      Required="@Requerido"
+                      Disabled="@Deshabilitado"
+                      Placeholder="Escribe al menos 3 caracteres…">
+        <ItemTemplate Context="clave">
+            <span class="cifra-tabular buscador-catalogo-clave">@clave.Clave</span>
+            <span class="buscador-catalogo-descripcion">@clave.Descripcion</span>
+        </ItemTemplate>
+    </MudAutocomplete>
+
+    <MudIconButton Icon="@Icons.Material.Filled.TableRows"
+                   Disabled="@Deshabilitado"
+                   OnClick="AbrirModalAsync"
+                   title="Buscar en la lista" aria-label="@($"Buscar {Label} en la lista")" />
+</div>
 
 @code {
     /// <summary>Nombre del catálogo, por ejemplo <c>c_RegimenFiscal</c> (ARQUITECTURA.md §7).</summary>
@@ -57,4 +65,10 @@
 
     private static string Formatear(ClaveSatDto? clave)
         => clave is null ? string.Empty : $"{clave.Clave} — {clave.Descripcion}";
+
+    private async Task AbrirModalAsync()
+    {
+        var clave = await ModalCatalogo.ElegirAsync(Catalogo, Label);
+        if (clave is not null) await ValorCambiado.InvokeAsync(clave);
+    }
 }
