@@ -43,8 +43,15 @@
     --acento: #1B3A6B;
     --acento-rgb: 27, 58, 107;
     --acento-suave: #E8EDF5;
-    /* Fondo del menú lateral: separa la navegación del contenido sin una línea más. */
+    /* La navegación usa una superficie propia. Sus variables no se reutilizan fuera del
+       menú porque el texto claro sobre fondo oscuro responde a otro contexto de contraste. */
     --superficie-menu: #F2F3FC;
+    --cliente-menu-fondo: #142742;
+    --cliente-menu-borde: #29405F;
+    --cliente-menu-texto: #F4F7FB;
+    --cliente-menu-texto-suave: #B8C5D8;
+    --cliente-menu-hover: #1D365A;
+    --cliente-menu-activo: #244A7B;
     --estado-timbrada: #1E7A45;
     --estado-timbrada-rgb: 30, 122, 69;
     --estado-borrador: #6B7280;
@@ -139,6 +146,12 @@
     --acento-rgb: 55, 111, 190;
     --acento-suave: #1F3550;
     --superficie-menu: #1F2833;
+    --cliente-menu-fondo: #111923;
+    --cliente-menu-borde: #2C3542;
+    --cliente-menu-texto: #E4E8EE;
+    --cliente-menu-texto-suave: #A9B4C2;
+    --cliente-menu-hover: #1F2E40;
+    --cliente-menu-activo: #294B72;
     --estado-timbrada-texto: #28A35C;
     --estado-borrador-texto: #888E9B;
     --estado-cancelada-texto: #E85A50;
@@ -163,6 +176,12 @@
     --acento-rgb: 27, 58, 107;
     --acento-suave: #E8EDF5;
     --superficie-menu: #F7F2E8;
+    --cliente-menu-fondo: #302A22;
+    --cliente-menu-borde: #51483B;
+    --cliente-menu-texto: #FBF7EF;
+    --cliente-menu-texto-suave: #CFC2AE;
+    --cliente-menu-hover: #443A2F;
+    --cliente-menu-activo: #564839;
     --estado-timbrada-texto: #1D7643;
     --estado-borrador-texto: #626875;
     --estado-cancelada-texto: #B42318;

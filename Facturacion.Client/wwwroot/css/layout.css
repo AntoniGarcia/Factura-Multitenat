@@ -33,6 +33,50 @@ html, body {
     white-space: nowrap;
 }
 
+.cascaron-cliente .barra-superior {
+    position: relative;
+    z-index: 30;
+    gap: 1rem;
+}
+
+.cascaron-cliente .barra-superior-marca {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    text-decoration: none;
+}
+
+.barra-superior-marca-icono {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 1.75rem;
+    height: 1.75rem;
+    border-radius: var(--radio);
+    background: var(--acento);
+    color: var(--texto-inverso);
+}
+
+.barra-superior-empresa {
+    display: flex;
+    align-items: center;
+    gap: 0.375rem;
+    min-width: 0;
+    padding-left: 1rem;
+    border-left: 1px solid var(--borde);
+}
+
+.barra-superior-etiqueta {
+    color: var(--texto-suave);
+    font-size: var(--etiqueta-tam);
+}
+
+.barra-superior-acciones {
+    display: flex;
+    align-items: center;
+    gap: 0.125rem;
+}
+
 /* ── Panel de operador ─────────────────────────────────────────────────────────
    La barra del panel se distingue de la del inquilino con una franja de acento:
    quien administra el servicio tiene que saber de un vistazo que no está viendo la
@@ -76,9 +120,26 @@ html, body {
 .indicador-timbres {
     display: flex;
     align-items: center;
-    gap: 0.25rem;
-    color: var(--texto-suave);
+    gap: 0.375rem;
+    min-height: var(--alto-control);
+    padding: 0 0.625rem;
+    border: 1px solid var(--borde);
+    border-radius: var(--radio);
+    background: var(--fondo);
+    color: var(--texto);
     font-size: var(--cuerpo-sm-tam);
+}
+
+.indicador-timbres .mud-icon-root {
+    color: var(--acento);
+}
+
+.indicador-timbres strong {
+    font-weight: var(--peso-titulo);
+}
+
+.indicador-timbres-etiqueta {
+    color: var(--texto-suave);
 }
 
 /* SelectorDeEmpresa y MenuDeUsuario usan los parámetros Label/Icon del propio MudMenu, sin
@@ -116,7 +177,8 @@ html, body {
     display: flex;
     align-items: center;
     gap: 0.625rem;
-    padding: 0.875rem 0.75rem;
+    min-height: 4.5rem;
+    padding: 0.875rem;
     border-bottom: 1px solid var(--borde);
 }
 
@@ -150,6 +212,13 @@ html, body {
 .menu-marca-rfc {
     font-size: var(--etiqueta-tam);
     color: var(--texto-suave);
+}
+
+.menu-marca-etiqueta {
+    display: block;
+    margin-bottom: 0.125rem;
+    color: var(--texto-suave);
+    font-size: 0.6875rem;
 }
 
 .menu-navegacion {
@@ -186,6 +255,7 @@ html, body {
 }
 
 .menu-lateral a {
+    position: relative;
     display: flex;
     align-items: center;
     gap: 0.625rem;
@@ -208,6 +278,56 @@ html, body {
     background: var(--acento-suave);
     color: var(--acento);
     font-weight: var(--peso-titulo);
+}
+
+.cascaron-cliente .menu-lateral {
+    background: var(--cliente-menu-fondo);
+    border-color: var(--cliente-menu-borde);
+}
+
+.cascaron-cliente .menu-marca {
+    border-color: var(--cliente-menu-borde);
+}
+
+.cascaron-cliente .menu-marca-iniciales {
+    background: var(--cliente-menu-activo);
+    color: var(--cliente-menu-texto);
+}
+
+.cascaron-cliente .menu-marca-nombre,
+.cascaron-cliente .menu-lateral a {
+    color: var(--cliente-menu-texto);
+}
+
+.cascaron-cliente .menu-marca-etiqueta,
+.cascaron-cliente .menu-marca-rfc,
+.cascaron-cliente .menu-grupo {
+    color: var(--cliente-menu-texto-suave);
+}
+
+.cascaron-cliente .menu-grupo {
+    letter-spacing: 0.02em;
+    text-transform: none;
+}
+
+.cascaron-cliente .menu-lateral a:hover {
+    background: var(--cliente-menu-hover);
+}
+
+.cascaron-cliente .menu-lateral a.active {
+    background: var(--cliente-menu-activo);
+    color: var(--cliente-menu-texto);
+}
+
+.cascaron-cliente .menu-lateral a.active::before {
+    position: absolute;
+    top: 0.5rem;
+    bottom: 0.5rem;
+    left: 0;
+    width: 3px;
+    border-radius: 0 3px 3px 0;
+    background: var(--cliente-menu-texto);
+    content: "";
 }
 
 /* ── Menú encogido a riel de iconos ──────────────────────────────────────────────────
@@ -309,8 +429,29 @@ html, body {
         padding: 0 1rem;
     }
 
+    .cascaron-cliente .barra-superior {
+        gap: 0.5rem;
+    }
+
     .barra-superior-marca {
         display: none;
+    }
+
+    .barra-superior-empresa {
+        flex: 1 1 auto;
+        padding-left: 0;
+        border-left: 0;
+        overflow: hidden;
+    }
+
+    .barra-superior-etiqueta,
+    .indicador-timbres-etiqueta {
+        display: none;
+    }
+
+    .selector-empresa-unica {
+        overflow: hidden;
+        text-overflow: ellipsis;
     }
 
     /* En móvil el menú es una barra de pestañas: no hay columna que encoger, así que el
@@ -399,6 +540,21 @@ html, body {
         height: auto;
         padding: 0.375rem 0.5rem;
         font-size: var(--etiqueta-tam);
+    }
+
+    .cascaron-cliente .menu-lateral a.active::before {
+        top: 0;
+        right: 0.5rem;
+        bottom: auto;
+        left: 0.5rem;
+        width: auto;
+        height: 3px;
+        border-radius: 0 0 3px 3px;
+    }
+
+    .cascaron-cliente .menu-lateral a:hover,
+    .cascaron-cliente .menu-lateral a.active {
+        color: var(--cliente-menu-texto);
     }
 
     /* El panel del operador tiene siete destinos. En lugar de obligar a desplazar la barra

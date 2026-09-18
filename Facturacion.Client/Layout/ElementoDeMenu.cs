@@ -46,8 +46,7 @@ public static class MenuPrincipal
     public static IReadOnlyList<ElementoDeMenu> Elementos { get; } =
     [
         // ── Diario: sin encabezado, siempre a la vista ──────────────────────────────────
-        new("/", "" +
-            "Inicio", "home", Permiso: null),
+        new("/", "Inicio", "home", Permiso: null),
         // Emitir no tiene entrada propia: se entra por «Documentos», que es donde se ve lo
         // que ya se emitió, y desde ahí se crea. Tener «Nueva factura» y «Documentos» como
         // hermanas obligaba a elegir entre dos puertas al mismo cuarto antes de saber
@@ -57,7 +56,7 @@ public static class MenuPrincipal
         new("/productos", "Productos", "inventory", Permiso: null),
 
         // ── Mi empresa: se configura una vez y se revisa de vez en cuando ───────────────
-        new("/empresa/nueva", "Agregar empresa", "person", Permiso: null, Grupos.Empresa),
+        new("/empresa/nueva", "Agregar empresa", "add_business", Permiso: null, Grupos.Empresa),
         new("/empresa", "Datos fiscales", "business", Permisos.ConfigurarEmpresa, Grupos.Empresa),
         new("/empresa/series", "Series de folios", "tag", Permisos.ConfigurarEmpresa, Grupos.Empresa),
         new("/empresa/certificados", "Certificados", "verified_user", Permisos.ConfigurarEmpresa, Grupos.Empresa),
