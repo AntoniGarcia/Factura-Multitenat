@@ -4,6 +4,9 @@ namespace Facturacion.Server.Infra.Correo;
 /// Envío de correo del SaaS. Ambas mitades lo consumen: la A para el registro de cuentas,
 /// la B para el CFDI, el PDF adjunto y la confirmación de cancelación.
 /// </summary>
+
+public sealed record AdjuntoDeCorreo(string NombreArchivo, byte[] Contenido, string TipoMime);
+
 public interface IServicioDeCorreo
 {
     /// <summary>
@@ -11,5 +14,6 @@ public interface IServicioDeCorreo
     /// de la empresa emisora (ARQUITECTURA.md §6), no al buzón del SaaS. El registro no lo usa.
     /// </summary>
     Task EnviarAsync(
-        string destinatario, string asunto, string cuerpoHtml, CancellationToken ct, string? responderA = null);
+        string destinatario, string asunto, string cuerpoHtml, CancellationToken ct, 
+        string? responderA = null, IReadOnlyList<AdjuntoDeCorreo>? adjuntos = null);
 }

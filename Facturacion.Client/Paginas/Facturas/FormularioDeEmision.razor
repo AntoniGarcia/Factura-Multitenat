@@ -492,6 +492,7 @@ else
         _formaPago = completo.FormaPagoPreferida;
     }
 
+    /*
     private async Task AlElegirProductoAsync(int indice, ProductoEnListaDto? seleccion)
     {
         if (seleccion is null) return;
@@ -511,7 +512,59 @@ else
         renglon.Impuestos = [.. producto.Impuestos.Select(i =>
             new ImpuestoDeConceptoDto(i.Impuesto, i.TipoFactor, i.TasaOCuota, i.EsRetencion))];
     }
+    */
 
+    private ConfiguracionEmpresaDto? _configuracionEmpresa;
+    private async Task AlElegirProductoAsync(int indice, ProductoEnListaDto? seleccion)
+    {
+        if (seleccion is null) return;
+    
+        var producto = await Productos.ObtenerAsync(seleccion.Id);
+        if (producto is null) return;
+    
+        var renglon = _renglones[indice];
+    
+        renglon.ProductoId = producto.Id;
+        renglon.ClaveProdServ = producto.ClaveProdServ;
+        renglon.ClaveUnidad = producto.ClaveUnidad;
+        renglon.UnidadTexto = producto.UnidadTexto;
+        renglon.Descripcion = producto.Descripcion;
+        renglon.ObjetoImp = producto.ObjetoImp;
+        renglon.ValorUnitario = producto.ValorUnitario;
+    
+        renglon.Impuestos = producto.Impuestos.Count > 0
+            ? [.. producto.Impuestos.Select(i =>
+                new ImpuestoDeConceptoDto(i.Impuesto, i.TipoFactor, i.TasaOCuota, i.EsRetencion))]
+            : await ImpuestosPorDefectoAsync(producto.ObjetoImp);
+    }
+    
+    /// <summary>
+    /// B5: si el producto no trae impuestos configurados y sí es objeto de impuesto, se
+    /// precargan las tasas por defecto de la empresa. Cosmético a propósito: el servidor sigue
+    /// resolviendo los impuestos desde el producto (ResolverConceptosAsync), así que esto solo
+    /// evita que la pantalla muestre un renglón vacío de impuestos cuando la empresa ya tiene
+    /// tasas configuradas. Ver nota en el chat sobre por qué no basta para el XML final.
+    /// </summary>
+    private async Task<List<ImpuestoDeConceptoDto>> ImpuestosPorDefectoAsync(string objetoImp)
+    {
+        if (objetoImp is not ("02" or "03")) return [];
+    
+        _configuracionEmpresa ??= await Empresa.ObtenerConfiguracionAsync();
+    
+        var impuestos = new List<ImpuestoDeConceptoDto>();
+    
+        if (_configuracionEmpresa.TasaIvaPorDefecto > 0)
+            impuestos.Add(new ImpuestoDeConceptoDto("002", "Tasa", _configuracionEmpresa.TasaIvaPorDefecto, EsRetencion: false));
+    
+        if (_configuracionEmpresa.TasaRetencionIvaPorDefecto > 0)
+            impuestos.Add(new ImpuestoDeConceptoDto("002", "Tasa", _configuracionEmpresa.TasaRetencionIvaPorDefecto, EsRetencion: true));
+    
+        if (_configuracionEmpresa.TasaRetencionIsrPorDefecto > 0)
+            impuestos.Add(new ImpuestoDeConceptoDto("001", "Tasa", _configuracionEmpresa.TasaRetencionIsrPorDefecto, EsRetencion: true));
+    
+        return impuestos;
+    }
+    
     private async Task AgregarRelacionadoAsync()
     {
         if (!PuedeAgregarRelacionado) return;
@@ -651,4 +704,6 @@ else
         /// </summary>
         public decimal Importe => Math.Round(Cantidad * ValorUnitario, 6, MidpointRounding.ToEven);
     }
+
+    
 }

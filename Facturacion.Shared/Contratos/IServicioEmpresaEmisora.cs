@@ -35,7 +35,9 @@ public sealed record EmisorFiscalDto(
     string Nombre,
     string RegimenFiscal,
     string CodigoPostalExpedicion,
-    string ZonaHoraria);
+    string ZonaHoraria,
+    string? CorreoContacto = null);
+
 
 /// <summary>Un archivo entregado desde el almacén de la plataforma.</summary>
 /// <param name="Contenido">Bytes del archivo.</param>
