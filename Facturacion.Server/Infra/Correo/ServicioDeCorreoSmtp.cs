@@ -34,8 +34,6 @@ public sealed class ServicioDeCorreoSmtp(
 
         try
         {
-            // SmtpClient no tiene una sobrecarga que acepte CancellationToken; se registra
-            // el intento de cancelación pero el envío en curso no se puede abortar a medias.
             await cliente.SendMailAsync(mensaje, ct);
         }
         catch (SmtpException excepcion)
@@ -49,7 +47,6 @@ public sealed class ServicioDeCorreoSmtp(
             throw;
         }
     }
-
     private static string DominioDe(string destinatario)
     {
         var separador = destinatario.LastIndexOf('@');
@@ -57,4 +54,5 @@ public sealed class ServicioDeCorreoSmtp(
             ? destinatario[(separador + 1)..]
             : "no-disponible";
     }
+}
 }
