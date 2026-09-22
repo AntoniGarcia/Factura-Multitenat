@@ -1,0 +1,113 @@
+@using Facturacion.Client.Servicios.Documentos
+@using Facturacion.Shared.Comun
+@using Facturacion.Shared.Notaria
+@inject ServicioDeNotaria Notaria
+
+<section class="emision-seccion">
+    <h2 class="seccion-titulo">Vendedores y compradores</h2>
+    <PanelErrores Problema="_error" />
+    @if (_cargando)
+    {
+        <p class="tabla-datos-estado">Cargando partes de la operación…</p>
+    }
+    else
+    {
+        <MudTabs Class="emision-pestanas">
+            <MudTabPanel Text="Vendedores">
+                <EditorDePartes Titulo="Vendedores" EsCopropiedad="@_enajenantesEnCopropiedad"
+                                EsCopropiedadCambiado="v => _enajenantesEnCopropiedad = v"
+                                Partes="@_enajenantes" Editable="@Editable" RequiereApellidoYCurpSiIndividual="true" />
+            </MudTabPanel>
+            <MudTabPanel Text="Compradores">
+                <EditorDePartes Titulo="Compradores" EsCopropiedad="@_adquirentesEnCopropiedad"
+                                EsCopropiedadCambiado="v => _adquirentesEnCopropiedad = v"
+                                Partes="@_adquirentes" Editable="@Editable" RequiereApellidoYCurpSiIndividual="false" />
+            </MudTabPanel>
+        </MudTabs>
+
+        <div class="tarjeta-formulario-acciones">
+            <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="GuardarAsync" Disabled="@(!Editable || _guardando)">
+                @(_guardando ? "Guardando…" : "Guardar vendedores y compradores")
+            </MudButton>
+        </div>
+    }
+</section>
+
+@code {
+    [Parameter, EditorRequired] public Guid ComprobanteId { get; set; }
+    [Parameter] public bool Editable { get; set; }
+
+    private bool _cargando = true, _guardando;
+    private DetalleProblema? _error;
+    private bool _enajenantesEnCopropiedad, _adquirentesEnCopropiedad;
+    private List<ParteEditable> _enajenantes = [];
+    private List<ParteEditable> _adquirentes = [];
+
+    protected override async Task OnParametersSetAsync()
+    {
+        _cargando = true;
+        _error = null;
+        var (partes, error) = await Notaria.ObtenerPartesAsync(ComprobanteId);
+        _error = error;
+
+        if (partes is null)
+        {
+            _enajenantesEnCopropiedad = false;
+            _adquirentesEnCopropiedad = false;
+            _enajenantes = [new()];
+            _adquirentes = [new()];
+        }
+        else
+        {
+            _enajenantesEnCopropiedad = partes.EnajenantesEnCopropiedad;
+            _adquirentesEnCopropiedad = partes.AdquirentesEnCopropiedad;
+            _enajenantes = [.. partes.Enajenantes.Select(x => new ParteEditable(x))];
+            _adquirentes = [.. partes.Adquirentes.Select(x => new ParteEditable(x))];
+        }
+
+        _cargando = false;
+    }
+
+    private async Task GuardarAsync()
+    {
+        _guardando = true;
+        _error = null;
+        try
+        {
+            var peticion = new PeticionGuardarPartesNotariales(
+                _enajenantesEnCopropiedad,
+                [.. _enajenantes.Select((x, indice) => x.ADto(indice + 1, _enajenantesEnCopropiedad))],
+                _adquirentesEnCopropiedad,
+                [.. _adquirentes.Select((x, indice) => x.ADto(indice + 1, _adquirentesEnCopropiedad))]);
+            var (partes, error) = await Notaria.GuardarPartesAsync(ComprobanteId, peticion);
+            _error = error;
+            if (partes is not null)
+            {
+                _enajenantes = [.. partes.Enajenantes.Select(x => new ParteEditable(x))];
+                _adquirentes = [.. partes.Adquirentes.Select(x => new ParteEditable(x))];
+            }
+        }
+        finally
+        {
+            _guardando = false;
+        }
+    }
+
+    public sealed class ParteEditable
+    {
+        public ParteEditable() { }
+        public ParteEditable(ParteNotarialDto origen)
+        {
+            Nombre = origen.Nombre; ApellidoPaterno = origen.ApellidoPaterno; ApellidoMaterno = origen.ApellidoMaterno;
+            Rfc = origen.Rfc; Curp = origen.Curp; Porcentaje = origen.Porcentaje;
+        }
+        public string Nombre { get; set; } = string.Empty;
+        public string? ApellidoPaterno { get; set; }
+        public string? ApellidoMaterno { get; set; }
+        public string Rfc { get; set; } = string.Empty;
+        public string? Curp { get; set; }
+        public decimal? Porcentaje { get; set; }
+        public ParteNotarialDto ADto(int orden, bool copropiedad) => new(
+            Guid.Empty, orden, Nombre, ApellidoPaterno, ApellidoMaterno, Rfc, Curp, copropiedad ? Porcentaje : null);
+    }
+}

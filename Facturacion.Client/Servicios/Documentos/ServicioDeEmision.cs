@@ -46,6 +46,18 @@ public sealed class ServicioDeEmision(IHttpClientFactory fabrica)
         return await LeerAsync<ComprobanteDto>(respuesta, ct);
     }
 
+    public Task<(ArchivoParaDescarga? Archivo, DetalleProblema? Error)> ObtenerVistaPreviaPdfAsync(
+        Guid id, CancellationToken ct = default)
+        => ObtenerArchivoAsync($"api/documentos/{id}/vista-previa.pdf", $"borrador-factura-{id:N}.pdf", ct);
+
+    public Task<(ArchivoParaDescarga? Archivo, DetalleProblema? Error)> ObtenerPdfFiscalAsync(
+        Guid id, CancellationToken ct = default)
+        => ObtenerArchivoAsync($"api/documentos/{id}/pdf", $"cfdi-{id:N}.pdf", ct);
+
+    public Task<(ArchivoParaDescarga? Archivo, DetalleProblema? Error)> ObtenerXmlFiscalAsync(
+        Guid id, CancellationToken ct = default)
+        => ObtenerArchivoAsync($"api/documentos/{id}/xml", $"cfdi-{id:N}.xml", ct);
+
     public async Task<DetalleProblema?> EliminarBorradorAsync(Guid id, CancellationToken ct = default)
     {
         using var respuesta = await Cliente.DeleteAsync($"api/documentos/{id}", ct);
@@ -80,4 +92,21 @@ public sealed class ServicioDeEmision(IHttpClientFactory fabrica)
         => respuesta.IsSuccessStatusCode
             ? (await respuesta.Content.ReadFromJsonAsync<T>(ct), null)
             : (default, await respuesta.Content.ReadFromJsonAsync<DetalleProblema>(ct));
+
+    private async Task<(ArchivoParaDescarga? Archivo, DetalleProblema? Error)> ObtenerArchivoAsync(
+        string ruta, string nombrePredeterminado, CancellationToken ct)
+    {
+        using var respuesta = await Cliente.GetAsync(ruta, ct);
+
+        if (!respuesta.IsSuccessStatusCode)
+            return (null, await respuesta.Content.ReadFromJsonAsync<DetalleProblema>(ct));
+
+        var contenido = await respuesta.Content.ReadAsByteArrayAsync(ct);
+        var tipo = respuesta.Content.Headers.ContentType?.MediaType ?? "application/octet-stream";
+        var nombre = respuesta.Content.Headers.ContentDisposition?.FileNameStar
+            ?? respuesta.Content.Headers.ContentDisposition?.FileName?.Trim('"')
+            ?? nombrePredeterminado;
+
+        return (new ArchivoParaDescarga(nombre, tipo, contenido), null);
+    }
 }

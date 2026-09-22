@@ -130,6 +130,30 @@ public sealed class ServicioDeTimbrado(
                 "comprobante-no-timbrable",
                 $"El comprobante está en '{comprobante.Estatus}' y no se puede timbrar desde ahí.");
 
+        if (await baseDeDatos.DatosObra.AsNoTracking()
+            .AnyAsync(x => x.ComprobanteId == comprobanteId, ct))
+            return ErrorNegocio.Regla("obra-timbrado-pendiente",
+                "Las estimaciones de obra permanecen en borrador hasta definir su representación fiscal en CFDI 4.0.");
+
+        var datosNotaria = await baseDeDatos.DatosNotaria
+            .AsNoTracking()
+            .Include(x => x.Inmuebles)
+            .Include(x => x.Partes)
+            .FirstOrDefaultAsync(x => x.ComprobanteId == comprobanteId, ct);
+
+        if (datosNotaria is not null)
+        {
+            var licencia = await baseDeDatos.Empresas.AsNoTracking()
+                .AnyAsync(x => x.Id == comprobante.EmpresaId && x.LicNotarios, ct);
+            if (!licencia)
+                return ErrorNegocio.Regla("modulo-notaria-no-contratado",
+                    "Esta empresa no tiene activo el módulo de Notaría.");
+
+            var notario = await baseDeDatos.ConfiguracionesNotario.AsNoTracking().FirstOrDefaultAsync(ct);
+            if (GeneradorDeXmlNotaria.Validar(datosNotaria, notario) is { } errorNotaria)
+                return errorNotaria;
+        }
+
         await using var transaccion = await baseDeDatos.Database.BeginTransactionAsync(ct);
 
         // El folio solo se toma una vez. Si el comprobante ya trae uno de un intento fallido

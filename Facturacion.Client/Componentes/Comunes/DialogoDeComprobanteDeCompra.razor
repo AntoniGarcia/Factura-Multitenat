@@ -13,12 +13,12 @@
             }
             else
             {
-                <iframe src="@_url" title="Vista previa del comprobante de compra"></iframe>
+                <iframe src="@_url" title="@TituloVistaPrevia"></iframe>
             }
         </div>
 
         <p class="seccion-ayuda comprobante-aviso-fiscal">
-            Documento interno sin validez fiscal. Todavía no incluye IVA ni timbrado.
+            @AvisoFiscal
         </p>
     </DialogContent>
     <DialogActions>
@@ -35,6 +35,13 @@
 
     [Parameter, EditorRequired]
     public ArchivoParaDescarga Archivo { get; set; } = default!;
+
+    [Parameter]
+    public string TituloVistaPrevia { get; set; } = "Vista previa del comprobante de compra";
+
+    [Parameter]
+    public string AvisoFiscal { get; set; } =
+        "Documento interno sin validez fiscal. Todavía no incluye IVA ni timbrado.";
 
     private string? _url;
 

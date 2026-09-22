@@ -11,6 +11,7 @@ public static class TiposDeComprobante
 {
     public const string Ingreso = "I";
     public const string Egreso = "E";
+    public const string Traslado = "T";
     public const string Pago = "P";
 }
 

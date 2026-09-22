@@ -9,15 +9,18 @@
     escribir de nuevo.
 *@
 
+<MudTooltip Text="@Contexto" Disabled="@string.IsNullOrWhiteSpace(Contexto)">
 <div class="buscador-catalogo-compuesto">
     <MudAutocomplete T="ClaveSatDto"
                       Label="@Label"
                       Value="@Valor"
                       ValueChanged="@(v => ValorCambiado.InvokeAsync(v))"
+                      TextChanged="AlCambiarTextoAsync"
                       SearchFunc="Buscar"
                       ToStringFunc="@Formatear"
-                      MinCharacters="3"
+                      MinCharacters="@(MostrarOpciones ? 0 : 3)"
                       DebounceInterval="300"
+                      OpenOnFocus="@MostrarOpciones"
                       ResetValueOnEmptyText="true"
                       CoerceText="false"
                       Clearable="true"
@@ -30,11 +33,15 @@
         </ItemTemplate>
     </MudAutocomplete>
 
-    <MudIconButton Icon="@Icons.Material.Filled.TableRows"
-                   Disabled="@Deshabilitado"
-                   OnClick="AbrirModalAsync"
-                   title="Buscar en la lista" aria-label="@($"Buscar {Label} en la lista")" />
+    @if (MuestraSelectorEnLista)
+    {
+        <MudIconButton Icon="@Icons.Material.Filled.TableRows"
+                       Disabled="@Deshabilitado"
+                       OnClick="AbrirModalAsync"
+                       title="Buscar en la lista" aria-label="@($"Buscar {Label} en la lista")" />
+    }
 </div>
+</MudTooltip>
 
 @code {
     /// <summary>Nombre del catálogo, por ejemplo <c>c_RegimenFiscal</c> (ARQUITECTURA.md §7).</summary>
@@ -56,15 +63,47 @@
     [Parameter]
     public bool Deshabilitado { get; set; }
 
+    /// <summary>Solo para catálogos pequeños; los masivos conservan búsqueda remota.</summary>
+    [Parameter]
+    public bool MostrarOpciones { get; set; }
+
+    [Parameter]
+    public bool MuestraSelectorEnLista { get; set; } = true;
+
+    /// <summary>Texto contextual mostrado al enfocar o pasar el puntero por el campo.</summary>
+    [Parameter]
+    public string? Contexto { get; set; }
+
+    /// <summary>Notifica cada cambio de texto cuando el contenedor necesita reaccionar antes de seleccionar.</summary>
+    [Parameter]
+    public EventCallback<string> TextoCambiado { get; set; }
+
+    /// <summary>Útil para CP: en el control se muestra solo la clave, no la descripción territorial.</summary>
+    [Parameter]
+    public bool MostrarSoloClave { get; set; }
+
+    /// <summary>Fuente contextual, por ejemplo códigos postales de un municipio ya elegido.</summary>
+    [Parameter]
+    public Func<string, CancellationToken, Task<IReadOnlyList<ClaveSatDto>>>? BusquedaPersonalizada { get; set; }
+
     private async Task<IEnumerable<ClaveSatDto>> Buscar(string texto, CancellationToken ct)
     {
-        if (string.IsNullOrWhiteSpace(texto) || texto.Length < 3) return [];
+        if (BusquedaPersonalizada is not null)
+            return await BusquedaPersonalizada(texto, ct);
+
+        if (string.IsNullOrWhiteSpace(texto))
+            return MostrarOpciones ? await Busqueda.OpcionesAsync(Catalogo, ct) : [];
+
+        if (!MostrarOpciones && texto.Length < 3) return [];
 
         return await Busqueda.BuscarAsync(Catalogo, texto, ct);
     }
 
-    private static string Formatear(ClaveSatDto? clave)
-        => clave is null ? string.Empty : $"{clave.Clave} — {clave.Descripcion}";
+    private string Formatear(ClaveSatDto? clave)
+        => clave is null ? string.Empty : MostrarSoloClave ? clave.Clave : $"{clave.Clave} — {clave.Descripcion}";
+
+    private Task AlCambiarTextoAsync(string texto)
+        => TextoCambiado.HasDelegate ? TextoCambiado.InvokeAsync(texto) : Task.CompletedTask;
 
     private async Task AbrirModalAsync()
     {

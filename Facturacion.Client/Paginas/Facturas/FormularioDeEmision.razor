@@ -3,15 +3,20 @@
 @attribute [Authorize(Policy = Permisos.Timbrar)]
 @using Facturacion.Client.Servicios.Documentos
 @using Facturacion.Client.Servicios.Plataforma
+@using Facturacion.Client.Componentes.Facturas
 @using Facturacion.Shared.Comun
 @using Facturacion.Shared.Documentos
+@using Facturacion.Shared.Notaria
 @using Facturacion.Shared.Plataforma
 @inject ServicioDeEmision Emision
+@inject ServicioDeObras Obras
 @inject ServicioDeClientes Clientes
 @inject ServicioDeProductos Productos
 @inject ServicioDeEmpresa Empresa
 @inject ServicioDeCatalogos Catalogos
 @inject NavigationManager Navegacion
+@inject IDialogService Dialogos
+@inject IServicioDeConfirmacion Confirmacion
 
 <PageTitle>@(EsNuevo ? "Nueva factura" : "Factura")</PageTitle>
 <TituloDePagina Texto="@TituloDeLaPantalla" />
@@ -58,6 +63,11 @@ else
 
     <div class="emision-layout">
     <div class="emision-captura">
+    @if (_tieneLicenciaObras)
+    {
+        <MudCheckBox T="bool" @bind-Value="_esFacturaDeObra" Disabled="@_obraGuardada"
+                     Label="Esta factura corresponde a una estimación de obra" />
+    }
     <MudTabs Class="emision-pestanas">
         <MudTabPanel Text="Detalle y conceptos">
             <section class="emision-seccion">
@@ -266,6 +276,19 @@ else
                 </div>
             }
         </MudTabPanel>
+        @if (_tieneLicenciaNotaria)
+        {
+            <MudTabPanel Text="Notaría">
+                <DatosNotarialesDeFactura ComprobanteId="@_comprobante.Id" Editable="@EsEditable" />
+            </MudTabPanel>
+        }
+        @if (_tieneLicenciaObras && _esFacturaDeObra)
+        {
+            <MudTabPanel Text="Constructoras">
+                <DatosDeObraDeFactura ComprobanteId="@_comprobante.Id" ImporteTrabajos="@_comprobante.SubTotal" GuardarFactura="GuardarAsync"
+                                      AlGuardar="@(() => _obraGuardada = true)" />
+            </MudTabPanel>
+        }
     </MudTabs>
     </div>
 
@@ -302,17 +325,25 @@ else
         </dl>
 
         <p class="emision-resumen-nota">
-            Importes calculados por el servidor al guardar el borrador.
+            @(_esFacturaDeObra
+                ? "Este total del borrador estándar no es el importe líquido de obra ni un CFDI listo para timbrar."
+                : "Importes calculados por el servidor al guardar el borrador.")
         </p>
 
         <footer class="emision-resumen-acciones">
-            <MudButton Variant="Variant.Filled" Color="Color.Primary"
-                       OnClick="GenerarFacturaAsync"
-                       Disabled="@(_guardando || _generando || _renglones.Count == 0 || !PuedeTimbrar)">
-                @(_generando ? "Timbrando…" : "Timbrar factura")
+            <MudButton Variant="Variant.Outlined" OnClick="GuardarAsync"
+                       Disabled="@(_guardando || _generando || _preparandoVista)">
+                @(_guardando ? "Guardando…" : _esFacturaDeObra ? "Guardar conceptos" : "Guardar borrador")
             </MudButton>
-            <MudButton Variant="Variant.Outlined" OnClick="GuardarAsync" Disabled="@(_guardando || _generando)">
-                @(_guardando ? "Guardando…" : "Guardar borrador")
+            <MudButton Variant="Variant.Outlined" StartIcon="@Icons.Material.Filled.PictureAsPdf"
+                       OnClick="VistaPreviaAsync"
+                       Disabled="@(_guardando || _generando || _preparandoVista || _renglones.Count == 0 || _esFacturaDeObra)">
+                @(_preparandoVista ? "Preparando…" : "Vista previa PDF")
+            </MudButton>
+            <MudButton Variant="Variant.Filled" Color="Color.Primary"
+                       OnClick="TimbrarCfdiAsync"
+                       Disabled="@(_guardando || _generando || _preparandoVista || _renglones.Count == 0 || !PuedeTimbrar || _esFacturaDeObra)">
+                @(_generando ? "Timbrando…" : "Timbrar CFDI")
             </MudButton>
             <MudButton Variant="Variant.Text" OnClick="@(() => Navegacion.NavigateTo("/documentos"))">
                 Volver a documentos
@@ -335,8 +366,13 @@ else
     private bool _cargando = true;
     private bool _guardando;
     private bool _generando;
+    private bool _preparandoVista;
     private DetalleProblema? _error;
     private EstadoDeIntegracionFiscalDto? _integracionFiscal;
+    private bool _tieneLicenciaNotaria;
+    private bool _tieneLicenciaObras;
+    private bool _esFacturaDeObra;
+    private bool _obraGuardada;
 
     // Cabecera
     private string _moneda = "MXN";
@@ -401,6 +437,9 @@ else
         _cargando = true;
         _error = null;
         _integracionFiscal = await Emision.ObtenerEstadoDeIntegracionAsync();
+        var empresa = await Empresa.ObtenerAsync();
+        _tieneLicenciaNotaria = empresa?.Licencias.Notarios == true;
+        _tieneLicenciaObras = empresa?.Licencias.Obras == true;
 
         if (EsNuevo)
         {
@@ -419,6 +458,12 @@ else
 
         if (comprobante is not null)
         {
+            if (_tieneLicenciaObras)
+            {
+                var (datosObra, _) = await Obras.ObtenerAsync(comprobante.Id);
+                _obraGuardada = datosObra is not null;
+                _esFacturaDeObra = _obraGuardada;
+            }
             _moneda = comprobante.Moneda;
             _tipoCambio = comprobante.TipoCambio;
             // La que el borrador traía, no la primera de la lista: con FAC y HON dadas de alta,
@@ -585,11 +630,57 @@ else
         return true;
     }
 
-    private async Task GenerarFacturaAsync()
+    private async Task VistaPreviaAsync()
+    {
+        if (_comprobante is null || _preparandoVista) return;
+
+        if (!await GuardarAsync()) return;
+
+        _preparandoVista = true;
+        _error = null;
+
+        try
+        {
+            var (archivo, error) = await Emision.ObtenerVistaPreviaPdfAsync(_comprobante.Id);
+
+            if (error is not null)
+            {
+                _error = error;
+                return;
+            }
+
+            var parametros = new DialogParameters<DialogoDeComprobanteDeCompra>
+            {
+                { x => x.Archivo, archivo! },
+                { x => x.TituloVistaPrevia, "Vista previa del borrador" },
+                { x => x.AvisoFiscal,
+                    "Borrador sin validez fiscal. No contiene UUID, sellos, código QR fiscal ni certificación del SAT." }
+            };
+
+            await Dialogos.ShowAsync<DialogoDeComprobanteDeCompra>(
+                "Vista previa de factura",
+                parametros,
+                new DialogOptions { MaxWidth = MaxWidth.ExtraLarge, FullWidth = true, CloseOnEscapeKey = true });
+        }
+        finally
+        {
+            _preparandoVista = false;
+        }
+    }
+
+    private async Task TimbrarCfdiAsync()
     {
         if (_comprobante is null || !PuedeTimbrar) return;
 
         if (!await GuardarAsync()) return;
+
+        var confirmado = await Confirmacion.ConfirmarAsync(
+            "Timbrar CFDI",
+            $"Se consumirá un timbre para emitir el CFDI de {_cliente?.Nombre ?? "el receptor"} " +
+            $"por {_comprobante.Total:N2} {_comprobante.Moneda}. Después ya no podrás editarlo.",
+            "Timbrar CFDI");
+
+        if (!confirmado) return;
 
         _generando = true;
         _error = null;

@@ -1,6 +1,7 @@
 ﻿using Facturacion.Server.Data.Entidades.Documentos;
 using Facturacion.Server.Data.Entidades.Plataforma;
 using Facturacion.Server.Data.Entidades.Plataforma.Catalogos;
+using Facturacion.Server.Data.Entidades.Transporte;
 using Facturacion.Server.Infra.Tenencia;
 using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore;
@@ -58,6 +59,16 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> opciones, IConte
     public DbSet<MovimientoTimbre> MovimientosTimbre => Set<MovimientoTimbre>();
     public DbSet<ReservaTimbre> ReservasTimbre => Set<ReservaTimbre>();
     public DbSet<CompraTimbres> ComprasTimbres => Set<CompraTimbres>();
+    public DbSet<Vehiculo> Vehiculos => Set<Vehiculo>();
+    public DbSet<FiguraTransporte> FigurasTransporte => Set<FiguraTransporte>();
+    public DbSet<TrasladoCartaPorte> TrasladosCartaPorte => Set<TrasladoCartaPorte>();
+    public DbSet<UbicacionCartaPorte> UbicacionesCartaPorte => Set<UbicacionCartaPorte>();
+    public DbSet<MercanciaCartaPorte> MercanciasCartaPorte => Set<MercanciaCartaPorte>();
+    public DbSet<ConfiguracionNotario> ConfiguracionesNotario => Set<ConfiguracionNotario>();
+    public DbSet<DatosNotaria> DatosNotaria => Set<DatosNotaria>();
+    public DbSet<InmuebleNotarial> InmueblesNotariales => Set<InmuebleNotarial>();
+    public DbSet<ParteNotarial> PartesNotariales => Set<ParteNotarial>();
+    public DbSet<DatosObra> DatosObra => Set<DatosObra>();
 
     // ── Catálogos del SAT — sin EmpresaId, fuera del filtro de empresa (ARQUITECTURA.md §5) ───
     public DbSet<CatalogoVersion> CatalogoVersiones => Set<CatalogoVersion>();
@@ -82,6 +93,10 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> opciones, IConte
     public DbSet<SatMunicipio> SatMunicipios => Set<SatMunicipio>();
     public DbSet<SatColonia> SatColonias => Set<SatColonia>();
     public DbSet<SatCodigoPostal> SatCodigosPostales => Set<SatCodigoPostal>();
+    public DbSet<SatConfiguracionAutotransporte> SatConfiguracionesAutotransporte => Set<SatConfiguracionAutotransporte>();
+    public DbSet<SatTipoPermiso> SatTiposPermiso => Set<SatTipoPermiso>();
+    public DbSet<SatFiguraTransporte> SatFigurasTransporte => Set<SatFiguraTransporte>();
+    public DbSet<SatClaveProdServCartaPorte> SatClavesProdServCartaPorte => Set<SatClaveProdServCartaPorte>();
 
     // ── DbSet de la mitad B — documentos, timbrado y salidas ────────────────────────────
     public DbSet<Comprobante> Comprobantes => Set<Comprobante>();

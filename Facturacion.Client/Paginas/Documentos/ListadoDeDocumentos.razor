@@ -6,6 +6,7 @@
 @inject ServicioDeListado Listado
 @inject ServicioDeEmision Emision
 @inject ServicioDeCancelacion Cancelacion
+@inject ServicioDeDescargas Descargas
 @inject NavigationManager Navegacion
 @inject IDialogService Dialogos
 
@@ -29,6 +30,11 @@
                StartIcon="@Icons.Material.Filled.Payments"
                OnClick="@(() => Navegacion.NavigateTo("/pagos/nuevo"))">
         Nuevo pago
+    </MudButton>
+    <MudButton Variant="Variant.Outlined"
+               StartIcon="@Icons.Material.Filled.LocalShipping"
+               OnClick="@(() => Navegacion.NavigateTo("/traslados-carta-porte/nuevo"))">
+        Nueva Carta Porte
     </MudButton>
 </div>
 
@@ -63,6 +69,7 @@
         <MudSelectItem T="string" Value="@(null)">Todos</MudSelectItem>
         <MudSelectItem T="string" Value="@("I")">Facturas</MudSelectItem>
         <MudSelectItem T="string" Value="@("P")">Pagos</MudSelectItem>
+        <MudSelectItem T="string" Value="@("T")">Traslados</MudSelectItem>
     </MudSelect>
 
     <BuscadorDeCliente Valor="_cliente" ValorCambiado="AlFiltrarCliente" />
@@ -198,6 +205,26 @@
                     Abrir
                 </MudButton>
 
+                @if (_detalleSeleccionado is { } detalleFiscal && TienePdfFiscal(detalleFiscal))
+                {
+                    <MudButton Variant="Variant.Outlined"
+                               StartIcon="@Icons.Material.Filled.PictureAsPdf"
+                               Disabled="@_preparandoPdf"
+                               OnClick="VerPdfFiscalAsync">
+                        @(_preparandoPdf ? "Preparando PDF…" : "Ver PDF")
+                    </MudButton>
+                }
+
+                @if (_detalleSeleccionado is { } detalleConXml && EsCfdiFiscal(detalleConXml))
+                {
+                    <MudButton Variant="Variant.Text"
+                               StartIcon="@Icons.Material.Filled.Code"
+                               Disabled="@_descargandoXml"
+                               OnClick="DescargarXmlFiscalAsync">
+                        @(_descargandoXml ? "Descargando XML…" : "Descargar XML")
+                    </MudButton>
+                }
+
                 <SiTienePermiso Permiso="@Permisos.Cancelar">
                     @if (seleccionado.Estatus == EstatusComprobante.Timbrado)
                     {
@@ -228,6 +255,8 @@
     private ComprobanteEnListaDto? _seleccionado;
     private ComprobanteDto? _detalleSeleccionado;
     private bool _cargandoVista;
+    private bool _preparandoPdf;
+    private bool _descargandoXml;
     private int _versionDeVista;
 
     // Evita apilar diálogos de cancelación al doble clic.
@@ -300,8 +329,73 @@
     {
         if (_seleccionado is not { } documento || _detalleSeleccionado is not { } detalle) return;
 
-        var ruta = detalle.TipoDeComprobante == "P" ? "pagos" : "facturas";
+        var ruta = detalle.TipoDeComprobante switch
+        {
+            "P" => "pagos",
+            "T" => "traslados-carta-porte",
+            _ => "facturas"
+        };
         Navegacion.NavigateTo($"/{ruta}/{documento.Id}");
+    }
+
+    private static bool EsCfdiFiscal(ComprobanteDto comprobante)
+        => comprobante.Estatus is "timbrado" or "cancelado" && comprobante.Uuid is not null;
+
+    private static bool TienePdfFiscal(ComprobanteDto comprobante)
+        => EsCfdiFiscal(comprobante) && comprobante.TipoDeComprobante is "I" or "T";
+
+    private async Task VerPdfFiscalAsync()
+    {
+        if (_detalleSeleccionado is null || _preparandoPdf) return;
+
+        _preparandoPdf = true;
+        _error = null;
+
+        try
+        {
+            var (archivo, error) = await Emision.ObtenerPdfFiscalAsync(_detalleSeleccionado.Id);
+            _error = error;
+
+            if (archivo is null) return;
+
+            var parametros = new DialogParameters<DialogoDeComprobanteDeCompra>
+            {
+                { x => x.Archivo, archivo },
+                { x => x.TituloVistaPrevia, "Representación impresa del CFDI" },
+                { x => x.AvisoFiscal,
+                    "Representación impresa del CFDI. Incluye los datos fiscales del comprobante timbrado." }
+            };
+
+            await Dialogos.ShowAsync<DialogoDeComprobanteDeCompra>(
+                "PDF del CFDI",
+                parametros,
+                new DialogOptions { MaxWidth = MaxWidth.ExtraLarge, FullWidth = true, CloseOnEscapeKey = true });
+        }
+        finally
+        {
+            _preparandoPdf = false;
+        }
+    }
+
+    private async Task DescargarXmlFiscalAsync()
+    {
+        if (_detalleSeleccionado is null || _descargandoXml) return;
+
+        _descargandoXml = true;
+        _error = null;
+
+        try
+        {
+            var (archivo, error) = await Emision.ObtenerXmlFiscalAsync(_detalleSeleccionado.Id);
+            _error = error;
+
+            if (archivo is not null)
+                await Descargas.GuardarAsync(archivo);
+        }
+        finally
+        {
+            _descargandoXml = false;
+        }
     }
 
     /// <summary>

@@ -52,6 +52,7 @@ public static class MenuPrincipal
         // hermanas obligaba a elegir entre dos puertas al mismo cuarto antes de saber
         // cuál de las dos se quería.
         new("/documentos", "Documentos", "description", Permisos.Timbrar),
+        new("/traslados-carta-porte/nuevo", "Carta Porte", "local_shipping", Permisos.Timbrar),
         new("/clientes", "Clientes", "groups", Permiso: null),
         new("/productos", "Productos", "inventory", Permiso: null),
 
@@ -61,6 +62,7 @@ public static class MenuPrincipal
         new("/empresa/series", "Series de folios", "tag", Permisos.ConfigurarEmpresa, Grupos.Empresa),
         new("/empresa/certificados", "Certificados", "verified_user", Permisos.ConfigurarEmpresa, Grupos.Empresa),
         new("/empresa/configuracion", "Configuración", "settings", Permisos.ConfigurarEmpresa, Grupos.Empresa),
+        new("/empresa/transporte", "Transporte", "local_shipping", Permisos.ConfigurarEmpresa, Grupos.Empresa),
 
         // ── Administración: cuenta, gente y datos del SAT ───────────────────────────────
         new("/timbres", "Timbres", "confirmation_number", Permisos.ComprarTimbres, Grupos.Administracion),

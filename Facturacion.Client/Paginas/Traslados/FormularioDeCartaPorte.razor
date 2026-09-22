@@ -1,0 +1,365 @@
+@page "/traslados-carta-porte/nuevo"
+@page "/traslados-carta-porte/{Id:guid}"
+@attribute [Authorize(Policy = Permisos.Timbrar)]
+@using Facturacion.Client.Servicios.Documentos
+@using Facturacion.Client.Servicios.Plataforma
+@using Facturacion.Shared.Comun
+@using Facturacion.Shared.Contratos
+@using Facturacion.Shared.Documentos
+@using Facturacion.Shared.Plataforma
+@using Facturacion.Shared.Transporte
+@inject ServicioDeTrasladosCartaPorte Traslados
+@inject ServicioDeEmision Emision
+@inject ServicioDeTransporte Transporte
+@inject ServicioDeEmpresa Empresa
+@inject NavigationManager Navegacion
+@inject IDialogService Dialogos
+@inject ServicioDeDescargas Descargas
+@inject IServicioDeConfirmacion Confirmacion
+
+<PageTitle>@(EsNuevo ? "Nueva Carta Porte" : "Carta Porte")</PageTitle>
+<TituloDePagina Texto="@(EsNuevo ? "Nueva Carta Porte" : "Carta Porte")" />
+
+<TarjetaFormulario Ancha="true" RutaVolver="/documentos">
+    <PanelErrores Problema="_error" />
+
+    @if (_cargando)
+    {
+        <p class="tabla-datos-estado">Cargando…</p>
+    }
+    else
+    {
+        <div class="aviso-documentos" role="status">
+            Traslado de mercancía propia. El CFDI será de traslado, con importe cero y los datos fiscales de esta empresa.
+            Guarda el borrador y valida su XML Carta Porte 3.1 antes de timbrarlo. La validación no envía nada al PAC ni consume timbres.
+        </div>
+
+        @if (!string.IsNullOrWhiteSpace(_mensajeXml))
+        {
+            <div class="aviso-documentos" role="status">@_mensajeXml</div>
+        }
+
+        @if (_integracionFiscal is { TimbradoDisponible: false })
+        {
+            <div class="aviso-documentos" role="status">
+                El timbrado está pendiente de integración con el PAC. Puedes guardar, revisar el PDF y validar el XML sin generar un folio ni consumir timbres.
+            </div>
+        }
+
+        @if (!EsEditable)
+        {
+            <div class="aviso-documentos" role="status">
+                Esta Carta Porte está en estado <strong>@_estatus</strong>. Consulta sus archivos fiscales desde Documentos.
+            </div>
+        }
+
+        @if (_vehiculos.Count == 0 || _figuras.Count == 0)
+        {
+            <div class="aviso-documentos" role="alert">
+                Antes de guardar registra al menos un vehículo y un operador activos en Transporte.
+                <MudButton Variant="Variant.Text" OnClick="@(() => Navegacion.NavigateTo("/empresa/transporte"))">Ir a transporte</MudButton>
+            </div>
+        }
+
+        <MudTabs Elevation="0" ApplyEffectsToContainer="true">
+            <MudTabPanel Text="Trayecto">
+                <section class="seccion-formulario">
+                    <h2>Datos del traslado</h2>
+                    <div class="rejilla-formulario">
+                        <MudSelect T="Guid?" Label="Vehículo" Value="_vehiculoId" ValueChanged="v => _vehiculoId = v" Disabled="@(!EsEditable)" Required="true">
+                            @foreach (var vehiculo in _vehiculos)
+                            {
+                                <MudSelectItem T="Guid?" Value="@vehiculo.Id">@vehiculo.Clave — @vehiculo.Descripcion · @vehiculo.Placa</MudSelectItem>
+                            }
+                        </MudSelect>
+                        <MudSelect T="Guid?" Label="Operador" Value="_figuraId" ValueChanged="v => _figuraId = v" Disabled="@(!EsEditable)" Required="true">
+                            @foreach (var figura in _figuras)
+                            {
+                                <MudSelectItem T="Guid?" Value="@figura.Id">@figura.Nombre · @figura.Rfc</MudSelectItem>
+                            }
+                        </MudSelect>
+                        <MudNumericField T="decimal" Label="Distancia recorrida (km)" @bind-Value="_distanciaKm" Min="0.001m" Format="N3" Disabled="@(!EsEditable)" Required="true" />
+                    </div>
+                </section>
+
+                <section class="seccion-formulario">
+                    <h2>Salida y llegada</h2>
+                    <div class="rejilla-formulario">
+                        <MudDatePicker Label="Fecha de salida" Date="_fechaSalida" DateChanged="v => _fechaSalida = v ?? DateTime.Today" Disabled="@(!EsEditable)" Required="true" />
+                        <MudTimePicker Label="Hora de salida" Time="_horaSalida" TimeChanged="v => _horaSalida = v ?? TimeSpan.Zero" Disabled="@(!EsEditable)" Required="true" />
+                        <MudDatePicker Label="Fecha de llegada" Date="_fechaLlegada" DateChanged="v => _fechaLlegada = v ?? DateTime.Today" Disabled="@(!EsEditable)" Required="true" />
+                        <MudTimePicker Label="Hora de llegada" Time="_horaLlegada" TimeChanged="v => _horaLlegada = v ?? TimeSpan.Zero" Disabled="@(!EsEditable)" Required="true" />
+                    </div>
+                </section>
+            </MudTabPanel>
+
+            <MudTabPanel Text="Ubicaciones">
+                <section class="seccion-formulario">
+                    <h2>Origen</h2>
+                    <p class="ayuda-seccion">Lugar donde inicia el traslado.</p>
+                    <EditorDomicilioCartaPorte Tipo="Origen" Valor="_origen" ValorCambiado="v => _origen = v" Deshabilitado="@(!EsEditable)" />
+                </section>
+                <section class="seccion-formulario">
+                    <h2>Destino</h2>
+                    <p class="ayuda-seccion">Lugar donde termina el traslado.</p>
+                    <EditorDomicilioCartaPorte Tipo="Destino" Valor="_destino" ValorCambiado="v => _destino = v" Deshabilitado="@(!EsEditable)" />
+                </section>
+            </MudTabPanel>
+
+            <MudTabPanel Text="Mercancías">
+                <section class="seccion-formulario">
+                    <h2>Mercancías transportadas</h2>
+                    <p class="ayuda-seccion">Describe lo que se transporta; solo se muestran las claves válidas para Carta Porte.</p>
+                    @if (EsEditable)
+                    {
+                        <MudButton Variant="Variant.Outlined" StartIcon="@Icons.Material.Filled.Add" OnClick="AgregarMercancia">Agregar mercancía</MudButton>
+                    }
+
+                    @foreach (var renglon in _mercancias)
+                    {
+                        <div class="seccion-formulario">
+                            <div class="rejilla-formulario">
+                                <BuscadorCatalogo Catalogo="c_ClaveProdServCP" Label="Bien transportado SAT" Valor="@renglon.Producto"
+                                                  ValorCambiado="v => renglon.Producto = v" Deshabilitado="@(!EsEditable)" Requerido="true" />
+                                <MudTextField T="string" Label="Descripción" @bind-Value="renglon.Descripcion" Disabled="@(!EsEditable)" Required="true" />
+                                <MudNumericField T="decimal" Label="Cantidad" @bind-Value="renglon.Cantidad" Min="0.000001m" Format="N6" Disabled="@(!EsEditable)" Required="true" />
+                                <BuscadorCatalogo Catalogo="c_ClaveUnidad" Label="Unidad SAT" Valor="@renglon.Unidad"
+                                                  ValorCambiado="v => renglon.Unidad = v" Deshabilitado="@(!EsEditable)" Requerido="true" />
+                                <MudNumericField T="decimal" Label="Peso (kg)" @bind-Value="renglon.PesoEnKg" Min="0.000001m" Format="N6" Disabled="@(!EsEditable)" Required="true" />
+                            </div>
+                            @if (EsEditable && _mercancias.Count > 1)
+                            {
+                                <MudButton Size="Size.Small" Color="Color.Error" OnClick="@(() => _mercancias.Remove(renglon))">Quitar mercancía</MudButton>
+                            }
+                        </div>
+                    }
+                </section>
+            </MudTabPanel>
+        </MudTabs>
+
+        <div class="tarjeta-formulario-acciones">
+            <MudButton OnClick="@(() => Navegacion.NavigateTo("/documentos"))">Volver</MudButton>
+            @if (EsEditable)
+            {
+                @if (!EsNuevo)
+                {
+                    <MudButton Variant="Variant.Outlined" Disabled="@(_validandoXml || _guardando)" OnClick="VistaPreviaAsync">Vista previa PDF</MudButton>
+                    <MudButton Variant="Variant.Outlined" Disabled="@(_validandoXml || _guardando)" OnClick="DescargarXmlAsync">Descargar XML</MudButton>
+                    <MudButton Variant="Variant.Outlined" Disabled="@(_validandoXml || _guardando)" OnClick="ValidarXmlAsync">
+                        @(_validandoXml ? "Validando XML…" : "Validar XML guardado")
+                    </MudButton>
+                    <MudButton Variant="Variant.Filled" Color="Color.Primary" Disabled="@(_validandoXml || _guardando || _timbrando || !PuedeTimbrar)" OnClick="TimbrarAsync">
+                        @(_timbrando ? "Timbrando…" : "Timbrar Carta Porte")
+                    </MudButton>
+                }
+                <MudButton Variant="Variant.Filled" Color="Color.Primary" Disabled="_guardando" OnClick="GuardarAsync">
+                    @(_guardando ? "Guardando…" : "Guardar borrador")
+                </MudButton>
+            }
+        </div>
+    }
+</TarjetaFormulario>
+
+@code {
+    [Parameter] public Guid? Id { get; set; }
+
+    private readonly List<RenglonMercancia> _mercancias = [new()];
+    private List<VehiculoDto> _vehiculos = [];
+    private List<FiguraTransporteDto> _figuras = [];
+    private DetalleProblema? _error;
+    private bool _cargando = true, _guardando, _validandoXml, _timbrando;
+    private string? _mensajeXml;
+    private string _zonaHoraria = "Central Standard Time (Mexico)";
+    private string _estatus = "borrador";
+    private EstadoDeIntegracionFiscalDto? _integracionFiscal;
+    private Guid? _vehiculoId, _figuraId;
+    private decimal _distanciaKm;
+    private DateTime _fechaSalida = DateTime.Today, _fechaLlegada = DateTime.Today;
+    private TimeSpan? _horaSalida = TimeSpan.FromHours(9), _horaLlegada = TimeSpan.FromHours(10);
+    private UbicacionCartaPorteDto _origen = Vacio("Origen", 1);
+    private UbicacionCartaPorteDto _destino = Vacio("Destino", 2);
+
+    private bool EsNuevo => Id is null;
+    private bool EsEditable => _estatus is "borrador" or "error";
+    private bool PuedeTimbrar => _integracionFiscal?.TimbradoDisponible == true;
+
+    protected override async Task OnParametersSetAsync()
+    {
+        _cargando = true;
+        _error = null;
+        _mensajeXml = null;
+        _integracionFiscal = await Emision.ObtenerEstadoDeIntegracionAsync();
+        var empresa = await Empresa.ObtenerAsync();
+        _zonaHoraria = empresa?.ZonaHoraria ?? _zonaHoraria;
+        _vehiculos = await Transporte.VehiculosAsync(true) ?? [];
+        _figuras = await Transporte.FigurasAsync(true) ?? [];
+
+        if (Id is { } id)
+        {
+            var traslado = await Traslados.ObtenerAsync(id);
+            if (traslado is null)
+            {
+                _error = ProblemaLocal("No se encontró el traslado Carta Porte.");
+            }
+            else
+            {
+                Rehidratar(traslado);
+            }
+        }
+
+        _cargando = false;
+    }
+
+    private void Rehidratar(TrasladoCartaPorteDto traslado)
+    {
+        _estatus = traslado.Estatus;
+        _vehiculoId = traslado.VehiculoId;
+        _figuraId = traslado.FiguraTransporteId;
+        _distanciaKm = traslado.DistanciaRecorridaKm;
+        var salida = ALocal(traslado.FechaSalidaUtc);
+        var llegada = ALocal(traslado.FechaLlegadaUtc);
+        _fechaSalida = salida.Date; _horaSalida = salida.TimeOfDay;
+        _fechaLlegada = llegada.Date; _horaLlegada = llegada.TimeOfDay;
+        _origen = traslado.Ubicaciones.SingleOrDefault(x => x.Tipo == "Origen") ?? Vacio("Origen", 1);
+        _destino = traslado.Ubicaciones.SingleOrDefault(x => x.Tipo == "Destino") ?? Vacio("Destino", 2);
+        _mercancias.Clear();
+        _mercancias.AddRange(traslado.Mercancias.OrderBy(x => x.Orden).Select(x => new RenglonMercancia
+        {
+            Producto = new ClaveSatDto("c_ClaveProdServCP", x.ClaveProdServ, x.ClaveProdServ, true),
+            Descripcion = x.Descripcion,
+            Cantidad = x.Cantidad,
+            Unidad = new ClaveSatDto("c_ClaveUnidad", x.ClaveUnidad, x.ClaveUnidad, true),
+            PesoEnKg = x.PesoEnKg
+        }));
+        if (_mercancias.Count == 0) _mercancias.Add(new());
+    }
+
+    private void AgregarMercancia() => _mercancias.Add(new RenglonMercancia());
+
+    private async Task GuardarAsync()
+    {
+        if (_vehiculoId is null || _figuraId is null)
+        {
+            _error = ProblemaLocal("Elige un vehículo y un operador activos.");
+            return;
+        }
+
+        _guardando = true;
+        _error = null;
+        try
+        {
+            var peticion = new PeticionGuardarTrasladoCartaPorte(
+                _vehiculoId.Value, _figuraId.Value, Combinar(_fechaSalida, _horaSalida), Combinar(_fechaLlegada, _horaLlegada),
+                _distanciaKm, [_origen, _destino],
+                [.. _mercancias.Select((x, indice) => new MercanciaCartaPorteDto(indice + 1, x.Producto?.Clave ?? string.Empty,
+                    x.Descripcion, x.Cantidad, x.Unidad?.Clave ?? string.Empty, x.PesoEnKg))]);
+
+            var resultado = EsNuevo
+                ? await Traslados.CrearAsync(peticion)
+                : await Traslados.ActualizarAsync(Id!.Value, peticion);
+            _error = resultado.Error;
+            if (resultado.Exito is not { } guardado) return;
+
+            Rehidratar(guardado);
+            if (EsNuevo) Navegacion.NavigateTo($"/traslados-carta-porte/{guardado.ComprobanteId}", replace: true);
+        }
+        finally
+        {
+            _guardando = false;
+        }
+    }
+
+    private async Task ValidarXmlAsync()
+    {
+        if (Id is not { } id || _validandoXml) return;
+
+        _validandoXml = true;
+        _error = null;
+        _mensajeXml = null;
+        try
+        {
+            var resultado = await Traslados.ValidarXmlAsync(id);
+            _error = resultado.Error;
+            _mensajeXml = resultado.Exito?.Mensaje;
+        }
+        finally
+        {
+            _validandoXml = false;
+        }
+    }
+
+    private async Task VistaPreviaAsync()
+    {
+        if (Id is not { } id || _guardando) return;
+        await GuardarAsync();
+        if (_error is not null) return;
+        var (archivo, error) = await Traslados.ObtenerVistaPreviaPdfAsync(id);
+        _error = error;
+        if (archivo is null) return;
+        await Dialogos.ShowAsync<DialogoDeComprobanteDeCompra>("Vista previa de Carta Porte",
+            new DialogParameters<DialogoDeComprobanteDeCompra>
+            {
+                { x => x.Archivo, archivo },
+                { x => x.TituloVistaPrevia, "Vista previa de Carta Porte" },
+                { x => x.AvisoFiscal, "Borrador sin validez fiscal. No contiene UUID, folio, timbre ni certificación del SAT." }
+            }, new DialogOptions { MaxWidth = MaxWidth.ExtraLarge, FullWidth = true, CloseOnEscapeKey = true });
+    }
+
+    private async Task DescargarXmlAsync()
+    {
+        if (Id is not { } id || _guardando) return;
+        await GuardarAsync();
+        if (_error is not null) return;
+        var (archivo, error) = await Traslados.ObtenerXmlBorradorAsync(id);
+        _error = error;
+        if (archivo is not null) await Descargas.GuardarAsync(archivo);
+    }
+
+    private async Task TimbrarAsync()
+    {
+        if (Id is not { } id || !PuedeTimbrar || _timbrando) return;
+        await GuardarAsync();
+        if (_error is not null) return;
+
+        var confirmado = await Confirmacion.ConfirmarAsync(
+            "Timbrar Carta Porte",
+            "Se consumirá un timbre para emitir el CFDI de traslado. Después ya no podrás editarlo.",
+            "Timbrar Carta Porte");
+        if (!confirmado) return;
+
+        _timbrando = true;
+        _error = null;
+        try
+        {
+            var (resultado, error) = await Emision.TimbrarAsync(id, Guid.NewGuid().ToString("N"));
+            _error = error;
+            if (resultado is null) return;
+
+            _estatus = resultado.Estatus;
+            _mensajeXml = "La Carta Porte se timbró correctamente. Sus archivos fiscales están disponibles en Documentos.";
+        }
+        finally
+        {
+            _timbrando = false;
+        }
+    }
+
+    private DateTime ALocal(DateTime utc)
+    {
+        try { return TimeZoneInfo.ConvertTimeFromUtc(DateTime.SpecifyKind(utc, DateTimeKind.Utc), TimeZoneInfo.FindSystemTimeZoneById(_zonaHoraria)); }
+        catch (TimeZoneNotFoundException) { return utc; }
+    }
+
+    private static DateTime Combinar(DateTime fecha, TimeSpan? hora) => fecha.Date.Add(hora ?? TimeSpan.Zero);
+    private static UbicacionCartaPorteDto Vacio(string tipo, int orden) => new(tipo, orden, null, string.Empty, string.Empty, null, string.Empty, string.Empty, string.Empty);
+    private static DetalleProblema ProblemaLocal(string detalle) => new("urn:facturacion:error:carta-porte", "Falta algo en la captura", 400, detalle, null, string.Empty, null);
+
+    private sealed class RenglonMercancia
+    {
+        public ClaveSatDto? Producto { get; set; }
+        public string Descripcion { get; set; } = string.Empty;
+        public decimal Cantidad { get; set; } = 1m;
+        public ClaveSatDto? Unidad { get; set; }
+        public decimal PesoEnKg { get; set; }
+    }
+}

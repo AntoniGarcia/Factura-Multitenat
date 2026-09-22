@@ -36,6 +36,8 @@ public sealed record CfdiSellado(string Xml, string CadenaOriginal, string Sello
 public sealed class ServicioDeXmlCfdi(
     AppDbContext baseDeDatos,
     GeneradorDeXmlCfdi generador,
+    GeneradorDeXmlCartaPorte generadorCartaPorte,
+    GeneradorDeXmlNotaria generadorNotaria,
     EsquemasSat esquemas,
     HusoDeEmpresa huso,
     IProveedorCsdParaTimbrado csd,
@@ -71,14 +73,55 @@ public sealed class ServicioDeXmlCfdi(
 
         var material = await csd.ObtenerAsync(ct);
 
-        var fechaLocal = TimeZoneInfo.ConvertTimeFromUtc(
-            comprobante.FechaEmisionUtc, await huso.ObtenerAsync(ct));
-
-        var documento = generador.Generar(comprobante, new DatosDeEmision(
+        var zonaHoraria = await huso.ObtenerAsync(ct);
+        var fechaLocal = TimeZoneInfo.ConvertTimeFromUtc(comprobante.FechaEmisionUtc, zonaHoraria);
+        var datosDeEmision = new DatosDeEmision(
             fechaLocal,
             decimales.Value,
             material.NumeroSerie,
-            Convert.ToBase64String(material.CertificadoCer)));
+            Convert.ToBase64String(material.CertificadoCer));
+
+        XDocument documento;
+        if (comprobante.TipoDeComprobante == TiposDeComprobante.Traslado)
+        {
+            var traslado = await baseDeDatos.TrasladosCartaPorte
+                .AsNoTracking()
+                .Include(x => x.Ubicaciones)
+                .Include(x => x.Mercancias)
+                .FirstOrDefaultAsync(x => x.ComprobanteId == comprobante.Id, ct);
+
+            if (traslado is null)
+                return ErrorNegocio.Regla(
+                    "traslado-sin-carta-porte",
+                    "El CFDI de traslado no tiene los datos de Carta Porte requeridos.");
+
+            var cartaPorte = generadorCartaPorte.Generar(comprobante, datosDeEmision, traslado, zonaHoraria);
+            if (cartaPorte.EsFallo) return cartaPorte.Error!;
+
+            documento = cartaPorte.Valor;
+        }
+        else if (comprobante.TipoDeComprobante == TiposDeComprobante.Ingreso)
+        {
+            var datosNotaria = await baseDeDatos.DatosNotaria
+                .AsNoTracking()
+                .Include(x => x.Inmuebles)
+                .Include(x => x.Partes)
+                .FirstOrDefaultAsync(x => x.ComprobanteId == comprobante.Id, ct);
+
+            if (datosNotaria is null)
+                documento = generador.Generar(comprobante, datosDeEmision);
+            else
+            {
+                var notario = await baseDeDatos.ConfiguracionesNotario.AsNoTracking().FirstOrDefaultAsync(ct);
+                var notarial = generadorNotaria.Generar(comprobante, datosDeEmision, datosNotaria, notario);
+                if (notarial.EsFallo) return notarial.Error!;
+                documento = notarial.Valor;
+            }
+        }
+        else
+        {
+            documento = generador.Generar(comprobante, datosDeEmision);
+        }
 
         string cadena;
 
@@ -99,7 +142,17 @@ public sealed class ServicioDeXmlCfdi(
         var sello = Sellar(cadena, material);
         documento.Root!.SetAttributeValue("Sello", sello);
 
-        if (Validar(documento) is { } error) return error;
+        try
+        {
+            if (Validar(documento, comprobante.TipoDeComprobante == TiposDeComprobante.Traslado,
+                    documento.Descendants(EsquemasSat.EspacioDeNombresNotariosPublicos + "NotariosPublicos").Any()) is { } error)
+                return error;
+        }
+        catch (FileNotFoundException ex)
+        {
+            registro.LogError(ex, "Falta un esquema SAT para validar el comprobante.");
+            return ErrorNegocio.Regla("esquemas-sat-incompletos", "Falta un esquema del SAT para validar el XML. Avisa a soporte.");
+        }
 
         return new CfdiSellado(Serializar(documento), cadena, sello, material.NumeroSerie);
     }
@@ -145,14 +198,14 @@ public sealed class ServicioDeXmlCfdi(
         return Convert.ToBase64String(firma);
     }
 
-    private ErrorNegocio? Validar(XDocument documento)
+    private ErrorNegocio? Validar(XDocument documento, bool esCartaPorte, bool esNotaria)
     {
         var problemas = new List<string>();
 
         var ajustes = new XmlReaderSettings
         {
             ValidationType = ValidationType.Schema,
-            Schemas = esquemas.Esquema,
+            Schemas = esCartaPorte ? esquemas.EsquemaCartaPorte : esNotaria ? esquemas.EsquemaNotaria : esquemas.Esquema,
             DtdProcessing = DtdProcessing.Prohibit
         };
 
@@ -178,7 +231,7 @@ public sealed class ServicioDeXmlCfdi(
     private static string Serializar(XDocument documento)
     {
         // UTF-8 sin BOM: el SAT lo exige y un BOM invalida el sello.
-        var salida = new StringWriter();
+        using var salida = new MemoryStream();
 
         using (var escritor = XmlWriter.Create(salida, new XmlWriterSettings
         {
@@ -190,6 +243,6 @@ public sealed class ServicioDeXmlCfdi(
             documento.Save(escritor);
         }
 
-        return salida.ToString();
+        return Encoding.UTF8.GetString(salida.ToArray());
     }
 }
