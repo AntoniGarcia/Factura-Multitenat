@@ -139,7 +139,8 @@ public sealed record ComprobanteEnListaDto(
     string ReceptorNombre,
     decimal Total,
     EstatusComprobante Estatus,
-    Guid? Uuid);
+    Guid? Uuid,
+    string TipoDeComprobante);
 
 /// <summary>Una página del listado de documentos, con el total de renglones que existen.</summary>
 public sealed record PaginaDeComprobantes(

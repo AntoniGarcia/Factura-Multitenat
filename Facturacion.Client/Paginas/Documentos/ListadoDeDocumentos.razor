@@ -119,6 +119,9 @@
 
     private IReadOnlyList<ColumnaDeTabla<ComprobanteEnListaDto>> _columnas = [];
 
+    private void AbrirDocumento(ComprobanteEnListaDto d)
+    => Navegacion.NavigateTo(d.TipoDeComprobante == "P" ? $"/pagos/{d.Id}" : $"/facturas/{d.Id}");
+
     protected override void OnInitialized() => _columnas =
     [
         new("Folio", d => @<span class="cifra-tabular">@Folio(d)</span>, ClaveOrden: "folio", Tabular: true),
@@ -129,7 +132,7 @@
         new("Total", d => @<span class="cifra-tabular">@d.Total.ToString("N2")</span>, ClaveOrden: "total", Tabular: true),
         new("Estatus", d => @<IndicadorEstado Estatus="d.Estatus" />),
         new("", d => @<div class="acciones-renglon">
-                          <MudButton Size="Size.Small" OnClick="@(() => Navegacion.NavigateTo($"/facturas/{d.Id}"))">
+                          <MudButton Size="Size.Small" OnClick="@(() => AbrirDocumento(d))">
                               Abrir
                           </MudButton>
 

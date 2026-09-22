@@ -259,7 +259,8 @@ public sealed class ServicioDeEmision(
                 c.ReceptorNombre,
                 c.Total,
                 EstatusComprobanteExtensiones.Desde(c.Estatus),
-                c.Uuid))
+                c.Uuid,
+                c.TipoDeComprobante))
             .ToListAsync(ct);
 
         return new PaginaDeComprobantes(elementos, total);

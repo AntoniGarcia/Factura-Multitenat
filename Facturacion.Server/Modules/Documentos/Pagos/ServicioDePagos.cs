@@ -196,6 +196,28 @@ public sealed class ServicioDePagos(
         return ADto(comprobante, comprobante.Pagos.FirstOrDefault());
     }
 
+
+    public async Task<Resultado> EliminarBorradorAsync(Guid id, CancellationToken ct)
+    {
+        var comprobante = await baseDeDatos.Comprobantes
+            .FirstOrDefaultAsync(c => c.Id == id && c.TipoDeComprobante == TiposDeComprobante.Pago, ct);
+
+        if (comprobante is null)
+            return ErrorNegocio.NoEncontrado("comprobante-no-encontrado", "Ese comprobante no existe.");
+
+        // Mismo criterio que en ServicioDeEmision: solo se descarta lo que nunca se intentó timbrar.
+        if (comprobante.Estatus != EstatusComprobante.Borrador.ACadena())
+            return ErrorNegocio.Conflicto(
+                "comprobante-no-es-borrador",
+                "Solo se puede descartar un comprobante que nunca se intentó timbrar.");
+
+        baseDeDatos.Comprobantes.Remove(comprobante);
+        await baseDeDatos.SaveChangesAsync(ct);
+
+        return Resultado.Exito();
+    }
+
+
     /// <summary>
     /// Las reglas de §27 y §28 que no dependen de la base: cuadre de la rejilla, tipo de
     /// cambio y datos bancarios.

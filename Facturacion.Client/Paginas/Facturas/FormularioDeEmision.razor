@@ -12,6 +12,7 @@
 @inject ServicioDeEmpresa Empresa
 @inject ServicioDeCatalogos Catalogos
 @inject NavigationManager Navegacion
+@implements IDisposable
 
 <PageTitle>@(EsNuevo ? "Nueva factura" : "Factura")</PageTitle>
 <TituloDePagina Texto="@TituloDeLaPantalla" />
@@ -256,7 +257,7 @@ else
     </MudTabs>
 
     <div class="tarjeta-formulario-acciones">
-        <MudButton Variant="Variant.Text" OnClick="@(() => Navegacion.NavigateTo("/"))">Cancelar</MudButton>
+        <MudButton Variant="Variant.Text" OnClick="@(() => Navegacion.NavigateTo("/documentos"))">Cancelar</MudButton>
         <MudButton Variant="Variant.Outlined" OnClick="GuardarAsync" Disabled="@(_guardando || _generando)">
             @(_guardando ? "Guardando…" : "Guardar borrador")
         </MudButton>
@@ -359,6 +360,9 @@ else
 
         var comprobante = await Emision.ObtenerAsync(Id!.Value);
         _comprobante = comprobante;
+        _borradorSinGuardar = comprobante is { Estatus: "borrador" } && comprobante.Conceptos.Count == 0
+            ? comprobante.Id
+            : null;
 
         if (comprobante is not null)
         {
@@ -578,6 +582,7 @@ else
         }
 
         _comprobante = exito;
+        _borradorSinGuardar = null;
         return true;
     }
 
@@ -648,5 +653,33 @@ else
         public decimal Importe => Math.Round(Cantidad * ValorUnitario, 6, MidpointRounding.ToEven);
     }
 
+    // Id del borrador que se creó al abrir la pantalla y todavía no se guardó nunca.
+    private Guid? _borradorSinGuardar;
+    private IDisposable? _registroDeSalida;
+
+    protected override void OnAfterRender(bool firstRender)
+    {
+        // OnAfterRender y no OnInitialized: no se ejecuta durante el prerender.
+        if (firstRender)
+            _registroDeSalida = Navegacion.RegisterLocationChangingHandler(AlSalirAsync);
+    }
+
+    private async ValueTask AlSalirAsync(LocationChangingContext contexto)
+    {
+        if (_borradorSinGuardar is not { } id) return;
+
+        _borradorSinGuardar = null; // evita un segundo intento si el handler se dispara otra vez
+
+        try
+        {
+            await Emision.EliminarBorradorAsync(id);
+        }
+        catch
+        {
+            // Si falla no se bloquea la salida: el barrido lo recoge después.
+        }
+    }
+
+    public void Dispose() => _registroDeSalida?.Dispose();
     
 }
