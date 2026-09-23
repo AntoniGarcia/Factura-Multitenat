@@ -52,12 +52,12 @@ public static class MenuPrincipal
         // hermanas obligaba a elegir entre dos puertas al mismo cuarto antes de saber
         // cuál de las dos se quería.
         new("/documentos", "Documentos", "description", Permisos.Timbrar),
-        new("/traslados-carta-porte/nuevo", "Carta Porte", "local_shipping", Permisos.Timbrar),
+        // new("/traslados-carta-porte/nuevo", "Carta Porte", "feature_play_list", Permisos.Timbrar),
         new("/clientes", "Clientes", "groups", Permiso: null),
         new("/productos", "Productos", "inventory", Permiso: null),
 
         // ── Mi empresa: se configura una vez y se revisa de vez en cuando ───────────────
-        new("/empresa/nueva", "Agregar empresa", "add_business", Permiso: null, Grupos.Empresa),
+        new("/empresa/nueva", "Agregar empresa", "domain_add", Permisos.ConfigurarEmpresa, Grupos.Empresa),
         new("/empresa", "Datos fiscales", "business", Permisos.ConfigurarEmpresa, Grupos.Empresa),
         new("/empresa/series", "Series de folios", "tag", Permisos.ConfigurarEmpresa, Grupos.Empresa),
         new("/empresa/certificados", "Certificados", "verified_user", Permisos.ConfigurarEmpresa, Grupos.Empresa),
