@@ -25,6 +25,7 @@ public static class AccionesDeBitacora
     public const string ConfiguracionNotarioActualizada = "configuracion_notario_actualizada";
     public const string DatosNotariaActualizados = "datos_notaria_actualizados";
     public const string DatosObraActualizados = "datos_obra_actualizados";
+    public const string DatosComercioExteriorActualizados = "datos_comercio_exterior_actualizados";
     public const string PartesNotarialesActualizadas = "partes_notariales_actualizadas";
     public const string LogoActualizado = "logo_actualizado";
     public const string LogoQuitado = "logo_quitado";
@@ -129,6 +130,7 @@ public static class EntidadesDeBitacora
     public const string ConfiguracionNotario = "ConfiguracionNotario";
     public const string DatosNotaria = "DatosNotaria";
     public const string DatosObra = "DatosObra";
+    public const string DatosComercioExterior = "DatosComercioExterior";
     public const string PartesNotariales = "PartesNotariales";
     public const string CertificadoCsd = "CertificadoCsd";
     public const string Serie = "Serie";

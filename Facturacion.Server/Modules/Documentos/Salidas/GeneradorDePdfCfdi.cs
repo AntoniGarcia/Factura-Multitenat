@@ -1,5 +1,6 @@
 using System.Globalization;
 using Facturacion.Server.Data.Entidades.Documentos;
+using Facturacion.Shared.ComercioExterior;
 using QRCoder;
 using QuestPDF.Fluent;
 using QuestPDF.Helpers;
@@ -14,7 +15,8 @@ public sealed record DatosDelPdf(
     int Decimales,
     byte[]? Logo,
     bool EsBorrador = false,
-    DatosNotarialesDelPdf? Notaria = null);
+    DatosNotarialesDelPdf? Notaria = null,
+    DatosComercioExteriorDto? ComercioExterior = null);
 
 /// <summary>
 /// Representación impresa del CFDI. Los campos son los que fija §1.4 del documento
@@ -125,7 +127,63 @@ public sealed class GeneradorDePdfCfdi
             columna.Item().PaddingTop(6).Element(e => Totales(e, c, datos.Decimales));
             if (datos.Notaria is { } notaria)
                 columna.Item().PaddingTop(10).Element(e => SeccionNotarial(e, notaria, datos.Decimales));
+            if (datos.ComercioExterior is { } comercio)
+                columna.Item().PaddingTop(10).Element(e => SeccionComercioExterior(e, c, comercio));
         });
+
+    private static void SeccionComercioExterior(
+        IContainer contenedor, Comprobante comprobante, DatosComercioExteriorDto datos)
+        => contenedor.Column(columna =>
+        {
+            columna.Item().PaddingBottom(4).Text("COMERCIO EXTERIOR 2.0").Bold().FontSize(9);
+            columna.Item().Border(0.5f).Padding(6).Column(detalle =>
+            {
+                detalle.Item().Text($"Pedimento {datos.ClavePedimento}  ·  INCOTERM {datos.Incoterm ?? "—"}").Bold();
+                detalle.Item().Text($"Tipo de cambio USD {Cifra(datos.TipoCambioUsd!.Value, 6)}  ·  Total USD {Cifra(datos.TotalUsd!.Value, 2)}");
+                detalle.Item().Text($"Certificado de origen: {(datos.CertificadoOrigen ? $"Sí · {datos.NumeroCertificadoOrigen}" : "No")}");
+                if (!string.IsNullOrWhiteSpace(datos.NumeroExportadorConfiable))
+                    detalle.Item().Text($"Exportador confiable: {datos.NumeroExportadorConfiable}");
+                if (!string.IsNullOrWhiteSpace(datos.NumeroRegistroTributario))
+                    detalle.Item().Text($"Registro tributario del receptor: {datos.NumeroRegistroTributario}  ·  Residencia fiscal {datos.ResidenciaFiscal ?? "—"}");
+                if (!string.IsNullOrWhiteSpace(datos.CurpEmisor))
+                    detalle.Item().Text($"CURP del emisor: {datos.CurpEmisor}");
+                if (!string.IsNullOrWhiteSpace(datos.Observaciones))
+                    detalle.Item().Text($"Observaciones: {datos.Observaciones}");
+            });
+
+            columna.Item().PaddingTop(5).Text("Domicilios del complemento").Bold();
+            columna.Item().Text($"Emisor: {DireccionComercio(datos.DomicilioEmisor)}").FontSize(7);
+            columna.Item().Text($"Receptor: {DireccionComercio(datos.DomicilioReceptor)}").FontSize(7);
+
+            columna.Item().PaddingTop(6).Text("Mercancías exportadas").Bold();
+            foreach (var mercancia in (datos.Mercancias ?? []).OrderBy(x => x.OrdenConcepto))
+            {
+                var concepto = comprobante.Conceptos.First(x => x.Orden == mercancia.OrdenConcepto);
+                columna.Item().PaddingTop(4).BorderBottom(0.5f).PaddingBottom(3).Column(detalle =>
+                {
+                    detalle.Item().Text($"{mercancia.OrdenConcepto}. {concepto.NoIdentificacion} · {concepto.Descripcion}").Bold();
+                    detalle.Item().Text(
+                        $"Fracción {mercancia.FraccionArancelaria ?? "—"}  ·  Unidad aduanera {mercancia.UnidadAduana ?? "—"}  ·  Cantidad {NumeroOpcional(mercancia.CantidadAduana, 3)}");
+                    detalle.Item().Text(
+                        $"Valor unitario USD {NumeroOpcional(mercancia.ValorUnitarioAduana, 6)}  ·  Valor USD {NumeroOpcional(mercancia.ValorDolares, 4)}");
+                    if (new[] { mercancia.Marca, mercancia.Modelo, mercancia.Submodelo, mercancia.NumeroSerie }
+                        .Any(x => !string.IsNullOrWhiteSpace(x)))
+                        detalle.Item().Text($"Marca {mercancia.Marca ?? "—"}  ·  Modelo {mercancia.Modelo ?? "—"}  ·  Submodelo {mercancia.Submodelo ?? "—"}  ·  Serie {mercancia.NumeroSerie ?? "—"}")
+                            .FontSize(7);
+                });
+            }
+        });
+
+    private static string DireccionComercio(DomicilioComercioExteriorDto domicilio)
+        => string.Join(", ", new[]
+        {
+            domicilio.Calle, domicilio.NumeroExterior, domicilio.NumeroInterior,
+            domicilio.Colonia, domicilio.Localidad, domicilio.Referencia,
+            domicilio.Municipio, domicilio.Estado, domicilio.Pais, domicilio.CodigoPostal
+        }.Where(x => !string.IsNullOrWhiteSpace(x)));
+
+    private static string NumeroOpcional(decimal? valor, int decimales)
+        => valor is null ? "—" : Cifra(valor.Value, decimales);
 
     private static void SeccionNotarial(IContainer contenedor, DatosNotarialesDelPdf datos, int decimales)
         => contenedor.Column(columna =>

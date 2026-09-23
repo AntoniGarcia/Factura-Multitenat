@@ -10,6 +10,7 @@
 @using Facturacion.Shared.Plataforma
 @inject ServicioDeEmision Emision
 @inject ServicioDeObras Obras
+@inject ServicioDeComercioExterior ComercioExterior
 @inject ServicioDeClientes Clientes
 @inject ServicioDeProductos Productos
 @inject ServicioDeEmpresa Empresa
@@ -65,8 +66,13 @@ else
     <div class="emision-captura">
     @if (_tieneLicenciaObras)
     {
-        <MudCheckBox T="bool" @bind-Value="_esFacturaDeObra" Disabled="@_obraGuardada"
+        <MudCheckBox T="bool" @bind-Value="_esFacturaDeObra" Disabled="@(_obraGuardada || _esFacturaComercio)"
                      Label="Esta factura corresponde a una estimación de obra" />
+    }
+    @if (_tieneLicenciaComercio)
+    {
+        <MudCheckBox T="bool" @bind-Value="_esFacturaComercio" Disabled="@(_comercioGuardado || _esFacturaDeObra)"
+                     Label="Esta factura corresponde a Comercio Exterior" />
     }
     <MudTabs Class="emision-pestanas">
         <MudTabPanel Text="Detalle y conceptos">
@@ -161,6 +167,13 @@ else
                             <MudNumericField T="decimal" Value="@renglon.Cantidad" ValueChanged="v => renglon.Cantidad = v"
                                              Label="Cantidad" Format="N2" Min="0.000001m"
                                              Class="concepto-editor-cantidad cifra-tabular" />
+
+                            @if (_esFacturaComercio)
+                            {
+                                <MudTextField @bind-Value="renglon.NoIdentificacion"
+                                              Label="Identificador de mercancía" MaxLength="100"
+                                              HelperText="Debe coincidir con el NoIdentificacion del CFDI." />
+                            }
 
                             <div class="concepto-editor-dato concepto-editor-precio">
                                 <span>Precio unitario</span>
@@ -289,6 +302,17 @@ else
                                       AlGuardar="@(() => _obraGuardada = true)" />
             </MudTabPanel>
         }
+        @if (_tieneLicenciaComercio && _esFacturaComercio)
+        {
+            <MudTabPanel Text="Comercio exterior">
+                <DatosDeComercioExteriorDeFactura ComprobanteId="@_comprobante.Id" GuardarFactura="GuardarAsync"
+                                                   VistaPreviaPdf="AbrirVistaPreviaAsync"
+                                                   ObtenerConceptos="@(() => _comprobante.Conceptos)"
+                                                   ResidenciaFiscalSugerida="@_clienteDetalle?.ResidenciaFiscal"
+                                                   NumeroRegistroTributarioSugerido="@_clienteDetalle?.NumRegIdTrib"
+                                                   AlGuardar="@(() => _comercioGuardado = true)" />
+            </MudTabPanel>
+        }
     </MudTabs>
     </div>
 
@@ -325,24 +349,24 @@ else
         </dl>
 
         <p class="emision-resumen-nota">
-            @(_esFacturaDeObra
-                ? "Este total del borrador estándar no es el importe líquido de obra ni un CFDI listo para timbrar."
+            @(_esFacturaDeObra || _esFacturaComercio
+                ? "Este borrador requiere completar el módulo especial antes de generar un CFDI."
                 : "Importes calculados por el servidor al guardar el borrador.")
         </p>
 
         <footer class="emision-resumen-acciones">
             <MudButton Variant="Variant.Outlined" OnClick="GuardarAsync"
                        Disabled="@(_guardando || _generando || _preparandoVista)">
-                @(_guardando ? "Guardando…" : _esFacturaDeObra ? "Guardar conceptos" : "Guardar borrador")
+                @(_guardando ? "Guardando…" : _esFacturaDeObra || _esFacturaComercio ? "Guardar conceptos" : "Guardar borrador")
             </MudButton>
             <MudButton Variant="Variant.Outlined" StartIcon="@Icons.Material.Filled.PictureAsPdf"
                        OnClick="VistaPreviaAsync"
-                       Disabled="@(_guardando || _generando || _preparandoVista || _renglones.Count == 0 || _esFacturaDeObra)">
+                       Disabled="@(_guardando || _generando || _preparandoVista || _renglones.Count == 0 || _esFacturaDeObra || _esFacturaComercio)">
                 @(_preparandoVista ? "Preparando…" : "Vista previa PDF")
             </MudButton>
             <MudButton Variant="Variant.Filled" Color="Color.Primary"
                        OnClick="TimbrarCfdiAsync"
-                       Disabled="@(_guardando || _generando || _preparandoVista || _renglones.Count == 0 || !PuedeTimbrar || _esFacturaDeObra)">
+                       Disabled="@(_guardando || _generando || _preparandoVista || _renglones.Count == 0 || !PuedeTimbrar || _esFacturaDeObra || _esFacturaComercio)">
                 @(_generando ? "Timbrando…" : "Timbrar CFDI")
             </MudButton>
             <MudButton Variant="Variant.Text" OnClick="@(() => Navegacion.NavigateTo("/documentos"))">
@@ -371,8 +395,12 @@ else
     private EstadoDeIntegracionFiscalDto? _integracionFiscal;
     private bool _tieneLicenciaNotaria;
     private bool _tieneLicenciaObras;
+    private bool _tieneLicenciaComercio;
     private bool _esFacturaDeObra;
+    private bool _esFacturaComercio;
     private bool _obraGuardada;
+    private bool _comercioGuardado;
+    private ClienteDto? _clienteDetalle;
 
     // Cabecera
     private string _moneda = "MXN";
@@ -440,6 +468,7 @@ else
         var empresa = await Empresa.ObtenerAsync();
         _tieneLicenciaNotaria = empresa?.Licencias.Notarios == true;
         _tieneLicenciaObras = empresa?.Licencias.Obras == true;
+        _tieneLicenciaComercio = empresa?.Licencias.Comercio == true;
 
         if (EsNuevo)
         {
@@ -464,6 +493,12 @@ else
                 _obraGuardada = datosObra is not null;
                 _esFacturaDeObra = _obraGuardada;
             }
+            if (_tieneLicenciaComercio)
+            {
+                var (datosComercio, _) = await ComercioExterior.ObtenerAsync(comprobante.Id);
+                _comercioGuardado = datosComercio is not null;
+                _esFacturaComercio = _comercioGuardado;
+            }
             _moneda = comprobante.Moneda;
             _tipoCambio = comprobante.TipoCambio;
             // La que el borrador traía, no la primera de la lista: con FAC y HON dadas de alta,
@@ -486,6 +521,7 @@ else
 
                 if (cliente is not null)
                 {
+                    _clienteDetalle = cliente;
                     _cliente = new ClienteEnListaDto(
                         cliente.Id, cliente.ClaveInterna, cliente.Rfc, cliente.Nombre,
                         cliente.RegimenFiscal, cliente.DomicilioFiscalCp, cliente.CorreoPrincipal, cliente.Activo);
@@ -501,6 +537,7 @@ else
                     ClaveProdServ = concepto.ClaveProdServ,
                     ClaveUnidad = concepto.ClaveUnidad,
                     UnidadTexto = concepto.UnidadTexto,
+                    NoIdentificacion = concepto.NoIdentificacion,
                     Descripcion = concepto.Descripcion,
                     ObjetoImp = concepto.ObjetoImp,
                     ValorUnitario = concepto.ValorUnitario,
@@ -523,6 +560,7 @@ else
     private async Task AlElegirClienteAsync(ClienteEnListaDto? seleccion)
     {
         _cliente = seleccion;
+        _clienteDetalle = null;
 
         if (seleccion is null) return;
 
@@ -531,6 +569,8 @@ else
         var completo = await Clientes.ObtenerAsync(seleccion.Id);
 
         if (completo is null) return;
+
+        _clienteDetalle = completo;
 
         _usoCfdi = completo.UsoCfdiPreferido;
         _metodoPago = completo.MetodoPagoPreferido;
@@ -550,6 +590,7 @@ else
         renglon.ClaveProdServ = producto.ClaveProdServ;
         renglon.ClaveUnidad = producto.ClaveUnidad;
         renglon.UnidadTexto = producto.UnidadTexto;
+        renglon.NoIdentificacion = producto.CodigoInterno.ToString(System.Globalization.CultureInfo.InvariantCulture);
         renglon.Descripcion = producto.Descripcion;
         renglon.ObjetoImp = producto.ObjetoImp;
         renglon.ValorUnitario = producto.ValorUnitario;
@@ -603,7 +644,7 @@ else
             _moneda == "MXN" ? null : _tipoCambio,
             _formaPago,
             _metodoPago,
-            "01",
+            _esFacturaComercio ? "02" : "01",
             _condicionesDePago,
             _observaciones,
             _cliente?.Id,
@@ -612,7 +653,7 @@ else
             EsPublicoEnGeneral ? _globalMeses : null,
             EsPublicoEnGeneral ? _globalAnio : null,
             [.. _renglones.Select((r, i) => new ConceptoDto(
-                null, i + 1, r.ProductoId, r.ClaveProdServ!, r.ClaveUnidad!, r.UnidadTexto, null,
+                null, i + 1, r.ProductoId, r.ClaveProdServ!, r.ClaveUnidad!, r.UnidadTexto, r.NoIdentificacion,
                 r.Descripcion!, r.Cantidad, r.ValorUnitario, r.Importe, r.Descuento, r.ObjetoImp!, r.Impuestos))],
             _relacionados);
 
@@ -635,6 +676,13 @@ else
         if (_comprobante is null || _preparandoVista) return;
 
         if (!await GuardarAsync()) return;
+
+        await AbrirVistaPreviaAsync();
+    }
+
+    private async Task AbrirVistaPreviaAsync()
+    {
+        if (_comprobante is null || _preparandoVista) return;
 
         _preparandoVista = true;
         _error = null;
@@ -721,6 +769,7 @@ else
         public string? ClaveProdServ { get; set; }
         public string? ClaveUnidad { get; set; }
         public string? UnidadTexto { get; set; }
+        public string? NoIdentificacion { get; set; }
         public string? Descripcion { get; set; }
         public string? ObjetoImp { get; set; }
         public decimal ValorUnitario { get; set; }

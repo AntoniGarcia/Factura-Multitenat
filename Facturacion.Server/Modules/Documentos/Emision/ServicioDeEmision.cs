@@ -296,9 +296,15 @@ public sealed class ServicioDeEmision(
                     "producto-no-encontrado",
                     $"El producto del renglón {i + 1} no existe o está dado de baja.");
 
+            if (linea.NoIdentificacion is { Length: > 100 } ||
+                linea.NoIdentificacion?.Contains('|') == true)
+                return ErrorNegocio.Validacion("numero-identificacion-invalido",
+                    $"El identificador del renglón {i + 1} debe tener hasta 100 caracteres y no contener '|'.");
+
             resueltos.Add(new ConceptoResuelto(
                 Orden: i + 1,
                 Producto: producto,
+                NoIdentificacion: string.IsNullOrWhiteSpace(linea.NoIdentificacion) ? null : linea.NoIdentificacion.Trim(),
                 Cantidad: linea.Cantidad,
                 Descuento: linea.Descuento,
                 ACalcular: new ConceptoACalcular(
@@ -314,7 +320,8 @@ public sealed class ServicioDeEmision(
     }
 
     private sealed record ConceptoResuelto(
-        int Orden, ProductoParaConceptoDto Producto, decimal Cantidad, decimal Descuento, ConceptoACalcular ACalcular);
+        int Orden, ProductoParaConceptoDto Producto, string? NoIdentificacion,
+        decimal Cantidad, decimal Descuento, ConceptoACalcular ACalcular);
 
     // ── Aplicar al comprobante ──────────────────────────────────────────────────────────
 
@@ -365,6 +372,7 @@ public sealed class ServicioDeEmision(
                 ClaveProdServ = producto.ClaveProdServ,
                 ClaveUnidad = producto.ClaveUnidad,
                 UnidadTexto = producto.UnidadTexto,
+                NoIdentificacion = origen.NoIdentificacion,
                 Descripcion = producto.Descripcion,
                 Cantidad = origen.Cantidad,
                 ValorUnitario = producto.ValorUnitario,

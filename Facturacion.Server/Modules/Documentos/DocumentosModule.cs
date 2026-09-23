@@ -1,4 +1,5 @@
 using Facturacion.Server.Modules.Documentos.Cancelacion;
+using Facturacion.Server.Modules.Documentos.ComercioExterior;
 using Facturacion.Server.Modules.Documentos.Dobles;
 using Facturacion.Server.Modules.Documentos.Emision;
 using Facturacion.Server.Modules.Documentos.Pagos;
@@ -34,7 +35,6 @@ public static class DocumentosModule
             servicios.AddScoped<IServicioEmpresaEmisora, DobleServicioEmpresaEmisora>();
             servicios.AddScoped<IServicioFolios, DobleServicioFolios>();
             servicios.AddScoped<IServicioTimbres, DobleServicioTimbres>();
-            servicios.AddScoped<IProveedorCsdParaTimbrado, DobleProveedorCsdParaTimbrado>();
         }
 
         // Implementación real, no un doble: lee comprobantes de verdad. Es el único contrato
@@ -72,6 +72,8 @@ public static class DocumentosModule
         servicios.AddScoped<ServicioDeSalidasCartaPorte>();
         servicios.AddScoped<ServicioDeNotaria>();
         servicios.AddScoped<ServicioDeObras>();
+        servicios.AddScoped<ServicioDeComercioExterior>();
+        servicios.AddScoped<GeneradorDeXmlComercioExterior>();
         servicios.AddScoped<GeneradorDePdfEstimacionObra>();
         servicios.AddScoped<ServicioDePdfEstimacionObra>();
 
@@ -150,6 +152,7 @@ public static class DocumentosModule
         aplicacion.MapTrasladosCartaPorte();
         aplicacion.MapNotaria();
         aplicacion.MapObras();
+        aplicacion.MapComercioExterior();
 
         return aplicacion;
     }

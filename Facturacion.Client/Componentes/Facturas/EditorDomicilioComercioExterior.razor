@@ -1,0 +1,59 @@
+@using Facturacion.Shared.ComercioExterior
+@using Facturacion.Shared.Contratos
+@using Facturacion.Client.Servicios.Plataforma
+@inject ServicioDeTransporte Transporte
+
+<div class="rejilla-campos">
+    <MudTextField T="string" Value="@Valor.Calle" ValueChanged="v => Cambiar(Valor with { Calle = v })" Label="Calle" MaxLength="150" />
+    <MudTextField T="string" Value="@Valor.NumeroExterior" ValueChanged="v => Cambiar(Valor with { NumeroExterior = v })" Label="Número exterior" MaxLength="55" />
+    <MudTextField T="string" Value="@Valor.NumeroInterior" ValueChanged="v => Cambiar(Valor with { NumeroInterior = v })" Label="Número interior" MaxLength="55" />
+    <MudTextField T="string" Value="@Valor.Colonia" ValueChanged="v => Cambiar(Valor with { Colonia = v })" Label="Colonia" MaxLength="120" />
+    <MudTextField T="string" Value="@Valor.Localidad" ValueChanged="v => Cambiar(Valor with { Localidad = v })" Label="Localidad" MaxLength="120" />
+    <MudTextField T="string" Value="@Valor.Referencia" ValueChanged="v => Cambiar(Valor with { Referencia = v })" Label="Referencia" MaxLength="120" />
+    @if (EsEmisor)
+    {
+        <BuscadorCatalogo Catalogo="c_Estado" Label="Estado" Valor="@EstadoSeleccionado"
+                          ValorCambiado="e => Cambiar(Valor with { Estado = e?.Clave, Municipio = null })"
+                          MostrarOpciones="true" MuestraSelectorEnLista="false" />
+        <BuscadorCatalogo Catalogo="c_Municipio" Label="Municipio" Valor="@MunicipioSeleccionado"
+                          ValorCambiado="m => Cambiar(Valor with { Municipio = m?.Clave })"
+                          BusquedaPersonalizada="BuscarMunicipiosAsync" MostrarOpciones="true"
+                          MuestraSelectorEnLista="false" Deshabilitado="@string.IsNullOrWhiteSpace(Valor.Estado)" />
+    }
+    else
+    {
+        <MudTextField T="string" Value="@Valor.Municipio" ValueChanged="v => Cambiar(Valor with { Municipio = v })" Label="Municipio" MaxLength="120" />
+        <MudTextField T="string" Value="@Valor.Estado" ValueChanged="v => Cambiar(Valor with { Estado = v })" Label="Estado o provincia" MaxLength="120" />
+    }
+    <BuscadorCatalogo Catalogo="c_Pais" Label="País" Valor="@PaisSeleccionado"
+                      ValorCambiado="p => Cambiar(Valor with { Pais = p?.Clave })"
+                      MuestraSelectorEnLista="false" Deshabilitado="@(EsEmisor || BloquearPais)" />
+    <MudTextField T="string" Value="@Valor.CodigoPostal" ValueChanged="v => Cambiar(Valor with { CodigoPostal = v })" Label="Código postal" MaxLength="30" />
+</div>
+
+@code {
+    [Parameter, EditorRequired] public DomicilioComercioExteriorDto Valor { get; set; } = null!;
+    [Parameter] public EventCallback<DomicilioComercioExteriorDto> ValorCambiado { get; set; }
+    [Parameter] public bool EsEmisor { get; set; }
+    [Parameter] public bool BloquearPais { get; set; }
+
+    private ClaveSatDto? PaisSeleccionado => string.IsNullOrWhiteSpace(Valor.Pais)
+        ? null : new ClaveSatDto("c_Pais", Valor.Pais, Valor.Pais, true);
+    private ClaveSatDto? EstadoSeleccionado => string.IsNullOrWhiteSpace(Valor.Estado)
+        ? null : new ClaveSatDto("c_Estado", Valor.Estado, Valor.Estado, true);
+    private ClaveSatDto? MunicipioSeleccionado => string.IsNullOrWhiteSpace(Valor.Municipio)
+        ? null : new ClaveSatDto("c_Municipio", Valor.Municipio, Valor.Municipio, true);
+
+    private Task Cambiar(DomicilioComercioExteriorDto domicilio)
+        => ValorCambiado.InvokeAsync(domicilio);
+
+    private async Task<IReadOnlyList<ClaveSatDto>> BuscarMunicipiosAsync(string texto, CancellationToken ct)
+    {
+        if (string.IsNullOrWhiteSpace(Valor.Estado)) return [];
+        var municipios = await Transporte.MunicipiosAsync(Valor.Estado, ct) ?? [];
+        return municipios.Where(x => string.IsNullOrWhiteSpace(texto) ||
+                x.Clave.Contains(texto, StringComparison.OrdinalIgnoreCase) ||
+                x.Descripcion.Contains(texto, StringComparison.OrdinalIgnoreCase))
+            .Take(50).ToArray();
+    }
+}
