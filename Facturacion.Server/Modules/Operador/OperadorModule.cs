@@ -1,4 +1,5 @@
 using Facturacion.Server.Data.Entidades.Plataforma;
+using Facturacion.Server.Modules.Documentos.Salidas;
 using Facturacion.Server.Modules.Operador.Auth;
 using Facturacion.Server.Modules.Operador.Clientes;
 using Facturacion.Server.Modules.Operador.Compras;

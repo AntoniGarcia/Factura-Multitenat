@@ -57,11 +57,7 @@ public static class MenuPrincipal
         new("/productos", "Productos", "inventory", Permiso: null),
 
         // ── Mi empresa: se configura una vez y se revisa de vez en cuando ───────────────
-<<<<<<< HEAD
         new("/empresa/nueva", "Agregar empresa", "person", Permisos.ConfigurarEmpresa, Grupos.Empresa),
-=======
-        new("/empresa/nueva", "Agregar empresa", "add_business", Permiso: null, Grupos.Empresa),
->>>>>>> 9e922b3595c1a94aef9877d1d9e24d547d5fad81
         new("/empresa", "Datos fiscales", "business", Permisos.ConfigurarEmpresa, Grupos.Empresa),
         new("/empresa/series", "Series de folios", "tag", Permisos.ConfigurarEmpresa, Grupos.Empresa),
         new("/empresa/certificados", "Certificados", "verified_user", Permisos.ConfigurarEmpresa, Grupos.Empresa),

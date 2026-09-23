@@ -10,6 +10,10 @@
 {
     <p class="tabla-datos-estado">Cargando datos notariales…</p>
 }
+else if (_falloCarga)
+{
+    <p class="tabla-datos-estado">No se pueden editar los datos notariales hasta volver a abrir la factura.</p>
+}
 else
 {
     <section class="emision-seccion">
@@ -117,35 +121,49 @@ else
 
     private bool _cargando = true, _guardando, _validandoXml;
     private DetalleProblema? _error;
+    private bool _falloCarga;
     private string? _mensajeValidacion;
     private int _numeroInstrumento;
     private DateTime? _fechaInstrumento = DateTime.Today;
     private decimal _montoOperacion, _subtotalOperacion, _ivaOperacion;
     private readonly List<InmuebleEditable> _inmuebles = [];
+    private Guid? _comprobanteCargado;
 
     protected override async Task OnParametersSetAsync()
     {
+        if (_comprobanteCargado == ComprobanteId) return;
         _cargando = true;
         _error = null;
-        var (datos, error) = await Notaria.ObtenerParaComprobanteAsync(ComprobanteId);
-        _error = error;
-        _inmuebles.Clear();
-
-        if (datos is null)
+        _falloCarga = false;
+        try
         {
-            AgregarInmueble();
-        }
-        else
-        {
-            _numeroInstrumento = datos.NumeroInstrumentoNotarial;
-            _fechaInstrumento = datos.FechaInstrumentoNotarial.ToDateTime(TimeOnly.MinValue);
-            _montoOperacion = datos.MontoOperacion;
-            _subtotalOperacion = datos.SubtotalOperacion;
-            _ivaOperacion = datos.IvaOperacion;
-            _inmuebles.AddRange(datos.Inmuebles.Select(x => new InmuebleEditable(x)));
-        }
+            var (datos, error) = await Notaria.ObtenerParaComprobanteAsync(ComprobanteId);
+            _error = error;
+            _falloCarga = error is not null;
+            _inmuebles.Clear();
 
-        _cargando = false;
+            if (datos is null) AgregarInmueble();
+            else
+            {
+                _numeroInstrumento = datos.NumeroInstrumentoNotarial;
+                _fechaInstrumento = datos.FechaInstrumentoNotarial.ToDateTime(TimeOnly.MinValue);
+                _montoOperacion = datos.MontoOperacion;
+                _subtotalOperacion = datos.SubtotalOperacion;
+                _ivaOperacion = datos.IvaOperacion;
+                _inmuebles.AddRange(datos.Inmuebles.Select(x => new InmuebleEditable(x)));
+            }
+        }
+        catch (Exception ex) when (ex is HttpRequestException or System.Text.Json.JsonException)
+        {
+            _error = new DetalleProblema("urn:facturacion:error:carga-notaria", "No se pudo cargar Notaría",
+                0, "Revisa la conexión y vuelve a abrir la factura.", null, string.Empty, null);
+            _falloCarga = true;
+        }
+        finally
+        {
+            _cargando = false;
+            _comprobanteCargado = ComprobanteId;
+        }
     }
 
     private void AgregarInmueble()

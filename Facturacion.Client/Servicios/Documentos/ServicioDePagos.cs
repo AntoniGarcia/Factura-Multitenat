@@ -18,6 +18,15 @@ public sealed class ServicioDePagos(IHttpClientFactory fabrica)
         return (await respuesta.Content.ReadFromJsonAsync<PagoDto>(ct))!;
     }
 
+    public async Task<DetalleProblema?> EliminarBorradorAsync(Guid id, CancellationToken ct = default)
+    {
+        using var respuesta = await Cliente.DeleteAsync($"api/pagos/{id}", ct);
+
+        return respuesta.IsSuccessStatusCode
+            ? null
+            : await respuesta.Content.ReadFromJsonAsync<DetalleProblema>(ct);
+    }
+
     public Task<PagoDto?> ObtenerAsync(Guid id, CancellationToken ct = default)
         => Cliente.GetFromJsonAsync<PagoDto>($"api/pagos/{id}", ct);
 

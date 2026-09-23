@@ -1,3 +1,5 @@
+using Facturacion.Server.Infra.Correo;
+using Microsoft.Win32;
 using System.Net;
 using System.Net.Mail;
 
@@ -9,7 +11,8 @@ public sealed class ServicioDeCorreoSmtp(
     ILogger<ServicioDeCorreoSmtp> registro) : IServicioDeCorreo
 {
     public async Task EnviarAsync(
-        string destinatario, string asunto, string cuerpoHtml, CancellationToken ct, string? responderA = null)
+        string destinatario, string asunto, string cuerpoHtml, CancellationToken ct,
+        string? responderA = null, IReadOnlyList<AdjuntoDeCorreo>? adjuntos = null)
     {
         var config = (await configuracion.ObtenerAsync(ct)).Correo;
 
@@ -32,29 +35,42 @@ public sealed class ServicioDeCorreoSmtp(
         if (!string.IsNullOrWhiteSpace(responderA))
             mensaje.ReplyToList.Add(responderA);
 
+        // Los MemoryStream quedan vivos hasta después de SendMailAsync: Attachment no copia
+        // el contenido, lo lee al enviar.
+
+        var flujos = new List<MemoryStream>();
+
+        if (adjuntos is { Count: > 0 })
+        {
+            foreach (var adjunto in adjuntos)
+            {
+                var flujo = new MemoryStream(adjunto.Contenido);
+                flujos.Add(flujo);
+                mensaje.Attachments.Add(new Attachment(flujo, adjunto.NombreArchivo, adjunto.TipoMime));
+            }
+        }
+
         try
         {
-            // SmtpClient no tiene una sobrecarga que acepte CancellationToken; se registra
-            // el intento de cancelación pero el envío en curso no se puede abortar a medias.
             await cliente.SendMailAsync(mensaje, ct);
         }
         catch (SmtpException excepcion)
         {
-            // No se relanza como error de negocio: quien invita no puede corregir un SMTP
-            // caído, y lo que lo disparó ya quedó guardado. Se registra para que el operador lo vea.
-            registro.LogError(
-                excepcion,
-                "Falló el envío de correo al dominio {DominioDestinatario}",
-                DominioDe(destinatario));
+
+            registro.LogError(excepcion, "Falló el envío de correo al dominio {DominioDestinatario}", DominioDe(destinatario));
             throw;
         }
+        finally
+        {
+            foreach (var flujo in flujos) await flujo.DisposeAsync();
+        }
     }
-
-    private static string DominioDe(string destinatario)
-    {
+        private static string DominioDe(string destinatario)
+        {
         var separador = destinatario.LastIndexOf('@');
         return separador >= 0 && separador < destinatario.Length - 1
             ? destinatario[(separador + 1)..]
             : "no-disponible";
-    }
+        }
+
 }

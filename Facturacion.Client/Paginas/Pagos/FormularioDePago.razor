@@ -10,6 +10,7 @@
 @inject ServicioDeEmision Emision
 @inject ServicioDeCatalogos Catalogos
 @inject NavigationManager Navegacion
+@implements IDisposable
 
 <PageTitle>@(EsNuevo ? "Nuevo pago" : "Pago")</PageTitle>
 <TituloDePagina Texto="@(EsNuevo ? "Nuevo pago" : "Pago")" />
@@ -274,6 +275,9 @@ else
         Guid IdDocumento, string? Serie, string? Folio, string Moneda,
         int NumParcialidad, decimal SaldoAnterior, decimal ImpPagado);
 
+    private Guid? _borradorSinGuardar;
+    private IDisposable? _registroDeSalida;
+
     private bool EsNuevo => Id is null;
 
     private bool EsEditable => _pago?.Estatus is "borrador" or "error";
@@ -300,11 +304,20 @@ else
 
         if (_pago is null) return;
 
-        // Al abrir uno existente se recupera lo capturado; al crear uno nuevo, los campos se
-        // quedan con sus valores por omisión.
+        if (EsNuevo && _pago is { } creado)
+        {
+            // Todavía no se marca _borradorSinGuardar aquí: el handler de salida se registra
+            // en OnAfterRender, y si se marcara antes de este NavigateTo, la redirección
+            // interna dispararía el borrado del borrador que se acaba de crear.
+            Navegacion.NavigateTo($"/pagos/{creado.Id}", replace: true);
+            return;
+        }
+
         if (_pago.Documentos.Count > 0 || _pago.FormaDePagoP is not null) Rehidratar(_pago);
 
-        if (EsNuevo && _pago is { } creado) Navegacion.NavigateTo($"/pagos/{creado.Id}", replace: true);
+        _borradorSinGuardar = _pago is { Estatus: "borrador" } && _pago.ClienteId is null && _pago.Documentos.Count == 0
+            ? _pago.Id
+            : null;
     }
 
     private void Rehidratar(PagoDto pago)
@@ -435,6 +448,23 @@ else
             _trabajando = false;
         }
     }
+
+    protected override void OnAfterRender(bool firstRender)
+    {
+        if (firstRender)
+            _registroDeSalida = Navegacion.RegisterLocationChangingHandler(AlSalirAsync);
+    }
+
+    private async ValueTask AlSalirAsync(LocationChangingContext contexto)
+    {
+        if (_borradorSinGuardar is not { } id) return;
+        _borradorSinGuardar = null;
+
+        try { await Pagos.EliminarBorradorAsync(id); }
+        catch { /* el barrido lo recoge después */ }
+    }
+
+    public void Dispose() => _registroDeSalida?.Dispose();
 
     private async Task Timbrar()
     {

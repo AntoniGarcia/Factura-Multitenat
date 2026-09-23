@@ -130,10 +130,19 @@ public sealed class ServicioDeTimbrado(
                 "comprobante-no-timbrable",
                 $"El comprobante está en '{comprobante.Estatus}' y no se puede timbrar desde ahí.");
 
+        if (comprobante.Exportacion == "02")
+            return ErrorNegocio.Regla("comercio-timbrado-pendiente",
+                "La exportación definitiva requiere Comercio Exterior 2.0; su timbrado aún no está disponible.");
+
         if (await baseDeDatos.DatosObra.AsNoTracking()
             .AnyAsync(x => x.ComprobanteId == comprobanteId, ct))
             return ErrorNegocio.Regla("obra-timbrado-pendiente",
                 "Las estimaciones de obra permanecen en borrador hasta definir su representación fiscal en CFDI 4.0.");
+
+        if (await baseDeDatos.DatosComercioExterior.AsNoTracking()
+            .AnyAsync(x => x.ComprobanteId == comprobanteId, ct))
+            return ErrorNegocio.Regla("comercio-timbrado-pendiente",
+                "Comercio Exterior permanece en borrador hasta completar el complemento 2.0 y su validación fiscal.");
 
         var datosNotaria = await baseDeDatos.DatosNotaria
             .AsNoTracking()

@@ -32,6 +32,9 @@ public sealed class ServicioCatalogosSat(AppDbContext db) : IServicioCatalogosSa
         "c_TipoPermiso" => ResolverSimpleAsync(db.SatTiposPermiso, catalogo, clave, ct),
         "c_FiguraTransporte" => ResolverSimpleAsync(db.SatFigurasTransporte, catalogo, clave, ct),
         "c_ClaveProdServCP" => ResolverSimpleAsync(db.SatClavesProdServCartaPorte, catalogo, clave, ct),
+        "c_INCOTERM" => ResolverSimpleAsync(db.SatIncoterms, catalogo, clave, ct),
+        "c_UnidadAduana" => ResolverSimpleAsync(db.SatUnidadesAduana, catalogo, clave, ct),
+        "c_FraccionArancelaria" => ResolverSimpleAsync(db.SatFraccionesArancelarias, catalogo, clave, ct),
         "c_Estado" => ResolverEstadoAsync(clave, ct),
         "c_Municipio" => ResolverMunicipioAsync(clave, ct),
 
@@ -67,6 +70,9 @@ public sealed class ServicioCatalogosSat(AppDbContext db) : IServicioCatalogosSa
             "c_TipoPermiso" => BuscarSimpleAsync(db.SatTiposPermiso, catalogo, texto, tope, ct),
             "c_FiguraTransporte" => BuscarSimpleAsync(db.SatFigurasTransporte, catalogo, texto, tope, ct),
             "c_ClaveProdServCP" => BuscarSimpleAsync(db.SatClavesProdServCartaPorte, catalogo, texto, tope, ct),
+            "c_INCOTERM" => BuscarSimpleAsync(db.SatIncoterms, catalogo, texto, tope, ct),
+            "c_UnidadAduana" => BuscarSimpleAsync(db.SatUnidadesAduana, catalogo, texto, tope, ct),
+            "c_FraccionArancelaria" => BuscarSimpleAsync(db.SatFraccionesArancelarias, catalogo, texto, tope, ct),
             "c_Estado" => BuscarEstadoAsync(texto, tope, ct),
             "c_Municipio" => BuscarMunicipioAsync(texto, tope, ct),
 

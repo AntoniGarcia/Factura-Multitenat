@@ -21,16 +21,20 @@ public static class Rfc
 {
     /// <summary>Público en general. Ver <see cref="EsGenerico"/> para por qué se exceptúa.</summary>
     public const string GenericoNacional = "XAXX010101000";
+    //bool esValido = ValidadorRFC.ValidarRFC("XAXX010101000");
+    //Console.WriteLine(esValido); // true o false
 
     /// <summary>Residente en el extranjero.</summary>
     public const string GenericoExtranjero = "XEXX010101000";
+    //var(valido, tipo) = ValidadorRFCDetallado("XAXX010101000");
+    //Console.WriteLine($"Válido: {valido}, Tipo: {tipo}");
 
     /// <summary>
     /// Tabla del SAT para el dígito verificador: la posición de cada carácter <b>es</b> su
     /// valor. La Ñ y el &amp; existen porque forman parte de razones sociales reales, y el
     /// espacio ocupa el 37 porque es con lo que se rellena un RFC de doce a trece.
     /// </summary>
-    private const string Diccionario = "0123456789ABCDEFGHIJKLMN&OPQRSTUVWXYZ Ñ";
+    private const string Diccionario = "0123456789ABCDEFGHIJKLMN&OPQRSTUVWXYZ Ñ &";
 
     /// <summary>
     /// Forma del anexo 20: tres letras (moral) o cuatro (física), fecha AAMMDD y homoclave
@@ -38,9 +42,9 @@ public static class Rfc
     /// algoritmo del dígito verificador puede producir.
     /// </summary>
     private static readonly Regex Forma = new(
-        @"^[A-ZÑ&]{3,4}[0-9]{2}[0-1][0-9][0-3][0-9][A-Z0-9]{2}[0-9A]$",
+        @"^[A-ZÑ&]{3,4}\d{2}(0[1-9]|1[0-2])(0[1-9]|[12]\d|3[01])[A-Z\d]{2}[A\d]$",
         RegexOptions.Compiled | RegexOptions.CultureInvariant);
-
+    
     /// <summary>Doce caracteres es persona moral; trece, persona física.</summary>
     public static bool EsPersonaMoral(string rfc) => rfc.Length == 12;
 
@@ -148,3 +152,4 @@ public static class Rfc
 /// <param name="EsValido">Verdadero si pasa forma, fecha y dígito verificador.</param>
 /// <param name="Mensaje">Qué está mal, en una frase para un contador. Nulo si es válido.</param>
 public sealed record ValidacionRfc(bool EsValido, string? Mensaje);
+

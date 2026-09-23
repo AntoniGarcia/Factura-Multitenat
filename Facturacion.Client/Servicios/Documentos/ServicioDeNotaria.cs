@@ -1,4 +1,6 @@
+using System.Net;
 using System.Net.Http.Json;
+using System.Text.Json;
 using Facturacion.Client.Servicios.Plataforma;
 using Facturacion.Shared.Comun;
 using Facturacion.Shared.Notaria;
@@ -62,19 +64,27 @@ public sealed class ServicioDeNotaria(IHttpClientFactory fabrica)
 
     private static async Task<(ConfiguracionNotarioDto? Exito, DetalleProblema? Error)> LeerAsync(
         HttpResponseMessage respuesta, CancellationToken ct)
-        => respuesta.IsSuccessStatusCode
-            ? (await respuesta.Content.ReadFromJsonAsync<ConfiguracionNotarioDto>(ct), null)
+        => respuesta.StatusCode == HttpStatusCode.NoContent ? (null, null) : respuesta.IsSuccessStatusCode
+            ? (await LeerOpcionalAsync<ConfiguracionNotarioDto>(respuesta, ct), null)
             : (null, await respuesta.Content.ReadFromJsonAsync<DetalleProblema>(ct));
 
     private static async Task<(DatosNotariaDto? Exito, DetalleProblema? Error)> LeerDatosAsync(
         HttpResponseMessage respuesta, CancellationToken ct)
-        => respuesta.IsSuccessStatusCode
-            ? (await respuesta.Content.ReadFromJsonAsync<DatosNotariaDto>(ct), null)
+        => respuesta.StatusCode == HttpStatusCode.NoContent ? (null, null) : respuesta.IsSuccessStatusCode
+            ? (await LeerOpcionalAsync<DatosNotariaDto>(respuesta, ct), null)
             : (null, await respuesta.Content.ReadFromJsonAsync<DetalleProblema>(ct));
 
     private static async Task<(PartesNotarialesDto? Exito, DetalleProblema? Error)> LeerPartesAsync(
         HttpResponseMessage respuesta, CancellationToken ct)
-        => respuesta.IsSuccessStatusCode
-            ? (await respuesta.Content.ReadFromJsonAsync<PartesNotarialesDto>(ct), null)
+        => respuesta.StatusCode == HttpStatusCode.NoContent ? (null, null) : respuesta.IsSuccessStatusCode
+            ? (await LeerOpcionalAsync<PartesNotarialesDto>(respuesta, ct), null)
             : (null, await respuesta.Content.ReadFromJsonAsync<DetalleProblema>(ct));
+
+    private static async Task<T?> LeerOpcionalAsync<T>(HttpResponseMessage respuesta, CancellationToken ct)
+    {
+        var cuerpo = await respuesta.Content.ReadAsStringAsync(ct);
+        return string.IsNullOrWhiteSpace(cuerpo)
+            ? default
+            : JsonSerializer.Deserialize<T>(cuerpo, new JsonSerializerOptions(JsonSerializerDefaults.Web));
+    }
 }

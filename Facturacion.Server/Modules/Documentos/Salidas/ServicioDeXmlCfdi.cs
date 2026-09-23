@@ -1,10 +1,13 @@
 using System.Security.Cryptography;
 using System.Text;
+using System.Text.Json;
 using System.Xml;
 using System.Xml.Linq;
 using System.Xml.Schema;
 using Facturacion.Server.Data;
 using Facturacion.Server.Data.Entidades.Documentos;
+using Facturacion.Server.Modules.Documentos.ComercioExterior;
+using Facturacion.Shared.ComercioExterior;
 using Facturacion.Server.Infra.Tenencia;
 using Facturacion.Shared.Comun;
 using Facturacion.Shared.Contratos;
@@ -38,6 +41,7 @@ public sealed class ServicioDeXmlCfdi(
     GeneradorDeXmlCfdi generador,
     GeneradorDeXmlCartaPorte generadorCartaPorte,
     GeneradorDeXmlNotaria generadorNotaria,
+    GeneradorDeXmlComercioExterior generadorComercio,
     EsquemasSat esquemas,
     HusoDeEmpresa huso,
     IProveedorCsdParaTimbrado csd,
@@ -71,7 +75,17 @@ public sealed class ServicioDeXmlCfdi(
                 "moneda-desconocida",
                 $"La moneda {monedaDeImportes} no está en el catálogo del SAT. ¿Se cargaron los catálogos?");
 
-        var material = await csd.ObtenerAsync(ct);
+        CsdDescifradoDto material;
+        try
+        {
+            material = await csd.ObtenerAsync(ct);
+        }
+        catch (InvalidOperationException ex)
+        {
+            registro.LogWarning(ex, "No se pudo obtener un CSD activo para preparar el XML.");
+            return ErrorNegocio.Regla("csd-no-disponible",
+                "Carga un certificado de sello digital vigente para validar el CFDI completo.");
+        }
 
         var zonaHoraria = await huso.ObtenerAsync(ct);
         var fechaLocal = TimeZoneInfo.ConvertTimeFromUtc(comprobante.FechaEmisionUtc, zonaHoraria);
@@ -102,13 +116,49 @@ public sealed class ServicioDeXmlCfdi(
         }
         else if (comprobante.TipoDeComprobante == TiposDeComprobante.Ingreso)
         {
+            var contenidoComercio = await baseDeDatos.DatosComercioExterior.AsNoTracking()
+                .Where(x => x.ComprobanteId == comprobante.Id)
+                .Select(x => x.Contenido)
+                .FirstOrDefaultAsync(ct);
             var datosNotaria = await baseDeDatos.DatosNotaria
                 .AsNoTracking()
                 .Include(x => x.Inmuebles)
                 .Include(x => x.Partes)
                 .FirstOrDefaultAsync(x => x.ComprobanteId == comprobante.Id, ct);
 
-            if (datosNotaria is null)
+            if (contenidoComercio is not null || comprobante.Exportacion == "02")
+            {
+                if (datosNotaria is not null)
+                    return ErrorNegocio.Regla("complementos-incompatibles",
+                        "No se puede combinar Notaría con Comercio Exterior en esta factura.");
+                if (contenidoComercio is null)
+                    return ErrorNegocio.Regla("comercio-sin-datos",
+                        "Guarda los datos de Comercio Exterior antes de validar la factura.");
+                var datosComercio = JsonSerializer.Deserialize<DatosComercioExteriorDto>(contenidoComercio);
+                if (datosComercio is null)
+                    return ErrorNegocio.Regla("comercio-datos-corruptos",
+                        "No se pudieron leer los datos de Comercio Exterior guardados.");
+                Resultado<XElement> complemento;
+                try
+                {
+                    complemento = generadorComercio.GenerarElemento(comprobante, datosComercio);
+                }
+                catch (FileNotFoundException ex)
+                {
+                    registro.LogError(ex, "Falta el esquema SAT de Comercio Exterior.");
+                    return ErrorNegocio.Regla("esquemas-sat-incompletos",
+                        "Falta un esquema del SAT para validar Comercio Exterior. Avisa a soporte.");
+                }
+                if (complemento.EsFallo) return complemento.Error!;
+                documento = generador.Generar(comprobante, datosDeEmision);
+                var raiz = documento.Root!;
+                raiz.SetAttributeValue(XNamespace.Xmlns + "cce20", EsquemasSat.EspacioDeNombresComercioExterior20);
+                raiz.SetAttributeValue(XNamespace.Get("http://www.w3.org/2001/XMLSchema-instance") + "schemaLocation",
+                    $"{EsquemasSat.EspacioDeNombresCfdi} http://www.sat.gob.mx/sitio_internet/cfd/4/cfdv40.xsd " +
+                    $"{EsquemasSat.EspacioDeNombresComercioExterior20} http://www.sat.gob.mx/sitio_internet/cfd/ComercioExterior20/ComercioExterior20.xsd");
+                raiz.Add(new XElement(XNamespace.Get(EsquemasSat.EspacioDeNombresCfdi) + "Complemento", complemento.Valor));
+            }
+            else if (datosNotaria is null)
                 documento = generador.Generar(comprobante, datosDeEmision);
             else
             {
@@ -145,7 +195,8 @@ public sealed class ServicioDeXmlCfdi(
         try
         {
             if (Validar(documento, comprobante.TipoDeComprobante == TiposDeComprobante.Traslado,
-                    documento.Descendants(EsquemasSat.EspacioDeNombresNotariosPublicos + "NotariosPublicos").Any()) is { } error)
+                    documento.Descendants(EsquemasSat.EspacioDeNombresNotariosPublicos + "NotariosPublicos").Any(),
+                    documento.Descendants(EsquemasSat.EspacioDeNombresComercioExterior20 + "ComercioExterior").Any()) is { } error)
                 return error;
         }
         catch (FileNotFoundException ex)
@@ -198,14 +249,15 @@ public sealed class ServicioDeXmlCfdi(
         return Convert.ToBase64String(firma);
     }
 
-    private ErrorNegocio? Validar(XDocument documento, bool esCartaPorte, bool esNotaria)
+    private ErrorNegocio? Validar(XDocument documento, bool esCartaPorte, bool esNotaria, bool esComercio)
     {
         var problemas = new List<string>();
 
         var ajustes = new XmlReaderSettings
         {
             ValidationType = ValidationType.Schema,
-            Schemas = esCartaPorte ? esquemas.EsquemaCartaPorte : esNotaria ? esquemas.EsquemaNotaria : esquemas.Esquema,
+            Schemas = esCartaPorte ? esquemas.EsquemaCartaPorte : esNotaria ? esquemas.EsquemaNotaria :
+                esComercio ? esquemas.EsquemaCfdiComercioExterior : esquemas.Esquema,
             DtdProcessing = DtdProcessing.Prohibit
         };
 

@@ -14,6 +14,7 @@
     <PackageReference Include="Microsoft.AspNetCore.OpenApi" />
     <PackageReference Include="Microsoft.EntityFrameworkCore.SqlServer" />
     <PackageReference Include="NPOI" />
+    <PackageReference Include="SkiaSharp" GeneratePathProperty="true" />
     <PackageReference Include="QuestPDF" />
     <PackageReference Include="QRCoder" />
     <PackageReference Include="Microsoft.EntityFrameworkCore.Design">
@@ -22,6 +23,16 @@
     </PackageReference>
     <PackageReference Include="Serilog.AspNetCore" />
     <PackageReference Include="Serilog.Sinks.Console" />
+  </ItemGroup>
+
+  <!-- NPOI usa SkiaSharp al abrir XLS; el paquete 3.119.2 declara lib/net8.0/_._
+       como runtime genérico y .NET 10 no copia la DLL administrada. La referencia
+       explícita la incluye en el servidor sin copiarla manualmente al desplegar. -->
+  <ItemGroup>
+    <Reference Include="SkiaSharp">
+      <HintPath>$(PkgSkiaSharp)\lib\net8.0\SkiaSharp.dll</HintPath>
+      <Private>true</Private>
+    </Reference>
   </ItemGroup>
 
   <ItemGroup>

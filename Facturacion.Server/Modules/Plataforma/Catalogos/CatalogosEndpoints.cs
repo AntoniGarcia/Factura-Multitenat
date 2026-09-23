@@ -70,6 +70,8 @@ public static class CatalogosEndpoints
             "c_ConfigAutotransporte" => await Proyectar(db.SatConfiguracionesAutotransporte, catalogo, ct),
             "c_TipoPermiso" => await Proyectar(db.SatTiposPermiso, catalogo, ct),
             "c_FiguraTransporte" => await Proyectar(db.SatFigurasTransporte, catalogo, ct),
+            "c_INCOTERM" => await Proyectar(db.SatIncoterms, catalogo, ct),
+            "c_UnidadAduana" => await Proyectar(db.SatUnidadesAduana, catalogo, ct),
             "c_Estado" => await db.SatEstados.AsNoTracking().Where(x => x.Vigente).OrderBy(x => x.Nombre)
                 .Select(x => new ClaveSatDto(catalogo, x.Clave, x.Nombre, x.Vigente)).ToListAsync(ct),
             _ => null

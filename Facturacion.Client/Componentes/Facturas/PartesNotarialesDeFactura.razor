@@ -10,6 +10,10 @@
     {
         <p class="tabla-datos-estado">Cargando partes de la operación…</p>
     }
+    else if (_falloCarga)
+    {
+        <p class="tabla-datos-estado">No se pueden editar vendedores y compradores hasta volver a abrir la factura.</p>
+    }
     else
     {
         <MudTabs Class="emision-pestanas">
@@ -39,33 +43,50 @@
 
     private bool _cargando = true, _guardando;
     private DetalleProblema? _error;
+    private bool _falloCarga;
     private bool _enajenantesEnCopropiedad, _adquirentesEnCopropiedad;
     private List<ParteEditable> _enajenantes = [];
     private List<ParteEditable> _adquirentes = [];
+    private Guid? _comprobanteCargado;
 
     protected override async Task OnParametersSetAsync()
     {
+        if (_comprobanteCargado == ComprobanteId) return;
         _cargando = true;
         _error = null;
-        var (partes, error) = await Notaria.ObtenerPartesAsync(ComprobanteId);
-        _error = error;
-
-        if (partes is null)
+        _falloCarga = false;
+        try
         {
-            _enajenantesEnCopropiedad = false;
-            _adquirentesEnCopropiedad = false;
-            _enajenantes = [new()];
-            _adquirentes = [new()];
-        }
-        else
-        {
-            _enajenantesEnCopropiedad = partes.EnajenantesEnCopropiedad;
-            _adquirentesEnCopropiedad = partes.AdquirentesEnCopropiedad;
-            _enajenantes = [.. partes.Enajenantes.Select(x => new ParteEditable(x))];
-            _adquirentes = [.. partes.Adquirentes.Select(x => new ParteEditable(x))];
-        }
+            var (partes, error) = await Notaria.ObtenerPartesAsync(ComprobanteId);
+            _error = error;
+            _falloCarga = error is not null;
 
-        _cargando = false;
+            if (partes is null)
+            {
+                _enajenantesEnCopropiedad = false;
+                _adquirentesEnCopropiedad = false;
+                _enajenantes = [new()];
+                _adquirentes = [new()];
+            }
+            else
+            {
+                _enajenantesEnCopropiedad = partes.EnajenantesEnCopropiedad;
+                _adquirentesEnCopropiedad = partes.AdquirentesEnCopropiedad;
+                _enajenantes = [.. partes.Enajenantes.Select(x => new ParteEditable(x))];
+                _adquirentes = [.. partes.Adquirentes.Select(x => new ParteEditable(x))];
+            }
+        }
+        catch (Exception ex) when (ex is HttpRequestException or System.Text.Json.JsonException)
+        {
+            _error = new DetalleProblema("urn:facturacion:error:carga-partes", "No se pudieron cargar las partes",
+                0, "Revisa la conexión y vuelve a abrir la factura.", null, string.Empty, null);
+            _falloCarga = true;
+        }
+        finally
+        {
+            _cargando = false;
+            _comprobanteCargado = ComprobanteId;
+        }
     }
 
     private async Task GuardarAsync()

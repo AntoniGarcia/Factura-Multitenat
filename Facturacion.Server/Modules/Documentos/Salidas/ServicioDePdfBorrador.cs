@@ -1,6 +1,9 @@
+using System.Text.Json;
 using Facturacion.Server.Data;
 using Facturacion.Server.Infra.Tenencia;
+using Facturacion.Server.Modules.Documentos.ComercioExterior;
 using Facturacion.Server.Modules.Plataforma.Empresas;
+using Facturacion.Shared.ComercioExterior;
 using Facturacion.Shared.Comun;
 using Microsoft.EntityFrameworkCore;
 
@@ -14,6 +17,7 @@ namespace Facturacion.Server.Modules.Documentos.Salidas;
 public sealed class ServicioDePdfBorrador(
     AppDbContext baseDeDatos,
     GeneradorDePdfCfdi generador,
+    GeneradorDeXmlComercioExterior generadorComercio,
     HusoDeEmpresa huso,
     ServicioDeLogo logos)
 {
@@ -38,6 +42,40 @@ public sealed class ServicioDePdfBorrador(
             .AnyAsync(x => x.ComprobanteId == comprobanteId, ct))
             return ErrorNegocio.Regla("obra-pdf-pendiente",
                 "La vista previa fiscal de esta estimación de obra aún no está disponible.");
+
+        DatosComercioExteriorDto? comercioPdf = null;
+        var comercioGuardado = await baseDeDatos.DatosComercioExterior.AsNoTracking()
+            .Where(x => x.ComprobanteId == comprobanteId)
+            .Select(x => x.Contenido)
+            .FirstOrDefaultAsync(ct);
+        if (comprobante.Exportacion == "02" || comercioGuardado is not null)
+        {
+            if (comercioGuardado is null)
+                return ErrorNegocio.Regla("comercio-sin-datos",
+                    "Guarda los datos de Comercio Exterior antes de abrir la vista previa.");
+            try
+            {
+                comercioPdf = JsonSerializer.Deserialize<DatosComercioExteriorDto>(comercioGuardado);
+            }
+            catch (JsonException)
+            {
+                return ErrorNegocio.Regla("comercio-datos-invalidos",
+                    "No se pudieron leer los datos de Comercio Exterior guardados.");
+            }
+            if (comercioPdf is null)
+                return ErrorNegocio.Regla("comercio-datos-invalidos",
+                    "No se pudieron leer los datos de Comercio Exterior guardados.");
+            try
+            {
+                var complemento = generadorComercio.GenerarElemento(comprobante, comercioPdf);
+                if (complemento.EsFallo) return complemento.Error!;
+            }
+            catch (FileNotFoundException)
+            {
+                return ErrorNegocio.Regla("esquemas-sat-incompletos",
+                    "Falta el esquema SAT de Comercio Exterior 2.0 para preparar la vista previa.");
+            }
+        }
 
         if (string.IsNullOrWhiteSpace(comprobante.ReceptorRfc))
             return ErrorNegocio.Validacion(
@@ -64,6 +102,9 @@ public sealed class ServicioDePdfBorrador(
             .Include(x => x.Inmuebles)
             .Include(x => x.Partes)
             .FirstOrDefaultAsync(x => x.ComprobanteId == comprobanteId, ct);
+        if (datosNotaria is not null && comercioPdf is not null)
+            return ErrorNegocio.Regla("complementos-incompatibles",
+                "No se puede combinar Notaría con Comercio Exterior en la misma factura.");
         if (datosNotaria is not null)
         {
             var perfil = await baseDeDatos.ConfiguracionesNotario.AsNoTracking().FirstOrDefaultAsync(ct);
@@ -75,6 +116,7 @@ public sealed class ServicioDePdfBorrador(
 
         return generador.Generar(
             comprobante,
-            new DatosDelPdf(fechaLocal, decimales, logo?.Contenido, EsBorrador: true, Notaria: notariaPdf));
+            new DatosDelPdf(fechaLocal, decimales, logo?.Contenido, EsBorrador: true,
+                Notaria: notariaPdf, ComercioExterior: comercioPdf));
     }
 }

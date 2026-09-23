@@ -48,7 +48,7 @@ public sealed class VerificacionDeAltaPruebas : IAsyncLifetime
         public List<(string Destinatario, string Asunto, string Cuerpo)> Enviados { get; } = [];
 
         public Task EnviarAsync(
-            string destinatario, string asunto, string cuerpoHtml, CancellationToken ct, string? responderA = null)
+            string destinatario, string asunto, string cuerpoHtml, CancellationToken ct, string? responderA = null, IReadOnlyList<AdjuntoDeCorreo>? adjuntos = null)
         {
             Enviados.Add((destinatario, asunto, cuerpoHtml));
             return Task.CompletedTask;

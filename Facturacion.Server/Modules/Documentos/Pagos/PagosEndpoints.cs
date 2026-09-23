@@ -24,6 +24,7 @@ public static class PagosEndpoints
         grupo.MapGet("/{id:guid}", Obtener);
         grupo.MapPut("/{id:guid}", Guardar);
         grupo.MapGet("/por-pagar", ConsultarSaldo);
+        grupo.MapDelete("/{id:guid}", EliminarBorrador);
     }
 
     private static async Task<IResult> CrearBorrador(ServicioDePagos pagos, CancellationToken ct)
@@ -54,5 +55,12 @@ public static class PagosEndpoints
         return resultado.EsFallo
             ? resultado.Error!.AResultado(http)
             : Results.Ok(resultado.Valor);
+    }
+
+    private static async Task<IResult> EliminarBorrador(
+        Guid id, ServicioDePagos pagos, HttpContext http, CancellationToken ct)
+    {
+        var resultado = await pagos.EliminarBorradorAsync(id, ct);
+        return resultado.EsFallo ? resultado.Error!.AResultado(http) : Results.NoContent();
     }
 }
