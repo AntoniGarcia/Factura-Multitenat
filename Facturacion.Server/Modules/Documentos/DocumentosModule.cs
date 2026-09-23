@@ -35,6 +35,8 @@ public static class DocumentosModule
             servicios.AddScoped<IServicioEmpresaEmisora, DobleServicioEmpresaEmisora>();
             servicios.AddScoped<IServicioFolios, DobleServicioFolios>();
             servicios.AddScoped<IServicioTimbres, DobleServicioTimbres>();
+            servicios.AddScoped<IProveedorCsdParaTimbrado, DobleProveedorCsdParaTimbrado>();
+            servicios.AddScoped<ServicioDeDescargas, ServicioDeDescargas>();
         }
 
         // Implementación real, no un doble: lee comprobantes de verdad. Es el único contrato
@@ -152,6 +154,7 @@ public static class DocumentosModule
         aplicacion.MapTrasladosCartaPorte();
         aplicacion.MapNotaria();
         aplicacion.MapObras();
+        aplicacion.MapDescargas();
         aplicacion.MapComercioExterior();
 
         return aplicacion;

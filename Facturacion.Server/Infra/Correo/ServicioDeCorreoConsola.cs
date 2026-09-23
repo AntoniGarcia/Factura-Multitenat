@@ -11,11 +11,16 @@ namespace Facturacion.Server.Infra.Correo;
 public sealed class ServicioDeCorreoConsola(ILogger<ServicioDeCorreoConsola> registro) : IServicioDeCorreo
 {
     public Task EnviarAsync(
-        string destinatario, string asunto, string cuerpoHtml, CancellationToken ct, string? responderA = null)
+        string destinatario, string asunto, string cuerpoHtml, CancellationToken ct,
+        string? responderA = null, IReadOnlyList<AdjuntoDeCorreo>? adjuntos = null)
     {
+        var listaAdjuntos = adjuntos is { Count: > 0 }
+            ? " | Adjuntos: " + string.Join(", ", adjuntos.Select(a => a.NombreArchivo))
+            : string.Empty;
+
         registro.LogInformation(
-            "Correo simulado (Correo:Servidor no configurado) → {Destinatario} | {Asunto}\n{Cuerpo}",
-            destinatario, asunto, cuerpoHtml);
+            "Correo simulado (Correo:Servidor no configurado) → {Destinatario} | {Asunto}{Adjuntos}\n{Cuerpo}",
+            destinatario, asunto, listaAdjuntos, cuerpoHtml);
 
         return Task.CompletedTask;
     }

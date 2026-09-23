@@ -279,6 +279,9 @@
 
     private IReadOnlyList<ColumnaDeTabla<ComprobanteEnListaDto>> _columnas = [];
 
+    private void AbrirDocumento(ComprobanteEnListaDto d)
+    => Navegacion.NavigateTo(d.TipoDeComprobante == "P" ? $"/pagos/{d.Id}" : $"/facturas/{d.Id}");
+
     protected override void OnInitialized() => _columnas =
     [
         new("Folio", d => @<span class="cifra-tabular">@Folio(d)</span>, ClaveOrden: "folio", Tabular: true),

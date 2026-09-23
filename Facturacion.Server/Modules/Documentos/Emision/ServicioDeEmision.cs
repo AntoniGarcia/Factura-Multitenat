@@ -109,11 +109,21 @@ public sealed class ServicioDeEmision(
         if (calculado.EsFallo) return calculado.Error!;
 
         AplicarCabecera(comprobante, peticion, receptor.Valor);
-        AplicarConceptos(comprobante, conceptosResueltos.Valor, calculado.Valor);
+        AplicarConceptos(baseDeDatos, comprobante, conceptosResueltos.Valor, calculado.Valor); 
         AplicarRelacionados(comprobante, peticion.Relacionados);
         AplicarTotales(comprobante, calculado.Valor);
 
         comprobante.ModificadoUtc = DateTime.UtcNow;
+
+        /*
+        foreach (var e in baseDeDatos.ChangeTracker.Entries<Concepto>())
+        {
+            Console.WriteLine(
+                $"Concepto {e.Entity.Id} | Estado={e.State} | " +
+                $"EmpresaId original={(e.State == EntityState.Added ? "(nuevo, sin original)" : e.OriginalValues[nameof(Concepto.EmpresaId)])} | " +
+                $"EmpresaId actual={e.CurrentValues[nameof(Concepto.EmpresaId)]}");
+        }
+        */
 
         await baseDeDatos.SaveChangesAsync(ct);
 
@@ -184,6 +194,19 @@ public sealed class ServicioDeEmision(
     /// <param name="tipoComprobante">
     /// Clave de <c>c_TipoDeComprobante</c>: <c>I</c> ingreso, <c>P</c> pago. Nulo trae todo.
     /// </param>
+
+    /*
+     // Filtro por boloque de archivos de un cliente
+    public async Task<PaginaDeComprobantes> ListarAsync(
+    string? busca, EstatusComprobante? estatus, IReadOnlyList<Guid>? clienteIds, string? tipoComprobante,
+    DateTime? desdeUtc, DateTime? hastaUtc,
+    int pagina, int tamano, string? orden, bool descendente, CancellationToken ct)
+{
+    var consulta = baseDeDatos.Comprobantes.AsNoTracking();
+
+    if (clienteIds is { Count: > 0 } clientes)
+        consulta = consulta.Where(c => c.ClienteId != null && clientes.Contains(c.ClienteId.Value)); 
+    */
     public async Task<PaginaDeComprobantes> ListarAsync(
         string? busca, EstatusComprobante? estatus, Guid? clienteId, string? tipoComprobante,
         DateTime? desdeUtc, DateTime? hastaUtc,
@@ -236,7 +259,8 @@ public sealed class ServicioDeEmision(
                 c.ReceptorNombre,
                 c.Total,
                 EstatusComprobanteExtensiones.Desde(c.Estatus),
-                c.Uuid))
+                c.Uuid,
+                c.TipoDeComprobante))
             .ToListAsync(ct);
 
         return new PaginaDeComprobantes(elementos, total);
@@ -246,6 +270,19 @@ public sealed class ServicioDeEmision(
     /// Lo más reciente primero por omisión: en una jornada de captura, el documento que se
     /// busca casi siempre es de hoy.
     /// </summary>
+    /// 
+    /*
+    // Filtro por boloque de archivos de un cliente
+    private static IQueryable<Comprobante> Ordenar(
+    IQueryable<Comprobante> consulta, string? orden, bool descendente) => orden switch
+{
+    "cliente" => descendente
+        ? consulta.OrderByDescending(c => c.ClienteId).ThenByDescending(c => c.FechaEmisionUtc)
+        : consulta.OrderBy(c => c.ClienteId).ThenByDescending(c => c.FechaEmisionUtc),
+    "folio" => descendente
+        ? consulta.OrderByDescending(c => c.Folio)
+        : consulta.OrderBy(c => c.Folio),
+    */
     private static IQueryable<Comprobante> Ordenar(
         IQueryable<Comprobante> consulta, string? orden, bool descendente) => orden switch
     {
@@ -353,7 +390,8 @@ public sealed class ServicioDeEmision(
     }
 
     private static void AplicarConceptos(
-        Comprobante comprobante, IReadOnlyList<ConceptoResuelto> resueltos, ComprobanteCalculado calculado)
+    AppDbContext baseDeDatos, Comprobante comprobante,
+    IReadOnlyList<ConceptoResuelto> resueltos, ComprobanteCalculado calculado)
     {
         comprobante.Conceptos.Clear();
 
@@ -383,7 +421,7 @@ public sealed class ServicioDeEmision(
 
             foreach (var impuestoCalculado in calculo.Impuestos)
             {
-                concepto.Impuestos.Add(new ImpuestoConcepto
+                var impuesto = new ImpuestoConcepto
                 {
                     Id = Guid.NewGuid(),
                     ConceptoId = concepto.Id,
@@ -393,10 +431,13 @@ public sealed class ServicioDeEmision(
                     Base = impuestoCalculado.Base,
                     Importe = impuestoCalculado.Importe,
                     EsRetencion = impuestoCalculado.EsRetencion
-                });
+                };
+                concepto.Impuestos.Add(impuesto);
+                baseDeDatos.ConceptosImpuestos.Add(impuesto);   
             }
 
             comprobante.Conceptos.Add(concepto);
+            baseDeDatos.Conceptos.Add(concepto);            
         }
     }
 
