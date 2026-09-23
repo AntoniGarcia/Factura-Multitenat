@@ -8,7 +8,6 @@
        diverjan de versión en sus .csproj. -->
   <ItemGroup>
     <PackageVersion Include="Microsoft.AspNetCore.Components.WebAssembly" Version="10.0.10" />
-    <PackageVersion Include="Microsoft.Build.Tasks.Git" Version="10.0.111" />
     <PackageVersion Include="MudBlazor" Version="9.8.0" />
     <PackageVersion Include="Microsoft.AspNetCore.Components.WebAssembly.DevServer" Version="10.0.10" />
     <PackageVersion Include="Microsoft.AspNetCore.Components.Authorization" Version="10.0.10" />

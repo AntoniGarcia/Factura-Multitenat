@@ -640,6 +640,7 @@ else
         if (objetoImp is not ("02" or "03")) return [];
     
         _configuracionEmpresa ??= await Empresa.ObtenerConfiguracionAsync();
+        if (_configuracionEmpresa is null) return [];
     
         var impuestos = new List<ImpuestoDeConceptoDto>();
     
