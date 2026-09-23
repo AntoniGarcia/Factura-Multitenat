@@ -57,6 +57,7 @@ builder.Services.AddScoped<ServicioDeEmision>();
 builder.Services.AddScoped<ServicioDeTrasladosCartaPorte>();
 builder.Services.AddScoped<ServicioDeNotaria>();
 builder.Services.AddScoped<ServicioDeObras>();
+builder.Services.AddScoped<ServicioDeComercioExterior>();
 builder.Services.AddScoped<ServicioDeListado>();
 builder.Services.AddScoped<ServicioDeCancelacion>();
 builder.Services.AddScoped<ServicioDePagos>();

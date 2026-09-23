@@ -69,6 +69,7 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> opciones, IConte
     public DbSet<InmuebleNotarial> InmueblesNotariales => Set<InmuebleNotarial>();
     public DbSet<ParteNotarial> PartesNotariales => Set<ParteNotarial>();
     public DbSet<DatosObra> DatosObra => Set<DatosObra>();
+    public DbSet<DatosComercioExterior> DatosComercioExterior => Set<DatosComercioExterior>();
 
     // ── Catálogos del SAT — sin EmpresaId, fuera del filtro de empresa (ARQUITECTURA.md §5) ───
     public DbSet<CatalogoVersion> CatalogoVersiones => Set<CatalogoVersion>();
@@ -97,6 +98,9 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> opciones, IConte
     public DbSet<SatTipoPermiso> SatTiposPermiso => Set<SatTipoPermiso>();
     public DbSet<SatFiguraTransporte> SatFigurasTransporte => Set<SatFiguraTransporte>();
     public DbSet<SatClaveProdServCartaPorte> SatClavesProdServCartaPorte => Set<SatClaveProdServCartaPorte>();
+    public DbSet<SatIncoterm> SatIncoterms => Set<SatIncoterm>();
+    public DbSet<SatUnidadAduana> SatUnidadesAduana => Set<SatUnidadAduana>();
+    public DbSet<SatFraccionArancelaria> SatFraccionesArancelarias => Set<SatFraccionArancelaria>();
 
     // ── DbSet de la mitad B — documentos, timbrado y salidas ────────────────────────────
     public DbSet<Comprobante> Comprobantes => Set<Comprobante>();

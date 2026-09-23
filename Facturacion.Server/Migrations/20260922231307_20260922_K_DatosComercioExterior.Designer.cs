@@ -4,6 +4,7 @@ using Facturacion.Server.Data;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 #nullable disable
@@ -11,9 +12,11 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace Facturacion.Server.Migrations
 {
     [DbContext(typeof(AppDbContext))]
-    partial class AppDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260922231307_20260922_K_DatosComercioExterior")]
+    partial class _20260922_K_DatosComercioExterior
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -1381,33 +1384,6 @@ namespace Facturacion.Server.Migrations
                     b.ToTable("SatFormaPago", (string)null);
                 });
 
-            modelBuilder.Entity("Facturacion.Server.Data.Entidades.Plataforma.Catalogos.SatFraccionArancelaria", b =>
-                {
-                    b.Property<string>("Clave")
-                        .HasMaxLength(12)
-                        .HasColumnType("nvarchar(12)");
-
-                    b.Property<string>("Descripcion")
-                        .IsRequired()
-                        .HasMaxLength(2000)
-                        .HasColumnType("nvarchar(2000)");
-
-                    b.Property<DateOnly?>("FechaFinVigencia")
-                        .HasColumnType("date");
-
-                    b.Property<DateOnly>("FechaInicioVigencia")
-                        .HasColumnType("date");
-
-                    b.Property<bool>("Vigente")
-                        .HasColumnType("bit");
-
-                    b.HasKey("Clave");
-
-                    b.HasIndex("Vigente", "Clave");
-
-                    b.ToTable("SatFraccionArancelaria", (string)null);
-                });
-
             modelBuilder.Entity("Facturacion.Server.Data.Entidades.Plataforma.Catalogos.SatImpuesto", b =>
                 {
                     b.Property<string>("Clave")
@@ -1442,31 +1418,6 @@ namespace Facturacion.Server.Migrations
                     b.HasKey("Clave");
 
                     b.ToTable("SatImpuesto", (string)null);
-                });
-
-            modelBuilder.Entity("Facturacion.Server.Data.Entidades.Plataforma.Catalogos.SatIncoterm", b =>
-                {
-                    b.Property<string>("Clave")
-                        .HasMaxLength(10)
-                        .HasColumnType("nvarchar(10)");
-
-                    b.Property<string>("Descripcion")
-                        .IsRequired()
-                        .HasMaxLength(500)
-                        .HasColumnType("nvarchar(500)");
-
-                    b.Property<DateOnly?>("FechaFinVigencia")
-                        .HasColumnType("date");
-
-                    b.Property<DateOnly>("FechaInicioVigencia")
-                        .HasColumnType("date");
-
-                    b.Property<bool>("Vigente")
-                        .HasColumnType("bit");
-
-                    b.HasKey("Clave");
-
-                    b.ToTable("SatIncoterm", (string)null);
                 });
 
             modelBuilder.Entity("Facturacion.Server.Data.Entidades.Plataforma.Catalogos.SatMes", b =>
@@ -1837,31 +1788,6 @@ namespace Facturacion.Server.Migrations
                     b.HasKey("Clave");
 
                     b.ToTable("SatTipoRelacion", (string)null);
-                });
-
-            modelBuilder.Entity("Facturacion.Server.Data.Entidades.Plataforma.Catalogos.SatUnidadAduana", b =>
-                {
-                    b.Property<string>("Clave")
-                        .HasMaxLength(10)
-                        .HasColumnType("nvarchar(10)");
-
-                    b.Property<string>("Descripcion")
-                        .IsRequired()
-                        .HasMaxLength(500)
-                        .HasColumnType("nvarchar(500)");
-
-                    b.Property<DateOnly?>("FechaFinVigencia")
-                        .HasColumnType("date");
-
-                    b.Property<DateOnly>("FechaInicioVigencia")
-                        .HasColumnType("date");
-
-                    b.Property<bool>("Vigente")
-                        .HasColumnType("bit");
-
-                    b.HasKey("Clave");
-
-                    b.ToTable("SatUnidadAduana", (string)null);
                 });
 
             modelBuilder.Entity("Facturacion.Server.Data.Entidades.Plataforma.Catalogos.SatUsoCfdi", b =>

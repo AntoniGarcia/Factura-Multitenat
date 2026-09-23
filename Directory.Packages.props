@@ -33,6 +33,7 @@
        viaje al WebAssembly. -->
   <ItemGroup>
     <PackageVersion Include="NPOI" Version="2.8.0" />
+    <PackageVersion Include="SkiaSharp" Version="3.119.2" />
     <!-- Fijado por transitividad: NPOI arrastra System.Security.Cryptography.Xml 8.0.2 para
          firmar/verificar OOXML, algo que este proyecto no usa —solo lee .xls—, pero la
          versión igual trae varias vulnerabilidades conocidas (NU1903) que hay que tapar. -->
