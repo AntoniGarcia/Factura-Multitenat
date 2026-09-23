@@ -30,7 +30,8 @@ public static class NotariaEndpoints
         ServicioDeNotaria notaria, HttpContext contexto, CancellationToken ct)
     {
         var resultado = await notaria.ObtenerAsync(ct);
-        return resultado.EsFallo ? resultado.Error!.AResultado(contexto) : Results.Ok(resultado.Valor);
+        return resultado.EsFallo ? resultado.Error!.AResultado(contexto) :
+            resultado.Valor is null ? Results.NoContent() : Results.Ok(resultado.Valor);
     }
 
     private static async Task<IResult> Guardar(
@@ -47,7 +48,8 @@ public static class NotariaEndpoints
         Guid comprobanteId, ServicioDeNotaria notaria, HttpContext contexto, CancellationToken ct)
     {
         var resultado = await notaria.ObtenerParaComprobanteAsync(comprobanteId, ct);
-        return resultado.EsFallo ? resultado.Error!.AResultado(contexto) : Results.Ok(resultado.Valor);
+        return resultado.EsFallo ? resultado.Error!.AResultado(contexto) :
+            resultado.Valor is null ? Results.NoContent() : Results.Ok(resultado.Valor);
     }
 
     private static async Task<IResult> GuardarDatos(
@@ -65,7 +67,8 @@ public static class NotariaEndpoints
         Guid comprobanteId, ServicioDeNotaria notaria, HttpContext contexto, CancellationToken ct)
     {
         var resultado = await notaria.ObtenerPartesAsync(comprobanteId, ct);
-        return resultado.EsFallo ? resultado.Error!.AResultado(contexto) : Results.Ok(resultado.Valor);
+        return resultado.EsFallo ? resultado.Error!.AResultado(contexto) :
+            resultado.Valor is null ? Results.NoContent() : Results.Ok(resultado.Valor);
     }
 
     private static async Task<IResult> GuardarPartes(

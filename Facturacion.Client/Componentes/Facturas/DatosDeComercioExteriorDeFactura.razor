@@ -1,0 +1,300 @@
+@using Facturacion.Client.Servicios.Documentos
+@using Facturacion.Shared.ComercioExterior
+@using Facturacion.Shared.Comun
+@using Facturacion.Shared.Contratos
+@using Facturacion.Shared.Documentos
+@inject ServicioDeComercioExterior Comercio
+@inject ServicioDeDescargas Descargas
+
+<PanelErrores Problema="_error" />
+
+<div class="aviso-documentos" role="status">
+    Se guarda como borrador, se puede descargar el XML para revicion, aun no es CFDI y sin PAC.
+</div>
+
+<section class="emision-seccion">
+    <h2 class="seccion-titulo">Datos del complemento</h2>
+    <div class="rejilla-campos">
+        <MudSelect T="string" Value="@_datos.ClavePedimento" ValueChanged="v => Cambiar(_datos with { ClavePedimento = v })"
+                   Label="Clave de pedimento" Clearable="true">
+            <MudSelectItem T="string" Value="@("A1")">A1 — exportación definitiva</MudSelectItem>
+        </MudSelect>
+        <MudCheckBox T="bool" Value="@_datos.CertificadoOrigen"
+                     ValueChanged="v => Cambiar(_datos with { CertificadoOrigen = v, NumeroCertificadoOrigen = v ? _datos.NumeroCertificadoOrigen : null })"
+                     Label="Funge como certificado de origen" />
+        @if (_datos.CertificadoOrigen)
+        {
+            <MudTextField T="string" Value="@_datos.NumeroCertificadoOrigen"
+                          ValueChanged="v => Cambiar(_datos with { NumeroCertificadoOrigen = v })"
+                          Label="Número de certificado de origen" MaxLength="40" Required="true" />
+        }
+        <MudTextField T="string" Value="@_datos.NumeroExportadorConfiable"
+                      ValueChanged="v => Cambiar(_datos with { NumeroExportadorConfiable = v })"
+                      Label="Número de exportador confiable (UE)" MaxLength="50" />
+        <BuscadorCatalogo Catalogo="c_INCOTERM" Label="INCOTERM" Valor="@ClaveSeleccionada("c_INCOTERM", _datos.Incoterm)"
+                          ValorCambiado="v => Cambiar(_datos with { Incoterm = v?.Clave })"
+                          MostrarOpciones="true" MuestraSelectorEnLista="false" />
+        <MudNumericField T="decimal?" Value="@_datos.TipoCambioUsd"
+                         ValueChanged="v => Cambiar(_datos with { TipoCambioUsd = v })"
+                         Label="Tipo de cambio USD" Format="N6" Min="0" />
+        <CampoMoneda Valor="@(_datos.TotalUsd ?? 0)" ValorCambiado="v => Cambiar(_datos with { TotalUsd = v })"
+                     Label="Total USD" />
+        <MudTextField T="string" Value="@_datos.Observaciones"
+                      ValueChanged="v => Cambiar(_datos with { Observaciones = v })"
+                      Label="Observaciones del complemento" MaxLength="300" Lines="2" />
+    </div>
+</section>
+
+<section class="emision-seccion">
+    <h2 class="seccion-titulo">Mercancías por concepto</h2>
+    <p>Captura solo los conceptos que representan mercancías exportadas. Si editas un concepto, revisa de nuevo sus datos aduaneros.</p>
+    @foreach (var obsoleta in (_datos.Mercancias ?? []).Where(m => !ObtenerConceptos().Any(c =>
+        c.Orden == m.OrdenConcepto && c.ClaveProdServ == m.ClaveProdServConcepto && c.Descripcion == m.DescripcionConcepto)))
+    {
+        <div class="aviso-documentos" role="status">
+            Los datos aduaneros del concepto @obsoleta.OrdenConcepto ya no coinciden con la factura.
+            <MudButton Variant="Variant.Text" OnClick="() => QuitarMercancia(obsoleta)">Quitar estos datos</MudButton>
+        </div>
+    }
+    @foreach (var concepto in ObtenerConceptos().OrderBy(x => x.Orden))
+    {
+        var mercancia = (_datos.Mercancias ?? []).FirstOrDefault(x => x.OrdenConcepto == concepto.Orden &&
+            x.ClaveProdServConcepto == concepto.ClaveProdServ && x.DescripcionConcepto == concepto.Descripcion);
+        <div class="emision-seccion" @key="concepto.Orden">
+            <h3 class="seccion-titulo">@concepto.Orden. @concepto.Descripcion</h3>
+            @if (mercancia is null)
+            {
+                <MudButton Variant="Variant.Outlined" OnClick="() => AgregarMercancia(concepto)">Agregar datos aduaneros</MudButton>
+            }
+            else
+            {
+                <div class="rejilla-campos">
+                    <BuscadorCatalogo Catalogo="c_FraccionArancelaria" Label="Fracción arancelaria"
+                                      Valor="@ClaveSeleccionada("c_FraccionArancelaria", mercancia.FraccionArancelaria)"
+                                      ValorCambiado="v => CambiarMercancia(mercancia, mercancia with { FraccionArancelaria = v?.Clave })"
+                                      MuestraSelectorEnLista="false" />
+                    <BuscadorCatalogo Catalogo="c_UnidadAduana" Label="Unidad aduanera"
+                                      Valor="@ClaveSeleccionada("c_UnidadAduana", mercancia.UnidadAduana)"
+                                      ValorCambiado="v => CambiarMercancia(mercancia, mercancia with { UnidadAduana = v?.Clave })"
+                                      MostrarOpciones="true" MuestraSelectorEnLista="false" />
+                    <MudNumericField T="decimal?" Value="@mercancia.CantidadAduana"
+                                     ValueChanged="v => CambiarMercancia(mercancia, mercancia with { CantidadAduana = v })"
+                                     Label="Cantidad aduanera" Min="0" />
+                    <MudNumericField T="decimal?" Value="@mercancia.ValorUnitarioAduana"
+                                     ValueChanged="v => CambiarMercancia(mercancia, mercancia with { ValorUnitarioAduana = v })"
+                                     Label="Valor unitario aduanero (USD)" Min="0" />
+                    <MudNumericField T="decimal?" Value="@mercancia.ValorDolares"
+                                     ValueChanged="v => CambiarMercancia(mercancia, mercancia with { ValorDolares = v })"
+                                     Label="Valor en dólares" Min="0" />
+                    <MudTextField T="string" Value="@mercancia.Marca"
+                                  ValueChanged="v => CambiarMercancia(mercancia, mercancia with { Marca = v })"
+                                  Label="Marca" MaxLength="35" />
+                    <MudTextField T="string" Value="@mercancia.Modelo"
+                                  ValueChanged="v => CambiarMercancia(mercancia, mercancia with { Modelo = v })"
+                                  Label="Modelo" MaxLength="80" />
+                    <MudTextField T="string" Value="@mercancia.Submodelo"
+                                  ValueChanged="v => CambiarMercancia(mercancia, mercancia with { Submodelo = v })"
+                                  Label="Submodelo" MaxLength="50" />
+                    <MudTextField T="string" Value="@mercancia.NumeroSerie"
+                                  ValueChanged="v => CambiarMercancia(mercancia, mercancia with { NumeroSerie = v })"
+                                  Label="Número de serie" MaxLength="40" />
+                </div>
+                <MudButton Variant="Variant.Text" OnClick="() => QuitarMercancia(mercancia)">Quitar datos aduaneros</MudButton>
+            }
+        </div>
+    }
+</section>
+
+<section class="emision-seccion">
+    <h2 class="seccion-titulo">Identificación del receptor extranjero</h2>
+    <div class="rejilla-campos">
+        <BuscadorCatalogo Catalogo="c_Pais" Label="Residencia fiscal" Valor="@ResidenciaSeleccionada"
+                          ValorCambiado="AlCambiarResidencia" MuestraSelectorEnLista="false" />
+        <MudTextField T="string" Value="@_datos.NumeroRegistroTributario"
+                      ValueChanged="v => Cambiar(_datos with { NumeroRegistroTributario = v })"
+                      Label="Registro de identidad tributaria" MaxLength="40" />
+    </div>
+</section>
+
+<section class="emision-seccion">
+    <h2 class="seccion-titulo">Domicilio del emisor</h2>
+    <MudTextField T="string" Value="@_datos.CurpEmisor"
+                  ValueChanged="v => Cambiar(_datos with { CurpEmisor = v })"
+                  Label="CURP (solo persona física)" MaxLength="18" Class="cifra-tabular" />
+    <EditorDomicilioComercioExterior Valor="@_datos.DomicilioEmisor" EsEmisor="true"
+                                    ValorCambiado="v => Cambiar(_datos with { DomicilioEmisor = v })" />
+</section>
+
+<section class="emision-seccion">
+    <h2 class="seccion-titulo">Domicilio del receptor</h2>
+    <EditorDomicilioComercioExterior Valor="@_datos.DomicilioReceptor" BloquearPais="true"
+                                    ValorCambiado="v => Cambiar(_datos with { DomicilioReceptor = v })" />
+</section>
+
+<div class="acciones-formulario">
+    <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="GuardarAsync" Disabled="@_guardando">
+        @(_guardando ? "Guardando…" : "Guardar datos de comercio exterior")
+    </MudButton>
+    <MudButton Variant="Variant.Outlined" OnClick="DescargarXmlAsync" Disabled="@(_guardando || !_tieneDatosGuardados)">
+        Descargar XML del complemento
+    </MudButton>
+    <MudButton Variant="Variant.Outlined" OnClick="ValidarXmlAsync" Disabled="@(_guardando || _validandoXml || !_tieneDatosGuardados)">
+        @(_validandoXml ? "Validando…" : "Validar CFDI completo")
+    </MudButton>
+    <MudButton Variant="Variant.Outlined" OnClick="VistaPreviaAsync" Disabled="@(_guardando || _preparandoVista)">
+        @(_preparandoVista ? "Preparando…" : "Vista previa PDF")
+    </MudButton>
+</div>
+@if (_mensajeValidacion is not null)
+{
+    <p class="seccion-ayuda" role="status">@_mensajeValidacion</p>
+}
+
+@code {
+    [Parameter, EditorRequired] public Guid ComprobanteId { get; set; }
+    [Parameter, EditorRequired] public Func<Task<bool>> GuardarFactura { get; set; } = null!;
+    [Parameter, EditorRequired] public Func<Task> VistaPreviaPdf { get; set; } = null!;
+    [Parameter, EditorRequired] public Func<IReadOnlyList<ConceptoDto>> ObtenerConceptos { get; set; } = null!;
+    [Parameter] public EventCallback AlGuardar { get; set; }
+    [Parameter] public string? ResidenciaFiscalSugerida { get; set; }
+    [Parameter] public string? NumeroRegistroTributarioSugerido { get; set; }
+
+    private static readonly DomicilioComercioExteriorDto Vacio =
+        new(null, null, null, null, null, null, null, null, null, null);
+    private DatosComercioExteriorDto _datos = new(null, null, null, false, null, null,
+        null, null, null, null, Vacio with { Pais = "MEX" }, Vacio);
+    private DetalleProblema? _error;
+    private Guid? _idCargado;
+    private bool _guardando;
+    private bool _validandoXml;
+    private bool _preparandoVista;
+    private string? _mensajeValidacion;
+    private bool _tieneDatosGuardados;
+    private string? _ultimaResidenciaSugerida;
+
+    private ClaveSatDto? ResidenciaSeleccionada => string.IsNullOrWhiteSpace(_datos.ResidenciaFiscal)
+        ? null : new ClaveSatDto("c_Pais", _datos.ResidenciaFiscal, _datos.ResidenciaFiscal, true);
+
+    protected override async Task OnParametersSetAsync()
+    {
+        if (_idCargado == ComprobanteId)
+        {
+            if (!_tieneDatosGuardados && _datos.ResidenciaFiscal is null &&
+                _ultimaResidenciaSugerida != ResidenciaFiscalSugerida)
+                AplicarDatosSugeridos();
+            return;
+        }
+        _idCargado = ComprobanteId;
+        var (datos, error) = await Comercio.ObtenerAsync(ComprobanteId);
+        _error = error;
+        _tieneDatosGuardados = datos is not null;
+        if (datos is not null) _datos = datos;
+        else AplicarDatosSugeridos();
+    }
+
+    private void AplicarDatosSugeridos()
+    {
+        _ultimaResidenciaSugerida = ResidenciaFiscalSugerida;
+        _datos = _datos with
+        {
+            ResidenciaFiscal = ResidenciaFiscalSugerida,
+            NumeroRegistroTributario = NumeroRegistroTributarioSugerido,
+            DomicilioReceptor = _datos.DomicilioReceptor with { Pais = ResidenciaFiscalSugerida }
+        };
+    }
+
+    private void Cambiar(DatosComercioExteriorDto datos) => _datos = datos;
+
+    private static ClaveSatDto? ClaveSeleccionada(string catalogo, string? clave)
+        => string.IsNullOrWhiteSpace(clave) ? null : new ClaveSatDto(catalogo, clave, clave, true);
+
+    private void AgregarMercancia(ConceptoDto concepto)
+    {
+        var nueva = new MercanciaComercioExteriorDto(concepto.Orden, concepto.ClaveProdServ,
+            concepto.Descripcion, null, null, null, null, null, null, null, null, null);
+        _datos = _datos with { Mercancias = (_datos.Mercancias ?? []).Append(nueva).ToArray() };
+    }
+
+    private void CambiarMercancia(MercanciaComercioExteriorDto anterior, MercanciaComercioExteriorDto nueva)
+        => _datos = _datos with { Mercancias = (_datos.Mercancias ?? [])
+            .Select(x => ReferenceEquals(x, anterior) ? nueva : x).ToArray() };
+
+    private void QuitarMercancia(MercanciaComercioExteriorDto mercancia)
+        => _datos = _datos with { Mercancias = (_datos.Mercancias ?? [])
+            .Where(x => !ReferenceEquals(x, mercancia)).ToArray() };
+
+    private void AlCambiarResidencia(ClaveSatDto? pais)
+    {
+        _datos = _datos with
+        {
+            ResidenciaFiscal = pais?.Clave,
+            DomicilioReceptor = _datos.DomicilioReceptor with { Pais = pais?.Clave }
+        };
+    }
+
+    private async Task GuardarAsync() => await GuardarDatosAsync();
+
+    private async Task<bool> GuardarDatosAsync()
+    {
+        if (_guardando) return false;
+        _guardando = true;
+        _error = null;
+        _mensajeValidacion = null;
+        try
+        {
+            if (!await GuardarFactura()) return false;
+            var (datos, error) = await Comercio.GuardarAsync(ComprobanteId, _datos);
+            _error = error;
+            if (datos is null) return false;
+            _datos = datos;
+            _tieneDatosGuardados = true;
+            await AlGuardar.InvokeAsync();
+            return true;
+        }
+        finally
+        {
+            _guardando = false;
+        }
+    }
+
+    private async Task DescargarXmlAsync()
+    {
+        if (!await GuardarDatosAsync()) return;
+        _error = null;
+        var (archivo, error) = await Comercio.ObtenerXmlBorradorAsync(ComprobanteId);
+        _error = error;
+        if (archivo is not null) await Descargas.GuardarAsync(archivo);
+    }
+
+    private async Task ValidarXmlAsync()
+    {
+        if (!await GuardarDatosAsync()) return;
+        _validandoXml = true;
+        _error = null;
+        _mensajeValidacion = null;
+        try
+        {
+            var (mensaje, error) = await Comercio.ValidarXmlAsync(ComprobanteId);
+            _error = error;
+            _mensajeValidacion = mensaje;
+        }
+        finally
+        {
+            _validandoXml = false;
+        }
+    }
+
+    private async Task VistaPreviaAsync()
+    {
+        if (_preparandoVista) return;
+        _preparandoVista = true;
+        try
+        {
+            if (await GuardarDatosAsync()) await VistaPreviaPdf();
+        }
+        finally
+        {
+            _preparandoVista = false;
+        }
+    }
+}

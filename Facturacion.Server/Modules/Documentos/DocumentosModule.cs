@@ -1,4 +1,5 @@
 using Facturacion.Server.Modules.Documentos.Cancelacion;
+using Facturacion.Server.Modules.Documentos.ComercioExterior;
 using Facturacion.Server.Modules.Documentos.Dobles;
 using Facturacion.Server.Modules.Documentos.Emision;
 using Facturacion.Server.Modules.Documentos.Pagos;
@@ -73,6 +74,8 @@ public static class DocumentosModule
         servicios.AddScoped<ServicioDeSalidasCartaPorte>();
         servicios.AddScoped<ServicioDeNotaria>();
         servicios.AddScoped<ServicioDeObras>();
+        servicios.AddScoped<ServicioDeComercioExterior>();
+        servicios.AddScoped<GeneradorDeXmlComercioExterior>();
         servicios.AddScoped<GeneradorDePdfEstimacionObra>();
         servicios.AddScoped<ServicioDePdfEstimacionObra>();
 
@@ -152,6 +155,7 @@ public static class DocumentosModule
         aplicacion.MapNotaria();
         aplicacion.MapObras();
         aplicacion.MapDescargas();
+        aplicacion.MapComercioExterior();
 
         return aplicacion;
     }

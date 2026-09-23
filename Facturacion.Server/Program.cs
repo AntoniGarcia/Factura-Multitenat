@@ -50,6 +50,12 @@ if (args is ["--cargar-catalogos-carta-porte", var rutaCatalogosCartaPorte, ..])
     return;
 }
 
+if (args is ["--cargar-catalogo-comercio", var catalogoComercio, var rutaCatalogoComercio])
+{
+    await CargaDeCatalogosComercioExteriorCli.EjecutarAsync(aplicacion, catalogoComercio, rutaCatalogoComercio);
+    return;
+}
+
 // Acreditación manual del pago de una compra de timbres (fase 7). Es una operación del
 // operador del SaaS, no del inquilino: crea saldo, así que no puede vivir como endpoint
 // mientras no exista una identidad de operador. Ver AcreditacionDeCompraCli.
