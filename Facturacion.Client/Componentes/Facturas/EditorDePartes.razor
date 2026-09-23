@@ -1,0 +1,58 @@
+@using Facturacion.Client.Componentes.Facturas
+
+<div class="rejilla-campos">
+    <MudSelect T="bool" Value="@EsCopropiedad" ValueChanged="CambiarModalidad" Label="¿Copropiedad o sociedad conyugal?" Disabled="@(!Editable)">
+        <MudSelectItem T="bool" Value="false">No, una sola persona</MudSelectItem>
+        <MudSelectItem T="bool" Value="true">Sí, varias personas</MudSelectItem>
+    </MudSelect>
+</div>
+
+@for (var i = 0; i < Partes.Count; i++)
+{
+    var indice = i;
+    var parte = Partes[indice];
+    <article class="concepto-editor">
+        <div class="concepto-editor-identidad"><span class="concepto-editor-numero">@(indice + 1)</span><strong>@Titulo @(indice + 1)</strong></div>
+        @if (EsCopropiedad)
+        {
+            <MudIconButton Icon="@Icons.Material.Filled.Delete" Size="Size.Small" title="Quitar" aria-label="Quitar"
+                           Disabled="@(!Editable || Partes.Count == 1)" OnClick="@(() => Partes.RemoveAt(indice))" />
+        }
+        <div class="rejilla-campos">
+            <MudTextField @bind-Value="parte.Nombre" Label="Nombre o razón social" MaxLength="254" Required="true" Disabled="@(!Editable)" />
+            <MudTextField @bind-Value="parte.ApellidoPaterno" Label="Apellido paterno" MaxLength="200" Required="@(!EsCopropiedad && RequiereApellidoYCurpSiIndividual)" Disabled="@(!Editable)" />
+            <MudTextField @bind-Value="parte.ApellidoMaterno" Label="Apellido materno" MaxLength="200" Disabled="@(!Editable)" />
+            <MudTextField @bind-Value="parte.Rfc" Label="RFC" MaxLength="13" Required="true" Class="cifra-tabular" Disabled="@(!Editable)" />
+            <MudTextField @bind-Value="parte.Curp" Label="CURP" MaxLength="18" Required="@(!EsCopropiedad && RequiereApellidoYCurpSiIndividual)" Class="cifra-tabular" Disabled="@(!Editable)" />
+            @if (EsCopropiedad)
+            {
+                <MudNumericField T="decimal?" @bind-Value="parte.Porcentaje" Label="Porcentaje" Min="0m" Max="100m" Format="N2" Required="true" Disabled="@(!Editable)" />
+            }
+        </div>
+    </article>
+}
+
+@if (EsCopropiedad)
+{
+    <MudButton Variant="Variant.Text" StartIcon="@Icons.Material.Filled.Add" Disabled="@(!Editable)" OnClick="Agregar">Agregar @Titulo.ToLowerInvariant()</MudButton>
+    <p class="seccion-ayuda">Porcentaje total: <span class="cifra-tabular">@Partes.Sum(x => x.Porcentaje ?? 0m).ToString("N2") %</span>.</p>
+}
+
+@code {
+    [Parameter, EditorRequired] public string Titulo { get; set; } = default!;
+    [Parameter] public bool EsCopropiedad { get; set; }
+    [Parameter] public EventCallback<bool> EsCopropiedadCambiado { get; set; }
+    [Parameter, EditorRequired] public List<PartesNotarialesDeFactura.ParteEditable> Partes { get; set; } = default!;
+    [Parameter] public bool Editable { get; set; }
+    [Parameter] public bool RequiereApellidoYCurpSiIndividual { get; set; }
+
+    private async Task CambiarModalidad(bool valor)
+    {
+        EsCopropiedad = valor;
+        if (!valor && Partes.Count > 1) Partes.RemoveRange(1, Partes.Count - 1);
+        if (Partes.Count == 0) Partes.Add(new());
+        await EsCopropiedadCambiado.InvokeAsync(valor);
+    }
+
+    private void Agregar() => Partes.Add(new());
+}

@@ -16,7 +16,7 @@
 <MudDialogProvider CloseOnEscapeKey="true" BackdropClick="true" />
 <MudSnackbarProvider />
 
-<div class="cascaron">
+<div class="cascaron cascaron-cliente">
     <header class="barra-superior">
         <button type="button" class="boton-colapso" @onclick="AlternarMenu"
                 aria-expanded="@(!_menuColapsado)" aria-controls="menu-lateral"
@@ -24,19 +24,32 @@
             <MudIcon Icon="@Icons.Material.Filled.Menu" Size="Size.Small" />
         </button>
 
-        <span class="barra-superior-marca">Sistema de Facturación</span>
+        <NavLink href="/" Match="NavLinkMatch.All" class="barra-superior-marca"
+                 aria-label="Ir al inicio">
+            <span class="barra-superior-marca-icono" aria-hidden="true">
+                <MudIcon Icon="@Icons.Material.Filled.ReceiptLong" Size="Size.Small" />
+            </span>
+            <span>GenCFDI</span>
+        </NavLink>
 
-        <SelectorDeEmpresa />
+        <div class="barra-superior-empresa">
+            <span class="barra-superior-etiqueta">Empresa</span>
+            <SelectorDeEmpresa />
+        </div>
 
         <span class="separador-flexible"></span>
 
-        <span class="indicador-timbres cifra-tabular" title="Timbres disponibles">
+        <span class="indicador-timbres" title="Timbres disponibles"
+              aria-label="@($"{_timbresDisponibles?.ToString() ?? "Sin dato"} timbres disponibles")">
             <MudIcon Icon="@Icons.Material.Filled.ConfirmationNumber" Size="Size.Small" />
-            @(_timbresDisponibles?.ToString() ?? "—")
+            <strong class="cifra-tabular">@(_timbresDisponibles?.ToString("N0") ?? "—")</strong>
+            <span class="indicador-timbres-etiqueta">timbres</span>
         </span>
 
-        <SelectorDeTema />
-        <MenuDeUsuario />
+        <div class="barra-superior-acciones">
+            <SelectorDeTema />
+            <MenuDeUsuario />
+        </div>
     </header>
 
     <div class="cuerpo @(_menuColapsado ? "menu-colapsado" : null)">
@@ -50,6 +63,7 @@
                 <div class="menu-marca" title="@empresa.NombreFiscal">
                     <span class="menu-marca-iniciales">@Iniciales(empresa.NombreFiscal)</span>
                     <div class="menu-marca-texto">
+                        <span class="menu-marca-etiqueta">Empresa activa</span>
                         <div class="menu-marca-nombre">@empresa.NombreFiscal</div>
                         <div class="menu-marca-rfc cifra-tabular">@empresa.Rfc</div>
                     </div>

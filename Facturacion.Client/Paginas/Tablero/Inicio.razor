@@ -1,270 +1,358 @@
 @page "/"
 @attribute [Authorize]
+@using System.Globalization
 @inject ServicioDeTablero Tablero
-
-@*
-    Tablero de la mitad A. El conteo de comprobantes por estatus no está aquí a propósito:
-    se lee por IResumenDocumentos, que es de la mitad B y todavía no tiene implementación.
-    Antes que enseñar un recuadro en ceros —que se lee como «hoy no facturaste», no como
-    «esto aún no existe»— se omite. El enganche está en ServicioDeTablero, del servidor.
-*@
 
 <PageTitle>Inicio</PageTitle>
 <TituloDePagina Texto="Inicio" />
 
 @if (_datos is null)
 {
-    <p>Cargando…</p>
+    <p class="tabla-datos-estado">Cargando resumen…</p>
 }
 else
 {
-    @* Primero lo que impide facturar, después las cifras. Un contador que abre la
-       aplicación necesita ver el estorbo antes que el saldo. *@
+    <section class="panel panel-atencion" aria-labelledby="titulo-atencion-cliente">
+        <header class="panel-encabezado">
+            <h2 id="titulo-atencion-cliente" class="panel-titulo">Atención requerida</h2>
+            @if (!HayPendientes)
+            {
+                <span class="estado-al-dia">
+                    <MudIcon Icon="@Icons.Material.Filled.CheckCircle" Size="Size.Small" />
+                    Todo listo para facturar
+                </span>
+            }
+        </header>
 
-    @if (_datos.Certificado is { HayActivo: false })
-    {
-        <div class="aviso-caducidad aviso-critico">
-            <p>
-                Aun no cuenta con ningún certificado de sello digital. Sin él no se puede timbrar.
-                <a href="empresa/certificados">Cargar certificado</a>
-            </p>
-        </div>
-    }
-    else if (_datos.Certificado is { PorCaducar: true } certificado)
-    {
-        <div class="aviso-caducidad @(certificado.DiasParaCaducar < 0 ? "aviso-critico" : "")">
-            <p>
-                @(certificado.DiasParaCaducar < 0
-                    ? $"El certificado de sello digital caducó hace {-certificado.DiasParaCaducar} días y ya no permite timbrar."
-                    : $"El certificado de sello digital caduca en {certificado.DiasParaCaducar} días.")
-                <a href="empresa/certificados">Ver certificados</a>
-            </p>
-        </div>
-    }
-
-    @if (_datos.MembresiaEnAviso && _datos.Membresia is { } membresia)
-    {
-        <div class="aviso-caducidad @(membresia.DiasParaVencer < 0 ? "aviso-critico" : "")">
-            <p>
-                @(membresia.DiasParaVencer < 0
-                    ? $"La membresía venció hace {-membresia.DiasParaVencer} días."
-                    : $"La membresía vence en {membresia.DiasParaVencer} días.")
-            </p>
-        </div>
-    }
-
-    @if (_datos.Timbres.Disponibles < _datos.UmbralAvisoTimbres)
-    {
-        <div class="aviso-caducidad @(_datos.Timbres.Disponibles == 0 ? "aviso-critico" : "")">
-            <p>
-                @(_datos.Timbres.Disponibles == 0
-                    ? "No quedan timbres disponibles."
-                    : $"Quedan {_datos.Timbres.Disponibles} timbres.")
-                <SiTienePermiso Permiso="@Permisos.ComprarTimbres">
-                    <a href="timbres">Comprar timbres</a>
-                </SiTienePermiso>
-            </p>
-        </div>
-    }
-
-    <h2 class="seccion-titulo">Timbres</h2>
-
-    <div class="tarjetas-saldo">
-        <div class="tarjeta-saldo">
-            <span class="tarjeta-saldo-cifra cifra-tabular">@_datos.Timbres.Disponibles</span>
-            <span class="tarjeta-saldo-etiqueta">Disponibles</span>
-        </div>
-        <div class="tarjeta-saldo">
-            <span class="tarjeta-saldo-cifra cifra-tabular">@_datos.Timbres.Reservados</span>
-            <span class="tarjeta-saldo-etiqueta">Reservados</span>
-        </div>
-        @if (_datos.Membresia is { } vigente)
+        @if (HayPendientes)
         {
-            <div class="tarjeta-saldo">
-                <span class="tarjeta-saldo-cifra cifra-tabular">@vigente.DiasParaVencer</span>
-                <span class="tarjeta-saldo-etiqueta">Días de membresía</span>
+            <div class="lista-atencion lista-atencion-cliente">
+                @if (_datos.Certificado is { HayActivo: false })
+                {
+                    <article class="tarea-atencion tarea-atencion-prioritaria">
+                        <span class="tarea-atencion-icono" aria-hidden="true">
+                            <MudIcon Icon="@Icons.Material.Filled.VerifiedUser" Size="Size.Small" />
+                        </span>
+                        <div class="tarea-atencion-contenido">
+                            <strong>Falta el certificado de sello digital</strong>
+                            <span>Sin un CSD activo no se puede timbrar.</span>
+                        </div>
+                        <MudButton Href="/empresa/certificados" Variant="Variant.Text" Size="Size.Small">
+                            Cargar CSD
+                        </MudButton>
+                    </article>
+                }
+                else if (_datos.Certificado is { PorCaducar: true } certificado)
+                {
+                    <article class="tarea-atencion @(certificado.DiasParaCaducar < 0 ? "tarea-atencion-prioritaria" : null)">
+                        <span class="tarea-atencion-icono" aria-hidden="true">
+                            <MudIcon Icon="@Icons.Material.Filled.EventBusy" Size="Size.Small" />
+                        </span>
+                        <div class="tarea-atencion-contenido">
+                            <strong>
+                                @(certificado.DiasParaCaducar < 0
+                                    ? $"El CSD caducó hace {-certificado.DiasParaCaducar} días"
+                                    : $"El CSD caduca en {certificado.DiasParaCaducar} días")
+                            </strong>
+                            <span>Revisa la vigencia para evitar interrupciones al facturar.</span>
+                        </div>
+                        <MudButton Href="/empresa/certificados" Variant="Variant.Text" Size="Size.Small">
+                            Ver certificados
+                        </MudButton>
+                    </article>
+                }
+
+                @if (_datos.MembresiaEnAviso && _datos.Membresia is { } membresia)
+                {
+                    <article class="tarea-atencion @(membresia.DiasParaVencer < 0 ? "tarea-atencion-prioritaria" : null)">
+                        <span class="tarea-atencion-icono" aria-hidden="true">
+                            <MudIcon Icon="@Icons.Material.Filled.CreditCardOff" Size="Size.Small" />
+                        </span>
+                        <div class="tarea-atencion-contenido">
+                            <strong>
+                                @(membresia.DiasParaVencer < 0
+                                    ? $"La membresía venció hace {-membresia.DiasParaVencer} días"
+                                    : $"La membresía vence en {membresia.DiasParaVencer} días")
+                            </strong>
+                            <span>Consulta los paquetes disponibles para mantener activa la cuenta.</span>
+                        </div>
+                        <SiTienePermiso Permiso="@Permisos.ComprarTimbres">
+                            <MudButton Href="/timbres" Variant="Variant.Text" Size="Size.Small">
+                                Ver paquetes
+                            </MudButton>
+                        </SiTienePermiso>
+                    </article>
+                }
+
+                @if (TimbresEnAviso)
+                {
+                    <article class="tarea-atencion @(_datos.Timbres.Disponibles == 0 ? "tarea-atencion-prioritaria" : null)">
+                        <span class="tarea-atencion-icono" aria-hidden="true">
+                            <MudIcon Icon="@Icons.Material.Filled.ConfirmationNumber" Size="Size.Small" />
+                        </span>
+                        <div class="tarea-atencion-contenido">
+                            <strong>
+                                @(_datos.Timbres.Disponibles == 0
+                                    ? "No quedan timbres disponibles"
+                                    : $"Quedan {_datos.Timbres.Disponibles:N0} timbres")
+                            </strong>
+                            <span>El saldo está por debajo del nivel recomendado.</span>
+                        </div>
+                        <SiTienePermiso Permiso="@Permisos.ComprarTimbres">
+                            <MudButton Href="/timbres" Variant="Variant.Text" Size="Size.Small">
+                                Comprar timbres
+                            </MudButton>
+                        </SiTienePermiso>
+                    </article>
+                }
             </div>
         }
-    </div>
+        else
+        {
+            <div class="panel-vacio-compacto">
+                El certificado, la membresía y el saldo de timbres no requieren atención.
+            </div>
+        }
+    </section>
+
+    <section class="tablero-indicadores" aria-label="Indicadores principales">
+        <div class="indicador @ClaseIndicadorTimbres">
+            <span class="indicador-icono">
+                <MudIcon Icon="@Icons.Material.Filled.ConfirmationNumber" Size="Size.Small" />
+            </span>
+            <span class="indicador-texto">
+                <span class="indicador-cifra">@_datos.Timbres.Disponibles.ToString("N0")</span>
+                <span class="indicador-etiqueta">Timbres disponibles</span>
+            </span>
+        </div>
+
+        <div class="indicador">
+            <span class="indicador-icono">
+                <MudIcon Icon="@Icons.Material.Filled.LockClock" Size="Size.Small" />
+            </span>
+            <span class="indicador-texto">
+                <span class="indicador-cifra">@_datos.Timbres.Reservados.ToString("N0")</span>
+                <span class="indicador-etiqueta">Timbres reservados</span>
+            </span>
+        </div>
+
+        @if (_datos.Documentos is { } resumen)
+        {
+            <div class="indicador indicador-bien">
+                <span class="indicador-icono">
+                    <MudIcon Icon="@Icons.Material.Filled.ReceiptLong" Size="Size.Small" />
+                </span>
+                <span class="indicador-texto">
+                    <span class="indicador-cifra">@TimbradosDelMes.ToString("N0")</span>
+                    <span class="indicador-etiqueta">Comprobantes timbrados este mes</span>
+                </span>
+            </div>
+
+            <div class="indicador indicador-bien">
+                <span class="indicador-icono">
+                    <MudIcon Icon="@Icons.Material.Filled.Payments" Size="Size.Small" />
+                </span>
+                <span class="indicador-texto">
+                    <span class="indicador-cifra">@resumen.ImporteTimbrado.ToString("C0")</span>
+                    <span class="indicador-etiqueta">Importe timbrado este mes</span>
+                </span>
+            </div>
+        }
+    </section>
 
     @if (_datos.Documentos is { } documentos)
     {
         <div class="rejilla-panel">
             <div class="tramo-8">
-                <section class="panel">
+                <section class="panel panel-grafica-principal" aria-labelledby="titulo-facturacion-cliente">
                     <header class="panel-encabezado">
-                        <h2 class="panel-titulo">Facturado por mes</h2>
-                        <span class="panel-nota">Últimos seis meses</span>
+                        <div>
+                            <h2 id="titulo-facturacion-cliente" class="panel-titulo">Facturación timbrada</h2>
+                            <span class="panel-nota">Últimos seis meses</span>
+                        </div>
+                        <div class="panel-resumen-periodo">
+                            <strong>@ImporteDeSeisMeses.ToString("C0")</strong>
+                            <span>@TimbradosDeSeisMeses.ToString("N0") comprobantes</span>
+                        </div>
                     </header>
                     <div class="panel-cuerpo">
-                        @if (_hayHistorial)
+                        @if (HayHistorial)
                         {
-                            <MudChart T="double" ChartType="ChartType.Bar"
-                                      ChartSeries="@_serieImporte"
-                                      ChartLabels="@_etiquetasMes"
-                                      Width="100%" Height="260px" />
+                            <div class="grafica-mensual-contenedor">
+                                <div class="grafica-mensual" role="img" aria-label="@DescripcionDeFacturacion">
+                                    @foreach (var punto in _datos.SerieMensual)
+                                    {
+                                        <div class="grafica-mensual-columna">
+                                            <span class="grafica-mensual-valor">@AbreviarImporte(punto.Importe)</span>
+                                            <div class="grafica-mensual-pista" aria-hidden="true">
+                                                <span class="grafica-mensual-barra"
+                                                      style="@EstiloDeAltura(punto.Importe)"></span>
+                                            </div>
+                                            <strong class="grafica-mensual-mes">@punto.Etiqueta</strong>
+                                            <span class="grafica-mensual-timbres">@punto.Timbrados.ToString("N0") timbrados</span>
+                                        </div>
+                                    }
+                                </div>
+                            </div>
                         }
                         else
                         {
-                            <p class="tabla-datos-estado">Todavía no hay comprobantes timbrados que graficar.</p>
+                            <p class="tabla-datos-estado">Todavía no hay comprobantes timbrados que comparar.</p>
                         }
                     </div>
                 </section>
             </div>
 
             <div class="tramo-4">
-                <section class="panel">
+                <section class="panel" aria-labelledby="titulo-estatus-cliente">
                     <header class="panel-encabezado">
-                        <h2 class="panel-titulo">Comprobantes de @Mes(documentos.Desde)</h2>
+                        <div>
+                            <h2 id="titulo-estatus-cliente" class="panel-titulo">Documentos del mes</h2>
+                            <span class="panel-nota">@Mes(documentos.Desde)</span>
+                        </div>
+                        <strong class="tablero-total-documentos cifra-tabular">@TotalDocumentosDelMes</strong>
                     </header>
                     <div class="panel-cuerpo">
-                        @if (_hayComprobantesDelMes)
-                        {
-                            <MudChart T="double" ChartType="ChartType.Donut"
-                                      ChartSeries="@_seriePorEstatus"
-                                      ChartLabels="@_etiquetasEstatus"
-                                      Width="100%" Height="220px" />
-                        }
-                        else
-                        {
-                            <p class="tabla-datos-estado">Sin comprobantes este mes.</p>
-                        }
-                    </div>
-                </section>
-            </div>
+                        <ul class="desglose-estatus">
+                            @foreach (var renglon in documentos.ConteoPorEstatus)
+                            {
+                                <li>
+                                    <div class="desglose-estatus-encabezado">
+                                        <span>@renglon.Etiqueta</span>
+                                        <strong class="cifra-tabular">@renglon.Cuenta</strong>
+                                    </div>
+                                    <div class="desglose-estatus-pista" aria-hidden="true">
+                                        <span class="desglose-estatus-barra desglose-estatus-@renglon.Estatus"
+                                              style="@EstiloDeAncho(renglon.Cuenta)"></span>
+                                    </div>
+                                </li>
+                            }
+                        </ul>
 
-            <div class="tramo-6">
-                <section class="panel">
-                    <header class="panel-encabezado">
-                        <h2 class="panel-titulo">Comprobantes timbrados por mes</h2>
-                    </header>
-                    <div class="panel-cuerpo">
-                        @if (_hayHistorial)
-                        {
-                            <MudChart T="double" ChartType="ChartType.Line"
-                                      ChartSeries="@_serieTimbrados"
-                                      ChartLabels="@_etiquetasMes"
-                                      Width="100%" Height="220px" />
-                        }
-                        else
-                        {
-                            <p class="tabla-datos-estado">Sin datos.</p>
-                        }
-                    </div>
-                </section>
-            </div>
-
-            <div class="tramo-6">
-                <section class="panel">
-                    <header class="panel-encabezado">
-                        <h2 class="panel-titulo">Resumen de @Mes(documentos.Desde)</h2>
-                    </header>
-                    <div class="panel-cuerpo panel-cuerpo-tabla">
-                        <MudSimpleTable Dense="true" Hover="true">
-                            <thead>
-                                <tr><th>Estatus</th><th class="cifra-tabular">Comprobantes</th></tr>
-                            </thead>
-                            <tbody>
-                                @foreach (var renglon in documentos.ConteoPorEstatus)
-                                {
-                                    <tr>
-                                        <td>@renglon.Etiqueta</td>
-                                        <td class="cifra-tabular">@renglon.Cuenta</td>
-                                    </tr>
-                                }
-                                <tr>
-                                    <td><strong>Importe timbrado</strong></td>
-                                    <td class="cifra-tabular"><strong>@documentos.ImporteTimbrado.ToString("C2")</strong></td>
-                                </tr>
-                                <tr>
-                                    <td>Importe cancelado</td>
-                                    <td class="cifra-tabular">@documentos.ImporteCancelado.ToString("C2")</td>
-                                </tr>
-                            </tbody>
-                        </MudSimpleTable>
+                        <dl class="tablero-importes-mes">
+                            <div><dt>Timbrado</dt><dd>@documentos.ImporteTimbrado.ToString("C2")</dd></div>
+                            <div><dt>Cancelado</dt><dd>@documentos.ImporteCancelado.ToString("C2")</dd></div>
+                        </dl>
                     </div>
                 </section>
             </div>
         </div>
     }
 
-    <h2 class="seccion-titulo">Accesos rápidos</h2>
-
-    <div class="accesos-rapidos">
-        <MudButton Variant="Variant.Outlined" StartIcon="@Icons.Material.Filled.Groups"
-                   Href="clientes">Clientes</MudButton>
-        <MudButton Variant="Variant.Outlined" StartIcon="@Icons.Material.Filled.Inventory"
-                   Href="productos">Productos</MudButton>
-        <SiTienePermiso Permiso="@Permisos.ComprarTimbres">
-            <MudButton Variant="Variant.Outlined" StartIcon="@Icons.Material.Filled.ConfirmationNumber"
-                       Href="timbres">Timbres</MudButton>
-        </SiTienePermiso>
-        <SiTienePermiso Permiso="@Permisos.ConfigurarEmpresa">
-            <MudButton Variant="Variant.Outlined" StartIcon="@Icons.Material.Filled.Business"
-                       Href="empresa">Empresa</MudButton>
-        </SiTienePermiso>
-    </div>
+    <section class="panel tablero-accesos-panel" aria-labelledby="titulo-accesos-cliente">
+        <header class="panel-encabezado">
+            <h2 id="titulo-accesos-cliente" class="panel-titulo">Acciones frecuentes</h2>
+            <span class="panel-nota">Atajos de la empresa activa</span>
+        </header>
+        <div class="tablero-accesos">
+            <SiTienePermiso Permiso="@Permisos.Timbrar">
+                <a class="tablero-acceso tablero-acceso-principal" href="/facturas/nueva">
+                    <MudIcon Icon="@Icons.Material.Filled.AddCircle" Size="Size.Small" />
+                    <span><strong>Nueva factura</strong><small>Capturar un comprobante</small></span>
+                </a>
+            </SiTienePermiso>
+            <a class="tablero-acceso" href="/documentos">
+                <MudIcon Icon="@Icons.Material.Filled.Description" Size="Size.Small" />
+                <span><strong>Documentos</strong><small>Consultar y descargar</small></span>
+            </a>
+            <a class="tablero-acceso" href="/clientes">
+                <MudIcon Icon="@Icons.Material.Filled.Groups" Size="Size.Small" />
+                <span><strong>Clientes</strong><small>Administrar receptores</small></span>
+            </a>
+            <a class="tablero-acceso" href="/productos">
+                <MudIcon Icon="@Icons.Material.Filled.Inventory2" Size="Size.Small" />
+                <span><strong>Productos</strong><small>Precios, claves e impuestos</small></span>
+            </a>
+            <SiTienePermiso Permiso="@Permisos.ComprarTimbres">
+                <a class="tablero-acceso" href="/timbres">
+                    <MudIcon Icon="@Icons.Material.Filled.ConfirmationNumber" Size="Size.Small" />
+                    <span><strong>Timbres</strong><small>Saldo y paquetes</small></span>
+                </a>
+            </SiTienePermiso>
+            <SiTienePermiso Permiso="@Permisos.ConfigurarEmpresa">
+                <a class="tablero-acceso" href="/empresa">
+                    <MudIcon Icon="@Icons.Material.Filled.Business" Size="Size.Small" />
+                    <span><strong>Empresa</strong><small>Datos fiscales y configuración</small></span>
+                </a>
+            </SiTienePermiso>
+        </div>
+    </section>
 }
 
 @code {
     private TableroDto? _datos;
 
-    private bool _hayHistorial;
-    private bool _hayComprobantesDelMes;
+    private bool CertificadoRequiereAtencion =>
+        _datos?.Certificado is { } certificado && (!certificado.HayActivo || certificado.PorCaducar);
 
-    private List<ChartSeries<double>> _serieImporte = [];
-    private List<ChartSeries<double>> _serieTimbrados = [];
-    private List<ChartSeries<double>> _seriePorEstatus = [];
-    private string[] _etiquetasMes = [];
-    private string[] _etiquetasEstatus = [];
+    private bool TimbresEnAviso =>
+        _datos is { } datos && datos.Timbres.Disponibles < datos.UmbralAvisoTimbres;
+
+    private bool HayPendientes =>
+        CertificadoRequiereAtencion || TimbresEnAviso || _datos?.MembresiaEnAviso == true;
+
+    private bool HayHistorial =>
+        _datos?.SerieMensual.Any(punto => punto.Timbrados > 0) == true;
+
+    private string ClaseIndicadorTimbres => _datos switch
+    {
+        { Timbres.Disponibles: 0 } => "indicador-alerta",
+        { } datos when datos.Timbres.Disponibles < datos.UmbralAvisoTimbres => "indicador-pendiente",
+        _ => "indicador-bien"
+    };
+
+    private int TimbradosDelMes =>
+        _datos?.Documentos?.ConteoPorEstatus.FirstOrDefault(r => r.Estatus == "timbrado")?.Cuenta ?? 0;
+
+    private int TotalDocumentosDelMes =>
+        _datos?.Documentos?.ConteoPorEstatus.Sum(r => r.Cuenta) ?? 0;
+
+    private decimal ImporteDeSeisMeses =>
+        _datos?.SerieMensual.Sum(punto => punto.Importe) ?? 0m;
+
+    private int TimbradosDeSeisMeses =>
+        _datos?.SerieMensual.Sum(punto => punto.Timbrados) ?? 0;
+
+    private decimal ImporteMensualMaximo =>
+        _datos is { SerieMensual.Count: > 0 } datos
+            ? datos.SerieMensual.Max(punto => punto.Importe)
+            : 0m;
+
+    private int CuentaMaximaPorEstatus =>
+        _datos?.Documentos is { ConteoPorEstatus.Count: > 0 } documentos
+            ? documentos.ConteoPorEstatus.Max(renglon => renglon.Cuenta)
+            : 0;
+
+    private string DescripcionDeFacturacion =>
+        _datos is null
+            ? "Facturación timbrada de los últimos seis meses."
+            : $"Facturación timbrada por mes: {string.Join("; ", _datos.SerieMensual.Select(
+                punto => $"{punto.Etiqueta}: {punto.Importe:C2} y {punto.Timbrados:N0} comprobantes"))}.";
 
     protected override async Task OnInitializedAsync()
     {
         _datos = await Tablero.ObtenerAsync();
-
-        if (_datos is null) return;
-
-        _etiquetasMes = _datos.SerieMensual.Select(p => p.Etiqueta).ToArray();
-        _hayHistorial = _datos.SerieMensual.Any(p => p.Timbrados > 0);
-
-        _serieImporte =
-        [
-            new ChartSeries<double>
-            {
-                Name = "Importe",
-                Data = _datos.SerieMensual.Select(p => (double)p.Importe).ToArray()
-            }
-        ];
-
-        _serieTimbrados =
-        [
-            new ChartSeries<double>
-            {
-                Name = "Timbrados",
-                Data = _datos.SerieMensual.Select(p => (double)p.Timbrados).ToArray()
-            }
-        ];
-
-        // La dona solo lleva los estatus con comprobantes: un sector de tamaño cero no se ve
-        // pero sí ocupa sitio en la leyenda.
-        var conEstatus = _datos.Documentos?.ConteoPorEstatus
-            .Where(r => r.Cuenta > 0)
-            .ToList() ?? [];
-
-        _hayComprobantesDelMes = conEstatus.Count > 0;
-        _etiquetasEstatus = conEstatus.Select(r => r.Etiqueta).ToArray();
-
-        _seriePorEstatus =
-        [
-            new ChartSeries<double>
-            {
-                Name = "Comprobantes",
-                Data = conEstatus.Select(r => (double)r.Cuenta).ToArray()
-            }
-        ];
     }
 
-    // El periodo lo decide el servidor, en el huso de la empresa; aquí solo se nombra.
+    private string EstiloDeAltura(decimal importe) =>
+        $"--porcentaje: {CalcularPorcentaje(importe, ImporteMensualMaximo)}";
+
+    private string EstiloDeAncho(int cuenta) =>
+        $"--porcentaje: {CalcularPorcentaje(cuenta, CuentaMaximaPorEstatus)}";
+
+    private static string CalcularPorcentaje(decimal valor, decimal maximo)
+    {
+        var porcentaje = maximo <= 0m ? 0m : decimal.Clamp(valor / maximo * 100m, 0m, 100m);
+        return porcentaje.ToString("0.##", CultureInfo.InvariantCulture);
+    }
+
+    private static string AbreviarImporte(decimal importe) => importe switch
+    {
+        >= 1_000_000m => $"{importe / 1_000_000m:0.#} M",
+        >= 1_000m => $"{importe / 1_000m:0.#} mil",
+        _ => importe.ToString("C0")
+    };
+
     private static string Mes(DateOnly desde)
-        => desde.ToString("MMMM 'de' yyyy", new System.Globalization.CultureInfo("es-MX"));
+        => desde.ToString("MMMM 'de' yyyy", new CultureInfo("es-MX"));
 }

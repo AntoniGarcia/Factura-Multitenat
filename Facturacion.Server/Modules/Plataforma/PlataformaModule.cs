@@ -11,6 +11,7 @@ using Facturacion.Server.Modules.Plataforma.Folios;
 using Facturacion.Server.Modules.Plataforma.Productos;
 using Facturacion.Server.Modules.Plataforma.Tablero;
 using Facturacion.Server.Modules.Plataforma.Timbres;
+using Facturacion.Server.Modules.Plataforma.Transporte;
 using Facturacion.Server.Modules.Plataforma.Usuarios;
 using Facturacion.Server.Modules.Operador.Auth;
 using Facturacion.Shared.Comun;
@@ -222,6 +223,7 @@ public static class PlataformaModule
         aplicacion.MapFolios();
         aplicacion.MapClientes();
         aplicacion.MapProductos();
+        aplicacion.MapCatalogosDeTransporte();
         aplicacion.MapTimbres();
         aplicacion.MapUsuarios();
         aplicacion.MapTablero();

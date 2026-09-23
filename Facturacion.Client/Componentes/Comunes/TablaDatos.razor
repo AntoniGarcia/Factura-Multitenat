@@ -20,6 +20,7 @@
           Hover="true"
           Loading="_cargando"
           OnRowClick="OnRowClickMud"
+          RowClassFunc="ClaseDeFila"
           Class="@(AlHacerClic.HasDelegate ? "tabla-filas-previsualizables" : null)"
           RowsPerPage="@TamanoPagina">
     <HeaderContent>
@@ -103,6 +104,13 @@
     [Parameter]
     public EventCallback<T> AlHacerClic { get; set; }
 
+    /// <summary>
+    /// Marca visualmente un renglón sin guardar selección dentro de la tabla. La página
+    /// dueña conserva el elemento seleccionado porque también es quien carga su detalle.
+    /// </summary>
+    [Parameter]
+    public Func<T, bool>? EsSeleccionado { get; set; }
+
     /// <summary>Opciones del selector de tamaño de página.</summary>
     private static readonly int[] TamanosDisponibles = [12, 25, 50];
 
@@ -126,6 +134,9 @@
 
     private Task OnRowClickMud(TableRowClickEventArgs<T> evento)
         => AlHacerClic.HasDelegate ? AlHacerClic.InvokeAsync(evento.Item) : Task.CompletedTask;
+
+    private string ClaseDeFila(T elemento, int indice)
+        => EsSeleccionado?.Invoke(elemento) == true ? "tabla-fila-seleccionada" : string.Empty;
 
     protected override void OnInitialized() => _tamano = TamanoPagina;
 

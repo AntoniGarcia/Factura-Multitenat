@@ -9,7 +9,12 @@ namespace Facturacion.Server.Modules.Documentos.Salidas;
 
 /// <summary>Lo que el PDF necesita y no está dentro del comprobante.</summary>
 /// <param name="Logo">Logo de la empresa, ya descifrado del almacén. Nulo si no tiene.</param>
-public sealed record DatosDelPdf(DateTime FechaLocal, int Decimales, byte[]? Logo);
+public sealed record DatosDelPdf(
+    DateTime FechaLocal,
+    int Decimales,
+    byte[]? Logo,
+    bool EsBorrador = false,
+    DatosNotarialesDelPdf? Notaria = null);
 
 /// <summary>
 /// Representación impresa del CFDI. Los campos son los que fija §1.4 del documento
@@ -32,7 +37,7 @@ public sealed class GeneradorDePdfCfdi
 
     public byte[] Generar(Comprobante comprobante, DatosDelPdf datos)
     {
-        var qr = Qr(comprobante, datos.Decimales);
+        var qr = datos.EsBorrador ? null : Qr(comprobante, datos.Decimales);
 
         return Document.Create(documento =>
         {
@@ -44,7 +49,7 @@ public sealed class GeneradorDePdfCfdi
 
                 pagina.Header().Element(e => Encabezado(e, comprobante, datos));
                 pagina.Content().Element(e => Cuerpo(e, comprobante, datos));
-                pagina.Footer().Element(e => Pie(e, comprobante, qr));
+                pagina.Footer().Element(e => Pie(e, comprobante, qr, datos.EsBorrador));
             });
         }).GeneratePdf();
     }
@@ -52,28 +57,54 @@ public sealed class GeneradorDePdfCfdi
     // ── Encabezado: emisor, logo y los identificadores fiscales ─────────────────────────
 
     private static void Encabezado(IContainer contenedor, Comprobante c, DatosDelPdf datos)
-        => contenedor.PaddingBottom(8).Row(fila =>
+        => contenedor.PaddingBottom(8).Column(contenido =>
         {
-            if (datos.Logo is { Length: > 0 } logo)
-                fila.ConstantItem(90).Height(45).AlignLeft().AlignMiddle().Image(logo).FitArea();
-
-            fila.RelativeItem().PaddingLeft(8).Column(columna =>
+            if (datos.EsBorrador)
             {
-                columna.Item().Text(c.EmisorNombre).Bold().FontSize(12);
-                columna.Item().Text($"RFC {c.EmisorRfc}   ·   Régimen fiscal {c.EmisorRegimenFiscal}");
-                columna.Item().Text($"Lugar de expedición {c.LugarExpedicion}");
-            });
+                contenido.Item()
+                    .PaddingBottom(7)
+                    .Border(1)
+                    .Padding(5)
+                    .AlignCenter()
+                    .Text("BORRADOR — SIN VALIDEZ FISCAL")
+                    .Bold()
+                    .FontSize(10);
+            }
 
-            fila.ConstantItem(210).Border(0.5f).Padding(5).Column(columna =>
+            contenido.Item().Row(fila =>
             {
-                columna.Item().Text(TituloDelTipo(c.TipoDeComprobante)).Bold().FontSize(11).AlignCenter();
-                columna.Item().PaddingTop(3).Element(e => Dato(e, "Versión", "4.0"));
-                columna.Item().Element(e => Dato(e, "Folio interno", FolioInterno(c)));
-                columna.Item().Element(e => Dato(e, "Folio fiscal (UUID)", c.Uuid?.ToString().ToUpperInvariant() ?? "—"));
-                columna.Item().Element(e => Dato(e, "No. serie CSD emisor", c.NoCertificadoEmisor ?? "—"));
-                columna.Item().Element(e => Dato(e, "No. serie CSD SAT", c.NoCertificadoSat ?? "—"));
-                columna.Item().Element(e => Dato(e, "Fecha de emisión", datos.FechaLocal.ToString("dd/MM/yyyy HH:mm:ss", CultureInfo.InvariantCulture)));
-                columna.Item().Element(e => Dato(e, "Fecha de certificación", c.FechaTimbradoUtc?.ToString("dd/MM/yyyy HH:mm:ss", CultureInfo.InvariantCulture) ?? "—"));
+                if (datos.Logo is { Length: > 0 } logo)
+                    fila.ConstantItem(90).Height(45).AlignLeft().AlignMiddle().Image(logo).FitArea();
+
+                fila.RelativeItem().PaddingLeft(8).Column(columna =>
+                {
+                    columna.Item().Text(c.EmisorNombre).Bold().FontSize(12);
+                    columna.Item().Text($"RFC {c.EmisorRfc}   ·   Régimen fiscal {c.EmisorRegimenFiscal}");
+                    columna.Item().Text($"Lugar de expedición {c.LugarExpedicion}");
+                });
+
+                fila.ConstantItem(210).Border(0.5f).Padding(5).Column(columna =>
+                {
+                    var titulo = datos.EsBorrador
+                        ? $"VISTA PREVIA · {TituloDelTipo(c.TipoDeComprobante)}"
+                        : TituloDelTipo(c.TipoDeComprobante);
+
+                    columna.Item().Text(titulo).Bold().FontSize(11).AlignCenter();
+                    columna.Item().PaddingTop(3).Element(e => Dato(e, "Versión", "4.0"));
+                    columna.Item().Element(e => Dato(e, "Folio interno", FolioInterno(c)));
+                    columna.Item().Element(e => Dato(e, "Folio fiscal (UUID)",
+                        datos.EsBorrador ? "No timbrado" : c.Uuid?.ToString().ToUpperInvariant() ?? "—"));
+                    if (!datos.EsBorrador)
+                        columna.Item().Element(e => Dato(e, "Estado del CFDI",
+                            c.Estatus == "cancelado" ? "Cancelado" : "Vigente"));
+                    columna.Item().Element(e => Dato(e, "No. serie CSD emisor",
+                        datos.EsBorrador ? "No timbrado" : c.NoCertificadoEmisor ?? "—"));
+                    columna.Item().Element(e => Dato(e, "No. serie CSD SAT",
+                        datos.EsBorrador ? "No timbrado" : c.NoCertificadoSat ?? "—"));
+                    columna.Item().Element(e => Dato(e, "Fecha de emisión", datos.FechaLocal.ToString("dd/MM/yyyy HH:mm:ss", CultureInfo.InvariantCulture)));
+                    columna.Item().Element(e => Dato(e, "Fecha de certificación",
+                        datos.EsBorrador ? "No timbrado" : c.FechaTimbradoUtc?.ToString("dd/MM/yyyy HH:mm:ss", CultureInfo.InvariantCulture) ?? "—"));
+                });
             });
         });
 
@@ -92,6 +123,50 @@ public sealed class GeneradorDePdfCfdi
 
             columna.Item().PaddingTop(6).Element(e => Conceptos(e, c, datos.Decimales));
             columna.Item().PaddingTop(6).Element(e => Totales(e, c, datos.Decimales));
+            if (datos.Notaria is { } notaria)
+                columna.Item().PaddingTop(10).Element(e => SeccionNotarial(e, notaria, datos.Decimales));
+        });
+
+    private static void SeccionNotarial(IContainer contenedor, DatosNotarialesDelPdf datos, int decimales)
+        => contenedor.Column(columna =>
+        {
+            columna.Item().PaddingBottom(4).Text("DATOS NOTARIALES").Bold().FontSize(9);
+            columna.Item().Border(0.5f).Padding(6).Column(detalle =>
+            {
+                detalle.Item().Text($"Instrumento notarial {datos.NumeroInstrumento}  ·  Fecha {datos.FechaInstrumento:dd/MM/yyyy}").Bold();
+                detalle.Item().Text($"Notaría {datos.NumeroNotaria}  ·  Entidad {datos.EstadoNotaria}  ·  CURP {datos.CurpNotario}");
+                if (!string.IsNullOrWhiteSpace(datos.Adscripcion))
+                    detalle.Item().Text($"Adscripción: {datos.Adscripcion}");
+                detalle.Item().PaddingTop(3).Text(
+                    $"Operación {Cifra(datos.MontoOperacion, decimales)}  ·  Subtotal {Cifra(datos.Subtotal, decimales)}  ·  IVA {Cifra(datos.Iva, decimales)}");
+            });
+
+            columna.Item().PaddingTop(6).Text($"Inmuebles ({datos.Inmuebles.Count})").Bold();
+            foreach (var inmueble in datos.Inmuebles)
+                columna.Item().PaddingTop(2).Text($"Tipo {inmueble.Tipo}  ·  {inmueble.Direccion}");
+
+            columna.Item().PaddingTop(6).Text("Enajenantes").Bold();
+            if (datos.Enajenantes.Count == 0)
+                columna.Item().Text("Sin capturar en este borrador.").FontSize(7).Light();
+            foreach (var persona in datos.Enajenantes)
+                columna.Item().PaddingTop(2).Element(e => ParteNotarial(e, persona));
+
+            columna.Item().PaddingTop(6).Text("Adquirentes").Bold();
+            if (datos.Adquirentes.Count == 0)
+                columna.Item().Text("Sin capturar en este borrador.").FontSize(7).Light();
+            foreach (var persona in datos.Adquirentes)
+                columna.Item().PaddingTop(2).Element(e => ParteNotarial(e, persona));
+        });
+
+    private static void ParteNotarial(IContainer contenedor, ParteNotarialDelPdf persona)
+        => contenedor.Column(columna =>
+        {
+            columna.Item().Text(persona.NombreCompleto);
+            columna.Item().Text($"RFC {persona.Rfc}" +
+                (persona.Curp is null ? string.Empty : $"  ·  CURP {persona.Curp}") +
+                (persona.Porcentaje is null ? string.Empty :
+                    $"  ·  Participación {persona.Porcentaje.Value.ToString("F2", CultureInfo.InvariantCulture)} %"))
+                .FontSize(7).Light();
         });
 
     private static void Conceptos(IContainer contenedor, Comprobante c, int decimales)
@@ -185,21 +260,37 @@ public sealed class GeneradorDePdfCfdi
 
     // ── Pie: QR, sellos y cadena original ───────────────────────────────────────────────
 
-    private static void Pie(IContainer contenedor, Comprobante c, byte[]? qr)
-        => contenedor.PaddingTop(6).BorderTop(0.5f).PaddingTop(4).Row(fila =>
+    private static void Pie(IContainer contenedor, Comprobante c, byte[]? qr, bool esBorrador)
+        => contenedor.PaddingTop(6).BorderTop(0.5f).PaddingTop(4).Element(elemento =>
         {
-            if (qr is not null)
-                fila.ConstantItem(85).Height(85).Image(qr).FitArea();
-
-            fila.RelativeItem().PaddingLeft(6).Column(columna =>
+            if (esBorrador)
             {
-                columna.Item().Element(e => Bloque(e, "Sello digital del CFDI", c.SelloCfd));
-                columna.Item().PaddingTop(2).Element(e => Bloque(e, "Sello del SAT", c.SelloSat));
-                columna.Item().PaddingTop(2).Element(e => Bloque(e, "Cadena original del complemento de certificación", c.CadenaOriginalSat));
+                elemento.Column(columna =>
+                {
+                    columna.Item().Text("BORRADOR SIN VALIDEZ FISCAL").Bold().FontSize(8).AlignCenter();
+                    columna.Item().PaddingTop(2).Text(
+                        "Esta vista previa no es un CFDI. No contiene UUID, sellos, código QR fiscal ni certificación del SAT.")
+                        .FontSize(7)
+                        .AlignCenter();
+                });
+                return;
+            }
 
-                columna.Item().PaddingTop(3).Text(
-                    "Este documento es una representación impresa de un CFDI. " +
-                    "Verifícalo en la página del SAT con el código QR.").FontSize(6).Light();
+            elemento.Row(fila =>
+            {
+                if (qr is not null)
+                    fila.ConstantItem(85).Height(85).Image(qr).FitArea();
+
+                fila.RelativeItem().PaddingLeft(6).Column(columna =>
+                {
+                    columna.Item().Element(e => Bloque(e, "Sello digital del CFDI", c.SelloCfd));
+                    columna.Item().PaddingTop(2).Element(e => Bloque(e, "Sello del SAT", c.SelloSat));
+                    columna.Item().PaddingTop(2).Element(e => Bloque(e, "Cadena original del complemento de certificación", c.CadenaOriginalSat));
+
+                    columna.Item().PaddingTop(3).Text(
+                        "Este documento es una representación impresa de un CFDI. " +
+                        "Verifícalo en la página del SAT con el código QR.").FontSize(6).Light();
+                });
             });
         });
 

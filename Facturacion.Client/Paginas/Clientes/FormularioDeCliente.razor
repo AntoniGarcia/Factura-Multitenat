@@ -18,6 +18,8 @@
 else
 {
     <EditForm Model="this" OnValidSubmit="Guardar">
+        <div class="formulario-catalogo-secciones">
+        <section class="formulario-catalogo-seccion formulario-catalogo-seccion-principal">
         <h2 class="seccion-titulo">Datos fiscales</h2>
         <p class="seccion-ayuda">
             Tienen que coincidir <strong>exactamente</strong> con la Constancia de Situación Fiscal
@@ -93,7 +95,9 @@ else
                 <MudTextField @bind-Value="_numRegIdTrib" Label="Registro de identidad tributaria" MaxLength="40" />
             </div>
         }
+        </section>
 
+        <section class="formulario-catalogo-seccion">
         <h2 class="seccion-titulo">Preferencias de facturación</h2>
         <p class="seccion-ayuda">Precargan el formulario al facturar. Quien emite puede cambiarlas.</p>
 
@@ -119,7 +123,9 @@ else
                 }
             </MudSelect>
         </div>
+        </section>
 
+        <section class="formulario-catalogo-seccion">
         <h2 class="seccion-titulo">Contacto</h2>
 
         <div class="rejilla-campos">
@@ -127,7 +133,9 @@ else
                           HelperText="A donde se manda el comprobante." />
             <MudTextField @bind-Value="_telefono" Label="Teléfono" MaxLength="32" />
         </div>
+        </section>
 
+        <section class="formulario-catalogo-seccion formulario-catalogo-seccion-ancha">
         <h2 class="seccion-titulo">Domicilio de entrega</h2>
         <p class="seccion-ayuda">Sale en el PDF, no en el XML. Puedes dejarlo en blanco.</p>
 
@@ -142,6 +150,8 @@ else
             <MudTextField @bind-Value="_pais" Label="País" MaxLength="64" />
             <MudTextField @bind-Value="_codigoPostal" Label="Código postal" Class="cifra-tabular" MaxLength="5" />
             <MudTextField @bind-Value="_referencia" Label="Referencia" MaxLength="256" />
+        </div>
+        </section>
         </div>
 
         <div class="tarjeta-formulario-acciones">

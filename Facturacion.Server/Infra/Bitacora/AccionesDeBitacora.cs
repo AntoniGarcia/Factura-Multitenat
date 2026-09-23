@@ -22,6 +22,10 @@ public static class AccionesDeBitacora
     // ── Empresa, certificados y folios (fase 4) ────────────────────────────────────────
     public const string EmpresaActualizada = "empresa_actualizada";
     public const string ConfiguracionActualizada = "configuracion_actualizada";
+    public const string ConfiguracionNotarioActualizada = "configuracion_notario_actualizada";
+    public const string DatosNotariaActualizados = "datos_notaria_actualizados";
+    public const string DatosObraActualizados = "datos_obra_actualizados";
+    public const string PartesNotarialesActualizadas = "partes_notariales_actualizadas";
     public const string LogoActualizado = "logo_actualizado";
     public const string LogoQuitado = "logo_quitado";
     public const string CsdCargado = "csd_cargado";
@@ -66,6 +70,10 @@ public static class AccionesDeBitacora
     public const string TimbreDevuelto = "timbre_devuelto";
     public const string ReservaAbandonada = "reserva_de_timbre_abandonada";
 
+    // ── Documentos de traslado (Carta Porte) ──────────────────────────────────────────
+    public const string TrasladoCartaPorteCreado = "traslado_carta_porte_creado";
+    public const string TrasladoCartaPorteActualizado = "traslado_carta_porte_actualizado";
+
     // ── Usuarios ───────────────────────────────────────────────────────────────────────
     // Las cinco acciones de invitación se eliminaron con el sistema de invitaciones. Los
     // renglones de bitácora que ya las llevan se quedan como están: la bitácora es un
@@ -104,6 +112,7 @@ public static class AccionesDeBitacora
     public const string MembresiaCancelada = "membresia_cancelada";
     public const string EmpresaDesactivadaPorOperador = "empresa_desactivada_por_operador";
     public const string EmpresaReactivadaPorOperador = "empresa_reactivada_por_operador";
+    public const string LicenciasDeEmpresaActualizadasPorOperador = "licencias_de_empresa_actualizadas_por_operador";
     public const string TimbresAsignados = "timbres_asignados_por_operador";
     public const string CorreoDeCuentaCambiadoPorOperador = "correo_de_cuenta_cambiado_por_operador";
     public const string CorreoDeUsuarioCambiadoPorOperador = "correo_de_usuario_cambiado_por_operador";
@@ -117,6 +126,10 @@ public static class EntidadesDeBitacora
     public const string RefreshToken = "RefreshToken";
     public const string Empresa = "Empresa";
     public const string ConfiguracionEmpresa = "ConfiguracionEmpresa";
+    public const string ConfiguracionNotario = "ConfiguracionNotario";
+    public const string DatosNotaria = "DatosNotaria";
+    public const string DatosObra = "DatosObra";
+    public const string PartesNotariales = "PartesNotariales";
     public const string CertificadoCsd = "CertificadoCsd";
     public const string Serie = "Serie";
     public const string ReservaFolio = "ReservaFolio";
@@ -127,6 +140,7 @@ public static class EntidadesDeBitacora
     public const string Usuario = "Usuario";
     public const string UsuarioEmpresa = "UsuarioEmpresa";
     public const string Perfil = "Perfil";
+    public const string TrasladoCartaPorte = "TrasladoCartaPorte";
 
     // ── Operador del SaaS ────────────────────────────────────────────────────────────────
     public const string OperadorPlataforma = "OperadorPlataforma";

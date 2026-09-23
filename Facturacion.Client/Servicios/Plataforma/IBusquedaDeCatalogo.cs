@@ -7,11 +7,14 @@ namespace Facturacion.Client.Servicios.Plataforma;
 public interface IBusquedaDeCatalogo
 {
     Task<IReadOnlyList<ClaveSatDto>> BuscarAsync(string catalogo, string texto, CancellationToken ct);
+    Task<IReadOnlyList<ClaveSatDto>> OpcionesAsync(string catalogo, CancellationToken ct);
 }
 
 /// <summary>Llama a <c>GET /api/catalogos/{catalogo}/buscar</c> (ARQUITECTURA.md §7).</summary>
 public sealed class BusquedaDeCatalogo(IHttpClientFactory fabrica) : IBusquedaDeCatalogo
 {
+    private readonly Dictionary<string, IReadOnlyList<ClaveSatDto>> _opciones = new(StringComparer.Ordinal);
+
     public async Task<IReadOnlyList<ClaveSatDto>> BuscarAsync(string catalogo, string texto, CancellationToken ct)
     {
         var cliente = fabrica.CreateClient(ClientesHttp.Api);
@@ -24,5 +27,18 @@ public sealed class BusquedaDeCatalogo(IHttpClientFactory fabrica) : IBusquedaDe
 
         var resultado = await respuesta.Content.ReadFromJsonAsync<IReadOnlyList<ClaveSatDto>>(ct);
         return resultado ?? [];
+    }
+
+    public async Task<IReadOnlyList<ClaveSatDto>> OpcionesAsync(string catalogo, CancellationToken ct)
+    {
+        if (_opciones.TryGetValue(catalogo, out var cache)) return cache;
+
+        var cliente = fabrica.CreateClient(ClientesHttp.Api);
+        using var respuesta = await cliente.GetAsync($"api/catalogos/{Uri.EscapeDataString(catalogo)}/opciones", ct);
+        if (!respuesta.IsSuccessStatusCode) return [];
+
+        var resultado = await respuesta.Content.ReadFromJsonAsync<IReadOnlyList<ClaveSatDto>>(ct) ?? [];
+        _opciones[catalogo] = resultado;
+        return resultado;
     }
 }

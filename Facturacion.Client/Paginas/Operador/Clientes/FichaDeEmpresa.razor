@@ -60,6 +60,12 @@ else
                            OnClick="CrearPaquetePersonalizado">
                     Crear paquete
                 </MudButton>
+                <MudButton Variant="Variant.Outlined"
+                           StartIcon="@Icons.Material.Filled.Extension"
+                           Disabled="@_trabajando"
+                           OnClick="ActualizarLicencias">
+                    Módulos
+                </MudButton>
                 <MudButton Variant="Variant.Text"
                            Color="@(_ficha.Activa ? Color.Error : Color.Primary)"
                            StartIcon="@(_ficha.Activa
@@ -92,6 +98,11 @@ else
                 </dd>
             </div>
         </dl>
+
+        <div class="aviso-reservado" role="note">
+            <strong>Módulos contratados:</strong>
+            @EtiquetasDeLicencias(_ficha.Licencias)
+        </div>
     </section>
 
     <PanelErrores Problema="_error" />
@@ -648,6 +659,46 @@ else
         if (_error is null) _aviso = "Empresa reactivada.";
 
         await CargarAsync();
+    }
+
+    private async Task ActualizarLicencias()
+    {
+        if (_trabajando || _ficha is null) return;
+
+        var parametros = new DialogParameters<DialogoDeLicenciasDeEmpresa>
+        {
+            { x => x.NombreEmpresa, _ficha.NombreFiscal },
+            { x => x.Licencias, _ficha.Licencias }
+        };
+
+        var referencia = await Dialogos.ShowAsync<DialogoDeLicenciasDeEmpresa>(
+            "Módulos contratados", parametros, new DialogOptions { CloseOnEscapeKey = true });
+        var resultado = await referencia.Result;
+
+        if (resultado is not { Canceled: false, Data: PeticionActualizarLicenciasDeEmpresa peticion }) return;
+
+        _trabajando = true;
+        _error = null;
+        _aviso = null;
+
+        var (licencias, error) = await Clientes.ActualizarLicenciasAsync(CuentaId, EmpresaId, peticion);
+        _error = error;
+        _trabajando = false;
+
+        if (licencias is not null)
+            _aviso = "Módulos contratados actualizados.";
+
+        await CargarAsync();
+    }
+
+    private static string EtiquetasDeLicencias(LicenciasDeEmpresaDto licencias)
+    {
+        var modulos = new List<string>();
+        if (licencias.Notarios) modulos.Add("Notaría");
+        if (licencias.Obras) modulos.Add("Constructoras");
+        if (licencias.Comercio) modulos.Add("Comercio exterior");
+        if (licencias.Ine) modulos.Add("Complemento INE");
+        return modulos.Count == 0 ? "Sin módulos adicionales." : string.Join(" · ", modulos);
     }
 
     private async Task CrearPaquetePersonalizado()

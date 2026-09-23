@@ -1,4 +1,5 @@
 using Facturacion.Server.Infra.Errores;
+using Facturacion.Server.Modules.Documentos.Salidas;
 using Facturacion.Shared.Comun;
 using Facturacion.Shared.Documentos;
 
@@ -27,6 +28,9 @@ public static class EmisionEndpoints
         grupo.MapPost("/borradores", CrearBorrador);
         grupo.MapGet("", Listar);
         grupo.MapGet("/{id:guid}", Obtener);
+        grupo.MapGet("/{id:guid}/vista-previa.pdf", VistaPreviaPdf);
+        grupo.MapGet("/{id:guid}/pdf", DescargarPdf);
+        grupo.MapGet("/{id:guid}/xml", DescargarXml);
         grupo.MapPut("/{id:guid}", Guardar);
         grupo.MapDelete("/{id:guid}", EliminarBorrador);
         grupo.MapGet("/relacionados/resolver", ResolverRelacionado);
@@ -35,10 +39,15 @@ public static class EmisionEndpoints
     private static async Task<IResult> CrearBorrador(ServicioDeEmision emision, CancellationToken ct)
         => Results.Ok(await emision.CrearBorradorAsync(ct));
 
-    private static async Task<IResult> Obtener(Guid id, ServicioDeEmision emision, CancellationToken ct)
+    private static async Task<IResult> Obtener(
+        Guid id, ServicioDeEmision emision, HttpContext http, CancellationToken ct)
     {
         var comprobante = await emision.ObtenerAsync(id, ct);
-        return comprobante is null ? Results.NotFound() : Results.Ok(comprobante);
+        return comprobante is null
+            ? ErrorNegocio
+                .NoEncontrado("comprobante-no-encontrado", "Ese comprobante no existe.")
+                .AResultado(http)
+            : Results.Ok(comprobante);
     }
 
     private static async Task<IResult> Guardar(
@@ -49,6 +58,36 @@ public static class EmisionEndpoints
         return resultado.EsFallo
             ? resultado.Error!.AResultado(http)
             : Results.Ok(resultado.Valor);
+    }
+
+    private static async Task<IResult> VistaPreviaPdf(
+        Guid id, ServicioDePdfBorrador pdf, HttpContext http, CancellationToken ct)
+    {
+        var resultado = await pdf.GenerarAsync(id, ct);
+
+        return resultado.EsFallo
+            ? resultado.Error!.AResultado(http)
+            : Results.File(resultado.Valor!, "application/pdf");
+    }
+
+    private static async Task<IResult> DescargarPdf(
+        Guid id, ServicioDeSalidasFiscales salidas, HttpContext http, CancellationToken ct)
+    {
+        var resultado = await salidas.GenerarPdfAsync(id, ct);
+
+        return resultado.EsFallo
+            ? resultado.Error!.AResultado(http)
+            : Results.File(resultado.Valor!.Contenido, resultado.Valor.TipoContenido, resultado.Valor.Nombre);
+    }
+
+    private static async Task<IResult> DescargarXml(
+        Guid id, ServicioDeSalidasFiscales salidas, HttpContext http, CancellationToken ct)
+    {
+        var resultado = await salidas.ObtenerXmlAsync(id, ct);
+
+        return resultado.EsFallo
+            ? resultado.Error!.AResultado(http)
+            : Results.File(resultado.Valor!.Contenido, resultado.Valor.TipoContenido, resultado.Valor.Nombre);
     }
 
     private static async Task<IResult> EliminarBorrador(

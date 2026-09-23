@@ -1,0 +1,144 @@
+@using Facturacion.Client.Servicios.Plataforma
+@using Facturacion.Shared.Contratos
+@using Facturacion.Shared.Transporte
+@inject ServicioDeTransporte Transporte
+@inject IBusquedaDeCatalogo Busqueda
+
+<div class="rejilla-formulario">
+    <MudTextField T="string" Label="Calle" Value="@_calle" ValueChanged="CambiarCalle" Disabled="@Deshabilitado" Required="true" />
+    <MudTextField T="string" Label="Número exterior" Value="@_numeroExterior" ValueChanged="CambiarNumeroExterior" Disabled="@Deshabilitado" Required="true" />
+    <MudTextField T="string" Label="Número interior" Value="@_numeroInterior" ValueChanged="CambiarNumeroInterior" Disabled="@Deshabilitado" />
+
+    <BuscadorCatalogo @key="_estado?.Clave" Catalogo="c_Estado" Label="Estado" Valor="@_estado"
+                      ValorCambiado="AlCambiarEstadoAsync" MostrarOpciones="true" MuestraSelectorEnLista="false"
+                      Contexto="@ResumenDomicilio" Deshabilitado="@Deshabilitado" Requerido="true" />
+    <BuscadorCatalogo @key="_municipio?.Clave" Catalogo="c_Municipio" Label="Municipio" Valor="@_municipio"
+                      ValorCambiado="AlCambiarMunicipioAsync" BusquedaPersonalizada="BuscarMunicipiosAsync"
+                      MostrarOpciones="true" MuestraSelectorEnLista="false" Contexto="@ResumenDomicilio"
+                      Deshabilitado="@(Deshabilitado || _estado is null)" Requerido="true" />
+    <BuscadorCatalogo @key="_codigoPostal?.Clave" Catalogo="c_CodigoPostal" Label="Código postal" Valor="@_codigoPostal"
+                      ValorCambiado="AlCambiarCodigoPostalAsync" TextoCambiado="AlEscribirCodigoPostalAsync"
+                      BusquedaPersonalizada="BuscarCodigosPostalesAsync" MostrarSoloClave="true"
+                      MuestraSelectorEnLista="false" Contexto="@ResumenDomicilio" Deshabilitado="@Deshabilitado" Requerido="true" />
+</div>
+
+@code {
+    [Parameter, EditorRequired] public string Tipo { get; set; } = "Origen";
+    [Parameter, EditorRequired] public UbicacionCartaPorteDto Valor { get; set; } = null!;
+    [Parameter] public EventCallback<UbicacionCartaPorteDto> ValorCambiado { get; set; }
+    [Parameter] public bool Deshabilitado { get; set; }
+
+    private UbicacionCartaPorteDto? _ultimoValor;
+    private string _calle = string.Empty, _numeroExterior = string.Empty, _numeroInterior = string.Empty;
+    private ClaveSatDto? _estado, _municipio, _codigoPostal;
+    private List<ClaveSatDto> _municipiosDisponibles = [];
+
+    protected override async Task OnParametersSetAsync()
+    {
+        if (Equals(Valor, _ultimoValor)) return;
+
+        _ultimoValor = Valor;
+        _calle = Valor.Calle;
+        _numeroExterior = Valor.NumeroExterior;
+        _numeroInterior = Valor.NumeroInterior ?? string.Empty;
+        _estado = AClave("c_Estado", Valor.Estado);
+        _municipio = AClave("c_Municipio", Valor.Municipio);
+        _codigoPostal = AClave("c_CodigoPostal", Valor.CodigoPostal);
+        _municipiosDisponibles = _estado is null ? [] : await Transporte.MunicipiosAsync(_estado.Clave) ?? [];
+    }
+
+    private async Task CambiarCalle(string valor) { _calle = valor; await EmitirAsync(); }
+    private async Task CambiarNumeroExterior(string valor) { _numeroExterior = valor; await EmitirAsync(); }
+    private async Task CambiarNumeroInterior(string valor) { _numeroInterior = valor; await EmitirAsync(); }
+
+    private async Task AlCambiarEstadoAsync(ClaveSatDto? estado)
+    {
+        _estado = estado;
+        _municipio = null;
+        _codigoPostal = null;
+        _municipiosDisponibles = estado is null ? [] : await Transporte.MunicipiosAsync(estado.Clave) ?? [];
+        await EmitirAsync();
+    }
+
+    private async Task AlCambiarMunicipioAsync(ClaveSatDto? municipio)
+    {
+        _municipio = municipio;
+        _codigoPostal = null;
+        await EmitirAsync();
+    }
+
+    private async Task AlCambiarCodigoPostalAsync(ClaveSatDto? codigoPostal)
+    {
+        _codigoPostal = codigoPostal;
+        _estado = null;
+        _municipio = null;
+        if (codigoPostal is not null) await AplicarDomicilioPorCodigoPostalAsync(codigoPostal.Clave);
+        await EmitirAsync();
+    }
+
+    private async Task AlEscribirCodigoPostalAsync(string texto)
+    {
+        var codigoPostal = texto.Trim();
+        if (codigoPostal == _codigoPostal?.Clave) return;
+
+        _codigoPostal = null;
+        _estado = null;
+        _municipio = null;
+        if (codigoPostal.Length == 5 && codigoPostal.All(char.IsDigit))
+        {
+            _codigoPostal = new ClaveSatDto("c_CodigoPostal", codigoPostal, codigoPostal, true);
+            await AplicarDomicilioPorCodigoPostalAsync(codigoPostal);
+        }
+        await EmitirAsync();
+    }
+
+    private Task<IReadOnlyList<ClaveSatDto>> BuscarMunicipiosAsync(string texto, CancellationToken ct)
+    {
+        var filtro = texto.Trim();
+        IReadOnlyList<ClaveSatDto> resultado = string.IsNullOrWhiteSpace(filtro)
+            ? _municipiosDisponibles
+            : _municipiosDisponibles.Where(x => x.Clave.Contains(filtro, StringComparison.OrdinalIgnoreCase) ||
+                x.Descripcion.Contains(filtro, StringComparison.OrdinalIgnoreCase)).ToList();
+        return Task.FromResult(resultado);
+    }
+
+    private async Task<IReadOnlyList<ClaveSatDto>> BuscarCodigosPostalesAsync(string texto, CancellationToken ct)
+    {
+        if (_estado is null || _municipio is null)
+            return texto.Length < 3 ? [] : await Busqueda.BuscarAsync("c_CodigoPostal", texto, ct);
+        return await Transporte.CodigosPostalesAsync(_estado.Clave, _municipio.Clave, texto, ct) ?? [];
+    }
+
+    private async Task AplicarDomicilioPorCodigoPostalAsync(string codigoPostal)
+    {
+        var domicilio = await Transporte.ResolverDomicilioPorCodigoPostalAsync(codigoPostal);
+        if (domicilio is null) return;
+        _estado = new ClaveSatDto("c_Estado", domicilio.Estado, domicilio.NombreEstado, true);
+        _municipio = domicilio.Municipio is null ? null : new ClaveSatDto("c_Municipio", domicilio.Municipio,
+            domicilio.NombreMunicipio ?? domicilio.Municipio, true);
+        _municipiosDisponibles = await Transporte.MunicipiosAsync(domicilio.Estado) ?? [];
+    }
+
+    private async Task EmitirAsync()
+    {
+        var nuevo = new UbicacionCartaPorteDto(Tipo, Tipo == "Origen" ? 1 : 2, null, _calle,
+            _numeroExterior, Recortar(_numeroInterior), _estado?.Clave ?? string.Empty, _municipio?.Clave ?? string.Empty,
+            _codigoPostal?.Clave ?? string.Empty);
+        _ultimoValor = nuevo;
+        await ValorCambiado.InvokeAsync(nuevo);
+    }
+
+    private string? ResumenDomicilio
+    {
+        get
+        {
+            var resumen = string.Join(" · ", new[] { _estado?.Descripcion, _municipio?.Descripcion, _codigoPostal?.Clave }
+                .Where(x => !string.IsNullOrWhiteSpace(x)));
+            return string.IsNullOrWhiteSpace(resumen) ? null : $"Domicilio seleccionado: {resumen}";
+        }
+    }
+
+    private static ClaveSatDto? AClave(string catalogo, string? clave)
+        => string.IsNullOrWhiteSpace(clave) ? null : new ClaveSatDto(catalogo, clave, clave, true);
+    private static string? Recortar(string? valor) => string.IsNullOrWhiteSpace(valor) ? null : valor.Trim();
+}

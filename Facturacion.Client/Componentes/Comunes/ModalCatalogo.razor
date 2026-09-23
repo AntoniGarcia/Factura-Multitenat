@@ -8,8 +8,12 @@
     ConfirmacionAccion se abre con IServicioDeConfirmacion.
 *@
 
-<MudDialog>
+<MudDialog Class="modal-catalogo">
     <DialogContent>
+        <p class="modal-catalogo-ayuda">
+            Busca por clave o descripción. Selecciona un resultado para usarlo en el formulario.
+        </p>
+
         <MudTextField T="string"
                        @ref="_campoBusqueda"
                        Value="@_texto"
@@ -25,6 +29,13 @@
         {
             <p class="modal-catalogo-estado">Buscando…</p>
         }
+        else if (_texto.Length == 0)
+        {
+            <div class="modal-catalogo-estado modal-catalogo-inicial">
+                <MudIcon Icon="@Icons.Material.Filled.Search" />
+                <span>Escribe una clave o una parte de la descripción.</span>
+            </div>
+        }
         else if (_texto.Length > 0 && _texto.Length < 3)
         {
             <p class="modal-catalogo-estado">Escribe al menos 3 caracteres.</p>
@@ -35,11 +46,12 @@
         }
         else
         {
+            <p class="modal-catalogo-resultados">@_resultados.Count resultados</p>
             <MudList T="ClaveSatDto" SelectedValueChanged="Elegir">
                 @foreach (var clave in _resultados)
                 {
-                    <MudListItem T="ClaveSatDto" Value="@clave">
-                        <span class="cifra-tabular buscador-catalogo-clave">@clave.Clave</span>
+                    <MudListItem T="ClaveSatDto" Value="@clave" Class="modal-catalogo-renglon">
+                        <span class="modal-catalogo-clave cifra-tabular">@clave.Clave</span>
                         <span class="buscador-catalogo-descripcion">@clave.Descripcion</span>
                     </MudListItem>
                 }

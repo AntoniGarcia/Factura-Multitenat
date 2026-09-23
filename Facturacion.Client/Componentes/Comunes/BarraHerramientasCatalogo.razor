@@ -6,7 +6,7 @@
 
 <div class="barra-herramientas-catalogo">
     <MudTextField T="string"
-                   Placeholder="Buscar…"
+                   Placeholder="@Placeholder"
                    Value="@Texto"
                    ValueChanged="AlBuscar"
                    Adornment="Adornment.Start"
@@ -35,6 +35,13 @@
         <MudIconButton Icon="@Icons.Material.Filled.Download" OnClick="OnExportar" title="Exportar a CSV" />
     }
 
+    @if (OnSecundario.HasDelegate)
+    {
+        <MudButton Variant="Variant.Outlined" StartIcon="@IconoSecundario" OnClick="OnSecundario">
+            @TextoSecundario
+        </MudButton>
+    }
+
     @if (OnNuevo.HasDelegate)
     {
         <MudButton Variant="Variant.Filled" Color="Color.Primary" StartIcon="@Icons.Material.Filled.Add" OnClick="OnNuevo">
@@ -46,6 +53,9 @@
 @code {
     [Parameter]
     public string Texto { get; set; } = string.Empty;
+
+    [Parameter]
+    public string Placeholder { get; set; } = "Buscar…";
 
     /// <summary>Se dispara con debounce de 300 ms, el mismo de BuscadorCatalogo (ARQUITECTURA.md §7).</summary>
     [Parameter]
@@ -77,6 +87,15 @@
 
     [Parameter]
     public EventCallback OnExportar { get; set; }
+
+    [Parameter]
+    public string TextoSecundario { get; set; } = string.Empty;
+
+    [Parameter]
+    public string IconoSecundario { get; set; } = Icons.Material.Filled.MoreHoriz;
+
+    [Parameter]
+    public EventCallback OnSecundario { get; set; }
 
     private Task AlBuscar(string texto)
     {

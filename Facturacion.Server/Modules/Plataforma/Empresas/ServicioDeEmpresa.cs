@@ -177,10 +177,9 @@ public sealed class ServicioDeEmpresa(
         empresa.Telefono = Recortar(peticion.Telefono);
         empresa.CorreoContacto = Recortar(peticion.CorreoContacto);
 
-        empresa.LicNotarios = peticion.Licencias.Notarios;
-        empresa.LicObras = peticion.Licencias.Obras;
-        empresa.LicComercio = peticion.Licencias.Comercio;
-        empresa.LicINE = peticion.Licencias.Ine;
+        // Las licencias son parte de la suscripción, no de los datos fiscales. Aunque el
+        // contrato actual las transporte por compatibilidad, una empresa no puede activarse
+        // módulos de pago alterando la petición desde el navegador.
 
         var despues = AEmpresaDto(empresa);
 

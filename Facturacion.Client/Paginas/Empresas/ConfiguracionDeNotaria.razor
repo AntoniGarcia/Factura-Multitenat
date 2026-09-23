@@ -1,0 +1,95 @@
+@page "/empresa/notaria"
+@attribute [Authorize(Policy = Permisos.ConfigurarEmpresa)]
+@using Facturacion.Client.Servicios.Documentos
+@using Facturacion.Shared.Comun
+@using Facturacion.Shared.Contratos
+@using Facturacion.Shared.Notaria
+@inject ServicioDeNotaria Notaria
+
+<PageTitle>Configuración de Notaría</PageTitle>
+<TituloDePagina Texto="Configuración de Notaría" />
+
+<TarjetaFormulario RutaVolver="/empresa">
+    <PanelErrores Problema="_error" />
+
+    @if (_cargando)
+    {
+        <p class="tabla-datos-estado">Cargando…</p>
+    }
+    else
+    {
+        <EditForm Model="this" OnValidSubmit="Guardar">
+            <h2 class="seccion-titulo">Datos del notario</h2>
+            <p class="seccion-ayuda">
+                Estos datos se reutilizarán al emitir una factura notarial y se validan contra el catálogo SAT.
+            </p>
+
+            <div class="rejilla-campos">
+                <MudTextField @bind-Value="_curp" Label="CURP" Class="cifra-tabular" Immediate="true"
+                              MaxLength="18" Required="true" />
+                <MudNumericField T="int" @bind-Value="_numeroNotaria" Label="Número de notaría"
+                                 Min="1" Max="999" Required="true" />
+                <BuscadorCatalogo Catalogo="c_Estado" Label="Entidad federativa" Valor="_estado"
+                                  ValorCambiado="v => _estado = v" Requerido="true" MostrarOpciones="true" />
+                <MudTextField @bind-Value="_adscripcion" Label="Adscrito a la plaza" MaxLength="255" />
+            </div>
+
+            <div class="tarjeta-formulario-acciones">
+                <MudButton Href="/empresa">Volver</MudButton>
+                <MudButton ButtonType="ButtonType.Submit" Variant="Variant.Filled" Color="Color.Primary" Disabled="_guardando">
+                    @(_guardando ? "Guardando…" : "Guardar configuración")
+                </MudButton>
+            </div>
+        </EditForm>
+    }
+</TarjetaFormulario>
+
+@code {
+    private DetalleProblema? _error;
+    private bool _cargando = true, _guardando;
+    private string _curp = string.Empty;
+    private int _numeroNotaria;
+    private ClaveSatDto? _estado;
+    private string? _adscripcion;
+
+    protected override async Task OnInitializedAsync()
+    {
+        var (configuracion, error) = await Notaria.ObtenerAsync();
+        _error = error;
+
+        if (configuracion is not null)
+        {
+            _curp = configuracion.Curp;
+            _numeroNotaria = configuracion.NumeroNotaria;
+            _estado = new ClaveSatDto("c_Estado", configuracion.Estado, configuracion.Estado, true);
+            _adscripcion = configuracion.Adscripcion;
+        }
+
+        _cargando = false;
+    }
+
+    private async Task Guardar()
+    {
+        _guardando = true;
+        _error = null;
+
+        try
+        {
+            var (configuracion, error) = await Notaria.GuardarAsync(new PeticionGuardarConfiguracionNotario(
+                _curp, _numeroNotaria, _estado?.Clave ?? string.Empty, _adscripcion));
+            _error = error;
+
+            if (configuracion is not null)
+            {
+                _curp = configuracion.Curp;
+                _numeroNotaria = configuracion.NumeroNotaria;
+                _estado = new ClaveSatDto("c_Estado", configuracion.Estado, configuracion.Estado, true);
+                _adscripcion = configuracion.Adscripcion;
+            }
+        }
+        finally
+        {
+            _guardando = false;
+        }
+    }
+}

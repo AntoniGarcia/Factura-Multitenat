@@ -20,6 +20,8 @@
 else
 {
     <EditForm Model="this" OnValidSubmit="Guardar">
+        <div class="formulario-catalogo-secciones">
+        <section class="formulario-catalogo-seccion formulario-catalogo-seccion-principal">
         <h2 class="seccion-titulo">Identificación</h2>
 
         <div class="rejilla-campos">
@@ -28,7 +30,9 @@ else
             <MudTextField @bind-Value="_unidadTexto" Label="Unidad de medida" MaxLength="64"
                           HelperText="La que lee el cliente en el PDF: «Litro», «Caja con 12»." />
         </div>
+        </section>
 
+        <section class="formulario-catalogo-seccion formulario-catalogo-seccion-ancha">
         <h2 class="seccion-titulo">Claves del SAT</h2>
         <p class="seccion-ayuda">
             Se eligen del catálogo, nunca se escriben a mano. Al elegirlas se muestra su descripción.
@@ -63,7 +67,9 @@ else
                 }
             </div>
         </div>
+        </section>
 
+        <section class="formulario-catalogo-seccion">
         <h2 class="seccion-titulo">Precio y peso</h2>
 
         <div class="rejilla-campos">
@@ -72,7 +78,9 @@ else
             <MudNumericField @bind-Value="_pesoKg" Label="Peso en kilogramos" Min="0M" Format="N3"
                              Class="cifra-tabular" HelperText="Opcional." />
         </div>
+        </section>
 
+        <section class="formulario-catalogo-seccion formulario-catalogo-seccion-ancha">
         <h2 class="seccion-titulo">Impuestos</h2>
 
         <div class="rejilla-campos">
@@ -167,6 +175,8 @@ else
                 <MudButton Variant="Variant.Outlined" OnClick="AgregarImpuesto">Agregar</MudButton>
             </div>
         }
+        </section>
+        </div>
 
         <div class="tarjeta-formulario-acciones">
             <MudButton Variant="Variant.Text" OnClick="@(() => Navegacion.NavigateTo("/productos"))">Cancelar</MudButton>

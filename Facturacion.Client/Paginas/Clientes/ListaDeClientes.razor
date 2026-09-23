@@ -9,21 +9,30 @@
 
 <PanelErrores Problema="_error" />
 
-<BarraHerramientasCatalogo Texto="@_texto"
-                           TextoCambiado="AlBuscar"
-                           MuestraEstatus="true"
-                           Activos="_activos"
-                           ActivosCambiado="AlFiltrarActivos"
-                           TextoNuevo="Nuevo cliente"
-                           OnNuevo="@(() => Navegacion.NavigateTo("/clientes/nuevo"))"
-                           OnExportar="Exportar" />
+<section class="catalogo-panel" aria-label="Catálogo de clientes">
+    <p class="catalogo-descripcion">
+        Receptores disponibles para facturar en la empresa activa. Los inactivos conservan su historial.
+    </p>
 
-<TablaDatos T="ClienteEnListaDto"
-            @ref="_tabla"
-            Columnas="_columnas"
-            CargarPagina="CargarAsync"
-            TextoEntidad="clientes"
-            TextoSinDatos="No hay clientes que coincidan." />
+    <BarraHerramientasCatalogo Texto="@_texto"
+                               TextoCambiado="AlBuscar"
+                               Placeholder="Buscar por nombre, RFC o correo…"
+                               MuestraEstatus="true"
+                               Activos="_activos"
+                               ActivosCambiado="AlFiltrarActivos"
+                               TextoNuevo="Nuevo cliente"
+                               OnNuevo="@(() => Navegacion.NavigateTo("/clientes/nuevo"))"
+                               OnExportar="Exportar" />
+
+    <div class="catalogo-tabla">
+        <TablaDatos T="ClienteEnListaDto"
+                    @ref="_tabla"
+                    Columnas="_columnas"
+                    CargarPagina="CargarAsync"
+                    TextoEntidad="clientes"
+                    TextoSinDatos="No hay clientes que coincidan." />
+    </div>
+</section>
 
 @code {
     private TablaDatos<ClienteEnListaDto>? _tabla;
@@ -36,11 +45,15 @@
     protected override void OnInitialized() => _columnas =
     [
         new("Clave", c => @<span class="cifra-tabular">@c.ClaveInterna</span>, ClaveOrden: "clave", Tabular: true),
-        new("RFC", c => @<span class="cifra-tabular">@c.Rfc</span>, ClaveOrden: "rfc", Tabular: true),
-        new("Nombre", c => @<text>@c.Nombre</text>, ClaveOrden: "nombre"),
-        new("Régimen", c => @<span class="cifra-tabular">@c.RegimenFiscal</span>, Tabular: true),
-        new("C.P. fiscal", c => @<span class="cifra-tabular">@c.DomicilioFiscalCp</span>, Tabular: true),
-        new("Correo", c => @<text>@c.CorreoPrincipal</text>),
+        new("Cliente", c => @<div class="catalogo-celda-principal">
+                                 <strong>@c.Nombre</strong>
+                                 <span class="cifra-tabular">@c.Rfc</span>
+                             </div>, ClaveOrden: "nombre"),
+        new("Datos fiscales", c => @<div class="catalogo-celda-secundaria">
+                                       <span>Régimen <span class="cifra-tabular">@c.RegimenFiscal</span></span>
+                                       <span>C.P. <span class="cifra-tabular">@c.DomicilioFiscalCp</span></span>
+                                   </div>),
+        new("Correo", c => @<span class="catalogo-correo">@(c.CorreoPrincipal ?? "—")</span>),
         new("Estado", c => @<span class="indicador-estado indicador-estado-@(c.Activo ? "timbrada" : "borrador")">
                                 @(c.Activo ? "Activo" : "Inactivo")
                             </span>),
