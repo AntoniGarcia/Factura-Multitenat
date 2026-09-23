@@ -29,6 +29,8 @@ public static class ClientesDePlataformaEndpoints
 
         grupo.MapPost("/{id:guid}/empresas/{empresaId:guid}/activo", CambiarActivoEmpresa)
             .RequireAuthorization(PoliticasDeOperador.AdministrarClientes);
+        grupo.MapPost("/{id:guid}/empresas/{empresaId:guid}/licencias", ActualizarLicencias)
+            .RequireAuthorization(PoliticasDeOperador.AdministrarClientes);
         grupo.MapPost("/{id:guid}/correo-contacto", CambiarCorreoDeContacto)
             .RequireAuthorization(PoliticasDeOperador.AdministrarClientes);
         grupo.MapPost("/{id:guid}/empresas/{empresaId:guid}/paquetes", CrearPaquete)
@@ -77,6 +79,23 @@ public static class ClientesDePlataformaEndpoints
 
         return resultado.EsExito
             ? Results.NoContent()
+            : resultado.Error!.AResultado(contexto);
+    }
+
+    private static async Task<IResult> ActualizarLicencias(
+        Guid id,
+        Guid empresaId,
+        PeticionActualizarLicenciasDeEmpresa peticion,
+        ServicioDeClientesDePlataforma clientes,
+        HttpContext contexto,
+        CancellationToken ct)
+    {
+        if (!TryOperador(contexto, out var operadorId)) return Results.Unauthorized();
+
+        var resultado = await clientes.ActualizarLicenciasAsync(operadorId, id, empresaId, peticion, ct);
+
+        return resultado.EsExito
+            ? Results.Ok(resultado.Valor)
             : resultado.Error!.AResultado(contexto);
     }
 

@@ -37,6 +37,388 @@
     margin: 1.25rem 0;
 }
 
+/* ── Altas de catálogos ───────────────────────────────────────────────────────
+   Las altas de clientes y productos contienen varias decisiones distintas. En escritorio
+   se agrupan en dos columnas; las secciones fiscales extensas ocupan todo el ancho. */
+.formulario-catalogo-secciones {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 0.75rem;
+}
+
+.formulario-catalogo-seccion {
+    min-width: 0;
+    padding: 0.875rem 1rem 0.75rem;
+    background: var(--superficie-elevada);
+    border: 1px solid var(--borde);
+    border-radius: var(--radio);
+}
+
+.formulario-catalogo-seccion-principal,
+.formulario-catalogo-seccion-ancha {
+    grid-column: 1 / -1;
+}
+
+.formulario-catalogo-seccion > .seccion-titulo:first-child {
+    margin: 0 0 0.25rem;
+    padding-bottom: 0;
+    border-bottom: 0;
+}
+
+.formulario-catalogo-seccion > .rejilla-campos:last-child,
+.formulario-catalogo-seccion > .tabla-impuestos:last-child,
+.formulario-catalogo-seccion > .aviso-reservado:last-child {
+    margin-bottom: 0;
+}
+
+@media (max-width: 48rem) {
+    .formulario-catalogo-secciones {
+        grid-template-columns: minmax(0, 1fr);
+    }
+
+    .formulario-catalogo-seccion-principal,
+    .formulario-catalogo-seccion-ancha {
+        grid-column: auto;
+    }
+
+    .formulario-catalogo-seccion {
+        padding-right: 0.75rem;
+        padding-left: 0.75rem;
+    }
+}
+
+/* ── Emisión de factura ───────────────────────────────────────────────────────
+   La captura conserva el ancho útil para los conceptos y deja el resumen fiscal
+   visible durante jornadas largas. Los importes del resumen son los devueltos por
+   el servidor; la interfaz no intenta sustituir el cálculo fiscal. */
+.emision-layout {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(18rem, 21rem);
+    align-items: start;
+    gap: 1rem;
+}
+
+.emision-captura {
+    min-width: 0;
+}
+
+.emision-pestanas {
+    min-width: 0;
+}
+
+.emision-seccion {
+    padding: 0 0.25rem 1rem;
+    border-bottom: 1px solid var(--borde);
+}
+
+.emision-seccion:last-child {
+    border-bottom: 0;
+}
+
+.emision-seccion > .seccion-titulo:first-child {
+    margin-top: 1rem;
+}
+
+.lista-conceptos {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    margin-bottom: 0.75rem;
+}
+
+.concepto-editor {
+    display: grid;
+    grid-template-columns: minmax(13rem, 2fr) 7rem 8rem 7rem 8rem 2.5rem;
+    grid-template-areas: "identidad cantidad precio descuento importe quitar";
+    align-items: center;
+    gap: 0.75rem;
+    min-height: 4.5rem;
+    padding: 0.625rem 0.75rem;
+    background: var(--superficie);
+    border: 1px solid var(--borde);
+    border-radius: var(--radio);
+}
+
+.concepto-editor-buscador {
+    grid-column: 1 / -1;
+    display: grid;
+    grid-template-columns: 1.75rem minmax(0, 1fr);
+    align-items: center;
+    gap: 0.75rem;
+}
+
+.concepto-editor-numero {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 1.75rem;
+    height: 1.75rem;
+    flex: 0 0 1.75rem;
+    border-radius: var(--radio);
+    background: var(--acento-suave);
+    color: var(--acento);
+    font-family: var(--tipografia-monoespaciada);
+    font-size: 0.75rem;
+    font-weight: 500;
+}
+
+.concepto-editor-identidad {
+    grid-area: identidad;
+    display: flex;
+    align-items: center;
+    min-width: 0;
+    gap: 0.625rem;
+}
+
+.concepto-editor-identidad > div {
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+}
+
+.concepto-editor-identidad strong {
+    overflow: hidden;
+    color: var(--texto);
+    font-size: 0.875rem;
+    font-weight: 500;
+    line-height: 1.25rem;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.concepto-editor-identidad div > span,
+.concepto-editor-dato > span {
+    color: var(--texto-suave);
+    font-size: var(--etiqueta-tam);
+}
+
+.concepto-editor-cantidad {
+    grid-area: cantidad;
+}
+
+.concepto-editor-precio {
+    grid-area: precio;
+}
+
+.concepto-editor-descuento {
+    grid-area: descuento;
+}
+
+.concepto-editor-importe {
+    grid-area: importe;
+}
+
+.concepto-editor-quitar {
+    grid-area: quitar;
+}
+
+.concepto-editor-dato {
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+}
+
+.concepto-editor-dato strong {
+    color: var(--texto);
+    font-size: 0.875rem;
+    font-weight: 500;
+}
+
+.concepto-editor-importe strong {
+    color: var(--acento);
+}
+
+.conceptos-vacio {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    min-height: 5rem;
+    margin-bottom: 0.5rem;
+    padding: 1rem;
+    color: var(--texto-suave);
+    border: 1px dashed var(--borde-fuerte);
+    border-radius: var(--radio);
+    font-size: 0.875rem;
+}
+
+.emision-resumen {
+    position: sticky;
+    top: 0.75rem;
+    overflow: hidden;
+    background: var(--superficie);
+    border: 1px solid var(--borde);
+    border-radius: var(--radio);
+}
+
+.emision-resumen-cabecera,
+.emision-resumen-cliente,
+.emision-resumen-datos,
+.emision-resumen-totales,
+.emision-resumen-nota,
+.emision-resumen-acciones {
+    margin: 0;
+    padding: 0.875rem 1rem;
+}
+
+.emision-resumen-cabecera {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 0.75rem;
+    background: var(--superficie-elevada);
+    border-bottom: 1px solid var(--borde);
+}
+
+.emision-resumen-cabecera span,
+.emision-resumen-cliente > span:first-child {
+    display: block;
+    color: var(--texto-suave);
+    font-size: var(--etiqueta-tam);
+}
+
+.emision-resumen-cabecera h2 {
+    margin: 0.125rem 0 0;
+    color: var(--texto);
+    font-family: var(--tipografia-monoespaciada);
+    font-size: 1rem;
+    font-weight: 500;
+}
+
+.emision-resumen-cliente {
+    display: flex;
+    flex-direction: column;
+    gap: 0.125rem;
+    border-bottom: 1px solid var(--borde);
+}
+
+.emision-resumen-cliente strong {
+    color: var(--texto);
+    font-size: 0.875rem;
+    font-weight: 500;
+}
+
+.emision-resumen-cliente > span:last-child {
+    color: var(--texto-suave);
+    font-size: 0.75rem;
+}
+
+.emision-resumen-datos,
+.emision-resumen-totales {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    border-bottom: 1px solid var(--borde);
+}
+
+.emision-resumen-datos > div,
+.emision-resumen-totales > div {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 1rem;
+}
+
+.emision-resumen dt {
+    color: var(--texto-suave);
+    font-size: 0.8125rem;
+}
+
+.emision-resumen dd {
+    margin: 0;
+    color: var(--texto);
+    font-family: var(--tipografia-monoespaciada);
+    font-size: 0.8125rem;
+}
+
+.emision-resumen-totales .emision-resumen-total {
+    margin-top: 0.25rem;
+    padding-top: 0.625rem;
+    border-top: 1px solid var(--borde);
+}
+
+.emision-resumen-total dt,
+.emision-resumen-total dd {
+    color: var(--acento);
+    font-size: 1rem;
+    font-weight: 500;
+}
+
+.emision-resumen-nota {
+    color: var(--texto-suave);
+    font-size: 0.75rem;
+    line-height: 1.15rem;
+}
+
+.emision-resumen-acciones {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    padding-top: 0;
+}
+
+.emision-resumen-acciones .mud-button-root {
+    width: 100%;
+}
+
+@media (max-width: 78rem) {
+    .emision-layout {
+        grid-template-columns: minmax(0, 1fr);
+    }
+
+    .emision-resumen {
+        position: static;
+    }
+
+    .emision-resumen-datos,
+    .emision-resumen-totales {
+        display: grid;
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+    }
+
+    .emision-resumen-total {
+        grid-column: span 2;
+    }
+}
+
+@media (max-width: 62rem) {
+    .concepto-editor {
+        grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+        grid-template-areas:
+            "identidad identidad"
+            "cantidad precio"
+            "descuento importe"
+            "quitar quitar";
+    }
+
+    .concepto-editor-quitar {
+        justify-self: end;
+    }
+}
+
+@media (max-width: 40rem) {
+    .concepto-editor {
+        grid-template-columns: minmax(0, 1fr);
+        grid-template-areas:
+            "identidad"
+            "cantidad"
+            "precio"
+            "descuento"
+            "importe"
+            "quitar";
+    }
+
+    .emision-resumen-datos,
+    .emision-resumen-totales {
+        display: flex;
+    }
+
+    .emision-resumen-acciones {
+        padding-right: 0.75rem;
+        padding-left: 0.75rem;
+    }
+}
+
 /* ── Selector de permisos del panel ─────────────────────────────────────────────
    Jerárquico: cada sección se abre con su «ver» y, dentro, sus acciones. Las secciones van en
    una cuadrícula para no estirar el diálogo en alto, y las acciones se alinean bajo su sección
@@ -365,4 +747,44 @@
 /* El alta por pasos necesita mas ancho que un formulario de acceso normal. */
 .tarjeta-acceso-ancha {
     max-width: 40rem;
+}
+
+.importacion-archivo {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem 2rem;
+    padding: 1rem;
+    background: var(--superficie-elevada);
+    border: 1px dashed var(--borde-fuerte);
+    border-radius: var(--radio);
+}
+
+.importacion-archivo h2 {
+    margin: 0 0 0.25rem;
+    color: var(--texto);
+    font-size: 1rem;
+    font-weight: 500;
+}
+
+.importacion-archivo p {
+    max-width: 42rem;
+    margin: 0;
+    color: var(--texto-suave);
+    font-size: 0.875rem;
+}
+
+.importacion-archivo .carga-csd {
+    margin-bottom: 0;
+}
+
+.importacion-vista,
+.importacion-resultado {
+    margin-top: 1rem;
+}
+
+.importacion-vista .mud-table-root {
+    border: 1px solid var(--borde);
+    border-radius: var(--radio);
 }

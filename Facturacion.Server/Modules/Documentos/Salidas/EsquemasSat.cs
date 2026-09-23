@@ -65,9 +65,13 @@ public sealed class EsquemasSat
 {
     /// <summary>Espacio de nombres del CFDI 4.0. Es el prefijo <c>cfdi</c> del XML.</summary>
     public const string EspacioDeNombresCfdi = "http://www.sat.gob.mx/cfd/4";
+    public const string EspacioDeNombresCartaPorte31 = "http://www.sat.gob.mx/CartaPorte31";
+    public const string EspacioDeNombresNotariosPublicos = "http://www.sat.gob.mx/notariospublicos";
 
     private readonly string _raiz;
     private readonly Lazy<XmlSchemaSet> _esquema;
+    private readonly Lazy<XmlSchemaSet> _esquemaCartaPorte;
+    private readonly Lazy<XmlSchemaSet> _esquemaNotaria;
     private readonly Lazy<XslCompiledTransform> _cadenaOriginal;
 
     public EsquemasSat(IHostEnvironment entorno, Microsoft.Extensions.Options.IOptions<OpcionesDeEsquemasSat> opciones)
@@ -82,21 +86,46 @@ public sealed class EsquemasSat
         // del SAT. Quien intente timbrar sin ellos recibe el error; quien solo entre a ver
         // clientes, no.
         _esquema = new Lazy<XmlSchemaSet>(CargarEsquema);
+        _esquemaCartaPorte = new Lazy<XmlSchemaSet>(CargarEsquemaCartaPorte);
+        _esquemaNotaria = new Lazy<XmlSchemaSet>(CargarEsquemaNotaria);
         _cadenaOriginal = new Lazy<XslCompiledTransform>(CargarCadenaOriginal);
     }
 
     public XmlSchemaSet Esquema => _esquema.Value;
 
+    /// <summary>Esquema de CFDI 4.0 con el complemento Carta Porte 3.1.</summary>
+    public XmlSchemaSet EsquemaCartaPorte => _esquemaCartaPorte.Value;
+
+    public XmlSchemaSet EsquemaNotaria => _esquemaNotaria.Value;
+
     public XslCompiledTransform CadenaOriginal => _cadenaOriginal.Value;
 
-    private XmlSchemaSet CargarEsquema()
+    private XmlSchemaSet CargarEsquema() => CargarEsquema(incluirCartaPorte: false, incluirNotaria: false);
+
+    private XmlSchemaSet CargarEsquemaCartaPorte() => CargarEsquema(incluirCartaPorte: true, incluirNotaria: false);
+
+    private XmlSchemaSet CargarEsquemaNotaria() => CargarEsquema(incluirCartaPorte: false, incluirNotaria: true);
+
+    private XmlSchemaSet CargarEsquema(bool incluirCartaPorte, bool incluirNotaria)
     {
         var principal = Path.Combine(_raiz, "cfdv40.xsd");
+        var cartaPorte = Path.Combine(_raiz, "CartaPorte31.xsd");
+        var notaria = Path.Combine(_raiz, "notariospublicos.xsd");
 
         if (!File.Exists(principal))
             throw new FileNotFoundException(
                 $"Falta 'cfdv40.xsd' en '{_raiz}'. Se descarga del portal del SAT; ver docs/DESPLIEGUE.md.",
                 principal);
+
+        if (incluirCartaPorte && !File.Exists(cartaPorte))
+            throw new FileNotFoundException(
+                $"Falta 'CartaPorte31.xsd' en '{_raiz}'. Se descarga del portal del SAT; ver docs/DESPLIEGUE.md.",
+                cartaPorte);
+
+        if (incluirNotaria && !File.Exists(notaria))
+            throw new FileNotFoundException(
+                $"Falta 'notariospublicos.xsd' en '{_raiz}'. Se descarga del portal del SAT; ver docs/DESPLIEGUE.md.",
+                notaria);
 
         var conjunto = new XmlSchemaSet { XmlResolver = new ResolutorDeEsquemasSat(_raiz) };
 
@@ -109,6 +138,25 @@ public sealed class EsquemasSat
         // Con el espacio de nombres explícito y no null: el esquema declara el suyo, y
         // pasar null hace que XmlSchemaSet lo tome como discrepancia y falle al agregarlo.
         conjunto.Add(EspacioDeNombresCfdi, lector);
+
+        if (incluirCartaPorte)
+        {
+            using var lectorCartaPorte = XmlReader.Create(cartaPorte, new XmlReaderSettings
+            {
+                XmlResolver = new ResolutorDeEsquemasSat(_raiz),
+                DtdProcessing = DtdProcessing.Prohibit
+            });
+            conjunto.Add(EspacioDeNombresCartaPorte31, lectorCartaPorte);
+        }
+        if (incluirNotaria)
+        {
+            using var lectorNotaria = XmlReader.Create(notaria, new XmlReaderSettings
+            {
+                XmlResolver = new ResolutorDeEsquemasSat(_raiz),
+                DtdProcessing = DtdProcessing.Prohibit
+            });
+            conjunto.Add(EspacioDeNombresNotariosPublicos, lectorNotaria);
+        }
         conjunto.Compile();
 
         return conjunto;

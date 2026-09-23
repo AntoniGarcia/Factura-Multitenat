@@ -28,6 +28,12 @@ public sealed class ServicioCatalogosSat(AppDbContext db) : IServicioCatalogosSa
         "c_UsoCFDI" => ResolverSimpleAsync(db.SatUsosCfdi, catalogo, clave, ct),
         "c_ClaveProdServ" => ResolverSimpleAsync(db.SatClavesProdServ, catalogo, clave, ct),
         "c_Impuesto" => ResolverSimpleAsync(db.SatImpuestos, catalogo, clave, ct),
+        "c_ConfigAutotransporte" => ResolverSimpleAsync(db.SatConfiguracionesAutotransporte, catalogo, clave, ct),
+        "c_TipoPermiso" => ResolverSimpleAsync(db.SatTiposPermiso, catalogo, clave, ct),
+        "c_FiguraTransporte" => ResolverSimpleAsync(db.SatFigurasTransporte, catalogo, clave, ct),
+        "c_ClaveProdServCP" => ResolverSimpleAsync(db.SatClavesProdServCartaPorte, catalogo, clave, ct),
+        "c_Estado" => ResolverEstadoAsync(clave, ct),
+        "c_Municipio" => ResolverMunicipioAsync(clave, ct),
 
         "c_ClaveUnidad" => ResolverClaveUnidadAsync(clave, ct),
         "c_TipoFactor" => ResolverTipoFactorAsync(clave, ct),
@@ -57,6 +63,12 @@ public sealed class ServicioCatalogosSat(AppDbContext db) : IServicioCatalogosSa
             "c_RegimenFiscal" => BuscarSimpleAsync(db.SatRegimenesFiscales, catalogo, texto, tope, ct),
             "c_UsoCFDI" => BuscarSimpleAsync(db.SatUsosCfdi, catalogo, texto, tope, ct),
             "c_Impuesto" => BuscarSimpleAsync(db.SatImpuestos, catalogo, texto, tope, ct),
+            "c_ConfigAutotransporte" => BuscarSimpleAsync(db.SatConfiguracionesAutotransporte, catalogo, texto, tope, ct),
+            "c_TipoPermiso" => BuscarSimpleAsync(db.SatTiposPermiso, catalogo, texto, tope, ct),
+            "c_FiguraTransporte" => BuscarSimpleAsync(db.SatFigurasTransporte, catalogo, texto, tope, ct),
+            "c_ClaveProdServCP" => BuscarSimpleAsync(db.SatClavesProdServCartaPorte, catalogo, texto, tope, ct),
+            "c_Estado" => BuscarEstadoAsync(texto, tope, ct),
+            "c_Municipio" => BuscarMunicipioAsync(texto, tope, ct),
 
             // Con índice de texto completo (ARQUITECTURA.md §7): ~52,000 renglones no se buscan con LIKE.
             "c_ClaveProdServ" => BuscarClaveProdServAsync(texto, tope, ct),
@@ -106,6 +118,26 @@ public sealed class ServicioCatalogosSat(AppDbContext db) : IServicioCatalogosSa
     }
 
     // ── ClaveProdServ — texto completo sobre Descripcion y PalabrasSimilares ───────────
+
+    private async Task<ClaveSatDto?> ResolverEstadoAsync(string clave, CancellationToken ct)
+    {
+        var e = await db.SatEstados.AsNoTracking().FirstOrDefaultAsync(x => x.Clave == clave, ct);
+        return e is null ? null : new ClaveSatDto("c_Estado", e.Clave, e.Nombre, e.Vigente);
+    }
+
+    private async Task<ClaveSatDto?> ResolverMunicipioAsync(string clave, CancellationToken ct)
+    {
+        var e = await db.SatMunicipios.AsNoTracking().FirstOrDefaultAsync(x => x.Clave == clave && x.Vigente, ct);
+        return e is null ? null : new ClaveSatDto("c_Municipio", e.Clave, e.Descripcion, e.Vigente);
+    }
+
+    private async Task<IReadOnlyList<ClaveSatDto>> BuscarEstadoAsync(string texto, int tope, CancellationToken ct)
+        => await db.SatEstados.AsNoTracking().Where(x => x.Vigente && (x.Clave.Contains(texto) || x.Nombre.Contains(texto)))
+            .OrderBy(x => x.Nombre).Take(tope).Select(x => new ClaveSatDto("c_Estado", x.Clave, x.Nombre, x.Vigente)).ToListAsync(ct);
+
+    private async Task<IReadOnlyList<ClaveSatDto>> BuscarMunicipioAsync(string texto, int tope, CancellationToken ct)
+        => await db.SatMunicipios.AsNoTracking().Where(x => x.Vigente && (x.Clave.Contains(texto) || x.Descripcion.Contains(texto)))
+            .OrderBy(x => x.Descripcion).Take(tope).Select(x => new ClaveSatDto("c_Municipio", x.Clave, x.Descripcion, x.Vigente)).ToListAsync(ct);
 
     private async Task<IReadOnlyList<ClaveSatDto>> BuscarClaveProdServAsync(string texto, int tope, CancellationToken ct)
     {

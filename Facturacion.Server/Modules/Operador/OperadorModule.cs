@@ -42,7 +42,6 @@ public static class OperadorModule
         servicios.AddScoped<ServicioDeMembresias>();
         servicios.AddScoped<ServicioDeTableroDeOperador>();
         servicios.AddScoped<ServicioDeConfiguracionDelSistema>();
-
         return servicios;
     }
 

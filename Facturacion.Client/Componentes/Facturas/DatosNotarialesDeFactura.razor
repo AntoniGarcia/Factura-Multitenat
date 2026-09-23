@@ -1,0 +1,239 @@
+@using Facturacion.Client.Servicios.Documentos
+@using Facturacion.Shared.Comun
+@using Facturacion.Shared.Contratos
+@using Facturacion.Shared.Notaria
+@inject ServicioDeNotaria Notaria
+
+<PanelErrores Problema="_error" />
+
+@if (_cargando)
+{
+    <p class="tabla-datos-estado">Cargando datos notariales…</p>
+}
+else
+{
+    <section class="emision-seccion">
+        <h2 class="seccion-titulo">Datos de la operación</h2>
+        <p class="seccion-ayuda">
+            Guarda la operación, los inmuebles, vendedores y compradores antes de abrir la vista previa PDF
+            o validar el XML; ambas opciones usan los datos guardados.
+        </p>
+        <div class="rejilla-campos">
+            <MudNumericField T="int" @bind-Value="_numeroInstrumento" Label="Número de instrumento notarial"
+                             Min="1" Max="999999" Required="true" Disabled="@(!Editable)" />
+            <MudDatePicker Label="Fecha del instrumento" Date="@_fechaInstrumento"
+                           DateChanged="v => _fechaInstrumento = v ?? DateTime.Today" Required="true" Disabled="@(!Editable)" />
+            <CampoMoneda Valor="@_montoOperacion" ValorCambiado="v => _montoOperacion = v"
+                         Label="Monto de la operación" Requerido="true" Deshabilitado="@(!Editable)" />
+            <CampoMoneda Valor="@_subtotalOperacion" ValorCambiado="v => _subtotalOperacion = v"
+                         Label="Subtotal de la operación" Requerido="true" Deshabilitado="@(!Editable)" />
+            <CampoMoneda Valor="@_ivaOperacion" ValorCambiado="v => _ivaOperacion = v"
+                         Label="IVA de la operación" Requerido="true" Deshabilitado="@(!Editable)" />
+        </div>
+        <p class="seccion-ayuda">El monto debe ser igual al subtotal más el IVA.</p>
+    </section>
+
+    <section class="emision-seccion">
+        <div class="seccion-encabezado">
+            <div>
+                <h2 class="seccion-titulo">Inmuebles</h2>
+                <p class="seccion-ayuda">Agrega todos los inmuebles que formen parte del mismo instrumento.</p>
+            </div>
+            <MudButton Variant="Variant.Text" StartIcon="@Icons.Material.Filled.Add" OnClick="AgregarInmueble"
+                       Disabled="@(!Editable)">
+                Agregar inmueble
+            </MudButton>
+        </div>
+
+        @for (var i = 0; i < _inmuebles.Count; i++)
+        {
+            var indice = i;
+            var inmueble = _inmuebles[indice];
+            <article class="concepto-editor">
+                <div class="concepto-editor-identidad">
+                    <span class="concepto-editor-numero">@(indice + 1)</span>
+                    <strong>Inmueble @(indice + 1)</strong>
+                </div>
+                <MudIconButton Icon="@Icons.Material.Filled.Delete" Size="Size.Small" title="Quitar inmueble"
+                               aria-label="Quitar inmueble" OnClick="@(() => _inmuebles.RemoveAt(indice))"
+                               Disabled="@(!Editable || _inmuebles.Count == 1)" />
+                <div class="rejilla-campos">
+                    <MudSelect T="string" @bind-Value="inmueble.TipoInmueble" Label="Tipo de inmueble" Required="true"
+                               Disabled="@(!Editable)">
+                        @foreach (var tipo in TiposDeInmueble)
+                        {
+                            <MudSelectItem T="string" Value="@tipo.Clave">@tipo.Clave — @tipo.Descripcion</MudSelectItem>
+                        }
+                    </MudSelect>
+                    <MudTextField @bind-Value="inmueble.Calle" Label="Calle" MaxLength="150" Required="true" Disabled="@(!Editable)" />
+                    <MudTextField @bind-Value="inmueble.NumeroExterior" Label="Número exterior" MaxLength="55" Disabled="@(!Editable)" />
+                    <MudTextField @bind-Value="inmueble.NumeroInterior" Label="Número interior" MaxLength="30" Disabled="@(!Editable)" />
+                    <MudTextField @bind-Value="inmueble.Colonia" Label="Colonia" MaxLength="100" Disabled="@(!Editable)" />
+                    <MudTextField @bind-Value="inmueble.Localidad" Label="Localidad" MaxLength="100" Disabled="@(!Editable)" />
+                    <MudTextField @bind-Value="inmueble.Referencia" Label="Referencia" MaxLength="100" Disabled="@(!Editable)" />
+                    <MudTextField @bind-Value="inmueble.Municipio" Label="Municipio o alcaldía" MaxLength="100" Required="true" Disabled="@(!Editable)" />
+                    <BuscadorCatalogo Catalogo="c_Estado" Label="Entidad federativa" Valor="@inmueble.Estado"
+                                      ValorCambiado="v => inmueble.Estado = v" Requerido="true" Deshabilitado="@(!Editable)" />
+                    <BuscadorCatalogo Catalogo="c_Pais" Label="País" Valor="@inmueble.Pais"
+                                      ValorCambiado="v => inmueble.Pais = v" Requerido="true" Deshabilitado="@(!Editable)" />
+                    <MudTextField @bind-Value="inmueble.CodigoPostal" Label="Código postal" MaxLength="5" Required="true"
+                                  Class="cifra-tabular" Disabled="@(!Editable)" />
+                </div>
+            </article>
+        }
+    </section>
+
+    <div class="tarjeta-formulario-acciones">
+        <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="GuardarAsync" Disabled="@(!Editable || _guardando)">
+            @(_guardando ? "Guardando…" : "Guardar datos notariales")
+        </MudButton>
+    </div>
+
+    <PartesNotarialesDeFactura ComprobanteId="@ComprobanteId" Editable="@Editable" />
+
+    <div class="tarjeta-formulario-acciones">
+        <MudButton Variant="Variant.Outlined" OnClick="ValidarXmlAsync" Disabled="@(_validandoXml)">
+            @(_validandoXml ? "Validando…" : "Validar XML notarial")
+        </MudButton>
+        @if (_mensajeValidacion is not null)
+        {
+            <p class="seccion-ayuda">@_mensajeValidacion</p>
+        }
+    </div>
+}
+
+@code {
+    private static readonly IReadOnlyList<(string Clave, string Descripcion)> TiposDeInmueble =
+    [
+        ("01", "Terreno"),
+        ("02", "Terreno uso comercial"),
+        ("03", "Construcción habitacional"),
+        ("04", "Construcción uso comercial"),
+        ("05", "Uso mixto")
+    ];
+
+    [Parameter, EditorRequired] public Guid ComprobanteId { get; set; }
+    [Parameter] public bool Editable { get; set; }
+
+    private bool _cargando = true, _guardando, _validandoXml;
+    private DetalleProblema? _error;
+    private string? _mensajeValidacion;
+    private int _numeroInstrumento;
+    private DateTime? _fechaInstrumento = DateTime.Today;
+    private decimal _montoOperacion, _subtotalOperacion, _ivaOperacion;
+    private readonly List<InmuebleEditable> _inmuebles = [];
+
+    protected override async Task OnParametersSetAsync()
+    {
+        _cargando = true;
+        _error = null;
+        var (datos, error) = await Notaria.ObtenerParaComprobanteAsync(ComprobanteId);
+        _error = error;
+        _inmuebles.Clear();
+
+        if (datos is null)
+        {
+            AgregarInmueble();
+        }
+        else
+        {
+            _numeroInstrumento = datos.NumeroInstrumentoNotarial;
+            _fechaInstrumento = datos.FechaInstrumentoNotarial.ToDateTime(TimeOnly.MinValue);
+            _montoOperacion = datos.MontoOperacion;
+            _subtotalOperacion = datos.SubtotalOperacion;
+            _ivaOperacion = datos.IvaOperacion;
+            _inmuebles.AddRange(datos.Inmuebles.Select(x => new InmuebleEditable(x)));
+        }
+
+        _cargando = false;
+    }
+
+    private void AgregarInmueble()
+        => _inmuebles.Add(new InmuebleEditable());
+
+    private async Task GuardarAsync()
+    {
+        _guardando = true;
+        _error = null;
+        _mensajeValidacion = null;
+
+        try
+        {
+            var peticion = new PeticionGuardarDatosNotaria(
+                _numeroInstrumento,
+                DateOnly.FromDateTime(_fechaInstrumento ?? DateTime.Today),
+                _montoOperacion,
+                _subtotalOperacion,
+                _ivaOperacion,
+                [.. _inmuebles.Select((x, indice) => x.ADto(indice + 1))]);
+            var (datos, error) = await Notaria.GuardarParaComprobanteAsync(ComprobanteId, peticion);
+            _error = error;
+
+            if (datos is not null)
+            {
+                _inmuebles.Clear();
+                _inmuebles.AddRange(datos.Inmuebles.Select(x => new InmuebleEditable(x)));
+            }
+        }
+        finally
+        {
+            _guardando = false;
+        }
+    }
+
+    private async Task ValidarXmlAsync()
+    {
+        _validandoXml = true;
+        _error = null;
+        _mensajeValidacion = null;
+        try
+        {
+            var (mensaje, error) = await Notaria.ValidarXmlAsync(ComprobanteId);
+            _mensajeValidacion = mensaje;
+            _error = error;
+        }
+        finally
+        {
+            _validandoXml = false;
+        }
+    }
+
+    private sealed class InmuebleEditable
+    {
+        public InmuebleEditable()
+        {
+            Pais = new ClaveSatDto("c_Pais", "MEX", "MÉXICO", true);
+        }
+
+        public InmuebleEditable(InmuebleNotarialDto origen)
+        {
+            TipoInmueble = origen.TipoInmueble;
+            Calle = origen.Calle;
+            NumeroExterior = origen.NumeroExterior;
+            NumeroInterior = origen.NumeroInterior;
+            Colonia = origen.Colonia;
+            Localidad = origen.Localidad;
+            Referencia = origen.Referencia;
+            Municipio = origen.Municipio;
+            Estado = new ClaveSatDto("c_Estado", origen.Estado, origen.Estado, true);
+            Pais = new ClaveSatDto("c_Pais", origen.Pais, origen.Pais, true);
+            CodigoPostal = origen.CodigoPostal;
+        }
+
+        public string TipoInmueble { get; set; } = string.Empty;
+        public string Calle { get; set; } = string.Empty;
+        public string? NumeroExterior { get; set; }
+        public string? NumeroInterior { get; set; }
+        public string? Colonia { get; set; }
+        public string? Localidad { get; set; }
+        public string? Referencia { get; set; }
+        public string Municipio { get; set; } = string.Empty;
+        public ClaveSatDto? Estado { get; set; }
+        public ClaveSatDto? Pais { get; set; }
+        public string CodigoPostal { get; set; } = string.Empty;
+
+        public InmuebleNotarialDto ADto(int orden) => new(
+            Guid.Empty, orden, TipoInmueble, Calle, NumeroExterior, NumeroInterior, Colonia, Localidad,
+            Referencia, Municipio, Estado?.Clave ?? string.Empty, Pais?.Clave ?? string.Empty, CodigoPostal);
+    }
+}

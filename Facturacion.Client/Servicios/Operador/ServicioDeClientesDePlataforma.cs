@@ -45,6 +45,17 @@ public sealed class ServicioDeClientesDePlataforma(IHttpClientFactory fabrica)
             : await respuesta.Content.ReadFromJsonAsync<DetalleProblema>(ct);
     }
 
+    public async Task<(LicenciasDeEmpresaDto? Exito, DetalleProblema? Error)> ActualizarLicenciasAsync(
+        Guid cuentaId, Guid empresaId, PeticionActualizarLicenciasDeEmpresa peticion, CancellationToken ct = default)
+    {
+        using var respuesta = await Cliente.PostAsJsonAsync(
+            $"api/operador/cuentas/{cuentaId}/empresas/{empresaId}/licencias", peticion, ct);
+
+        return respuesta.IsSuccessStatusCode
+            ? (await respuesta.Content.ReadFromJsonAsync<LicenciasDeEmpresaDto>(ct), null)
+            : (null, await respuesta.Content.ReadFromJsonAsync<DetalleProblema>(ct));
+    }
+
     public async Task<DetalleProblema?> CambiarCorreoDeContactoDeCuentaAsync(
         Guid cuentaId, PeticionCambiarCorreoDeContactoDeCuenta peticion, CancellationToken ct = default)
     {

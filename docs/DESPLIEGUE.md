@@ -150,6 +150,19 @@ dotnet run --project Facturacion.Server -- --cargar-catalogos ruta/al/archivo.xl
 
 Los catálogos se versionan y el Client valida la versión contra el servidor al arrancar.
 
+### 5.0.1 Catálogo de mercancías de Carta Porte
+
+Para usar Carta Porte 3.1 carga también la hoja oficial `c_ClaveProdServCP` del libro de
+Carta Porte. Es distinta de `c_ClaveProdServ`: una clave general no necesariamente es válida
+para bienes transportados.
+
+```bash
+dotnet run --project Facturacion.Server -- --cargar-catalogos-carta-porte ruta/al/CatalogosCartaPorte31.xls c_ClaveProdServCP
+```
+
+El mismo libro puede cargar `c_ConfigAutotransporte`, `c_TipoPermiso` y
+`c_FiguraTransporte`; omite el último argumento para actualizar los cuatro.
+
 ---
 
 ## 5.1 Esquemas y XSLT del SAT (obligatorio para timbrar)
@@ -165,6 +178,10 @@ Van en la misma carpeta que los catálogos (`EsquemasSat:Ruta`, por omisión `Ca
 | `cfdv40.xsd` | raíz | esquema del CFDI 4.0 |
 | `tdCFDI.xsd` | raíz | tipos que importa el anterior |
 | `catCFDI.xsd` | raíz | enumeraciones de catálogo (~6 MB) |
+| `CartaPorte31.xsd` | raíz | esquema del complemento Carta Porte 3.1 |
+| `notariospublicos.xsd` | raíz | esquema del complemento Notarios Públicos 1.0 ([SAT](https://www.sat.gob.mx/sitio_internet/cfd/notariospublicos/notariospublicos.xsd)) |
+| `catCartaPorte.xsd` | raíz | claves del complemento Carta Porte 3.1 |
+| `catComExt.xsd` | raíz | catálogo importado por el esquema Carta Porte 3.1 |
 | `cadenaoriginal_4_0.xslt` | raíz | cadena original |
 | los 33 XSLT de complemento | subcarpeta `xslt/` | los incluye el anterior |
 

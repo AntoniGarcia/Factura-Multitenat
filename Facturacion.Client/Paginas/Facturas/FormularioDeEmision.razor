@@ -3,15 +3,20 @@
 @attribute [Authorize(Policy = Permisos.Timbrar)]
 @using Facturacion.Client.Servicios.Documentos
 @using Facturacion.Client.Servicios.Plataforma
+@using Facturacion.Client.Componentes.Facturas
 @using Facturacion.Shared.Comun
 @using Facturacion.Shared.Documentos
+@using Facturacion.Shared.Notaria
 @using Facturacion.Shared.Plataforma
 @inject ServicioDeEmision Emision
+@inject ServicioDeObras Obras
 @inject ServicioDeClientes Clientes
 @inject ServicioDeProductos Productos
 @inject ServicioDeEmpresa Empresa
 @inject ServicioDeCatalogos Catalogos
 @inject NavigationManager Navegacion
+@inject IDialogService Dialogos
+@inject IServicioDeConfirmacion Confirmacion
 @implements IDisposable
 
 <PageTitle>@(EsNuevo ? "Nueva factura" : "Factura")</PageTitle>
@@ -57,8 +62,16 @@ else
         </div>
     }
 
-    <MudTabs>
-        <MudTabPanel Text="Detalle">
+    <div class="emision-layout">
+    <div class="emision-captura">
+    @if (_tieneLicenciaObras)
+    {
+        <MudCheckBox T="bool" @bind-Value="_esFacturaDeObra" Disabled="@_obraGuardada"
+                     Label="Esta factura corresponde a una estimación de obra" />
+    }
+    <MudTabs Class="emision-pestanas">
+        <MudTabPanel Text="Detalle y conceptos">
+            <section class="emision-seccion">
             <h2 class="seccion-titulo">General</h2>
             <div class="rejilla-campos">
                 <MudTextField T="string" Value="@("Factura")" Label="Tipo de documento" ReadOnly="true" />
@@ -82,7 +95,9 @@ else
                     }
                 </MudSelect>
             </div>
+            </section>
 
+            <section class="emision-seccion">
             <h2 class="seccion-titulo">Datos del cliente</h2>
             <div class="rejilla-campos">
                 <BuscadorDeCliente Valor="@_cliente" ValorCambiado="AlElegirClienteAsync" Requerido="true" />
@@ -111,79 +126,87 @@ else
                     }
                 </MudSelect>
             </div>
+            </section>
 
+            <section class="emision-seccion">
             <h2 class="seccion-titulo">Conceptos</h2>
             <p class="seccion-ayuda">
                 Cada renglón se resuelve desde el catálogo de productos: código, unidad, descripción, precio e
                 impuestos vienen de ahí. Solo la cantidad y el descuento se capturan aquí.
             </p>
 
-            <MudSimpleTable Dense="true" Hover="true" Class="tabla-impuestos">
-                <thead>
-                    <tr>
-                        <th>Código</th>
-                        <th>Descripción</th>
-                        <th>Unidad</th>
-                        <th class="cifra-tabular">Cantidad</th>
-                        <th class="cifra-tabular">Precio unit.</th>
-                        <th class="cifra-tabular">Descuento</th>
-                        <th class="cifra-tabular">Importe</th>
-                        <th></th>
-                    </tr>
-                </thead>
-                <tbody>
-                    @for (var i = 0; i < _renglones.Count; i++)
-                    {
-                        var indice = i;
-                        var renglon = _renglones[indice];
+            <div class="lista-conceptos">
+                @for (var i = 0; i < _renglones.Count; i++)
+                {
+                    var indice = i;
+                    var renglon = _renglones[indice];
 
-                        <tr>
-                            <td colspan="8">
-                                @if (string.IsNullOrEmpty(renglon.ClaveProdServ))
-                                {
-                                    <BuscadorDeProducto Valor="null" ValorCambiado="p => AlElegirProductoAsync(indice, p)" />
-                                }
-                                else
-                                {
-                                    <div class="rejilla-campos" style="grid-template-columns: 6rem 1fr 6rem 7rem 8rem 8rem 8rem 2.5rem; align-items: center; margin-bottom: 0;">
-                                        <span class="cifra-tabular">@renglon.ClaveProdServ</span>
-                                        <span>@renglon.Descripcion</span>
-                                        <span>@renglon.UnidadTexto</span>
-                                        <MudNumericField T="decimal" Value="@renglon.Cantidad" ValueChanged="v => renglon.Cantidad = v"
-                                                          Format="N2" Min="0.000001m" Class="cifra-tabular" />
-                                        <span class="cifra-tabular">@renglon.ValorUnitario.ToString("N2")</span>
-                                        <MudNumericField T="decimal" Value="@renglon.Descuento" ValueChanged="v => renglon.Descuento = v"
-                                                          Format="N2" Min="0" Class="cifra-tabular" />
-                                        <span class="cifra-tabular">@renglon.Importe.ToString("N2")</span>
-                                        <MudIconButton Icon="@Icons.Material.Filled.Delete" Size="Size.Small"
-                                                       OnClick="@(() => _renglones.RemoveAt(indice))" />
-                                    </div>
-                                }
-                            </td>
-                        </tr>
-                    }
-                </tbody>
-            </MudSimpleTable>
+                    <div class="concepto-editor">
+                        @if (string.IsNullOrEmpty(renglon.ClaveProdServ))
+                        {
+                            <div class="concepto-editor-buscador">
+                                <span class="concepto-editor-numero">@(indice + 1)</span>
+                                <BuscadorDeProducto Valor="null" ValorCambiado="p => AlElegirProductoAsync(indice, p)" />
+                            </div>
+                        }
+                        else
+                        {
+                            <div class="concepto-editor-identidad">
+                                <span class="concepto-editor-numero">@(indice + 1)</span>
+                                <div>
+                                    <strong>@renglon.Descripcion</strong>
+                                    <span><span class="cifra-tabular">@renglon.ClaveProdServ</span> · @renglon.UnidadTexto</span>
+                                </div>
+                            </div>
+
+                            <MudNumericField T="decimal" Value="@renglon.Cantidad" ValueChanged="v => renglon.Cantidad = v"
+                                             Label="Cantidad" Format="N2" Min="0.000001m"
+                                             Class="concepto-editor-cantidad cifra-tabular" />
+
+                            <div class="concepto-editor-dato concepto-editor-precio">
+                                <span>Precio unitario</span>
+                                <strong class="cifra-tabular">@renglon.ValorUnitario.ToString("N2")</strong>
+                            </div>
+
+                            <MudNumericField T="decimal" Value="@renglon.Descuento" ValueChanged="v => renglon.Descuento = v"
+                                             Label="Descuento" Format="N2" Min="0"
+                                             Class="concepto-editor-descuento cifra-tabular" />
+
+                            <div class="concepto-editor-dato concepto-editor-importe">
+                                <span>Importe</span>
+                                <strong class="cifra-tabular">@renglon.Importe.ToString("N2")</strong>
+                            </div>
+
+                            <MudIconButton Icon="@Icons.Material.Filled.Delete" Size="Size.Small"
+                                           Class="concepto-editor-quitar"
+                                           title="Quitar concepto" aria-label="Quitar concepto"
+                                           OnClick="@(() => _renglones.RemoveAt(indice))" />
+                        }
+                    </div>
+                }
+            </div>
+
+            @if (_renglones.Count == 0)
+            {
+                <div class="conceptos-vacio">
+                    <MudIcon Icon="@Icons.Material.Filled.Inventory2" />
+                    <span>Agrega el primer producto o servicio de la factura.</span>
+                </div>
+            }
 
             <MudButton Variant="Variant.Text" StartIcon="@Icons.Material.Filled.Add"
                        OnClick="@(() => _renglones.Add(new RenglonConcepto()))">
-                Agregar renglón
+                Agregar concepto
             </MudButton>
+            </section>
 
-            <h2 class="seccion-titulo">Totales</h2>
-            <div class="rejilla-campos">
-                <MudTextField T="string" Label="Subtotal" Value="@_comprobante.SubTotal.ToString("N2")" ReadOnly="true" Class="cifra-tabular" />
-                <MudTextField T="string" Label="Descuento" Value="@_comprobante.Descuento.ToString("N2")" ReadOnly="true" Class="cifra-tabular" />
-                <MudTextField T="string" Label="Impuestos trasladados" Value="@_comprobante.TotalImpuestosTrasladados.ToString("N2")" ReadOnly="true" Class="cifra-tabular" />
-                <MudTextField T="string" Label="Impuestos retenidos" Value="@_comprobante.TotalImpuestosRetenidos.ToString("N2")" ReadOnly="true" Class="cifra-tabular" />
-                <MudTextField T="string" Label="Total" Value="@_comprobante.Total.ToString("N2")" ReadOnly="true" Class="cifra-tabular" />
-            </div>
-            <p class="seccion-ayuda">Se recalculan al guardar.</p>
-
-            <div class="rejilla-campos">
-                <MudTextField @bind-Value="_condicionesDePago" Label="Condiciones de pago" MaxLength="1000" />
-            </div>
-            <MudTextField @bind-Value="_observaciones" Label="Observaciones" Lines="3" MaxLength="2000" />
+            <section class="emision-seccion emision-seccion-notas">
+                <h2 class="seccion-titulo">Información adicional</h2>
+                <div class="rejilla-campos">
+                    <MudTextField @bind-Value="_condicionesDePago" Label="Condiciones de pago" MaxLength="1000" />
+                </div>
+                <MudTextField @bind-Value="_observaciones" Label="Observaciones" Lines="3" MaxLength="2000" />
+            </section>
         </MudTabPanel>
 
         <MudTabPanel Text="CFDI relacionados">
@@ -254,18 +277,80 @@ else
                 </div>
             }
         </MudTabPanel>
+        @if (_tieneLicenciaNotaria)
+        {
+            <MudTabPanel Text="Notaría">
+                <DatosNotarialesDeFactura ComprobanteId="@_comprobante.Id" Editable="@EsEditable" />
+            </MudTabPanel>
+        }
+        @if (_tieneLicenciaObras && _esFacturaDeObra)
+        {
+            <MudTabPanel Text="Constructoras">
+                <DatosDeObraDeFactura ComprobanteId="@_comprobante.Id" ImporteTrabajos="@_comprobante.SubTotal" GuardarFactura="GuardarAsync"
+                                      AlGuardar="@(() => _obraGuardada = true)" />
+            </MudTabPanel>
+        }
     </MudTabs>
+    </div>
 
-    <div class="tarjeta-formulario-acciones">
-        <MudButton Variant="Variant.Text" OnClick="@(() => Navegacion.NavigateTo("/documentos"))">Cancelar</MudButton>
-        <MudButton Variant="Variant.Outlined" OnClick="GuardarAsync" Disabled="@(_guardando || _generando)">
-            @(_guardando ? "Guardando…" : "Guardar borrador")
-        </MudButton>
-        <MudButton ButtonType="ButtonType.Submit" Variant="Variant.Filled" Color="Color.Primary"
-                   OnClick="GenerarFacturaAsync"
-                   Disabled="@(_guardando || _generando || _renglones.Count == 0 || !PuedeTimbrar)">
-            @(_generando ? "Generando…" : "Generar factura")
-        </MudButton>
+    <aside class="emision-resumen" aria-label="Resumen de la factura">
+        <header class="emision-resumen-cabecera">
+            <div>
+                <span>Resumen de factura</span>
+                <h2>@FolioMostrado</h2>
+            </div>
+            <IndicadorEstado Estatus="@EstatusVisual" />
+        </header>
+
+        <div class="emision-resumen-cliente">
+            <span>Receptor</span>
+            <strong>@(_cliente?.Nombre ?? "Sin seleccionar")</strong>
+            @if (_cliente is not null)
+            {
+                <span class="cifra-tabular">@_cliente.Rfc</span>
+            }
+        </div>
+
+        <dl class="emision-resumen-datos">
+            <div><dt>Moneda</dt><dd class="cifra-tabular">@_moneda</dd></div>
+            <div><dt>Serie</dt><dd class="cifra-tabular">@(_serie?.Prefijo ?? "—")</dd></div>
+            <div><dt>Conceptos</dt><dd class="cifra-tabular">@_renglones.Count</dd></div>
+        </dl>
+
+        <dl class="emision-resumen-totales">
+            <div><dt>Subtotal</dt><dd>@_comprobante.SubTotal.ToString("N2")</dd></div>
+            <div><dt>Descuento</dt><dd>−@_comprobante.Descuento.ToString("N2")</dd></div>
+            <div><dt>Impuestos trasladados</dt><dd>@_comprobante.TotalImpuestosTrasladados.ToString("N2")</dd></div>
+            <div><dt>Impuestos retenidos</dt><dd>−@_comprobante.TotalImpuestosRetenidos.ToString("N2")</dd></div>
+            <div class="emision-resumen-total"><dt>Total @_comprobante.Moneda</dt><dd>@_comprobante.Total.ToString("N2")</dd></div>
+        </dl>
+
+        <p class="emision-resumen-nota">
+            @(_esFacturaDeObra
+                ? "Este total del borrador estándar no es el importe líquido de obra ni un CFDI listo para timbrar."
+                : "Importes calculados por el servidor al guardar el borrador.")
+        </p>
+
+        <footer class="emision-resumen-acciones">
+            <MudButton Variant="Variant.Outlined" OnClick="GuardarAsync"
+                       Disabled="@(_guardando || _generando || _preparandoVista)">
+                @(_guardando ? "Guardando…" : _esFacturaDeObra ? "Guardar conceptos" : "Guardar borrador")
+            </MudButton>
+            <MudButton Variant="Variant.Outlined" StartIcon="@Icons.Material.Filled.PictureAsPdf"
+                       OnClick="VistaPreviaAsync"
+                       Disabled="@(_guardando || _generando || _preparandoVista || _renglones.Count == 0 || _esFacturaDeObra)">
+                @(_preparandoVista ? "Preparando…" : "Vista previa PDF")
+            </MudButton>
+            <MudButton Variant="Variant.Filled" Color="Color.Primary"
+                       OnClick="TimbrarCfdiAsync"
+                       Disabled="@(_guardando || _generando || _preparandoVista || _renglones.Count == 0 || !PuedeTimbrar || _esFacturaDeObra)">
+                @(_generando ? "Timbrando…" : "Timbrar CFDI")
+            </MudButton>
+            <MudButton Variant="Variant.Text" OnClick="@(() => Navegacion.NavigateTo("/documentos"))">
+                Volver a documentos
+            </MudButton>
+        </footer>
+    </aside>
     </div>
 }
 </TarjetaFormulario>
@@ -282,8 +367,13 @@ else
     private bool _cargando = true;
     private bool _guardando;
     private bool _generando;
+    private bool _preparandoVista;
     private DetalleProblema? _error;
     private EstadoDeIntegracionFiscalDto? _integracionFiscal;
+    private bool _tieneLicenciaNotaria;
+    private bool _tieneLicenciaObras;
+    private bool _esFacturaDeObra;
+    private bool _obraGuardada;
 
     // Cabecera
     private string _moneda = "MXN";
@@ -312,6 +402,9 @@ else
     private int? _globalAnio = DateTime.UtcNow.Year;
 
     private bool EsEditable => _comprobante is { Estatus: "borrador" or "error" };
+
+    private EstatusComprobante EstatusVisual
+        => EstatusComprobanteExtensiones.Desde(_comprobante?.Estatus ?? "borrador");
 
     private bool PuedeTimbrar => _integracionFiscal?.TimbradoDisponible == true;
 
@@ -345,6 +438,9 @@ else
         _cargando = true;
         _error = null;
         _integracionFiscal = await Emision.ObtenerEstadoDeIntegracionAsync();
+        var empresa = await Empresa.ObtenerAsync();
+        _tieneLicenciaNotaria = empresa?.Licencias.Notarios == true;
+        _tieneLicenciaObras = empresa?.Licencias.Obras == true;
 
         if (EsNuevo)
         {
@@ -366,6 +462,12 @@ else
 
         if (comprobante is not null)
         {
+            if (_tieneLicenciaObras)
+            {
+                var (datosObra, _) = await Obras.ObtenerAsync(comprobante.Id);
+                _obraGuardada = datosObra is not null;
+                _esFacturaDeObra = _obraGuardada;
+            }
             _moneda = comprobante.Moneda;
             _tipoCambio = comprobante.TipoCambio;
             // La que el borrador traía, no la primera de la lista: con FAC y HON dadas de alta,
@@ -586,11 +688,57 @@ else
         return true;
     }
 
-    private async Task GenerarFacturaAsync()
+    private async Task VistaPreviaAsync()
+    {
+        if (_comprobante is null || _preparandoVista) return;
+
+        if (!await GuardarAsync()) return;
+
+        _preparandoVista = true;
+        _error = null;
+
+        try
+        {
+            var (archivo, error) = await Emision.ObtenerVistaPreviaPdfAsync(_comprobante.Id);
+
+            if (error is not null)
+            {
+                _error = error;
+                return;
+            }
+
+            var parametros = new DialogParameters<DialogoDeComprobanteDeCompra>
+            {
+                { x => x.Archivo, archivo! },
+                { x => x.TituloVistaPrevia, "Vista previa del borrador" },
+                { x => x.AvisoFiscal,
+                    "Borrador sin validez fiscal. No contiene UUID, sellos, código QR fiscal ni certificación del SAT." }
+            };
+
+            await Dialogos.ShowAsync<DialogoDeComprobanteDeCompra>(
+                "Vista previa de factura",
+                parametros,
+                new DialogOptions { MaxWidth = MaxWidth.ExtraLarge, FullWidth = true, CloseOnEscapeKey = true });
+        }
+        finally
+        {
+            _preparandoVista = false;
+        }
+    }
+
+    private async Task TimbrarCfdiAsync()
     {
         if (_comprobante is null || !PuedeTimbrar) return;
 
         if (!await GuardarAsync()) return;
+
+        var confirmado = await Confirmacion.ConfirmarAsync(
+            "Timbrar CFDI",
+            $"Se consumirá un timbre para emitir el CFDI de {_cliente?.Nombre ?? "el receptor"} " +
+            $"por {_comprobante.Total:N2} {_comprobante.Moneda}. Después ya no podrás editarlo.",
+            "Timbrar CFDI");
+
+        if (!confirmado) return;
 
         _generando = true;
         _error = null;

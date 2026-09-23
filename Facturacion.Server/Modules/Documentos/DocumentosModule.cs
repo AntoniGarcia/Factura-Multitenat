@@ -3,8 +3,11 @@ using Facturacion.Server.Modules.Documentos.Dobles;
 using Facturacion.Server.Modules.Documentos.Emision;
 using Facturacion.Server.Modules.Documentos.Pagos;
 using Facturacion.Server.Modules.Documentos.Pac;
+using Facturacion.Server.Modules.Documentos.Notaria;
+using Facturacion.Server.Modules.Documentos.Obras;
 using Facturacion.Server.Modules.Documentos.Salidas;
 using Facturacion.Server.Modules.Documentos.Timbrado;
+using Facturacion.Server.Modules.Documentos.Traslados;
 using Facturacion.Shared.Contratos;
 
 namespace Facturacion.Server.Modules.Documentos;
@@ -26,7 +29,6 @@ public static class DocumentosModule
         // sin esperar a que A termine sus módulos. Sin estos, B queda bloqueado desde octubre.
         if (entorno.IsDevelopment())
         {
-            servicios.AddScoped<IServicioCatalogosSat, DobleServicioCatalogosSat>();
             servicios.AddScoped<IServicioClientes, DobleServicioClientes>();
             //servicios.AddScoped<IServicioProductos, DobleServicioProductos>();
             servicios.AddScoped<IServicioEmpresaEmisora, DobleServicioEmpresaEmisora>();
@@ -54,7 +56,12 @@ public static class DocumentosModule
         QuestPDF.Settings.License = QuestPDF.Infrastructure.LicenseType.Community;
 
         servicios.AddScoped<GeneradorDeXmlCfdi>();
+        servicios.AddScoped<GeneradorDeXmlCartaPorte>();
+        servicios.AddScoped<GeneradorDeXmlNotaria>();
         servicios.AddScoped<GeneradorDePdfCfdi>();
+        servicios.AddScoped<GeneradorDePdfCartaPorte>();
+        servicios.AddScoped<ServicioDePdfBorrador>();
+        servicios.AddScoped<ServicioDeSalidasFiscales>();
         servicios.AddScoped<ServicioDeXmlCfdi>();
 
         servicios.AddScoped<CierreDeTimbrado>();
@@ -62,6 +69,12 @@ public static class DocumentosModule
         servicios.AddScoped<Emision.ServicioDeEmision>();
         servicios.AddScoped<ServicioDeCancelacion>();
         servicios.AddScoped<ServicioDePagos>();
+        servicios.AddScoped<ServicioDeTrasladosCartaPorte>();
+        servicios.AddScoped<ServicioDeSalidasCartaPorte>();
+        servicios.AddScoped<ServicioDeNotaria>();
+        servicios.AddScoped<ServicioDeObras>();
+        servicios.AddScoped<GeneradorDePdfEstimacionObra>();
+        servicios.AddScoped<ServicioDePdfEstimacionObra>();
 
         servicios.AgregarPac(configuracion, entorno);
 
@@ -135,6 +148,9 @@ public static class DocumentosModule
         aplicacion.MapTimbrado();
         aplicacion.MapCancelacion();
         aplicacion.MapPagos();
+        aplicacion.MapTrasladosCartaPorte();
+        aplicacion.MapNotaria();
+        aplicacion.MapObras();
         aplicacion.MapDescargas();
 
         return aplicacion;

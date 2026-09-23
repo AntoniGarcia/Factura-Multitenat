@@ -6,34 +6,43 @@
 <PageTitle>Importar productos</PageTitle>
 <TituloDePagina Texto="Importar productos desde CSV" />
 
+<TarjetaFormulario Ancha="true" RutaVolver="/productos">
 <PanelErrores Problema="_error" />
 
 @if (_resultado is null)
 {
-    <p class="seccion-ayuda">
-        Sube el archivo y revisa la vista previa. <strong>No se guarda nada hasta que confirmes.</strong>
-        Los renglones con error se quedan fuera; los demás entran.
-    </p>
+    <section class="importacion-archivo">
+        <div>
+            <h2>Selecciona el archivo</h2>
+            <p>
+                Sube el CSV y revisa la vista previa. <strong>No se guarda nada hasta que confirmes.</strong>
+                Los renglones con error se quedan fuera; los demás entran.
+            </p>
+        </div>
 
-    <div class="carga-csd">
-        <MudFileUpload T="IBrowserFile" FilesChanged="a => _archivo = a" Accept=".csv">
-            <CustomContent Context="carga">
-                <MudButton Variant="Variant.Outlined" OnClick="@(() => carga.OpenFilePickerAsync())">
-                    @(_archivo is null ? "Elegir archivo CSV" : _archivo.Name)
-                </MudButton>
-            </CustomContent>
-        </MudFileUpload>
+        <div class="carga-csd">
+            <MudFileUpload T="IBrowserFile" FilesChanged="a => _archivo = a" Accept=".csv">
+                <CustomContent Context="carga">
+                    <MudButton Variant="Variant.Outlined" StartIcon="@Icons.Material.Filled.AttachFile"
+                               OnClick="@(() => carga.OpenFilePickerAsync())">
+                        @(_archivo is null ? "Elegir archivo CSV" : _archivo.Name)
+                    </MudButton>
+                </CustomContent>
+            </MudFileUpload>
 
-        <MudButton Variant="Variant.Filled" OnClick="Analizar" Disabled="@(_analizando || _archivo is null)">
-            @(_analizando ? "Revisando…" : "Revisar archivo")
-        </MudButton>
+            <MudButton Variant="Variant.Filled" OnClick="Analizar" Disabled="@(_analizando || _archivo is null)">
+                @(_analizando ? "Revisando…" : "Revisar archivo")
+            </MudButton>
 
-        <MudButton Variant="Variant.Text" OnClick="DescargarPlantilla">Descargar plantilla</MudButton>
-    </div>
+            <MudButton Variant="Variant.Text" StartIcon="@Icons.Material.Filled.Download"
+                       OnClick="DescargarPlantilla">Descargar plantilla</MudButton>
+        </div>
+    </section>
 }
 
 @if (_vista is not null && _resultado is null)
 {
+    <section class="importacion-vista">
     <h2 class="seccion-titulo">Vista previa</h2>
 
     <div class="resumen-importacion">
@@ -83,10 +92,12 @@
         </MudButton>
         <MudButton Variant="Variant.Text" OnClick="Limpiar">Elegir otro archivo</MudButton>
     </div>
+    </section>
 }
 
 @if (_resultado is not null)
 {
+    <section class="importacion-resultado">
     <h2 class="seccion-titulo">Listo</h2>
 
     <p class="mensaje-exito" role="status">
@@ -110,7 +121,9 @@
         </MudButton>
         <MudButton Variant="Variant.Text" OnClick="Limpiar">Importar otro archivo</MudButton>
     </div>
+    </section>
 }
+</TarjetaFormulario>
 
 @code {
     /// <summary>Cinco megabytes: el mismo tope que acepta el servidor.</summary>

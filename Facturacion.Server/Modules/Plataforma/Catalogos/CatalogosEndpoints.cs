@@ -33,7 +33,11 @@ public static class CatalogosEndpoints
 
         grupo.MapGet("/precargables", ObtenerPrecargables);
         grupo.MapGet("/version", ObtenerVersiones);
+        grupo.MapGet("/codigo-postal/{codigoPostal}/domicilio", ResolverDomicilioPorCodigoPostal);
+        grupo.MapGet("/estados/{estado}/municipios", MunicipiosDeEstado);
+        grupo.MapGet("/estados/{estado}/municipios/{municipio}/codigos-postales", CodigosPostalesDeMunicipio);
         grupo.MapGet("/{catalogo}/buscar", Buscar);
+        grupo.MapGet("/{catalogo}/opciones", Opciones);
         grupo.MapGet("/{catalogo}/{clave}", Resolver);
     }
 
@@ -56,6 +60,59 @@ public static class CatalogosEndpoints
         {
             return ErrorNegocio.Validacion("catalogo-invalido", ex.Message).AResultado(contexto);
         }
+    }
+
+    /// <summary>Listas completas solo donde el catálogo es pequeño y estable.</summary>
+    private static async Task<IResult> Opciones(string catalogo, AppDbContext db, HttpContext contexto, CancellationToken ct)
+    {
+        IReadOnlyList<ClaveSatDto>? resultado = catalogo switch
+        {
+            "c_ConfigAutotransporte" => await Proyectar(db.SatConfiguracionesAutotransporte, catalogo, ct),
+            "c_TipoPermiso" => await Proyectar(db.SatTiposPermiso, catalogo, ct),
+            "c_FiguraTransporte" => await Proyectar(db.SatFigurasTransporte, catalogo, ct),
+            "c_Estado" => await db.SatEstados.AsNoTracking().Where(x => x.Vigente).OrderBy(x => x.Nombre)
+                .Select(x => new ClaveSatDto(catalogo, x.Clave, x.Nombre, x.Vigente)).ToListAsync(ct),
+            _ => null
+        };
+
+        return resultado is null
+            ? ErrorNegocio.Validacion("catalogo-no-listable", "Ese catálogo se busca por texto para evitar cargar demasiados datos.").AResultado(contexto)
+            : Results.Ok(resultado);
+    }
+
+    private static async Task<IResult> ResolverDomicilioPorCodigoPostal(
+        string codigoPostal, AppDbContext db, HttpContext contexto, CancellationToken ct)
+    {
+        var codigo = await db.SatCodigosPostales.AsNoTracking()
+            .FirstOrDefaultAsync(x => x.Clave == codigoPostal && x.Vigente, ct);
+        if (codigo is null)
+            return ErrorNegocio.NoEncontrado("codigo-postal-no-encontrado", "Ese código postal no está vigente en el catálogo SAT.").AResultado(contexto);
+
+        var estado = await db.SatEstados.AsNoTracking()
+            .FirstOrDefaultAsync(x => x.Clave == codigo.ClaveEstado && x.Vigente, ct);
+        if (estado is null)
+            return ErrorNegocio.Validacion("estado-no-encontrado", "El código postal no tiene un estado SAT vigente asociado.").AResultado(contexto);
+
+        var municipio = codigo.ClaveMunicipio is null ? null : await db.SatMunicipios.AsNoTracking()
+            .FirstOrDefaultAsync(x => x.Clave == codigo.ClaveMunicipio && x.ClaveEstado == codigo.ClaveEstado && x.Vigente, ct);
+
+        return Results.Ok(new Facturacion.Shared.Transporte.DomicilioPorCodigoPostalDto(
+            codigo.Clave, estado.Clave, estado.Nombre, municipio?.Clave, municipio?.Descripcion));
+    }
+
+    private static async Task<IResult> MunicipiosDeEstado(string estado, AppDbContext db, CancellationToken ct)
+        => Results.Ok(await db.SatMunicipios.AsNoTracking().Where(x => x.ClaveEstado == estado && x.Vigente)
+            .OrderBy(x => x.Descripcion).Select(x => new ClaveSatDto("c_Municipio", x.Clave, x.Descripcion, true)).ToListAsync(ct));
+
+    private static async Task<IResult> CodigosPostalesDeMunicipio(
+        string estado, string municipio, string? texto, AppDbContext db, CancellationToken ct)
+    {
+        var filtro = (texto ?? string.Empty).Trim();
+        return Results.Ok(await db.SatCodigosPostales.AsNoTracking()
+            .Where(x => x.Vigente && x.ClaveEstado == estado && x.ClaveMunicipio == municipio &&
+                        (filtro.Length == 0 || x.Clave.StartsWith(filtro)))
+            .OrderBy(x => x.Clave).Take(100)
+            .Select(x => new ClaveSatDto("c_CodigoPostal", x.Clave, x.Clave, true)).ToListAsync(ct));
     }
 
     private static async Task<IResult> Resolver(

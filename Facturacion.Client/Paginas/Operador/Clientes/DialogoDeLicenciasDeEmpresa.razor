@@ -1,0 +1,51 @@
+@using Facturacion.Shared.Operador
+
+<MudDialog>
+    <DialogContent>
+        <p class="seccion-ayuda">
+            Define los módulos contratados por <strong>@NombreEmpresa</strong>. El cambio queda registrado en la bitácora.
+        </p>
+
+        <div class="rejilla-formulario">
+            <MudCheckBox @bind-Value="_notarios" Label="Notaría" />
+            <MudCheckBox @bind-Value="_obras" Label="Constructoras" />
+            <MudCheckBox @bind-Value="_comercio" Label="Comercio exterior" />
+            <MudCheckBox @bind-Value="_ine" Label="Complemento INE" />
+        </div>
+
+        <MudTextField @bind-Value="_contrasena" Label="Tu contraseña de operador"
+                      InputType="@(_verContrasena ? InputType.Text : InputType.Password)"
+                      Adornment="Adornment.End"
+                      AdornmentIcon="@(_verContrasena ? Icons.Material.Filled.VisibilityOff : Icons.Material.Filled.Visibility)"
+                      OnAdornmentClick="@(() => _verContrasena = !_verContrasena)"
+                      Immediate="true" MaxLength="128" Required="true" />
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="Cancelar">Cancelar</MudButton>
+        <MudButton Variant="Variant.Filled" Color="Color.Primary" Disabled="@(_contrasena.Length < 12)" OnClick="Guardar">
+            Guardar módulos
+        </MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter] private IMudDialogInstance Dialogo { get; set; } = default!;
+    [Parameter] public string NombreEmpresa { get; set; } = string.Empty;
+    [Parameter] public LicenciasDeEmpresaDto Licencias { get; set; } = new(false, false, false, false);
+
+    private bool _notarios, _obras, _comercio, _ine, _verContrasena;
+    private string _contrasena = string.Empty;
+
+    protected override void OnInitialized()
+    {
+        _notarios = Licencias.Notarios;
+        _obras = Licencias.Obras;
+        _comercio = Licencias.Comercio;
+        _ine = Licencias.Ine;
+    }
+
+    private void Guardar() => Dialogo.Close(DialogResult.Ok(
+        new PeticionActualizarLicenciasDeEmpresa(_notarios, _obras, _comercio, _ine, _contrasena)));
+
+    private void Cancelar() => Dialogo.Cancel();
+}

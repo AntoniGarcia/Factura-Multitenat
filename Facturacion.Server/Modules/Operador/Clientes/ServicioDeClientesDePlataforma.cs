@@ -152,6 +152,7 @@ public sealed class ServicioDeClientesDePlataforma(
                 e.RegimenFiscal,
                 e.Activa,
                 e.FechaAltaUtc,
+                Licencias = new LicenciasDeEmpresaDto(e.LicNotarios, e.LicObras, e.LicComercio, e.LicINE),
                 // IgnoreQueryFilters justificado: BolsaTimbres y ComprasTimbres son de empresa
                 // y se consultan acotadas a esta empresa concreta, nunca abiertas.
                 TimbresDisponibles = baseDeDatos.BolsasTimbres.IgnoreQueryFilters()
@@ -227,6 +228,7 @@ public sealed class ServicioDeClientesDePlataforma(
             empresa.Id, empresa.Rfc, empresa.NombreFiscal, empresa.RegimenFiscal,
             empresa.Activa, empresa.FechaAltaUtc,
             empresa.TimbresDisponibles, empresa.TimbresReservados,
+            empresa.Licencias,
             paquetesPersonalizados, comprasPendientes, ultimasCompras, usuarios);
     }
 
@@ -277,6 +279,46 @@ public sealed class ServicioDeClientesDePlataforma(
     }
 
     /// <summary>
+    /// Registra los módulos contratados sin alterar datos fiscales ni acceso de usuarios. La
+    /// contraseña del operador evita que una sesión abandonada active servicios de pago.
+    /// </summary>
+    public async Task<Resultado<LicenciasDeEmpresaDto>> ActualizarLicenciasAsync(
+        Guid operadorId, Guid cuentaId, Guid empresaId, PeticionActualizarLicenciasDeEmpresa peticion, CancellationToken ct)
+    {
+        if (await ContrasenaDelOperadorEsIncorrecta(operadorId, peticion.ContrasenaDelOperador, ct))
+            return ErrorNegocio.Validacion("contrasena-incorrecta", "Tu contraseña de operador no es correcta.");
+
+        var empresa = await baseDeDatos.Empresas
+            .SingleOrDefaultAsync(e => e.Id == empresaId && e.CuentaId == cuentaId, ct);
+
+        if (empresa is null)
+            return ErrorNegocio.NoEncontrado("empresa-no-encontrada", "Esa empresa no existe en esta cuenta.");
+
+        var antes = Licencias(empresa);
+        var despues = new LicenciasDeEmpresaDto(peticion.Notarios, peticion.Obras, peticion.Comercio, peticion.Ine);
+
+        if (antes == despues) return despues;
+
+        empresa.LicNotarios = despues.Notarios;
+        empresa.LicObras = despues.Obras;
+        empresa.LicComercio = despues.Comercio;
+        empresa.LicINE = despues.Ine;
+
+        bitacora.Registrar(
+            EntidadesDeBitacora.Empresa,
+            empresa.Id.ToString(),
+            AccionesDeBitacora.LicenciasDeEmpresaActualizadasPorOperador,
+            antes,
+            despues,
+            empresaId: empresa.Id,
+            cuentaId: cuentaId,
+            operadorId: operadorId);
+
+        await baseDeDatos.SaveChangesAsync(ct);
+        return despues;
+    }
+
+    /// <summary>
     /// Cambia el correo de contacto de una cuenta. Es una operación de soporte del SaaS, así
     /// que exige la contraseña del operador. Cambiar este correo no toca las sesiones ni las
     /// credenciales de la cuenta.
@@ -320,6 +362,9 @@ public sealed class ServicioDeClientesDePlataforma(
         => correo is not null
            && correo.Length <= 254
            && new System.Net.Mail.MailAddress(correo.Trim()).Address == correo.Trim();
+
+    private static LicenciasDeEmpresaDto Licencias(Empresa empresa)
+        => new(empresa.LicNotarios, empresa.LicObras, empresa.LicComercio, empresa.LicINE);
 
     private async Task<bool> ContrasenaDelOperadorEsIncorrecta(
         Guid operadorId, string contrasena, CancellationToken ct)
