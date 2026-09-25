@@ -8,8 +8,8 @@ namespace Facturacion.Server.Modules.Plataforma.Empresas;
 /// <summary>
 /// Empresa emisora, su configuración, su logo y sus certificados.
 /// <para>
-/// Todo el grupo exige el permiso <c>configurar_empresa</c>, salvo la lectura del logo, que
-/// la necesita cualquiera que vea una vista previa. Ningún endpoint recibe un identificador
+/// Las mutaciones exigen <c>configurar_empresa</c>; la lectura de los datos de la empresa
+/// activa también la necesitan quienes emiten documentos. Ningún endpoint recibe un identificador
 /// de empresa: la empresa es la del claim (ARQUITECTURA.md §4).
 /// </para>
 /// </summary>
@@ -22,7 +22,7 @@ public static class EmpresasEndpoints
     {
         var grupo = rutas.MapGroup("/api/empresa").WithTags("Empresa");
 
-        grupo.MapGet("/", Obtener).RequireAuthorization(Permisos.ConfigurarEmpresa);
+        grupo.MapGet("/", Obtener).RequireAuthorization();
         grupo.MapPut("/", Guardar).RequireAuthorization(Permisos.ConfigurarEmpresa);
 
         // Solo exige sesión: quien acaba de registrarse no tiene permisos porque no

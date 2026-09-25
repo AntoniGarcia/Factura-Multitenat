@@ -157,6 +157,9 @@ public sealed class ServicioDeEmpresa(
         var validacion = await ValidarFiscalesAsync(empresa.Rfc, peticion, ct);
         if (validacion is not null) return validacion;
 
+        var validacionOrigen = await ValidarOrigenCartaPorteAsync(peticion.OrigenCartaPorte, ct);
+        if (validacionOrigen is not null) return validacionOrigen;
+
         var antes = AEmpresaDto(empresa);
 
         empresa.NombreFiscal = nombre.Normalizado;
@@ -174,6 +177,12 @@ public sealed class ServicioDeEmpresa(
         empresa.Estado = Recortar(peticion.Estado);
         empresa.Pais = Recortar(peticion.Pais);
         empresa.CodigoPostal = Recortar(peticion.CodigoPostal);
+        empresa.CartaPorteCalle = Recortar(peticion.OrigenCartaPorte?.Calle);
+        empresa.CartaPorteNumeroExterior = Recortar(peticion.OrigenCartaPorte?.NumeroExterior);
+        empresa.CartaPorteNumeroInterior = Recortar(peticion.OrigenCartaPorte?.NumeroInterior);
+        empresa.CartaPorteEstado = Recortar(peticion.OrigenCartaPorte?.Estado);
+        empresa.CartaPorteMunicipio = Recortar(peticion.OrigenCartaPorte?.Municipio);
+        empresa.CartaPorteCodigoPostal = Recortar(peticion.OrigenCartaPorte?.CodigoPostal);
         empresa.Telefono = Recortar(peticion.Telefono);
         empresa.CorreoContacto = Recortar(peticion.CorreoContacto);
 
@@ -302,6 +311,29 @@ public sealed class ServicioDeEmpresa(
         return null;
     }
 
+    private async Task<ErrorNegocio?> ValidarOrigenCartaPorteAsync(DomicilioSatDto? origen, CancellationToken ct)
+    {
+        if (origen is null) return null;
+
+        if (string.IsNullOrWhiteSpace(origen.Calle) || origen.Calle.Trim().Length > 128 ||
+            origen.NumeroExterior?.Trim().Length > 32 || origen.NumeroInterior?.Trim().Length > 32 ||
+            string.IsNullOrWhiteSpace(origen.Estado) || origen.Estado.Trim().Length > 3 ||
+            string.IsNullOrWhiteSpace(origen.Municipio) || origen.Municipio.Trim().Length > 3 ||
+            origen.CodigoPostal?.Trim().Length != 5 || !origen.CodigoPostal.Trim().All(char.IsDigit))
+            return ErrorNegocio.Validacion("origen-carta-porte-incompleto",
+                "Completa calle, estado, municipio y código postal válidos para el origen de Carta Porte.");
+
+        var estado = origen.Estado.Trim();
+        var municipio = origen.Municipio.Trim();
+        var codigoPostal = origen.CodigoPostal.Trim();
+        if (!await baseDeDatos.SatCodigosPostales.AsNoTracking().AnyAsync(x =>
+            x.Clave == codigoPostal && x.ClaveEstado == estado && x.ClaveMunicipio == municipio && x.Vigente, ct))
+            return ErrorNegocio.Validacion("origen-carta-porte-catalogo-invalido",
+                "El estado, municipio y código postal del origen no coinciden con el catálogo SAT vigente.");
+
+        return null;
+    }
+
     private static bool EsZonaHorariaConocida(string zona)
     {
         if (string.IsNullOrWhiteSpace(zona)) return false;
@@ -325,7 +357,11 @@ public sealed class ServicioDeEmpresa(
         e.Calle, e.NumeroExterior, e.NumeroInterior, e.Referencia, e.Colonia, e.Localidad,
         e.Municipio, e.Estado, e.Pais, e.CodigoPostal, e.Telefono, e.CorreoContacto,
         e.LogoRuta is not null, e.LogoNombreOriginal,
-        new LicenciasDto(e.LicNotarios, e.LicObras, e.LicComercio, e.LicINE));
+        new LicenciasDto(e.LicNotarios, e.LicObras, e.LicComercio, e.LicINE),
+        e.CartaPorteCalle is null ? null : new DomicilioSatDto(
+            e.CartaPorteCalle, e.CartaPorteNumeroExterior, e.CartaPorteNumeroInterior,
+            e.CartaPorteEstado ?? string.Empty, e.CartaPorteMunicipio ?? string.Empty,
+            e.CartaPorteCodigoPostal ?? string.Empty));
 
     private static ConfiguracionEmpresaDto AConfiguracionDto(ConfiguracionEmpresa c) => new(
         c.TasaIvaPorDefecto, c.TasaRetencionIvaPorDefecto,

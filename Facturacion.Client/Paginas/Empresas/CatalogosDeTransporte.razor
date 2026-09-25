@@ -32,7 +32,7 @@
                             <MudTextField @bind-Value="_vNumeroPermiso" Label="Número de permiso" Required="true" />
                             <MudTextField @bind-Value="_vAseguradora" Label="Aseguradora" Required="true" />
                             <MudTextField @bind-Value="_vPoliza" Label="Póliza" Required="true" />
-                            <MudNumericField T="decimal" @bind-Value="_vPeso" Label="Peso bruto vehicular (t)" Min="0.001m" Format="N3" />
+                            <MudNumericField T="decimal" @bind-Value="_vPeso" Label="Peso bruto vehicular (t)" Min="0.01m" Format="N2" />
                         </div>
                     </section>
                     <div class="tarjeta-formulario-acciones"><MudButton OnClick="CancelarVehiculo">Cancelar</MudButton><MudButton ButtonType="ButtonType.Submit" Variant="Variant.Filled">Guardar vehículo</MudButton></div>
