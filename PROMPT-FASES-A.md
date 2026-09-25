@@ -1,5 +1,8 @@
 # Plan de fases — Mitad A (Plataforma, identidad y catálogos)
 
+> **Plan histórico.** La mitad A ya se implementó. Para el estado actual del sistema,
+> consultar [REPORTE_ESTADO_SISTEMA.md](REPORTE_ESTADO_SISTEMA.md).
+
 Cada bloque marcado con `▸ PROMPT` describe **tal cual** el alcance de una fase.
 Se ejecuta una fase, se revisa, y hasta entonces se arranca la siguiente.
 

@@ -1,5 +1,9 @@
 # Plan de fases — Mitad B (Documentos, timbrado y salidas)
 
+> **Plan histórico.** Luis absorbió esta mitad antes de la fecha prevista y después se
+> añadieron módulos especiales. Las instrucciones y los hitos siguientes no describen
+> el estado actual; consultar [REPORTE_ESTADO_SISTEMA.md](REPORTE_ESTADO_SISTEMA.md).
+
 Este documento es para **el compañero**. Se le entrega junto con `ARQUITECTURA.md` y
 `REPARTO-EQUIPO.md`.
 

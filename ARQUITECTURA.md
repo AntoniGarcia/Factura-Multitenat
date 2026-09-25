@@ -231,6 +231,12 @@ panel bajo `/operador`.
 
 ## 6. Decisiones de alcance ya cerradas
 
+> **Alcance original del MVP.** Posteriormente se pidió implementar también Carta Porte,
+> Comercio Exterior, Notaría y Constructoras antes de la entrega. Esta sección conserva
+> la decisión inicial como contexto; el progreso y los pendientes vigentes están en
+> [REPORTE_ESTADO_SISTEMA.md](REPORTE_ESTADO_SISTEMA.md). Las reglas técnicas y de
+> seguridad de esta guía siguen siendo obligatorias.
+
 **Dentro del MVP:** multiempresa, catálogos del SAT, clientes, productos, emisión de
 factura estándar, timbrado, cancelación con motivos 01–04, PDF con QR y cadena original,
 envío por correo, complemento de pagos, bolsa de timbres y membresías.

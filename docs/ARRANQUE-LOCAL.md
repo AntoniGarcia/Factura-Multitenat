@@ -2,7 +2,8 @@
 
 Cómo dejar el sistema corriendo en una máquina nueva, desde el repositorio recién clonado.
 
-No hay que crear la base de datos a mano: la crean las migraciones. Lo que sí hay que
+No hay que crear las tablas a mano: las crean las migraciones al ejecutar el paso 4.
+Lo que sí hay que
 conseguir aparte son **tres cosas que el repositorio no puede llevar dentro**: la
 configuración local, la llave maestra y el archivo de catálogos del SAT.
 
@@ -113,6 +114,18 @@ sin volver a procesar los 300 000 renglones:
 dotnet run --project Facturacion.Server -- --cargar-catalogos ruta/al/archivo.xls c_TasaOCuota
 ```
 
+Para probar Carta Porte 3.1, carga también su libro oficial, que es distinto del
+catálogo CFDI general:
+
+```bash
+dotnet run --project Facturacion.Server -- --cargar-catalogos-carta-porte ruta/al/CatalogosCartaPorte31.xls
+```
+
+Este comando actualiza las hojas de Carta Porte compatibles con el importador. Para
+cargar solo `c_ClaveProdServCP`, añade esa clave como último argumento. Antes de probar
+Comercio Exterior, consulta los catálogos y esquemas adicionales en
+[DESPLIEGUE.md](DESPLIEGUE.md); no supongas que el libro CFDI general los incluye.
+
 ---
 
 ## 6. Correr
@@ -135,7 +148,7 @@ tiene dos empresas, la primera pantalla después de iniciar sesión es el select
 |---|---|---|
 | Base y migraciones | `dotnet ef migrations list --project Facturacion.Server` | Ninguna dice `(Pending)` |
 | Catálogos | Menú → **Catálogos del SAT** | Cada catálogo con su número de filas y su versión |
-| Pruebas | `dotnet test` | 48 de 48 |
+| Pruebas | `dotnet test` | Sin fallos; la cantidad cambia al agregar pruebas |
 
 Las pruebas crean y borran sus propias bases (`FacturacionPruebas*`) contra el mismo servidor
 SQL de la cadena de conexión. Corren contra SQL Server de verdad a propósito: lo que prueban
@@ -156,7 +169,9 @@ dotnet run --project Facturacion.Server -- --acreditar-compra <id-de-la-compra>
 ```
 
 Acreditar es lo que mete los timbres a la bolsa de la empresa que compró. Es una operación
-del operador del SaaS, no del inquilino: por eso vive en la consola y no en un endpoint.
+del operador del SaaS, no del inquilino. También está disponible en el panel del
+operador, protegido con su permiso específico; estos comandos son una alternativa de
+operación manual. No hay acreditación automática por pasarela de pagos.
 
 ---
 
@@ -179,10 +194,11 @@ cambia nada. Se comprueba en la bitácora:
 SELECT Accion, MomentoUtc FROM Bitacora WHERE Accion = 'contrasena_cambiada' ORDER BY MomentoUtc DESC;
 ```
 
-Para volver al valor del archivo hay que borrar la base `FacturacionDev` y dejar que el
-sembrado corra otra vez — con el costo de recargar los catálogos del SAT (paso 5). Por eso
-conviene **no** usar la cuenta del sembrado para probar el cambio de contraseña: para eso
-está la cuenta de un invitado.
+Cambiar el archivo no restablece la contraseña de una cuenta existente. No borres la
+base para resolver un problema de acceso: perderías empresas, documentos y catálogos.
+Solicita el restablecimiento a una cuenta de administración autorizada. Conviene
+**no** usar la cuenta del sembrado para probar el cambio de contraseña: para eso está
+la cuenta de un invitado.
 
 **El ejecutable está bloqueado al compilar** — hay un `dotnet run` vivo. Ciérralo antes de
 compilar.

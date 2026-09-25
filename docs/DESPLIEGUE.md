@@ -163,6 +163,22 @@ dotnet run --project Facturacion.Server -- --cargar-catalogos-carta-porte ruta/a
 El mismo libro puede cargar `c_ConfigAutotransporte`, `c_TipoPermiso` y
 `c_FiguraTransporte`; omite el último argumento para actualizar los cuatro.
 
+### 5.0.2 Catálogos de Comercio Exterior
+
+El libro CFDI general tampoco carga las tablas propias de Comercio Exterior. El
+importador acepta, por separado, `c_INCOTERM`, `c_UnidadAduana` y
+`c_FraccionArancelaria`. Cada archivo debe proceder del SAT y su nombre debe incluir
+la clave correspondiente; los dos primeros también deben identificar la versión 2.0.
+
+```bash
+dotnet run --project Facturacion.Server -- --cargar-catalogo-comercio c_INCOTERM ruta/al/archivo-c_INCOTERM-2.0.xls
+dotnet run --project Facturacion.Server -- --cargar-catalogo-comercio c_UnidadAduana ruta/al/archivo-c_UnidadAduana-2.0.xls
+dotnet run --project Facturacion.Server -- --cargar-catalogo-comercio c_FraccionArancelaria ruta/al/archivo-c_FraccionArancelaria.xls
+```
+
+Son ejemplos de nombre, no archivos incluidos en el repositorio. Verifica que cada
+carga termine con su número de claves vigentes antes de probar el módulo.
+
 ---
 
 ## 5.1 Esquemas y XSLT del SAT (obligatorio para timbrar)

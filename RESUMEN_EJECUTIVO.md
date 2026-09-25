@@ -3,6 +3,9 @@
 Documento de contexto para quien no programa: gerentes de producto, clientes o cualquier
 persona que necesite entender qué es este sistema y para qué sirve, sin tecnicismos.
 
+**Estado al 25 de septiembre de 2026:** sistema en desarrollo y revisión. Para el detalle
+técnico y los pendientes, ver [REPORTE_ESTADO_SISTEMA.md](REPORTE_ESTADO_SISTEMA.md).
+
 ---
 
 ## 1. ¿Qué problema resuelve?
@@ -23,25 +26,28 @@ instalar nada, y se actualiza para todos a la vez.
 
 ## 2. ¿Qué puede hacer un usuario?
 
-1. **Emitir facturas CFDI 4.0** con validación en tiempo real de los datos del cliente.
-2. **Timbrar ante el SAT** a través de un proveedor autorizado (PAC), con el sello oficial.
-3. **Cancelar comprobantes** con los motivos que exige el SAT (claves 01 a 04).
-4. **Emitir el complemento de pagos** cuando la factura se cobra en parcialidades o a plazo.
-5. **Generar el PDF** de la factura con su código QR y la cadena original, listo para enviar.
-6. **Enviar la factura por correo** al cliente automáticamente.
-7. **Administrar varias empresas** desde una sola cuenta, con usuarios y permisos por empresa.
+El sistema ya permite administrar varias empresas desde una cuenta, con usuarios,
+clientes, productos, catálogos, borradores de facturas y paquetes de timbres. Incluye
+pantallas y servicios para factura estándar, Carta Porte, Comercio Exterior, Notaría
+y Constructoras. Los flujos de timbrado, cancelación, complemento de pagos, PDF y
+correo tienen implementación en el código, pero todavía requieren validación integral
+con el PAC y en el entorno donde se entregarán.
+
+En el entorno de revisión sin PAC no se emiten CFDI oficiales. Las compras de timbres
+permanecen pendientes hasta que el operador acredite el pago; aún no hay pasarela de
+pago automático.
 
 ## 3. Estado actual del desarrollo
 
-- **Plataforma base (identidad, empresas, catálogos, clientes, productos, timbres):**
-  terminada. El sistema ya gestiona cuentas, empresas emisoras, usuarios con permisos, y los
-  catálogos oficiales del SAT.
-- **Motor de facturación (emisión, impuestos, timbrado, PDF, cancelación, pagos):**
-  implementado de extremo a extremo. Ya se puede capturar una factura, calcular sus impuestos,
-  timbrarla contra el entorno de pruebas del PAC, generar su PDF y cancelarla.
-- **Lo que sigue:** endurecimiento, pruebas de integración a fondo y validación contra el
-  entorno real del SAT antes de la entrega del producto mínimo viable (MVP), previsto para el
-  **5 de diciembre de 2026**.
+- **Plataforma base:** identidad, empresas, catálogos, clientes, productos, permisos,
+  compras y bolsa de timbres implementados.
+- **Documentos:** captura, cálculos y flujos fiscales implementados en código, con
+  módulos especiales añadidos después del plan original. No se debe confundir esa
+  implementación con una homologación o prueba fiscal completa.
+- **Lo que sigue:** pruebas manuales de extremo a extremo por tipo de documento,
+  verificación del despliegue y de las migraciones, correcciones de aislamiento entre
+  empresas que se dejaron pendientes y conexión/pruebas del PAC por el ingeniero.
+  El objetivo de entrega sigue siendo el **5 de diciembre de 2026**.
 
 ## 4. ¿Qué se necesita para ejecutarlo?
 
@@ -51,16 +57,17 @@ aplicación queda corriendo en el navegador. Los pasos detallados, paso a paso, 
 [docs/ARRANQUE-LOCAL.md](docs/ARRANQUE-LOCAL.md). La base de datos se crea sola; no hay que
 armarla a mano.
 
-En producción vive en un servidor y los usuarios solo abren una dirección web, sin instalar
-nada en sus equipos.
+Para revisión en servidor se usa un entorno `Staging` sin PAC. Antes de un uso real
+hay que configurar el PAC y superar las verificaciones de
+[despliegue](docs/DESPLIEGUE.md). Los usuarios acceden desde el navegador.
 
 ## 5. Impacto y beneficio esperado
 
-- **Menos rechazos del SAT:** las validaciones evitan los errores que más comúnmente tumban
-  un timbrado (nombre del receptor, régimen fiscal, uso del CFDI, cálculo de impuestos).
+- **Objetivo: menos rechazos del SAT:** las validaciones buscan detectar antes del timbrado
+  errores de receptor, régimen, uso del CFDI e impuestos. Falta comprobarlo con el PAC.
 - **Un solo lugar para varias empresas:** un despacho o un grupo empresarial factura para
   todas sus empresas desde una cuenta, sin duplicar herramientas ni licencias.
-- **Cero instalación y actualización centralizada:** al ser web, todos usan siempre la última
-  versión y los catálogos del SAT vigentes.
-- **Cumplimiento real:** al soportar el complemento de pagos, la empresa puede facturar a
-  plazo sin quedar en falta con la autoridad.
+- **Actualización centralizada:** al ser web, no requiere instalar el programa en cada
+  equipo; publicar código y mantener los catálogos SAT vigentes son tareas del operador.
+- **Documentos de pago:** el complemento está implementado en código; su funcionamiento
+  fiscal real sigue sujeto a las pruebas con el PAC.
