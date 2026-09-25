@@ -2,6 +2,7 @@ using Facturacion.Server.Data;
 using Facturacion.Server.Data.Entidades.Documentos;
 using Facturacion.Server.Infra.Tenencia;
 using Facturacion.Server.Modules.Documentos.Impuestos;
+using Facturacion.Server.Modules.Documentos.Salidas;
 using Facturacion.Shared.Comun;
 using Facturacion.Shared.Contratos;
 using Facturacion.Shared.Documentos;
@@ -108,10 +109,18 @@ public sealed class ServicioDeEmision(
 
         if (calculado.EsFallo) return calculado.Error!;
 
+        var decimalesMoneda = await baseDeDatos.SatMonedas.AsNoTracking()
+            .Where(x => x.Clave == peticion.Moneda)
+            .Select(x => (int?)x.Decimales)
+            .FirstOrDefaultAsync(ct);
+        if (decimalesMoneda is null)
+            return ErrorNegocio.Validacion("moneda-desconocida",
+                "La moneda no está en el catálogo del SAT. Selecciona una moneda válida antes de guardar.");
+
         AplicarCabecera(comprobante, peticion, receptor.Valor);
         AplicarConceptos(baseDeDatos, comprobante, conceptosResueltos.Valor, calculado.Valor); 
         AplicarRelacionados(comprobante, peticion.Relacionados);
-        AplicarTotales(comprobante, calculado.Valor);
+        AplicarTotales(comprobante, decimalesMoneda.Value);
 
         comprobante.ModificadoUtc = DateTime.UtcNow;
 
@@ -458,13 +467,14 @@ public sealed class ServicioDeEmision(
         }
     }
 
-    private static void AplicarTotales(Comprobante comprobante, ComprobanteCalculado calculado)
+    private static void AplicarTotales(Comprobante comprobante, int decimalesMoneda)
     {
-        comprobante.SubTotal = calculado.SubTotal;
-        comprobante.Descuento = calculado.Descuento;
-        comprobante.TotalImpuestosTrasladados = calculado.TotalImpuestosTrasladados;
-        comprobante.TotalImpuestosRetenidos = calculado.TotalImpuestosRetenidos;
-        comprobante.Total = calculado.Total;
+        var proyeccion = ProyeccionMonetariaCfdi.Calcular(comprobante, decimalesMoneda);
+        comprobante.SubTotal = proyeccion.SubTotal;
+        comprobante.Descuento = proyeccion.Descuento;
+        comprobante.TotalImpuestosTrasladados = proyeccion.TotalImpuestosTrasladados;
+        comprobante.TotalImpuestosRetenidos = proyeccion.TotalImpuestosRetenidos;
+        comprobante.Total = proyeccion.Total;
     }
 
     // ── Lectura ─────────────────────────────────────────────────────────────────────────

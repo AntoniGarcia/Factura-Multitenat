@@ -179,8 +179,9 @@ Van en la misma carpeta que los catálogos (`EsquemasSat:Ruta`, por omisión `Ca
 | `tdCFDI.xsd` | raíz | tipos que importa el anterior |
 | `catCFDI.xsd` | raíz | enumeraciones de catálogo (~6 MB) |
 | `CartaPorte31.xsd` | raíz | esquema del complemento Carta Porte 3.1 |
-| `ComercioExterior20.xsd` | raíz | valida el XML de borrador del complemento Comercio Exterior 2.0 ([SAT](http://www.sat.gob.mx/sitio_internet/cfd/ComercioExterior20/ComercioExterior20.xsd)); no habilita timbrado |
+| `ComercioExterior20.xsd` | raíz | valida el complemento Comercio Exterior 2.0 ([SAT](http://www.sat.gob.mx/sitio_internet/cfd/ComercioExterior20/ComercioExterior20.xsd)) |
 | `notariospublicos.xsd` | raíz | esquema del complemento Notarios Públicos 1.0 ([SAT](https://www.sat.gob.mx/sitio_internet/cfd/notariospublicos/notariospublicos.xsd)) |
+| `implocal.xsd` | raíz | esquema del complemento de impuestos locales para el 5 al millar de obra pública ([SAT](https://www.sat.gob.mx/sitio_internet/cfd/implocal/implocal.xsd)) |
 | `catCartaPorte.xsd` | raíz | claves del complemento Carta Porte 3.1 |
 | `catComExt.xsd` | raíz | catálogo importado por los esquemas Carta Porte 3.1 y Comercio Exterior 2.0 |
 | `cadenaoriginal_4_0.xslt` | raíz | cadena original |

@@ -190,6 +190,14 @@ else
                                 <strong class="cifra-tabular">@renglon.Importe.ToString("N2")</strong>
                             </div>
 
+                            @if (renglon.ObjetoImp == "02" && renglon.Impuestos.Count == 0)
+                            {
+                                <div class="concepto-editor-aviso" role="alert">
+                                    Este producto está marcado como objeto de impuesto, pero no tiene impuestos configurados.
+                                    Configúralos en el catálogo de productos antes de guardar la factura.
+                                </div>
+                            }
+
                             <MudIconButton Icon="@Icons.Material.Filled.Delete" Size="Size.Small"
                                            Class="concepto-editor-quitar"
                                            title="Quitar concepto" aria-label="Quitar concepto"
@@ -350,9 +358,11 @@ else
         </dl>
 
         <p class="emision-resumen-nota">
-            @(_esFacturaDeObra || _esFacturaComercio
-                ? "Este borrador requiere completar el módulo especial antes de generar un CFDI."
-                : "Importes calculados por el servidor al guardar el borrador.")
+            @(_esFacturaDeObra
+                ? "La vista fiscal admite obra privada sin ajustes u obra pública con solo 5 al millar al 0.50 %, siempre que el CFDI coincida. La estimación comercial se consulta aparte."
+                : _esFacturaComercio && !_comercioGuardado
+                    ? "Guarda y valida los datos de Comercio Exterior antes de timbrar."
+                    : "Importes calculados por el servidor al guardar el borrador.")
         </p>
 
         <footer class="emision-resumen-acciones">
@@ -362,12 +372,12 @@ else
             </MudButton>
             <MudButton Variant="Variant.Outlined" StartIcon="@Icons.Material.Filled.PictureAsPdf"
                        OnClick="VistaPreviaAsync"
-                       Disabled="@(_guardando || _generando || _preparandoVista || _renglones.Count == 0 || _esFacturaDeObra || _esFacturaComercio)">
+                       Disabled="@(_guardando || _generando || _preparandoVista || _renglones.Count == 0 || (_esFacturaDeObra && !_obraGuardada) || _esFacturaComercio)">
                 @(_preparandoVista ? "Preparando…" : "Vista previa PDF")
             </MudButton>
             <MudButton Variant="Variant.Filled" Color="Color.Primary"
                        OnClick="TimbrarCfdiAsync"
-                       Disabled="@(_guardando || _generando || _preparandoVista || _renglones.Count == 0 || !PuedeTimbrar || _esFacturaDeObra || _esFacturaComercio)">
+                       Disabled="@(_guardando || _generando || _preparandoVista || _renglones.Count == 0 || !PuedeTimbrar || (_esFacturaDeObra && !_obraGuardada) || (_esFacturaComercio && !_comercioGuardado))">
                 @(_generando ? "Timbrando…" : "Timbrar CFDI")
             </MudButton>
             <MudButton Variant="Variant.Text" OnClick="@(() => Navegacion.NavigateTo("/documentos"))">
@@ -581,7 +591,6 @@ else
         _formaPago = completo.FormaPagoPreferida;
     }
 
-    /*
     private async Task AlElegirProductoAsync(int indice, ProductoEnListaDto? seleccion)
     {
         if (seleccion is null) return;
@@ -591,29 +600,6 @@ else
 
         var renglon = _renglones[indice];
 
-        renglon.ProductoId = producto.Id;
-        renglon.ClaveProdServ = producto.ClaveProdServ;
-        renglon.ClaveUnidad = producto.ClaveUnidad;
-        renglon.UnidadTexto = producto.UnidadTexto;
-        renglon.NoIdentificacion = producto.CodigoInterno.ToString(System.Globalization.CultureInfo.InvariantCulture);
-        renglon.Descripcion = producto.Descripcion;
-        renglon.ObjetoImp = producto.ObjetoImp;
-        renglon.ValorUnitario = producto.ValorUnitario;
-        renglon.Impuestos = [.. producto.Impuestos.Select(i =>
-            new ImpuestoDeConceptoDto(i.Impuesto, i.TipoFactor, i.TasaOCuota, i.EsRetencion))];
-    }
-    */
-
-    private ConfiguracionEmpresaDto? _configuracionEmpresa;
-    private async Task AlElegirProductoAsync(int indice, ProductoEnListaDto? seleccion)
-    {
-        if (seleccion is null) return;
-    
-        var producto = await Productos.ObtenerAsync(seleccion.Id);
-        if (producto is null) return;
-    
-        var renglon = _renglones[indice];
-    
         renglon.ProductoId = producto.Id;
         renglon.ClaveProdServ = producto.ClaveProdServ;
         renglon.ClaveUnidad = producto.ClaveUnidad;
@@ -621,39 +607,8 @@ else
         renglon.Descripcion = producto.Descripcion;
         renglon.ObjetoImp = producto.ObjetoImp;
         renglon.ValorUnitario = producto.ValorUnitario;
-    
-        renglon.Impuestos = producto.Impuestos.Count > 0
-            ? [.. producto.Impuestos.Select(i =>
-                new ImpuestoDeConceptoDto(i.Impuesto, i.TipoFactor, i.TasaOCuota, i.EsRetencion))]
-            : await ImpuestosPorDefectoAsync(producto.ObjetoImp);
-    }
-    
-    /// <summary>
-    /// B5: si el producto no trae impuestos configurados y sí es objeto de impuesto, se
-    /// precargan las tasas por defecto de la empresa. Cosmético a propósito: el servidor sigue
-    /// resolviendo los impuestos desde el producto (ResolverConceptosAsync), así que esto solo
-    /// evita que la pantalla muestre un renglón vacío de impuestos cuando la empresa ya tiene
-    /// tasas configuradas. Ver nota en el chat sobre por qué no basta para el XML final.
-    /// </summary>
-    private async Task<List<ImpuestoDeConceptoDto>> ImpuestosPorDefectoAsync(string objetoImp)
-    {
-        if (objetoImp is not ("02" or "03")) return [];
-    
-        _configuracionEmpresa ??= await Empresa.ObtenerConfiguracionAsync();
-        if (_configuracionEmpresa is null) return [];
-    
-        var impuestos = new List<ImpuestoDeConceptoDto>();
-    
-        if (_configuracionEmpresa.TasaIvaPorDefecto > 0)
-            impuestos.Add(new ImpuestoDeConceptoDto("002", "Tasa", _configuracionEmpresa.TasaIvaPorDefecto, EsRetencion: false));
-    
-        if (_configuracionEmpresa.TasaRetencionIvaPorDefecto > 0)
-            impuestos.Add(new ImpuestoDeConceptoDto("002", "Tasa", _configuracionEmpresa.TasaRetencionIvaPorDefecto, EsRetencion: true));
-    
-        if (_configuracionEmpresa.TasaRetencionIsrPorDefecto > 0)
-            impuestos.Add(new ImpuestoDeConceptoDto("001", "Tasa", _configuracionEmpresa.TasaRetencionIsrPorDefecto, EsRetencion: true));
-    
-        return impuestos;
+        renglon.Impuestos = [.. producto.Impuestos.Select(i =>
+            new ImpuestoDeConceptoDto(i.Impuesto, i.TipoFactor, i.TasaOCuota, i.EsRetencion))];
     }
     
     private async Task AgregarRelacionadoAsync()
@@ -689,6 +644,15 @@ else
         if (sinProducto >= 0)
         {
             _error = ProblemaLocal($"El renglón {sinProducto + 1} no tiene un producto elegido.");
+            return false;
+        }
+
+        var sinImpuestos = _renglones.FindIndex(r => r.ObjetoImp == "02" && r.Impuestos.Count == 0);
+
+        if (sinImpuestos >= 0)
+        {
+            _error = ProblemaLocal(
+                $"El producto del renglón {sinImpuestos + 1} está marcado como objeto de impuesto, pero no tiene impuestos configurados. Corrígelo en el catálogo de productos.");
             return false;
         }
 
