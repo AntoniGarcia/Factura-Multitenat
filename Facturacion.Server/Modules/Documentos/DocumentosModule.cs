@@ -35,7 +35,7 @@ public static class DocumentosModule
             servicios.AddScoped<IServicioEmpresaEmisora, DobleServicioEmpresaEmisora>();
             servicios.AddScoped<IServicioFolios, DobleServicioFolios>();
             servicios.AddScoped<IServicioTimbres, DobleServicioTimbres>();
-            servicios.AddScoped<IProveedorCsdParaTimbrado, DobleProveedorCsdParaTimbrado>();
+            //servicios.AddScoped<IProveedorCsdParaTimbrado, DobleProveedorCsdParaTimbrado>();
             servicios.AddScoped<ServicioDeDescargas, ServicioDeDescargas>();
         }
 

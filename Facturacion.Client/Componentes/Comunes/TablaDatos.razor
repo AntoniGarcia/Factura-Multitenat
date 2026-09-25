@@ -10,6 +10,12 @@
 
     CargarPagina es el único punto de contacto con el servidor: quien use el componente
     decide qué endpoint llamar, TablaDatos solo pide "dame la página N ordenada así".
+
+    Height es opcional: sin él, la tabla crece con su contenido como hasta ahora (el
+    comportamiento de siempre para el resto de páginas). Con una altura fijada, MudTable
+    activa scroll interno en el cuerpo y deja el encabezado y el pie de paginación
+    (PagerContent) fijos — así una lista larga no empuja los botones de página fuera de
+    la vista.
 *@
 
 <MudTable T="T"
@@ -22,6 +28,9 @@
           OnRowClick="OnRowClickMud"
           RowClassFunc="ClaseDeFila"
           Class="@(AlHacerClic.HasDelegate ? "tabla-filas-previsualizables" : null)"
+          Height="@Height"
+          FixedHeader="@AlturaFija"
+          FixedFooter="@AlturaFija"
           RowsPerPage="@TamanoPagina">
     <HeaderContent>
         @foreach (var columna in Columnas)
@@ -110,6 +119,18 @@
     /// </summary>
     [Parameter]
     public Func<T, bool>? EsSeleccionado { get; set; }
+
+    /// <summary>
+    /// Altura fija de la tabla (cualquier valor de CSS: "60vh", "calc(100vh - 12rem)", etc.).
+    /// Nula por defecto: la tabla crece con su contenido, como siempre. Al fijarla, el cuerpo
+    /// scrollea internamente y el encabezado y la paginación quedan fijos (ver FixedHeader/
+    /// FixedFooter abajo), para que una página con muchos registros no esconda los controles
+    /// de paginación fuera de la vista.
+    /// </summary>
+    [Parameter]
+    public string? Height { get; set; }
+
+    private bool AlturaFija => !string.IsNullOrWhiteSpace(Height);
 
     /// <summary>Opciones del selector de tamaño de página.</summary>
     private static readonly int[] TamanosDisponibles = [12, 25, 50];
