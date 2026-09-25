@@ -1,5 +1,6 @@
 using Facturacion.Server.Data;
 using Facturacion.Server.Data.Entidades.Documentos;
+using Facturacion.Server.Infra.Bitacora;
 using Facturacion.Server.Infra.Tenencia;
 using Facturacion.Server.Modules.Documentos.Impuestos;
 using Facturacion.Server.Modules.Documentos.Salidas;
@@ -29,6 +30,7 @@ public sealed class ServicioDePagos(
     IContextoEmpresaInterno contexto,
     IServicioEmpresaEmisora empresaEmisora,
     IServicioClientes clientes,
+    IServicioDeBitacora bitacora,
     ILogger<ServicioDePagos> registro)
 {
     /// <summary>Sin objeto de exportación: fuera del alcance del MVP (ARQUITECTURA.md §6).</summary>
@@ -183,10 +185,17 @@ public sealed class ServicioDePagos(
         var documentos = await ResolverDocumentosAsync(peticion, ct);
         if (documentos.EsFallo) return documentos.Error!;
 
+        // Mismo criterio que en ServicioDeEmision: sin guardado previo, el registro es un alta.
+        var antes = comprobante.ModificadoUtc is null ? null : ADto(comprobante, comprobante.Pagos.FirstOrDefault());
+
         AplicarCabecera(comprobante, receptor);
         AplicarPago(comprobante, peticion, documentos.Valor);
 
         comprobante.ModificadoUtc = DateTime.UtcNow;
+
+        bitacora.Registrar(
+            EntidadesDeBitacora.Comprobante, comprobante.Id.ToString(), AccionesDeBitacora.ComprobanteGuardado,
+            antes, ADto(comprobante, comprobante.Pagos.FirstOrDefault()));
 
         await baseDeDatos.SaveChangesAsync(ct);
 
@@ -199,8 +208,7 @@ public sealed class ServicioDePagos(
 
     public async Task<Resultado> EliminarBorradorAsync(Guid id, CancellationToken ct)
     {
-        var comprobante = await baseDeDatos.Comprobantes
-            .FirstOrDefaultAsync(c => c.Id == id && c.TipoDeComprobante == TiposDeComprobante.Pago, ct);
+        var comprobante = await CargarAsync(id, ct);
 
         if (comprobante is null)
             return ErrorNegocio.NoEncontrado("comprobante-no-encontrado", "Ese comprobante no existe.");
@@ -210,6 +218,13 @@ public sealed class ServicioDePagos(
             return ErrorNegocio.Conflicto(
                 "comprobante-no-es-borrador",
                 "Solo se puede descartar un comprobante que nunca se intentó timbrar.");
+
+        // Y el mismo criterio de ServicioDeEmision para la bitácora: un borrador que nunca se
+        // guardó no llevaba datos fiscales que dejar registrados.
+        if (comprobante.ModificadoUtc is not null)
+            bitacora.Registrar(
+                EntidadesDeBitacora.Comprobante, comprobante.Id.ToString(), AccionesDeBitacora.BorradorDescartado,
+                antes: ADto(comprobante, comprobante.Pagos.FirstOrDefault()));
 
         baseDeDatos.Comprobantes.Remove(comprobante);
         await baseDeDatos.SaveChangesAsync(ct);

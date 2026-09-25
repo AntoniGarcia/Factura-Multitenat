@@ -1,5 +1,6 @@
 using Facturacion.Server.Data;
 using Facturacion.Server.Data.Entidades.Documentos;
+using Facturacion.Server.Infra.Bitacora;
 using Facturacion.Server.Infra.Tenencia;
 using Facturacion.Server.Modules.Documentos.Impuestos;
 using Facturacion.Server.Modules.Documentos.Salidas;
@@ -30,7 +31,8 @@ public sealed class ServicioDeEmision(
     IContextoEmpresaInterno contexto,
     IServicioEmpresaEmisora empresaEmisora,
     IServicioClientes clientes,
-    IServicioProductos productos)
+    IServicioProductos productos,
+    IServicioDeBitacora bitacora)
 {
     /// <summary>Único tipo de comprobante de esta fase: factura de ingreso estándar.</summary>
     private const string TipoFactura = "I";
@@ -117,12 +119,20 @@ public sealed class ServicioDeEmision(
             return ErrorNegocio.Validacion("moneda-desconocida",
                 "La moneda no está en el catálogo del SAT. Selecciona una moneda válida antes de guardar.");
 
+        // Sin ModificadoUtc el borrador nunca se guardó: no hay valor anterior que valga la
+        // pena conservar, y el registro queda como alta.
+        var antes = comprobante.ModificadoUtc is null ? null : ADto(comprobante);
+
         AplicarCabecera(comprobante, peticion, receptor.Valor);
         AplicarConceptos(baseDeDatos, comprobante, conceptosResueltos.Valor, calculado.Valor); 
         AplicarRelacionados(comprobante, peticion.Relacionados);
         AplicarTotales(comprobante, decimalesMoneda.Value);
 
         comprobante.ModificadoUtc = DateTime.UtcNow;
+
+        bitacora.Registrar(
+            EntidadesDeBitacora.Comprobante, comprobante.Id.ToString(), AccionesDeBitacora.ComprobanteGuardado,
+            antes, ADto(comprobante));
 
         /*
         foreach (var e in baseDeDatos.ChangeTracker.Entries<Concepto>())
@@ -146,7 +156,7 @@ public sealed class ServicioDeEmision(
     /// </summary>
     public async Task<Resultado> EliminarBorradorAsync(Guid id, CancellationToken ct)
     {
-        var comprobante = await baseDeDatos.Comprobantes.FirstOrDefaultAsync(c => c.Id == id, ct);
+        var comprobante = await CargarAsync(id, ct);
 
         if (comprobante is null)
             return ErrorNegocio.NoEncontrado("comprobante-no-encontrado", "Ese comprobante no existe.");
@@ -155,6 +165,13 @@ public sealed class ServicioDeEmision(
             return ErrorNegocio.Conflicto(
                 "comprobante-no-es-borrador",
                 "Solo se puede descartar un comprobante que nunca se intentó timbrar.");
+
+        // El formulario descarta su borrador cada vez que se sale sin guardar; registrar esos
+        // vacíos sería llenar la bitácora de lo mismo que el barrido de huérfanos ya no anota.
+        if (comprobante.ModificadoUtc is not null)
+            bitacora.Registrar(
+                EntidadesDeBitacora.Comprobante, comprobante.Id.ToString(), AccionesDeBitacora.BorradorDescartado,
+                antes: ADto(comprobante));
 
         baseDeDatos.Comprobantes.Remove(comprobante);
         await baseDeDatos.SaveChangesAsync(ct);
