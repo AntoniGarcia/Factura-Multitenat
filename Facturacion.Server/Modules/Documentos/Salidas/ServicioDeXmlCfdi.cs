@@ -7,6 +7,7 @@ using System.Xml.Schema;
 using Facturacion.Server.Data;
 using Facturacion.Server.Data.Entidades.Documentos;
 using Facturacion.Server.Modules.Documentos.ComercioExterior;
+using Facturacion.Server.Modules.Documentos.Obras;
 using Facturacion.Shared.ComercioExterior;
 using Facturacion.Server.Infra.Tenencia;
 using Facturacion.Shared.Comun;
@@ -75,6 +76,12 @@ public sealed class ServicioDeXmlCfdi(
                 "moneda-desconocida",
                 $"La moneda {monedaDeImportes} no está en el catálogo del SAT. ¿Se cargaron los catálogos?");
 
+        if (comprobante.TipoDeComprobante == TiposDeComprobante.Ingreso &&
+            comprobante.Estatus is ("borrador" or "error" or "timbrando") &&
+            !ProyeccionMonetariaCfdi.Calcular(comprobante, decimales.Value).CoincideCon(comprobante))
+            return ErrorNegocio.Regla("totales-del-borrador-desactualizados",
+                "Los totales guardados no coinciden con el XML en los decimales de la moneda. Guarda de nuevo el borrador antes de emitirlo.");
+
         CsdDescifradoDto material;
         try
         {
@@ -125,8 +132,30 @@ public sealed class ServicioDeXmlCfdi(
                 .Include(x => x.Inmuebles)
                 .Include(x => x.Partes)
                 .FirstOrDefaultAsync(x => x.ComprobanteId == comprobante.Id, ct);
+            var datosObra = await baseDeDatos.DatosObra.AsNoTracking()
+                .FirstOrDefaultAsync(x => x.ComprobanteId == comprobante.Id, ct);
 
-            if (contenidoComercio is not null || comprobante.Exportacion == "02")
+            if (datosObra is not null)
+            {
+                if (ValidadorFiscalDeObra.Validar(comprobante, datosObra) is { } errorObra)
+                    return errorObra;
+                if (contenidoComercio is not null || datosNotaria is not null)
+                    return ErrorNegocio.Regla("complementos-incompatibles",
+                        "Una estimación de obra no se puede combinar con Notaría o Comercio Exterior en esta factura.");
+            }
+
+            if (datosObra?.TipoObra == Facturacion.Shared.Obras.TiposDeObra.Publica)
+            {
+                documento = generador.Generar(comprobante, datosDeEmision);
+                var raiz = documento.Root!;
+                raiz.SetAttributeValue(XNamespace.Xmlns + "implocal", EsquemasSat.EspacioDeNombresImpuestosLocales);
+                raiz.SetAttributeValue(XNamespace.Get("http://www.w3.org/2001/XMLSchema-instance") + "schemaLocation",
+                    $"{EsquemasSat.EspacioDeNombresCfdi} http://www.sat.gob.mx/sitio_internet/cfd/4/cfdv40.xsd " +
+                    $"{EsquemasSat.EspacioDeNombresImpuestosLocales} http://www.sat.gob.mx/sitio_internet/cfd/implocal/implocal.xsd");
+                raiz.Add(new XElement(XNamespace.Get(EsquemasSat.EspacioDeNombresCfdi) + "Complemento",
+                    GeneradorDeXmlImpuestosLocalesDeObra.Generar(comprobante)));
+            }
+            else if (contenidoComercio is not null || comprobante.Exportacion == "02")
             {
                 if (datosNotaria is not null)
                     return ErrorNegocio.Regla("complementos-incompatibles",
@@ -196,7 +225,8 @@ public sealed class ServicioDeXmlCfdi(
         {
             if (Validar(documento, comprobante.TipoDeComprobante == TiposDeComprobante.Traslado,
                     documento.Descendants(EsquemasSat.EspacioDeNombresNotariosPublicos + "NotariosPublicos").Any(),
-                    documento.Descendants(EsquemasSat.EspacioDeNombresComercioExterior20 + "ComercioExterior").Any()) is { } error)
+                    documento.Descendants(EsquemasSat.EspacioDeNombresComercioExterior20 + "ComercioExterior").Any(),
+                    documento.Descendants(EsquemasSat.EspacioDeNombresImpuestosLocales + "ImpuestosLocales").Any()) is { } error)
                 return error;
         }
         catch (FileNotFoundException ex)
@@ -249,7 +279,8 @@ public sealed class ServicioDeXmlCfdi(
         return Convert.ToBase64String(firma);
     }
 
-    private ErrorNegocio? Validar(XDocument documento, bool esCartaPorte, bool esNotaria, bool esComercio)
+    private ErrorNegocio? Validar(XDocument documento, bool esCartaPorte, bool esNotaria, bool esComercio,
+        bool esImpuestosLocales)
     {
         var problemas = new List<string>();
 
@@ -257,7 +288,8 @@ public sealed class ServicioDeXmlCfdi(
         {
             ValidationType = ValidationType.Schema,
             Schemas = esCartaPorte ? esquemas.EsquemaCartaPorte : esNotaria ? esquemas.EsquemaNotaria :
-                esComercio ? esquemas.EsquemaCfdiComercioExterior : esquemas.Esquema,
+                esComercio ? esquemas.EsquemaCfdiComercioExterior :
+                esImpuestosLocales ? esquemas.EsquemaCfdiImpuestosLocales : esquemas.Esquema,
             DtdProcessing = DtdProcessing.Prohibit
         };
 

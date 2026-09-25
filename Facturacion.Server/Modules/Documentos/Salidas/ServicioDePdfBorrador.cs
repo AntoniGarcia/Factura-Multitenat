@@ -2,6 +2,8 @@ using System.Text.Json;
 using Facturacion.Server.Data;
 using Facturacion.Server.Infra.Tenencia;
 using Facturacion.Server.Modules.Documentos.ComercioExterior;
+using Facturacion.Server.Modules.Documentos.Obras;
+using Facturacion.Shared.Obras;
 using Facturacion.Server.Modules.Plataforma.Empresas;
 using Facturacion.Shared.ComercioExterior;
 using Facturacion.Shared.Comun;
@@ -38,10 +40,10 @@ public sealed class ServicioDePdfBorrador(
                 "comprobante-no-es-borrador",
                 "La vista previa sin timbrar solo está disponible para borradores.");
 
-        if (await baseDeDatos.DatosObra.AsNoTracking()
-            .AnyAsync(x => x.ComprobanteId == comprobanteId, ct))
-            return ErrorNegocio.Regla("obra-pdf-pendiente",
-                "La vista previa fiscal de esta estimación de obra aún no está disponible.");
+        var obra = await baseDeDatos.DatosObra.AsNoTracking()
+            .FirstOrDefaultAsync(x => x.ComprobanteId == comprobanteId, ct);
+        if (obra is not null && ValidadorFiscalDeObra.Validar(comprobante, obra) is { } errorObra)
+            return errorObra;
 
         DatosComercioExteriorDto? comercioPdf = null;
         var comercioGuardado = await baseDeDatos.DatosComercioExterior.AsNoTracking()
@@ -117,6 +119,9 @@ public sealed class ServicioDePdfBorrador(
         return generador.Generar(
             comprobante,
             new DatosDelPdf(fechaLocal, decimales, logo?.Contenido, EsBorrador: true,
-                Notaria: notariaPdf, ComercioExterior: comercioPdf));
+                Notaria: notariaPdf, ComercioExterior: comercioPdf,
+                RetencionCincoAlMillar: obra?.TipoObra == TiposDeObra.Publica
+                    ? Math.Round(comprobante.SubTotal * 0.005m, 2, MidpointRounding.ToEven)
+                    : null));
     }
 }

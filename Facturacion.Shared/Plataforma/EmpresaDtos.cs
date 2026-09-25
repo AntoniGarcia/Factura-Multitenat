@@ -24,7 +24,17 @@ public sealed record EmpresaDto(
     string? CorreoContacto,
     bool TieneLogo,
     string? LogoNombreOriginal,
-    LicenciasDto Licencias);
+    LicenciasDto Licencias,
+    DomicilioSatDto? OrigenCartaPorte = null);
+
+/// <summary>Domicilio nacional con claves del catálogo SAT, independiente del domicilio informativo.</summary>
+public sealed record DomicilioSatDto(
+    string Calle,
+    string? NumeroExterior,
+    string? NumeroInterior,
+    string Estado,
+    string Municipio,
+    string CodigoPostal);
 
 /// <summary>
 /// Licencias de los módulos de fase 2. Se guardan y se muestran, pero <b>no habilitan nada</b>:
@@ -58,7 +68,8 @@ public sealed record PeticionGuardarEmpresa(
     string? CodigoPostal,
     string? Telefono,
     string? CorreoContacto,
-    LicenciasDto Licencias);
+    LicenciasDto Licencias,
+    DomicilioSatDto? OrigenCartaPorte = null);
 
 /// <summary>
 /// Respuesta al guardar: la empresa ya guardada y qué se le cambió al nombre para cumplir

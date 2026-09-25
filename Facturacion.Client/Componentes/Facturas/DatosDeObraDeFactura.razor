@@ -10,14 +10,25 @@
     <h2 class="seccion-titulo">Estimación de obra</h2>
     <p class="seccion-ayuda">
         Guarda primero los conceptos. El importe de trabajos se obtiene de su subtotal;
-        este cálculo comercial no modifica el total fiscal de la factura.
+        captura las tasas según el contrato. Este cálculo comercial no modifica el total fiscal de la factura.
     </p>
     <div class="aviso-documentos" role="status">
-        Las estimaciones de obra se guardan como borrador. Su PDF fiscal y su timbrado
-        permanecen deshabilitados hasta completar la representación en CFDI 4.0.
+        La vista fiscal admite obra privada sin ajustes y obra pública con únicamente
+        el 5 al millar al 0.50 %. En ambos casos deben coincidir los importes del CFDI.
+        Otras amortizaciones o deducciones permanecen como borrador.
     </div>
+    @if (_conciliacion is { } conciliacion)
+    {
+        <div class="aviso-documentos" role="status">
+            <strong>Conciliación del cálculo guardado:</strong> @conciliacion.Mensaje
+        </div>
+    }
 
     <div class="rejilla-campos">
+        <MudSelect T="string" @bind-Value="_tipoObra" Label="Tipo de obra" Required="true">
+            <MudSelectItem T="string" Value="@TiposDeObra.Publica">Obra pública</MudSelectItem>
+            <MudSelectItem T="string" Value="@TiposDeObra.Privada">Obra privada</MudSelectItem>
+        </MudSelect>
         <MudTextField T="string" Value="@(ImporteTrabajos > 0 ? ImporteTrabajos.ToString("N2") : "Guarda los conceptos")"
                       Label="Importe de los trabajos" ReadOnly="true" Class="cifra-tabular" />
         <MudNumericField T="decimal" @bind-Value="_porcentajeAmortizacion" Label="Amortización del anticipo (%)"
@@ -29,6 +40,16 @@
         <MudNumericField T="decimal" @bind-Value="_porcentajeIva" Label="IVA estimado (%)"
                          Min="0" Max="100" Format="N2" Class="cifra-tabular" />
     </div>
+    <p class="seccion-ayuda">
+        Una amortización puede corresponder a un anticipo fiscal o a una parcialidad,
+        según el contrato y el comprobante previo. Las retenciones y devoluciones
+        contractuales tampoco se convierten automáticamente en impuestos del CFDI.
+        Puedes conservar estos importes en la estimación interna mientras se define su tratamiento.
+    </p>
+    <p class="seccion-ayuda">
+        Al guardar una estimación sin ajustes de base y con IVA uniforme, el importe de IVA
+        se toma de los conceptos del CFDI. Mientras editas, el cálculo es preliminar.
+    </p>
 </section>
 
 @if (_datosAnterioresSinTasa)
@@ -42,7 +63,25 @@
 
 <section class="emision-seccion">
     <h2 class="seccion-titulo">Deducciones del pago</h2>
-    <p class="seccion-ayuda">Cada porcentaje se aplica al importe original de los trabajos, como en el sistema anterior.</p>
+    <p class="seccion-ayuda">
+        Cada porcentaje se aplica al importe original de los trabajos. Las tasas inician en cero:
+        captura solo las deducciones que correspondan al contrato. Este cálculo no modifica el CFDI.
+    </p>
+    @if (_tipoObra == TiposDeObra.Privada)
+    {
+        <div class="aviso-documentos" role="status">
+            El «5 al millar» de obra pública no se aplica automáticamente a contratos privados.
+            Revisa y renombra las deducciones según el contrato antes de guardar.
+        </div>
+    }
+    else if (_tipoObra == TiposDeObra.Publica)
+    {
+        <div class="aviso-documentos" role="status">
+            En este flujo de obra pública, captura «5 al millar» al 0.50 % solo si corresponde
+            a tu contrato. Se informará en el complemento de impuestos locales; no disminuye
+            el total del CFDI, pero sí el importe líquido estimado.
+        </div>
+    }
     @for (var i = 0; i < _deducciones.Count; i++)
     {
         var deduccion = _deducciones[i];
@@ -92,18 +131,20 @@
     [Parameter, EditorRequired] public Func<Task<bool>> GuardarFactura { get; set; } = null!;
     [Parameter] public EventCallback AlGuardar { get; set; }
 
-    private decimal _porcentajeAmortizacion = 30m;
+    private decimal _porcentajeAmortizacion;
+    private string? _tipoObra;
     private decimal _porcentajeRetenciones;
     private decimal _porcentajeDevoluciones;
-    private decimal _porcentajeIva = 16m;
+    private decimal _porcentajeIva;
     private readonly List<DeduccionCaptura> _deducciones =
     [
-        new("5 al millar", 0.5m),
-        new("1% OBS", 1m),
-        new("ICIC", 0.2m),
-        new("ÚNETE", 0.3m)
+        new("5 al millar", 0m),
+        new("1% OBS", 0m),
+        new("ICIC", 0m),
+        new("ÚNETE", 0m)
     ];
     private DatosObraDto? _resultado;
+    private ConciliacionFiscalObraDto? _conciliacion;
     private DetalleProblema? _error;
     private bool _guardando;
     private Guid? _idCargado;
@@ -117,6 +158,7 @@
             var importe = ImporteTrabajos > 0 ? ImporteTrabajos : _resultado?.ImporteTrabajos ?? 0;
             if (importe <= 0) return null;
             if (_datosAnterioresSinTasa && !_aceptaRecalculo && _resultado is not null) return _resultado;
+            if (CoincideConGuardado(importe)) return _resultado;
             var amortizacion = Porcentaje(importe, _porcentajeAmortizacion);
             var retenciones = Porcentaje(importe, _porcentajeRetenciones);
             var devoluciones = Porcentaje(importe, _porcentajeDevoluciones);
@@ -128,24 +170,48 @@
             return new DatosObraDto(importe, _porcentajeAmortizacion, amortizacion,
                 _porcentajeRetenciones, retenciones, _porcentajeDevoluciones, devoluciones,
                 subtotal, _porcentajeIva, iva, total, deducciones,
-                total - deducciones.Sum(x => x.Importe));
+                total - deducciones.Sum(x => x.Importe), _tipoObra);
         }
     }
 
     private static decimal Porcentaje(decimal importe, decimal tasa)
         => Math.Round(importe * tasa / 100m, 6, MidpointRounding.ToEven);
 
+    private bool CoincideConGuardado(decimal importe)
+        => _resultado is { } datos && datos.ImporteTrabajos == importe &&
+           datos.TipoObra == _tipoObra &&
+           datos.PorcentajeAmortizacion == _porcentajeAmortizacion &&
+           datos.PorcentajeRetenciones == _porcentajeRetenciones &&
+           datos.PorcentajeDevoluciones == _porcentajeDevoluciones &&
+           datos.PorcentajeIva == _porcentajeIva &&
+           datos.Deducciones.Count == _deducciones.Count &&
+           datos.Deducciones.Select((deduccion, indice) =>
+               deduccion.Nombre == _deducciones[indice].Nombre &&
+               deduccion.Porcentaje == _deducciones[indice].Porcentaje).All(x => x);
+
     protected override async Task OnParametersSetAsync()
     {
         if (_idCargado == ComprobanteId) return;
         _idCargado = ComprobanteId;
         _resultado = null;
+        _conciliacion = null;
+        _tipoObra = null;
+        _porcentajeAmortizacion = 0;
+        _porcentajeRetenciones = 0;
+        _porcentajeDevoluciones = 0;
+        _porcentajeIva = 0;
+        _deducciones[0].Nombre = "5 al millar";
+        _deducciones[1].Nombre = "1% OBS";
+        _deducciones[2].Nombre = "ICIC";
+        _deducciones[3].Nombre = "ÚNETE";
+        foreach (var deduccion in _deducciones) deduccion.Porcentaje = 0;
         _datosAnterioresSinTasa = false;
         _aceptaRecalculo = false;
         var (datos, error) = await Obras.ObtenerAsync(ComprobanteId);
         _error = error;
         if (datos is null) return;
         _resultado = datos;
+        _tipoObra = datos.TipoObra;
         _porcentajeAmortizacion = datos.PorcentajeAmortizacion;
         _porcentajeRetenciones = datos.PorcentajeRetenciones ?? 0;
         _porcentajeDevoluciones = datos.PorcentajeDevoluciones ?? 0;
@@ -158,6 +224,7 @@
             _deducciones[i].Nombre = datos.Deducciones[i].Nombre;
             _deducciones[i].Porcentaje = datos.Deducciones[i].Porcentaje;
         }
+        await CargarConciliacionAsync();
     }
 
     private async Task GuardarAsync()
@@ -166,25 +233,45 @@
     private async Task<bool> GuardarDatosAsync()
     {
         if (_guardando) return false;
+        if (_tipoObra is not (TiposDeObra.Publica or TiposDeObra.Privada))
+        {
+            _error = new DetalleProblema("urn:facturacion:error:obra-tipo-invalido",
+                "Selecciona el tipo de obra", 400,
+                "Indica si el contrato corresponde a obra pública o privada.",
+                null, string.Empty, null);
+            return false;
+        }
         _guardando = true;
         _error = null;
+        _conciliacion = null;
         try
         {
             if (!await GuardarFactura()) return false;
             var peticion = new PeticionGuardarDatosObra(_porcentajeAmortizacion, _porcentajeRetenciones,
                 _porcentajeDevoluciones, _porcentajeIva,
-                [.. _deducciones.Select(x => new PeticionDeduccionDeObra(x.Nombre, x.Porcentaje))]);
+                [.. _deducciones.Select(x => new PeticionDeduccionDeObra(x.Nombre, x.Porcentaje))], _tipoObra);
             var (datos, error) = await Obras.GuardarAsync(ComprobanteId, peticion);
             _resultado = datos;
             if (datos is not null) _datosAnterioresSinTasa = false;
             _error = error;
-            if (datos is not null) await AlGuardar.InvokeAsync();
+            if (datos is not null)
+            {
+                await CargarConciliacionAsync();
+                await AlGuardar.InvokeAsync();
+            }
             return datos is not null;
         }
         finally
         {
             _guardando = false;
         }
+    }
+
+    private async Task CargarConciliacionAsync()
+    {
+        var (conciliacion, error) = await Obras.ObtenerConciliacionFiscalAsync(ComprobanteId);
+        _conciliacion = conciliacion;
+        if (error is not null) _error = error;
     }
 
     private async Task VistaPreviaAsync()

@@ -44,19 +44,20 @@ public sealed class GeneradorDeXmlCartaPorte(GeneradorDeXmlCfdi generadorCfdi)
                 new XAttribute("IdCCP", traslado.IdCcp!),
                 new XAttribute("TranspInternac", "No"),
                 new XAttribute("TotalDistRec", Decimal(traslado.DistanciaRecorridaKm, 2)),
-                Ubicaciones(comprobante, traslado, zonaHoraria),
+                Ubicaciones(traslado, zonaHoraria),
                 Mercancias(traslado, mercancias, pesoTotal),
                 FiguraTransporte(traslado))));
 
         return documento;
     }
 
-    private static XElement Ubicaciones(Comprobante comprobante, TrasladoCartaPorte traslado, TimeZoneInfo zonaHoraria)
+    private static XElement Ubicaciones(TrasladoCartaPorte traslado, TimeZoneInfo zonaHoraria)
         => new(CartaPorte + "Ubicaciones", traslado.Ubicaciones
             .OrderBy(x => x.Orden)
             .Select(ubicacion => new XElement(CartaPorte + "Ubicacion",
                 new XAttribute("TipoUbicacion", ubicacion.Tipo),
-                new XAttribute("RFCRemitenteDestinatario", comprobante.EmisorRfc),
+                new XAttribute("RFCRemitenteDestinatario", ubicacion.RfcRemitenteDestinatario!),
+                Opcional("NombreRemitenteDestinatario", ubicacion.NombreRemitenteDestinatario),
                 new XAttribute("FechaHoraSalidaLlegada", FechaLocal(ubicacion.Tipo == "Origen"
                     ? traslado.FechaSalidaUtc : traslado.FechaLlegadaUtc, zonaHoraria)),
                 ubicacion.Tipo == "Destino"
@@ -64,7 +65,7 @@ public sealed class GeneradorDeXmlCartaPorte(GeneradorDeXmlCfdi generadorCfdi)
                     : null,
                 new XElement(CartaPorte + "Domicilio",
                     new XAttribute("Calle", ubicacion.Calle),
-                    new XAttribute("NumeroExterior", ubicacion.NumeroExterior),
+                    Opcional("NumeroExterior", ubicacion.NumeroExterior),
                     Opcional("NumeroInterior", ubicacion.NumeroInterior),
                     new XAttribute("Municipio", ubicacion.Municipio),
                     new XAttribute("Estado", ubicacion.Estado),
@@ -82,6 +83,8 @@ public sealed class GeneradorDeXmlCartaPorte(GeneradorDeXmlCfdi generadorCfdi)
                 new XAttribute("Descripcion", mercancia.Descripcion),
                 new XAttribute("Cantidad", Decimal(mercancia.Cantidad, 6)),
                 new XAttribute("ClaveUnidad", mercancia.ClaveUnidad),
+                Opcional("Unidad", mercancia.Unidad),
+                Opcional("Dimensiones", mercancia.Dimensiones),
                 new XAttribute("PesoEnKg", Decimal(RedondearPeso(mercancia.PesoEnKg), 3)))),
             new XElement(CartaPorte + "Autotransporte",
                 new XAttribute("PermSCT", traslado.VehiculoTipoPermiso!),
@@ -107,6 +110,7 @@ public sealed class GeneradorDeXmlCartaPorte(GeneradorDeXmlCfdi generadorCfdi)
     {
         if (traslado.IdCcp is null || traslado.VehiculoAnioModelo is null || traslado.VehiculoPesoBruto is null ||
             traslado.Ubicaciones.Count != 2 || traslado.Mercancias.Count == 0 ||
+            traslado.Ubicaciones.Any(x => string.IsNullOrWhiteSpace(x.RfcRemitenteDestinatario)) ||
             new[]
             {
                 traslado.VehiculoConfiguracionAutotransporte, traslado.VehiculoPlaca, traslado.VehiculoAseguradora,
@@ -116,6 +120,19 @@ public sealed class GeneradorDeXmlCartaPorte(GeneradorDeXmlCfdi generadorCfdi)
             return ErrorNegocio.Regla(
                 "carta-porte-datos-incompletos",
                 "Guarda de nuevo el traslado después de elegir un vehículo y operador activos antes de validar su XML.");
+
+        var placa = LimpiarPlaca(traslado.VehiculoPlaca!);
+        if (traslado.DistanciaRecorridaKm < 0.01m || traslado.DistanciaRecorridaKm > 99999m ||
+            Math.Round(traslado.DistanciaRecorridaKm, 2) != traslado.DistanciaRecorridaKm ||
+            traslado.VehiculoPesoBruto.Value < 0.01m ||
+            Math.Round(traslado.VehiculoPesoBruto.Value, 2) != traslado.VehiculoPesoBruto.Value ||
+            placa.Length is < 5 or > 7 || placa.Any(c => c is not (>= 'A' and <= 'Z' or >= '0' and <= '9')) ||
+            (traslado.FiguraTipo == "01" && string.IsNullOrWhiteSpace(traslado.FiguraNumeroLicencia)) ||
+            traslado.Mercancias.Any(x => x.Cantidad < 0.000001m || Math.Round(x.Cantidad, 6) != x.Cantidad ||
+                x.PesoEnKg < 0.001m || Math.Round(x.PesoEnKg, 3) != x.PesoEnKg))
+            return ErrorNegocio.Regla(
+                "carta-porte-valores-invalidos",
+                "La distancia, vehículo, licencia del operador o las mercancías no cumplen el formato de Carta Porte 3.1. Corrige el borrador o el catálogo de transporte y vuelve a validar.");
 
         return null;
     }

@@ -23,6 +23,12 @@ public sealed class GeneradorDePdfEstimacionObra
                 pagina.Header().Column(encabezado =>
                 {
                     encabezado.Item().Text("ESTIMACIÓN DE OBRA").Bold().FontSize(17);
+                    encabezado.Item().Text(obra.TipoObra switch
+                    {
+                        TiposDeObra.Publica => "Obra pública",
+                        TiposDeObra.Privada => "Obra privada",
+                        _ => "Tipo de obra sin clasificar"
+                    }).FontSize(9);
                     encabezado.Item().PaddingTop(3).Text("BORRADOR - DOCUMENTO INTERNO SIN VALIDEZ FISCAL")
                         .Bold().FontSize(9);
                     encabezado.Item().PaddingTop(7).LineHorizontal(1);

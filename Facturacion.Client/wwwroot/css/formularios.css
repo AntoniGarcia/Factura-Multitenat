@@ -228,6 +228,12 @@
     color: var(--acento);
 }
 
+.concepto-editor-aviso {
+    grid-column: 1 / -1;
+    color: var(--estado-advertencia-texto);
+    font-size: 0.875rem;
+}
+
 .conceptos-vacio {
     display: flex;
     align-items: center;

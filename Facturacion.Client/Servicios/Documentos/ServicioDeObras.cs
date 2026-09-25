@@ -25,6 +25,15 @@ public sealed class ServicioDeObras(IHttpClientFactory fabrica)
         return await LeerAsync(respuesta, ct);
     }
 
+    public async Task<(ConciliacionFiscalObraDto? Exito, DetalleProblema? Error)> ObtenerConciliacionFiscalAsync(
+        Guid comprobanteId, CancellationToken ct = default)
+    {
+        using var respuesta = await Cliente.GetAsync($"api/obras/comprobantes/{comprobanteId}/conciliacion-fiscal", ct);
+        return respuesta.IsSuccessStatusCode
+            ? (await respuesta.Content.ReadFromJsonAsync<ConciliacionFiscalObraDto>(ct), null)
+            : (null, await respuesta.Content.ReadFromJsonAsync<DetalleProblema>(ct));
+    }
+
     public async Task<(ArchivoParaDescarga? Archivo, DetalleProblema? Error)> ObtenerEstimacionPdfAsync(
         Guid comprobanteId, CancellationToken ct = default)
     {

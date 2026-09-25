@@ -1,7 +1,6 @@
 using System.Globalization;
 using System.Xml.Linq;
 using Facturacion.Server.Data.Entidades.Documentos;
-using Facturacion.Server.Modules.Documentos.Impuestos;
 
 namespace Facturacion.Server.Modules.Documentos.Salidas;
 
@@ -58,60 +57,15 @@ public sealed class GeneradorDeXmlCfdi
 
         var d = datos.Decimales;
 
-        // Paso único de redondeo. Todo lo que viene después suma estas cifras.
-        var conceptos = comprobante.Conceptos
-            .OrderBy(c => c.Orden)
-            .Select(c => new
-            {
-                Concepto = c,
-                Importe = Redondear(c.Importe, d),
-                Descuento = Redondear(c.Descuento, d),
-                Impuestos = c.Impuestos.Select(i => new
-                {
-                    Impuesto = i,
-                    Base = Redondear(i.Base, d),
-                    Importe = i.Importe is { } imp ? Redondear(imp, d) : (decimal?)null
-                }).ToArray()
-            })
-            .ToArray();
-
-        var subTotal = conceptos.Sum(c => c.Importe);
-        var descuento = conceptos.Sum(c => c.Descuento);
-
-        var planos = conceptos.SelectMany(c => c.Impuestos.Select(i => new
-        {
-            i.Impuesto.Impuesto,
-            i.Impuesto.TipoFactor,
-            i.Impuesto.TasaOCuota,
-            i.Impuesto.EsRetencion,
-            i.Base,
-            i.Importe
-        })).ToArray();
-
-        var traslados = planos
-            .Where(i => !i.EsRetencion && i.Importe is not null)
-            .GroupBy(i => (i.Impuesto, i.TipoFactor, i.TasaOCuota))
-            .Select(g => new
-            {
-                g.Key.Impuesto,
-                g.Key.TipoFactor,
-                g.Key.TasaOCuota,
-                Base = g.Sum(x => x.Base),
-                Importe = g.Sum(x => x.Importe!.Value)
-            })
-            .OrderBy(g => g.Impuesto).ThenBy(g => g.TasaOCuota)
-            .ToArray();
-
-        var retenciones = planos
-            .Where(i => i.EsRetencion && i.Importe is not null)
-            .GroupBy(i => i.Impuesto)
-            .Select(g => new { Impuesto = g.Key, Importe = g.Sum(x => x.Importe!.Value) })
-            .OrderBy(g => g.Impuesto)
-            .ToArray();
-
-        var totalTrasladados = traslados.Sum(t => t.Importe);
-        var totalRetenidos = retenciones.Sum(r => r.Importe);
-        var total = subTotal - descuento + totalTrasladados - totalRetenidos;
+        var proyeccion = ProyeccionMonetariaCfdi.Calcular(comprobante, d);
+        var conceptos = proyeccion.Conceptos;
+        var traslados = proyeccion.Traslados;
+        var retenciones = proyeccion.Retenciones;
+        var subTotal = proyeccion.SubTotal;
+        var descuento = proyeccion.Descuento;
+        var totalTrasladados = proyeccion.TotalImpuestosTrasladados;
+        var totalRetenidos = proyeccion.TotalImpuestosRetenidos;
+        var total = proyeccion.Total;
 
         var raiz = new XElement(Cfdi + "Comprobante",
             new XAttribute(XNamespace.Xmlns + "cfdi", Cfdi.NamespaceName),
@@ -257,9 +211,6 @@ public sealed class GeneradorDeXmlCfdi
 
     private static XAttribute? Opcional(string nombre, string? valor)
         => string.IsNullOrWhiteSpace(valor) ? null : new XAttribute(nombre, valor);
-
-    private static decimal Redondear(decimal valor, int decimales)
-        => Math.Round(valor, decimales, MotorDeImpuestos.ModoDeRedondeo);
 
     private static string Moneda(decimal valor, int decimales)
         => valor.ToString("F" + decimales.ToString(CultureInfo.InvariantCulture), CultureInfo.InvariantCulture);

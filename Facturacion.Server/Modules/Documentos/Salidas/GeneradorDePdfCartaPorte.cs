@@ -38,7 +38,7 @@ public sealed class GeneradorDePdfCartaPorte
                 c.Item().Text($"Salida: {Fecha(traslado.FechaSalidaUtc, zona)}   ·   Llegada: {Fecha(traslado.FechaLlegadaUtc, zona)}   ·   Distancia: {traslado.DistanciaRecorridaKm:N2} km");
                 c.Item().PaddingTop(8).Text("Origen y destino").Bold().FontSize(10);
                 foreach (var ubicacion in traslado.Ubicaciones.OrderBy(x => x.Orden))
-                    c.Item().PaddingTop(3).Border(0.5f).Padding(4).Text($"{ubicacion.Tipo}: {ubicacion.Calle} {ubicacion.NumeroExterior} {ubicacion.NumeroInterior}, {ubicacion.Municipio}, {ubicacion.Estado}, C.P. {ubicacion.CodigoPostal}");
+                    c.Item().PaddingTop(3).Border(0.5f).Padding(4).Text($"{ubicacion.Tipo}: {ubicacion.NombreRemitenteDestinatario ?? ubicacion.RfcRemitenteDestinatario} · RFC {ubicacion.RfcRemitenteDestinatario} · {ubicacion.Calle} {ubicacion.NumeroExterior} {ubicacion.NumeroInterior}, {ubicacion.Municipio}, {ubicacion.Estado}, C.P. {ubicacion.CodigoPostal}");
                 c.Item().PaddingTop(8).Text("Autotransporte y operador").Bold().FontSize(10);
                 c.Item().Text($"Vehículo: {traslado.VehiculoPlaca} · Configuración {traslado.VehiculoConfiguracionAutotransporte} · Permiso {traslado.VehiculoTipoPermiso} {traslado.VehiculoNumeroPermiso}");
                 c.Item().Text($"Seguro: {traslado.VehiculoAseguradora} · Póliza {traslado.VehiculoPoliza}");
@@ -46,11 +46,35 @@ public sealed class GeneradorDePdfCartaPorte
                 c.Item().PaddingTop(8).Text("Mercancías").Bold().FontSize(10);
                 c.Item().Table(tabla =>
                 {
-                    tabla.ColumnsDefinition(x => { x.ConstantColumn(70); x.RelativeColumn(); x.ConstantColumn(60); x.ConstantColumn(60); x.ConstantColumn(65); });
-                    tabla.Header(h => { foreach (var texto in new[] { "CLAVE SAT", "DESCRIPCIÓN", "CANTIDAD", "UNIDAD", "PESO KG" }) h.Cell().Background(Colors.Grey.Lighten3).Padding(3).Text(texto).Bold().FontSize(7); });
-                    foreach (var m in traslado.Mercancias.OrderBy(x => x.Orden)) { tabla.Cell().Padding(3).Text(m.ClaveProdServ); tabla.Cell().Padding(3).Text(m.Descripcion); tabla.Cell().Padding(3).AlignRight().Text(m.Cantidad.ToString("N6", CultureInfo.InvariantCulture)); tabla.Cell().Padding(3).Text(m.ClaveUnidad); tabla.Cell().Padding(3).AlignRight().Text(m.PesoEnKg.ToString("N3", CultureInfo.InvariantCulture)); }
+                    tabla.ColumnsDefinition(x => { x.ConstantColumn(62); x.RelativeColumn(); x.ConstantColumn(55); x.ConstantColumn(57); x.ConstantColumn(60); x.ConstantColumn(64); });
+                    tabla.Header(h => { foreach (var texto in new[] { "CLAVE SAT", "DESCRIPCIÓN", "CANTIDAD", "UNIDAD", "PESO UNIT. KG", "PESO TOTAL KG" }) h.Cell().Background(Colors.Grey.Lighten3).Padding(3).Text(texto).Bold().FontSize(7); });
+                    foreach (var m in traslado.Mercancias.OrderBy(x => x.Orden))
+                    {
+                        tabla.Cell().Padding(3).Text(m.ClaveProdServ);
+                        tabla.Cell().Padding(3).Text(string.IsNullOrWhiteSpace(m.Dimensiones) ? m.Descripcion : $"{m.Descripcion} · {m.Dimensiones}");
+                        tabla.Cell().Padding(3).AlignRight().Text(m.Cantidad.ToString("N6", CultureInfo.InvariantCulture));
+                        tabla.Cell().Padding(3).Text(string.IsNullOrWhiteSpace(m.Unidad) ? m.ClaveUnidad : $"{m.ClaveUnidad} · {m.Unidad}");
+                        tabla.Cell().Padding(3).AlignRight().Text(m.PesoUnitarioKg?.ToString("N6", CultureInfo.InvariantCulture) ?? "—");
+                        tabla.Cell().Padding(3).AlignRight().Text(m.PesoEnKg.ToString("N3", CultureInfo.InvariantCulture));
+                    }
                 });
                 c.Item().PaddingTop(5).AlignRight().Text($"Peso bruto total: {traslado.PesoBrutoTotalKg:N3} kg").Bold();
+                c.Item().AlignRight().Text($"Renglones de mercancía: {traslado.Mercancias.Count}");
+                foreach (var grupo in traslado.Mercancias.GroupBy(x => x.ClaveUnidad).OrderBy(x => x.Key))
+                    c.Item().AlignRight().Text($"Cantidad total {grupo.Key}: {grupo.Sum(x => x.Cantidad).ToString("0.######", CultureInfo.InvariantCulture)}");
+
+                if (comprobante.Relacionados.Count > 0)
+                {
+                    c.Item().PaddingTop(8).Text("CFDI relacionados").Bold().FontSize(10);
+                    foreach (var relacionado in comprobante.Relacionados.OrderBy(x => x.TipoRelacion).ThenBy(x => x.UuidRelacionado))
+                        c.Item().Text($"Tipo {relacionado.TipoRelacion} · UUID {relacionado.UuidRelacionado:D}").FontSize(7);
+                }
+
+                if (!string.IsNullOrWhiteSpace(comprobante.Observaciones))
+                {
+                    c.Item().PaddingTop(8).Text("Observaciones internas").Bold().FontSize(10);
+                    c.Item().Text(comprobante.Observaciones);
+                }
             });
             pagina.Footer().PaddingTop(6).BorderTop(0.5f).PaddingTop(4).Element(c => Pie(c, comprobante, esBorrador));
         })).GeneratePdf();

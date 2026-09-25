@@ -1,14 +1,22 @@
 namespace Facturacion.Shared.Obras;
 
+public static class TiposDeObra
+{
+    public const string Publica = "publica";
+    public const string Privada = "privada";
+}
+
 public sealed record DeduccionDeObraDto(string Nombre, decimal Porcentaje, decimal Importe);
 public sealed record PeticionDeduccionDeObra(string Nombre, decimal Porcentaje);
+public sealed record ConciliacionFiscalObraDto(bool Coincide, string Mensaje);
 
 public sealed record PeticionGuardarDatosObra(
     decimal PorcentajeAmortizacion,
     decimal PorcentajeRetenciones,
     decimal PorcentajeDevoluciones,
     decimal PorcentajeIva,
-    IReadOnlyList<PeticionDeduccionDeObra> Deducciones);
+    IReadOnlyList<PeticionDeduccionDeObra> Deducciones,
+    string? TipoObra = null);
 
 public sealed record DatosObraDto(
     decimal ImporteTrabajos,
@@ -23,4 +31,5 @@ public sealed record DatosObraDto(
     decimal IvaEstimado,
     decimal TotalEstimacion,
     IReadOnlyList<DeduccionDeObraDto> Deducciones,
-    decimal ImporteLiquido);
+    decimal ImporteLiquido,
+    string? TipoObra = null);

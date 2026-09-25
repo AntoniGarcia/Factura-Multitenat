@@ -38,6 +38,7 @@ public static class LectorDeCsvDeProductos
         var renglones = new List<RenglonDeImportacion>();
         var numero = 0;
         var primera = true;
+        var formatoExportado = false;
 
         while (lector.ReadLine() is { } linea)
         {
@@ -47,7 +48,7 @@ public static class LectorDeCsvDeProductos
 
                 // Se salta el encabezado solo si de verdad lo es; si el archivo viene sin
                 // encabezado, el primer renglón son datos y hay que leerlo.
-                if (EsEncabezado(linea)) continue;
+                if (EsEncabezado(linea, out formatoExportado)) continue;
             }
 
             if (string.IsNullOrWhiteSpace(linea)) continue;
@@ -61,7 +62,7 @@ public static class LectorDeCsvDeProductos
                 break;
             }
 
-            renglones.Add(LeerRenglon(numero, linea));
+            renglones.Add(LeerRenglon(numero, linea, formatoExportado));
         }
 
         return new VistaPreviaDeImportacion(
@@ -70,14 +71,27 @@ public static class LectorDeCsvDeProductos
             renglones.Count(r => r.Error is not null));
     }
 
-    private static bool EsEncabezado(string linea)
-        => linea.Contains("ClaveProdServ", StringComparison.OrdinalIgnoreCase)
-           || linea.Contains("Descripcion", StringComparison.OrdinalIgnoreCase)
-           || linea.Contains("Descripción", StringComparison.OrdinalIgnoreCase);
-
-    private static RenglonDeImportacion LeerRenglon(int numero, string linea)
+    private static bool EsEncabezado(string linea, out bool formatoExportado)
     {
         var campos = PartirCsv(linea);
+        formatoExportado = campos.Count > 1
+            && campos[0].Trim().Equals("Codigo", StringComparison.OrdinalIgnoreCase)
+            && campos[1].Trim().Equals("ClaveProdServ", StringComparison.OrdinalIgnoreCase);
+
+        return formatoExportado || campos[0].Trim().Equals("ClaveProdServ", StringComparison.OrdinalIgnoreCase);
+    }
+
+    private static RenglonDeImportacion LeerRenglon(int numero, string linea, bool formatoExportado)
+    {
+        var campos = PartirCsv(linea);
+
+        if (formatoExportado)
+        {
+            if (campos.Count < 10)
+                return Malo(numero, $"El archivo exportado requiere 10 columnas y llegaron {campos.Count}.");
+
+            campos.RemoveAt(0); // El código interno es informativo; la coincidencia se resuelve por clave y descripción.
+        }
 
         if (campos.Count < 7)
             return new RenglonDeImportacion(numero, null,
@@ -110,13 +124,18 @@ public static class LectorDeCsvDeProductos
 
         var iva = campos.Count > 7 ? campos[7].Trim() : string.Empty;
 
+        var activoExplicito = campos.Count > 8;
+        var activo = true;
+        if (activoExplicito && !TryLeerActivo(campos[8], out activo))
+            return Malo(numero, $"El valor de Activo «{campos[8]}» no se entiende. Escribe Sí o No.");
+
         var impuestos = TraducirIva(iva, objetoImp, out var errorIva);
         if (errorIva is not null) return Malo(numero, errorIva);
 
         return new RenglonDeImportacion(numero,
             new PeticionGuardarProducto(
-                claveProdServ, claveUnidad, unidad, descripcion, precio, peso, objetoImp, impuestos, Activo: true),
-            null);
+                claveProdServ, claveUnidad, unidad, descripcion, precio, peso, objetoImp, impuestos, activo),
+            null, activoExplicito);
     }
 
     /// <summary>
@@ -156,8 +175,9 @@ public static class LectorDeCsvDeProductos
             return [];
         }
 
-        // «16» quiere decir 16 %, no 1600 %. Por debajo de 1 se toma como fracción ya escrita.
-        var tasa = valor > 1 ? valor / 100m : valor;
+        // Con el signo %, incluso «0.16%» es un porcentaje. Sin él, los valores mayores
+        // que uno son porcentajes y los menores o iguales a uno se leen como fracción.
+        var tasa = iva.Contains('%') || valor > 1 ? valor / 100m : valor;
 
         return [new ImpuestoDeProductoDto("002", "Tasa", tasa, EsRetencion: false)];
     }
@@ -170,6 +190,22 @@ public static class LectorDeCsvDeProductos
         var limpio = (texto ?? string.Empty).Trim().Replace("$", string.Empty).Replace(",", string.Empty);
 
         return decimal.TryParse(limpio, NumberStyles.Any, CultureInfo.InvariantCulture, out valor);
+    }
+
+    private static bool TryLeerActivo(string texto, out bool activo)
+    {
+        switch (texto.Trim().ToUpperInvariant())
+        {
+            case "SÍ" or "SI" or "TRUE" or "1":
+                activo = true;
+                return true;
+            case "NO" or "FALSE" or "0":
+                activo = false;
+                return true;
+            default:
+                activo = false;
+                return false;
+        }
     }
 
     /// <summary>

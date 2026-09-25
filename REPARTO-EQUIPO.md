@@ -1,5 +1,9 @@
 # Reparto del trabajo — Sistema de facturación CFDI 4.0
 
+> **Acuerdo histórico (11 de agosto de 2026).** El alcance cambió después y Luis
+> absorbió ambas mitades. Ver [el estado vigente](REPORTE_ESTADO_SISTEMA.md) antes de
+> usar esta lista de módulos incluidos o excluidos como plan actual.
+
 Acuerdo entre los dos desarrolladores. Va en la raíz del repositorio.
 Versión del 11 de agosto de 2026.
 

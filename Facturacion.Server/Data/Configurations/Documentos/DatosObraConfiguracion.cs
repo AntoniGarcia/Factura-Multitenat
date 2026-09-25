@@ -14,6 +14,7 @@ public sealed class DatosObraConfiguracion : IEntityTypeConfiguration<DatosObra>
         configuracion.HasOne(x => x.Comprobante).WithOne()
             .HasForeignKey<DatosObra>(x => x.ComprobanteId)
             .OnDelete(DeleteBehavior.Cascade);
+        configuracion.Property(x => x.TipoObra).HasMaxLength(10);
         configuracion.Property(x => x.Retenciones).HasPrecision(18, 6);
         configuracion.Property(x => x.Devoluciones).HasPrecision(18, 6);
         configuracion.Property(x => x.PorcentajeAmortizacion).HasPrecision(8, 4);

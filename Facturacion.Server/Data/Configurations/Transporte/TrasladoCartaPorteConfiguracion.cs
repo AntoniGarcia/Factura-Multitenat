@@ -41,6 +41,7 @@ public sealed class UbicacionCartaPorteConfiguracion : IEntityTypeConfiguration<
     {
         c.ToTable("UbicacionesCartaPorte"); c.HasKey(x => x.Id);
         c.Property(x => x.Tipo).HasMaxLength(8); c.Property(x => x.RfcRemitenteDestinatario).HasMaxLength(13);
+        c.Property(x => x.NombreRemitenteDestinatario).HasMaxLength(254);
         c.Property(x => x.Calle).HasMaxLength(150); c.Property(x => x.NumeroExterior).HasMaxLength(55); c.Property(x => x.NumeroInterior).HasMaxLength(55);
         c.Property(x => x.Estado).HasMaxLength(3); c.Property(x => x.Municipio).HasMaxLength(3); c.Property(x => x.CodigoPostal).HasMaxLength(5);
         c.HasIndex(x => new { x.TrasladoCartaPorteId, x.Orden }).IsUnique();
@@ -53,7 +54,9 @@ public sealed class MercanciaCartaPorteConfiguracion : IEntityTypeConfiguration<
     {
         c.ToTable("MercanciasCartaPorte"); c.HasKey(x => x.Id);
         c.Property(x => x.ClaveProdServ).HasMaxLength(8); c.Property(x => x.ClaveUnidad).HasMaxLength(20); c.Property(x => x.Descripcion).HasMaxLength(1000);
+        c.Property(x => x.Unidad).HasMaxLength(20); c.Property(x => x.Dimensiones).HasMaxLength(14);
         c.Property(x => x.Cantidad).HasPrecision(18, 6); c.Property(x => x.PesoEnKg).HasPrecision(18, 6);
+        c.Property(x => x.PesoUnitarioKg).HasPrecision(18, 6);
         c.HasIndex(x => new { x.TrasladoCartaPorteId, x.Orden }).IsUnique();
     }
 }

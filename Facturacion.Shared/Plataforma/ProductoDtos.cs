@@ -62,7 +62,8 @@ public sealed record PaginaDeProductos(
 public sealed record RenglonDeImportacion(
     int Numero,
     PeticionGuardarProducto? Producto,
-    string? Error);
+    string? Error,
+    bool ActivoExplicito = false);
 
 /// <summary>
 /// Resultado de analizar un CSV. No guarda nada: es la vista previa que el usuario confirma.

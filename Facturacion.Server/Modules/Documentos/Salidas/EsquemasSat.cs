@@ -68,6 +68,7 @@ public sealed class EsquemasSat
     public const string EspacioDeNombresCartaPorte31 = "http://www.sat.gob.mx/CartaPorte31";
     public const string EspacioDeNombresNotariosPublicos = "http://www.sat.gob.mx/notariospublicos";
     public const string EspacioDeNombresComercioExterior20 = "http://www.sat.gob.mx/ComercioExterior20";
+    public const string EspacioDeNombresImpuestosLocales = "http://www.sat.gob.mx/implocal";
 
     private readonly string _raiz;
     private readonly Lazy<XmlSchemaSet> _esquema;
@@ -75,6 +76,7 @@ public sealed class EsquemasSat
     private readonly Lazy<XmlSchemaSet> _esquemaNotaria;
     private readonly Lazy<XmlSchemaSet> _esquemaComercioExterior;
     private readonly Lazy<XmlSchemaSet> _esquemaCfdiComercioExterior;
+    private readonly Lazy<XmlSchemaSet> _esquemaCfdiImpuestosLocales;
     private readonly Lazy<XslCompiledTransform> _cadenaOriginal;
 
     public EsquemasSat(IHostEnvironment entorno, Microsoft.Extensions.Options.IOptions<OpcionesDeEsquemasSat> opciones)
@@ -93,6 +95,7 @@ public sealed class EsquemasSat
         _esquemaNotaria = new Lazy<XmlSchemaSet>(CargarEsquemaNotaria);
         _esquemaComercioExterior = new Lazy<XmlSchemaSet>(CargarEsquemaComercioExterior);
         _esquemaCfdiComercioExterior = new Lazy<XmlSchemaSet>(CargarEsquemaCfdiComercioExterior);
+        _esquemaCfdiImpuestosLocales = new Lazy<XmlSchemaSet>(CargarEsquemaCfdiImpuestosLocales);
         _cadenaOriginal = new Lazy<XslCompiledTransform>(CargarCadenaOriginal);
     }
 
@@ -107,16 +110,21 @@ public sealed class EsquemasSat
 
     public XmlSchemaSet EsquemaCfdiComercioExterior => _esquemaCfdiComercioExterior.Value;
 
+    public XmlSchemaSet EsquemaCfdiImpuestosLocales => _esquemaCfdiImpuestosLocales.Value;
+
     public XslCompiledTransform CadenaOriginal => _cadenaOriginal.Value;
 
-    private XmlSchemaSet CargarEsquema() => CargarEsquema(incluirCartaPorte: false, incluirNotaria: false, incluirComercio: false);
+    private XmlSchemaSet CargarEsquema() => CargarEsquema(incluirCartaPorte: false, incluirNotaria: false, incluirComercio: false, incluirImpuestosLocales: false);
 
-    private XmlSchemaSet CargarEsquemaCartaPorte() => CargarEsquema(incluirCartaPorte: true, incluirNotaria: false, incluirComercio: false);
+    private XmlSchemaSet CargarEsquemaCartaPorte() => CargarEsquema(incluirCartaPorte: true, incluirNotaria: false, incluirComercio: false, incluirImpuestosLocales: false);
 
-    private XmlSchemaSet CargarEsquemaNotaria() => CargarEsquema(incluirCartaPorte: false, incluirNotaria: true, incluirComercio: false);
+    private XmlSchemaSet CargarEsquemaNotaria() => CargarEsquema(incluirCartaPorte: false, incluirNotaria: true, incluirComercio: false, incluirImpuestosLocales: false);
 
     private XmlSchemaSet CargarEsquemaCfdiComercioExterior()
-        => CargarEsquema(incluirCartaPorte: false, incluirNotaria: false, incluirComercio: true);
+        => CargarEsquema(incluirCartaPorte: false, incluirNotaria: false, incluirComercio: true, incluirImpuestosLocales: false);
+
+    private XmlSchemaSet CargarEsquemaCfdiImpuestosLocales()
+        => CargarEsquema(incluirCartaPorte: false, incluirNotaria: false, incluirComercio: false, incluirImpuestosLocales: true);
 
     private XmlSchemaSet CargarEsquemaComercioExterior()
     {
@@ -136,12 +144,13 @@ public sealed class EsquemasSat
         return conjunto;
     }
 
-    private XmlSchemaSet CargarEsquema(bool incluirCartaPorte, bool incluirNotaria, bool incluirComercio)
+    private XmlSchemaSet CargarEsquema(bool incluirCartaPorte, bool incluirNotaria, bool incluirComercio, bool incluirImpuestosLocales)
     {
         var principal = Path.Combine(_raiz, "cfdv40.xsd");
         var cartaPorte = Path.Combine(_raiz, "CartaPorte31.xsd");
         var notaria = Path.Combine(_raiz, "notariospublicos.xsd");
         var comercio = Path.Combine(_raiz, "ComercioExterior20.xsd");
+        var impuestosLocales = Path.Combine(_raiz, "implocal.xsd");
 
         if (!File.Exists(principal))
             throw new FileNotFoundException(
@@ -161,6 +170,10 @@ public sealed class EsquemasSat
         if (incluirComercio && !File.Exists(comercio))
             throw new FileNotFoundException(
                 $"Falta 'ComercioExterior20.xsd' en '{_raiz}'. Descárgalo del portal del SAT.", comercio);
+
+        if (incluirImpuestosLocales && !File.Exists(impuestosLocales))
+            throw new FileNotFoundException(
+                $"Falta 'implocal.xsd' en '{_raiz}'. Descárgalo del portal del SAT.", impuestosLocales);
 
         var conjunto = new XmlSchemaSet { XmlResolver = new ResolutorDeEsquemasSat(_raiz) };
 
@@ -200,6 +213,15 @@ public sealed class EsquemasSat
                 DtdProcessing = DtdProcessing.Prohibit
             });
             conjunto.Add(EspacioDeNombresComercioExterior20, lectorComercio);
+        }
+        if (incluirImpuestosLocales)
+        {
+            using var lectorImpuestosLocales = XmlReader.Create(impuestosLocales, new XmlReaderSettings
+            {
+                XmlResolver = new ResolutorDeEsquemasSat(_raiz),
+                DtdProcessing = DtdProcessing.Prohibit
+            });
+            conjunto.Add(EspacioDeNombresImpuestosLocales, lectorImpuestosLocales);
         }
         conjunto.Compile();
 

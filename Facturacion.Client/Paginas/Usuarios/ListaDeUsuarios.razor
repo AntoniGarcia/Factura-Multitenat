@@ -194,7 +194,7 @@ else
             var confirmado = await Confirmacion.ConfirmarAsync(
                 "Desactivar usuario",
                 $"«{usuario.Nombre}» ya no podrá iniciar sesión con acceso a esta empresa. " +
-                "Su acceso se corta en un máximo de quince minutos, cuando expire el que ya tenía abierto.",
+                "Su acceso se corta en un máximo de 15 minutos, cuando expire el token actual.",
                 "Desactivar", esPeligrosa: true);
 
             if (!confirmado) return;
