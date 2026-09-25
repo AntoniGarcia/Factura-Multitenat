@@ -1,6 +1,7 @@
 using Facturacion.Server.Data;
 using Facturacion.Server.Data.Entidades.Documentos;
 using Facturacion.Server.Modules.Documentos.Pac;
+using Facturacion.Server.Modules.Documentos.Obras;
 using Facturacion.Server.Modules.Documentos.Salidas;
 using Facturacion.Shared.Comun;
 using Facturacion.Shared.Contratos;
@@ -130,19 +131,54 @@ public sealed class ServicioDeTimbrado(
                 "comprobante-no-timbrable",
                 $"El comprobante está en '{comprobante.Estatus}' y no se puede timbrar desde ahí.");
 
-        if (comprobante.Exportacion == "02")
-            return ErrorNegocio.Regla("comercio-timbrado-pendiente",
-                "La exportación definitiva requiere Comercio Exterior 2.0; su timbrado aún no está disponible.");
+        if (comprobante.TipoDeComprobante == TiposDeComprobante.Ingreso)
+        {
+            var decimalesMoneda = await baseDeDatos.SatMonedas.AsNoTracking()
+                .Where(x => x.Clave == comprobante.Moneda)
+                .Select(x => (int?)x.Decimales)
+                .FirstOrDefaultAsync(ct);
+            if (decimalesMoneda is null)
+                return ErrorNegocio.Validacion("moneda-desconocida",
+                    "La moneda de la factura no está en el catálogo del SAT.");
+            if (!ProyeccionMonetariaCfdi.Calcular(comprobante, decimalesMoneda.Value)
+                    .CoincideCon(comprobante))
+                return ErrorNegocio.Regla("totales-del-borrador-desactualizados",
+                    "Los totales guardados no coinciden con el XML en los decimales de la moneda. Guarda de nuevo el borrador antes de timbrarlo; no se consumió folio ni timbre.");
+        }
 
-        if (await baseDeDatos.DatosObra.AsNoTracking()
-            .AnyAsync(x => x.ComprobanteId == comprobanteId, ct))
-            return ErrorNegocio.Regla("obra-timbrado-pendiente",
-                "Las estimaciones de obra permanecen en borrador hasta definir su representación fiscal en CFDI 4.0.");
+        var obra = await baseDeDatos.DatosObra.AsNoTracking()
+            .FirstOrDefaultAsync(x => x.ComprobanteId == comprobanteId, ct);
+        if (obra is not null)
+        {
+            if (!await baseDeDatos.Empresas.AsNoTracking()
+                .AnyAsync(x => x.Id == comprobante.EmpresaId && x.LicObras, ct))
+                return ErrorNegocio.Regla("modulo-obras-no-contratado",
+                    "Esta empresa no tiene activo el módulo de Constructoras.");
+            if (ValidadorFiscalDeObra.Validar(comprobante, obra) is { } errorObra)
+                return errorObra;
 
-        if (await baseDeDatos.DatosComercioExterior.AsNoTracking()
-            .AnyAsync(x => x.ComprobanteId == comprobanteId, ct))
-            return ErrorNegocio.Regla("comercio-timbrado-pendiente",
-                "Comercio Exterior permanece en borrador hasta completar el complemento 2.0 y su validación fiscal.");
+            var validacionXmlObra = await xml.GenerarAsync(comprobante, ct);
+            if (validacionXmlObra.EsFallo) return validacionXmlObra.Error!;
+        }
+
+        var tieneComercioExterior = await baseDeDatos.DatosComercioExterior.AsNoTracking()
+            .AnyAsync(x => x.ComprobanteId == comprobanteId, ct);
+        if (comprobante.Exportacion == "02" || tieneComercioExterior)
+        {
+            if (comprobante.Exportacion != "02" || !tieneComercioExterior)
+                return ErrorNegocio.Validacion("comercio-datos-inconsistentes",
+                    "La exportación definitiva necesita los datos del complemento de Comercio Exterior 2.0.");
+
+            if (!await baseDeDatos.Empresas.AsNoTracking()
+                .AnyAsync(x => x.Id == comprobante.EmpresaId && x.LicComercio, ct))
+                return ErrorNegocio.Regla("modulo-comercio-no-contratado",
+                    "Esta empresa no tiene activo el módulo de Comercio Exterior.");
+
+            // Validar el CFDI completo antes de reservar folio o timbre evita consumirlos
+            // por un complemento incompleto o por archivos SAT ausentes.
+            var validacionComercio = await xml.GenerarAsync(comprobante, ct);
+            if (validacionComercio.EsFallo) return validacionComercio.Error!;
+        }
 
         var datosNotaria = await baseDeDatos.DatosNotaria
             .AsNoTracking()
@@ -161,6 +197,14 @@ public sealed class ServicioDeTimbrado(
             var notario = await baseDeDatos.ConfiguracionesNotario.AsNoTracking().FirstOrDefaultAsync(ct);
             if (GeneradorDeXmlNotaria.Validar(datosNotaria, notario) is { } errorNotaria)
                 return errorNotaria;
+        }
+
+        if (comprobante.TipoDeComprobante == TiposDeComprobante.Ingreso &&
+            obra is null && datosNotaria is null && !tieneComercioExterior &&
+            comprobante.Exportacion != "02")
+        {
+            var validacionFactura = await xml.GenerarAsync(comprobante, ct);
+            if (validacionFactura.EsFallo) return validacionFactura.Error!;
         }
 
         await using var transaccion = await baseDeDatos.Database.BeginTransactionAsync(ct);

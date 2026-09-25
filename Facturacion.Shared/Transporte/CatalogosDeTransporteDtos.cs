@@ -1,3 +1,5 @@
+using Facturacion.Shared.Documentos;
+
 namespace Facturacion.Shared.Transporte;
 
 public sealed record VehiculoDto(
@@ -39,7 +41,10 @@ public sealed record PeticionGuardarTrasladoCartaPorte(
     DateTime FechaLlegadaLocal,
     decimal DistanciaRecorridaKm,
     IReadOnlyList<UbicacionCartaPorteDto> Ubicaciones,
-    IReadOnlyList<MercanciaCartaPorteDto> Mercancias);
+    IReadOnlyList<MercanciaCartaPorteDto> Mercancias,
+    Guid? ClienteDestinoId = null,
+    IReadOnlyList<ComprobanteRelacionadoDto>? Relacionados = null,
+    string? Observaciones = null);
 
 public sealed record UbicacionCartaPorteDto(
     string Tipo,
@@ -50,7 +55,8 @@ public sealed record UbicacionCartaPorteDto(
     string? NumeroInterior,
     string Estado,
     string Municipio,
-    string CodigoPostal);
+    string CodigoPostal,
+    string? NombreRemitenteDestinatario = null);
 
 public sealed record MercanciaCartaPorteDto(
     int Orden,
@@ -58,7 +64,10 @@ public sealed record MercanciaCartaPorteDto(
     string Descripcion,
     decimal Cantidad,
     string ClaveUnidad,
-    decimal PesoEnKg);
+    decimal PesoEnKg,
+    string? Unidad = null,
+    string? Dimensiones = null,
+    decimal? PesoUnitarioKg = null);
 
 /// <summary>Resultado de validar el XML de un traslado sin enviarlo a un PAC.</summary>
 public sealed record ValidacionXmlCartaPorteDto(string Mensaje);
@@ -75,4 +84,7 @@ public sealed record TrasladoCartaPorteDto(
     decimal PesoBrutoTotalKg,
     decimal TotalMercancias,
     IReadOnlyList<UbicacionCartaPorteDto> Ubicaciones,
-    IReadOnlyList<MercanciaCartaPorteDto> Mercancias);
+    IReadOnlyList<MercanciaCartaPorteDto> Mercancias,
+    Guid? ClienteDestinoId = null,
+    IReadOnlyList<ComprobanteRelacionadoDto>? Relacionados = null,
+    string? Observaciones = null);

@@ -1,5 +1,7 @@
+using System.Globalization;
 using System.Security.Cryptography;
 using System.Xml;
+using System.Xml.Linq;
 using Facturacion.Server.Data;
 using Facturacion.Server.Data.Entidades.Documentos;
 using Facturacion.Server.Infra.Almacen;
@@ -74,9 +76,11 @@ public sealed class ServicioDeSalidasFiscales(
         if (archivoXml.EsFallo) return archivoXml.Error!;
 
         DatosNotarialesDelPdf? datosNotariales;
+        decimal? retencionCincoAlMillar;
         try
         {
             datosNotariales = DatosNotarialesDelPdf.DesdeXml(archivoXml.Valor.Contenido);
+            retencionCincoAlMillar = LeerCincoAlMillar(archivoXml.Valor.Contenido);
         }
         catch (Exception ex) when (ex is XmlException or InvalidDataException or FormatException or OverflowException)
         {
@@ -86,9 +90,34 @@ public sealed class ServicioDeSalidasFiscales(
         }
 
         var contenido = generadorPdf.Generar(comprobante,
-            new DatosDelPdf(fechaLocal, decimales, logo?.Contenido, Notaria: datosNotariales));
+            new DatosDelPdf(fechaLocal, decimales, logo?.Contenido, Notaria: datosNotariales,
+                RetencionCincoAlMillar: retencionCincoAlMillar));
 
         return new ArchivoFiscal(NombreDeArchivo(comprobante, "pdf"), "application/pdf", contenido);
+    }
+
+    private static decimal? LeerCincoAlMillar(byte[] contenido)
+    {
+        using var lector = XmlReader.Create(new MemoryStream(contenido), new XmlReaderSettings
+        {
+            DtdProcessing = DtdProcessing.Prohibit,
+            XmlResolver = null
+        });
+        var documento = XDocument.Load(lector);
+        var espacio = XNamespace.Get(EsquemasSat.EspacioDeNombresImpuestosLocales);
+        var complemento = documento.Descendants(espacio + "ImpuestosLocales").FirstOrDefault();
+        if (complemento is null) return null;
+
+        var retencion = complemento.Elements(espacio + "RetencionesLocales")
+            .FirstOrDefault(x => (string?)x.Attribute("ImpLocRetenido") == "5 al millar");
+        if (retencion is null || (string?)retencion.Attribute("TasadeRetencion") != "0.50" ||
+            !decimal.TryParse((string?)retencion.Attribute("Importe"),
+                NumberStyles.AllowDecimalPoint, CultureInfo.InvariantCulture, out var importe) || importe < 0 ||
+            !decimal.TryParse((string?)complemento.Attribute("TotaldeRetenciones"),
+                NumberStyles.AllowDecimalPoint, CultureInfo.InvariantCulture, out var total) || total != importe)
+            throw new InvalidDataException("El complemento de 5 al millar no tiene un importe válido.");
+
+        return importe;
     }
 
     public async Task<Resultado<ArchivoFiscal>> ObtenerXmlAsync(Guid comprobanteId, CancellationToken ct)
@@ -140,6 +169,7 @@ public sealed class ServicioDeSalidasFiscales(
             .AsNoTracking()
             .Include(c => c.Conceptos.OrderBy(x => x.Orden))
                 .ThenInclude(x => x.Impuestos)
+            .Include(c => c.Relacionados)
             .FirstOrDefaultAsync(c => c.Id == comprobanteId, ct);
 
     private static bool EsFiscal(Comprobante comprobante)

@@ -241,9 +241,30 @@ public sealed class ServicioDeProductos(
                 .FirstOrDefaultAsync(p => p.ClaveProdServ == renglon.Producto.ClaveProdServ
                                           && p.Descripcion == renglon.Producto.Descripcion, ct);
 
+            var peticion = renglon.Producto;
+
+            if (existente is not null)
+            {
+                // El CSV solo expresa IVA trasladado. Una reimportación no debe borrar
+                // retenciones ni IEPS configurados manualmente para este producto.
+                var adicionales = peticion.ObjetoImp is "01" or "03"
+                    ? []
+                    : existente.Impuestos
+                        .Where(i => i.Impuesto != "002" || i.EsRetencion)
+                        .Select(i => new ImpuestoDeProductoDto(
+                            i.Impuesto, i.TipoFactor, i.TasaOCuota, i.EsRetencion))
+                        .ToList();
+
+                peticion = peticion with
+                {
+                    Impuestos = [.. peticion.Impuestos, .. adicionales],
+                    Activo = renglon.ActivoExplicito ? peticion.Activo : existente.Activo
+                };
+            }
+
             var resultado = existente is null
-                ? await CrearAsync(renglon.Producto, ct)
-                : await ActualizarAsync(existente.Id, renglon.Producto, ct);
+                ? await CrearAsync(peticion, ct)
+                : await ActualizarAsync(existente.Id, peticion, ct);
 
             if (resultado.EsFallo)
                 rechazados.Add(renglon with { Error = resultado.Error!.Mensaje });

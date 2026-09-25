@@ -86,6 +86,14 @@ else
             <MudTextField @bind-Value="_referencia" Label="Referencia" MaxLength="256" />
         </div>
 
+        <h2 class="seccion-titulo">Origen predeterminado de Carta Porte</h2>
+        <p class="seccion-ayuda">Usa el lugar desde donde suelen salir las mercancías. Es independiente del domicilio general y puedes cambiarlo en cada traslado.</p>
+        <MudCheckBox T="bool" @bind-Value="_configurarOrigenCartaPorte" Label="Configurar origen para nuevos traslados" />
+        @if (_configurarOrigenCartaPorte)
+        {
+            <EditorDomicilioCartaPorte Valor="_origenCartaPorte" ValorCambiado="v => _origenCartaPorte = v" />
+        }
+
         <h2 class="seccion-titulo">Contacto</h2>
 
         <div class="rejilla-campos">
@@ -140,6 +148,8 @@ else
     private string _zonaHoraria = string.Empty;
     private string? _calle, _numeroExterior, _numeroInterior, _referencia, _colonia;
     private string? _localidad, _municipio, _estado, _pais, _codigoPostal, _telefono, _correoContacto;
+    private bool _configurarOrigenCartaPorte;
+    private DomicilioSatDto _origenCartaPorte = new(string.Empty, null, null, string.Empty, string.Empty, string.Empty);
 
     /// <summary>
     /// La misma normalización que aplica el servidor, corriendo mientras el usuario escribe.
@@ -168,6 +178,8 @@ else
         _codigoPostal = _empresa.CodigoPostal;
         _telefono = _empresa.Telefono;
         _correoContacto = _empresa.CorreoContacto;
+        _configurarOrigenCartaPorte = _empresa.OrigenCartaPorte is not null;
+        if (_empresa.OrigenCartaPorte is { } origen) _origenCartaPorte = origen;
         ActualizarVistaPrevia();
     }
 
@@ -185,7 +197,7 @@ else
             _nombre, _regimenFiscal, _cpExpedicion, _zonaHoraria,
             _calle, _numeroExterior, _numeroInterior, _referencia, _colonia, _localidad,
             _municipio, _estado, _pais, _codigoPostal, _telefono, _correoContacto,
-            _empresa.Licencias);
+            _empresa.Licencias, _configurarOrigenCartaPorte ? _origenCartaPorte : null);
 
         var (exito, error) = await Empresas.GuardarAsync(peticion);
 
@@ -201,6 +213,8 @@ else
         // tiene que mostrar el resultado, no lo que el usuario tecleó.
         _empresa = exito!.Empresa;
         _nombre = exito.Empresa.NombreFiscal;
+        _configurarOrigenCartaPorte = exito.Empresa.OrigenCartaPorte is not null;
+        if (exito.Empresa.OrigenCartaPorte is { } origen) _origenCartaPorte = origen;
         _vistaPrevia = NombreFiscal.Normalizar(_nombre);
         _guardado = true;
     }

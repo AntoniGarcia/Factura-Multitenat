@@ -85,8 +85,13 @@ public static class CatalogosDeTransporteEndpoints
     {
         if (string.IsNullOrWhiteSpace(p.Clave) || string.IsNullOrWhiteSpace(p.Descripcion) || string.IsNullOrWhiteSpace(p.Placa) ||
             string.IsNullOrWhiteSpace(p.Aseguradora) || string.IsNullOrWhiteSpace(p.Poliza) || string.IsNullOrWhiteSpace(p.NumeroPermiso) ||
-            p.AnioModelo is < 1900 or > 2100 || p.PesoBrutoVehicular <= 0)
+            p.AnioModelo is < 1900 or > 2100)
             return ErrorNegocio.Validacion("vehiculo-incompleto", "Completa los datos obligatorios del vehículo.");
+        if (p.PesoBrutoVehicular < 0.01m || Math.Round(p.PesoBrutoVehicular, 2) != p.PesoBrutoVehicular)
+            return ErrorNegocio.Validacion("peso-vehicular-invalido", "El peso bruto vehicular debe ser de al menos 0.01 toneladas y tener máximo dos decimales.");
+        var placa = string.Concat(p.Placa.Where(c => c != '-' && !char.IsWhiteSpace(c))).ToUpperInvariant();
+        if (placa.Length is < 5 or > 7 || placa.Any(c => c is not (>= 'A' and <= 'Z' or >= '0' and <= '9')))
+            return ErrorNegocio.Validacion("placa-vehicular-invalida", "La placa debe contener de 5 a 7 caracteres alfanuméricos, sin contar guiones ni espacios.");
         if (!await db.SatConfiguracionesAutotransporte.AnyAsync(x => x.Clave == p.ConfiguracionAutotransporte && x.Vigente, ct) ||
             !await db.SatTiposPermiso.AnyAsync(x => x.Clave == p.TipoPermiso && x.Vigente, ct))
             return ErrorNegocio.Validacion("catalogo-sat-invalido", "La configuración o el tipo de permiso no están vigentes en el SAT.");

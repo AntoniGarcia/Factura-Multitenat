@@ -28,6 +28,12 @@ public sealed class EmpresaConfiguracion : IEntityTypeConfiguration<Empresa>
         constructor.Property(e => e.Estado).HasMaxLength(128);
         constructor.Property(e => e.Pais).HasMaxLength(64);
         constructor.Property(e => e.CodigoPostal).HasMaxLength(5);
+        constructor.Property(e => e.CartaPorteCalle).HasMaxLength(128);
+        constructor.Property(e => e.CartaPorteNumeroExterior).HasMaxLength(32);
+        constructor.Property(e => e.CartaPorteNumeroInterior).HasMaxLength(32);
+        constructor.Property(e => e.CartaPorteEstado).HasMaxLength(3);
+        constructor.Property(e => e.CartaPorteMunicipio).HasMaxLength(3);
+        constructor.Property(e => e.CartaPorteCodigoPostal).HasMaxLength(5);
         constructor.Property(e => e.Telefono).HasMaxLength(32);
         constructor.Property(e => e.CorreoContacto).HasMaxLength(254);
 

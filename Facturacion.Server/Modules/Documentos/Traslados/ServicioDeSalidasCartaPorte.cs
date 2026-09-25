@@ -30,5 +30,6 @@ public sealed class ServicioDeSalidasCartaPorte(AppDbContext db, ServicioDeXmlCf
 
     private Task<TrasladoCartaPorte?> CargarAsync(Guid comprobanteId, CancellationToken ct) => db.TrasladosCartaPorte
         .Include(x => x.Comprobante).ThenInclude(x => x.Conceptos).ThenInclude(x => x.Impuestos)
+        .Include(x => x.Comprobante).ThenInclude(x => x.Relacionados)
         .Include(x => x.Ubicaciones).Include(x => x.Mercancias).FirstOrDefaultAsync(x => x.ComprobanteId == comprobanteId, ct);
 }

@@ -31,11 +31,9 @@ public static class DocumentosModule
         if (entorno.IsDevelopment())
         {
             servicios.AddScoped<IServicioClientes, DobleServicioClientes>();
-            //servicios.AddScoped<IServicioProductos, DobleServicioProductos>();
             servicios.AddScoped<IServicioEmpresaEmisora, DobleServicioEmpresaEmisora>();
             servicios.AddScoped<IServicioFolios, DobleServicioFolios>();
             servicios.AddScoped<IServicioTimbres, DobleServicioTimbres>();
-            //servicios.AddScoped<IProveedorCsdParaTimbrado, DobleProveedorCsdParaTimbrado>();
             servicios.AddScoped<ServicioDeDescargas, ServicioDeDescargas>();
         }
 
@@ -63,6 +61,7 @@ public static class DocumentosModule
         servicios.AddScoped<GeneradorDePdfCartaPorte>();
         servicios.AddScoped<ServicioDePdfBorrador>();
         servicios.AddScoped<ServicioDeSalidasFiscales>();
+        servicios.AddScoped<ServicioDeDescargas>();
         servicios.AddScoped<ServicioDeXmlCfdi>();
 
         servicios.AddScoped<CierreDeTimbrado>();

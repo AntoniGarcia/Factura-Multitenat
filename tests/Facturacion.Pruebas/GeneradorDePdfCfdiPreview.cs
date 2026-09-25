@@ -15,7 +15,7 @@ public class GeneradorDePdfCfdiPreview
         QuestPDF.Settings.License = LicenseType.Community;
     }
 
-    [Fact]//(Skip = "Herramienta manual de diseño: correr solo a mano desde el IDE, con el QuestPDF Companion abierto.")]
+    [Fact(Skip = "Vista previa manual: requiere QuestPDF Companion abierto.")]
     public void Previsualizar_Factura_Normal()
     {
         var comprobante = ComprobanteDeEjemplo.CrearPago();

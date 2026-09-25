@@ -11,7 +11,9 @@
 @inject ServicioDeTrasladosCartaPorte Traslados
 @inject ServicioDeEmision Emision
 @inject ServicioDeTransporte Transporte
+@inject ServicioDeClientes Clientes
 @inject ServicioDeEmpresa Empresa
+@inject ServicioDeCatalogos Catalogos
 @inject NavigationManager Navegacion
 @inject IDialogService Dialogos
 @inject ServicioDeDescargas Descargas
@@ -31,7 +33,7 @@
     {
         <div class="aviso-documentos" role="status">
             Traslado de mercancía propia. El CFDI será de traslado, con importe cero y los datos fiscales de esta empresa.
-            Guarda el borrador y valida su XML Carta Porte 3.1 antes de timbrarlo. La validación no envía nada al PAC ni consume timbres.
+            Guarda el borrador y valida su XML antes de timbrar. La validación no consume folios ni timbres.
         </div>
 
         @if (!string.IsNullOrWhiteSpace(_mensajeXml))
@@ -42,7 +44,7 @@
         @if (_integracionFiscal is { TimbradoDisponible: false })
         {
             <div class="aviso-documentos" role="status">
-                El timbrado está pendiente de integración con el PAC. Puedes guardar, revisar el PDF y validar el XML sin generar un folio ni consumir timbres.
+                El PAC aún no está configurado. Puedes guardar, revisar el PDF y validar el XML sin generar un folio.
             </div>
         }
 
@@ -78,7 +80,7 @@
                                 <MudSelectItem T="Guid?" Value="@figura.Id">@figura.Nombre · @figura.Rfc</MudSelectItem>
                             }
                         </MudSelect>
-                        <MudNumericField T="decimal" Label="Distancia recorrida (km)" @bind-Value="_distanciaKm" Min="0.001m" Format="N3" Disabled="@(!EsEditable)" Required="true" />
+                        <MudNumericField T="decimal" Label="Distancia recorrida (km)" @bind-Value="_distanciaKm" Min="0.01m" Max="99999m" Format="N2" Disabled="@(!EsEditable)" Required="true" />
                     </div>
                 </section>
 
@@ -91,25 +93,40 @@
                         <MudTimePicker Label="Hora de llegada" Time="_horaLlegada" TimeChanged="v => _horaLlegada = v ?? TimeSpan.Zero" Disabled="@(!EsEditable)" Required="true" />
                     </div>
                 </section>
+                <section class="seccion-formulario">
+                    <h2>Notas del traslado</h2>
+                    <MudTextField T="string" @bind-Value="_observaciones" Label="Observaciones internas" Lines="3"
+                                  MaxLength="2000" Disabled="@(!EsEditable)" HelperText="Se muestran en el PDF, pero no forman parte del XML fiscal." />
+                </section>
             </MudTabPanel>
 
             <MudTabPanel Text="Ubicaciones">
                 <section class="seccion-formulario">
                     <h2>Origen</h2>
                     <p class="ayuda-seccion">Lugar donde inicia el traslado.</p>
-                    <EditorDomicilioCartaPorte Tipo="Origen" Valor="_origen" ValorCambiado="v => _origen = v" Deshabilitado="@(!EsEditable)" />
+                    @if (!string.IsNullOrWhiteSpace(_avisoOrigen))
+                    {
+                        <p class="seccion-ayuda" role="status">@_avisoOrigen</p>
+                    }
+                    <EditorDomicilioCartaPorte Valor="@ADomicilio(_origen)" ValorCambiado="ActualizarOrigen" Deshabilitado="@(!EsEditable)" />
                 </section>
                 <section class="seccion-formulario">
                     <h2>Destino</h2>
-                    <p class="ayuda-seccion">Lugar donde termina el traslado.</p>
-                    <EditorDomicilioCartaPorte Tipo="Destino" Valor="_destino" ValorCambiado="v => _destino = v" Deshabilitado="@(!EsEditable)" />
+                    <p class="ayuda-seccion">Lugar donde termina el traslado. Elegir otro cliente reemplaza el domicilio; si no eliges uno, el destinatario será la empresa emisora.</p>
+                    <BuscadorDeCliente Etiqueta="Cliente destinatario (opcional)" Valor="_clienteDestino"
+                                      ValorCambiado="SeleccionarClienteDestinoAsync" Deshabilitado="@(!EsEditable)" />
+                    @if (_destino.NombreRemitenteDestinatario is not null)
+                    {
+                        <p class="seccion-ayuda">Destinatario guardado: @_destino.NombreRemitenteDestinatario · RFC @_destino.RfcRemitenteDestinatario</p>
+                    }
+                    <EditorDomicilioCartaPorte Valor="@ADomicilio(_destino)" ValorCambiado="ActualizarDestino" Deshabilitado="@(!EsEditable)" />
                 </section>
             </MudTabPanel>
 
             <MudTabPanel Text="Mercancías">
                 <section class="seccion-formulario">
                     <h2>Mercancías transportadas</h2>
-                    <p class="ayuda-seccion">Describe lo que se transporta; solo se muestran las claves válidas para Carta Porte.</p>
+                    <p class="ayuda-seccion">Describe lo que se transporta; solo se muestran claves válidas para Carta Porte.</p>
                     @if (EsEditable)
                     {
                         <MudButton Variant="Variant.Outlined" StartIcon="@Icons.Material.Filled.Add" OnClick="AgregarMercancia">Agregar mercancía</MudButton>
@@ -122,16 +139,65 @@
                                 <BuscadorCatalogo Catalogo="c_ClaveProdServCP" Label="Bien transportado SAT" Valor="@renglon.Producto"
                                                   ValorCambiado="v => renglon.Producto = v" Deshabilitado="@(!EsEditable)" Requerido="true" />
                                 <MudTextField T="string" Label="Descripción" @bind-Value="renglon.Descripcion" Disabled="@(!EsEditable)" Required="true" />
-                                <MudNumericField T="decimal" Label="Cantidad" @bind-Value="renglon.Cantidad" Min="0.000001m" Format="N6" Disabled="@(!EsEditable)" Required="true" />
+                                <MudNumericField T="decimal" Label="Cantidad" Value="renglon.Cantidad" ValueChanged="valor => CambiarCantidad(renglon, valor)" Min="0.000001m" Format="N6" Disabled="@(!EsEditable)" Required="true" />
                                 <BuscadorCatalogo Catalogo="c_ClaveUnidad" Label="Unidad SAT" Valor="@renglon.Unidad"
                                                   ValorCambiado="v => renglon.Unidad = v" Deshabilitado="@(!EsEditable)" Requerido="true" />
-                                <MudNumericField T="decimal" Label="Peso (kg)" @bind-Value="renglon.PesoEnKg" Min="0.000001m" Format="N6" Disabled="@(!EsEditable)" Required="true" />
+                                <MudTextField T="string" Label="Unidad propia (opcional)" @bind-Value="renglon.UnidadPropia" Disabled="@(!EsEditable)" MaxLength="20" />
+                                <MudTextField T="string" Label="Dimensiones largo/alto/ancho (ej. 30/40/30cm)" @bind-Value="renglon.Dimensiones" Disabled="@(!EsEditable)" MaxLength="14" />
+                                <MudNumericField T="decimal?" Label="Peso unitario (kg, opcional)" Value="renglon.PesoUnitarioKg" ValueChanged="valor => CambiarPesoUnitario(renglon, valor)" Min="0.000001m" Format="N6" Disabled="@(!EsEditable)" />
+                                <MudNumericField T="decimal" Label="Peso total (kg)" Value="renglon.PesoEnKg" ValueChanged="valor => CambiarPesoTotal(renglon, valor)" Min="0.001m" Format="N3" Disabled="@(!EsEditable)" Required="true" />
                             </div>
                             @if (EsEditable && _mercancias.Count > 1)
                             {
                                 <MudButton Size="Size.Small" Color="Color.Error" OnClick="@(() => _mercancias.Remove(renglon))">Quitar mercancía</MudButton>
                             }
                         </div>
+                    }
+                    <p class="seccion-ayuda">Peso bruto total: @(_mercancias.Sum(x => x.PesoEnKg).ToString("N3")) kg · Renglones de mercancía: @_mercancias.Count · Cantidad por unidad: @CantidadPorUnidad</p>
+                </section>
+            </MudTabPanel>
+
+            <MudTabPanel Text="CFDI relacionados">
+                <section class="seccion-formulario">
+                    <h2>Comprobantes relacionados</h2>
+                    <p class="ayuda-seccion">Opcional. Busca un CFDI timbrado de esta empresa por serie y folio; su UUID se incorporará al XML del traslado.</p>
+                    @if (EsEditable)
+                    {
+                        <div class="rejilla-formulario">
+                            <MudSelect T="string" @bind-Value="_tipoRelacion" Label="Tipo de relación" Clearable="true">
+                                @foreach (var tipo in Catalogos.Obtener("c_TipoRelacion"))
+                                {
+                                    <MudSelectItem T="string" Value="@tipo.Clave">@tipo.Clave — @tipo.Descripcion</MudSelectItem>
+                                }
+                            </MudSelect>
+                            <MudTextField T="string" @bind-Value="_serieRelacionado" Label="Serie" MaxLength="25" />
+                            <MudNumericField T="int?" @bind-Value="_folioRelacionado" Label="Folio" Min="1" />
+                        </div>
+                        <MudButton Variant="Variant.Outlined" OnClick="AgregarRelacionadoAsync" Disabled="@(!PuedeAgregarRelacionado)">Agregar CFDI</MudButton>
+                    }
+                    @if (_relacionados.Count > 0)
+                    {
+                        <MudSimpleTable Dense="true" Class="tabla-impuestos">
+                            <thead><tr><th>Tipo de relación</th><th>UUID</th><th></th></tr></thead>
+                            <tbody>
+                                @for (var i = 0; i < _relacionados.Count; i++)
+                                {
+                                    var indice = i;
+                                    var relacionado = _relacionados[indice];
+                                    <tr>
+                                        <td>@relacionado.TipoRelacion</td>
+                                        <td class="cifra-tabular">@relacionado.UuidRelacionado</td>
+                                        <td>
+                                            @if (EsEditable)
+                                            {
+                                                <MudIconButton Icon="@Icons.Material.Filled.Delete" Size="Size.Small" aria-label="Quitar CFDI relacionado"
+                                                               OnClick="@(() => _relacionados.RemoveAt(indice))" />
+                                            }
+                                        </td>
+                                    </tr>
+                                }
+                            </tbody>
+                        </MudSimpleTable>
                     }
                 </section>
             </MudTabPanel>
@@ -173,15 +239,31 @@
     private string _estatus = "borrador";
     private EstadoDeIntegracionFiscalDto? _integracionFiscal;
     private Guid? _vehiculoId, _figuraId;
+    private Guid? _clienteDestinoId;
+    private ClienteEnListaDto? _clienteDestino;
     private decimal _distanciaKm;
     private DateTime _fechaSalida = DateTime.Today, _fechaLlegada = DateTime.Today;
     private TimeSpan? _horaSalida = TimeSpan.FromHours(9), _horaLlegada = TimeSpan.FromHours(10);
     private UbicacionCartaPorteDto _origen = Vacio("Origen", 1);
     private UbicacionCartaPorteDto _destino = Vacio("Destino", 2);
+    private readonly List<ComprobanteRelacionadoDto> _relacionados = [];
+    private string? _tipoRelacion;
+    private string _serieRelacionado = string.Empty;
+    private int? _folioRelacionado;
+    private string? _observaciones;
+    private bool _precargaOrigenIntentada;
+    private string? _avisoOrigen;
 
     private bool EsNuevo => Id is null;
     private bool EsEditable => _estatus is "borrador" or "error";
     private bool PuedeTimbrar => _integracionFiscal?.TimbradoDisponible == true;
+    private bool PuedeAgregarRelacionado => EsEditable && !string.IsNullOrWhiteSpace(_tipoRelacion) &&
+        !string.IsNullOrWhiteSpace(_serieRelacionado) && _folioRelacionado is > 0;
+    private string CantidadPorUnidad => !_mercancias.Any(x => x.Unidad is not null) ? "—" : string.Join(" · ", _mercancias
+        .Where(x => x.Unidad is not null)
+        .GroupBy(x => x.Unidad!.Clave)
+        .OrderBy(x => x.Key)
+        .Select(x => $"{x.Sum(y => y.Cantidad):0.######} {x.Key}"));
 
     protected override async Task OnParametersSetAsync()
     {
@@ -191,6 +273,11 @@
         _integracionFiscal = await Emision.ObtenerEstadoDeIntegracionAsync();
         var empresa = await Empresa.ObtenerAsync();
         _zonaHoraria = empresa?.ZonaHoraria ?? _zonaHoraria;
+        if (Id is null && !_precargaOrigenIntentada)
+        {
+            _precargaOrigenIntentada = true;
+            if (empresa is not null) PrecargarOrigen(empresa);
+        }
         _vehiculos = await Transporte.VehiculosAsync(true) ?? [];
         _figuras = await Transporte.FigurasAsync(true) ?? [];
 
@@ -203,14 +290,14 @@
             }
             else
             {
-                Rehidratar(traslado);
+                await RehidratarAsync(traslado);
             }
         }
 
         _cargando = false;
     }
 
-    private void Rehidratar(TrasladoCartaPorteDto traslado)
+    private async Task RehidratarAsync(TrasladoCartaPorteDto traslado)
     {
         _estatus = traslado.Estatus;
         _vehiculoId = traslado.VehiculoId;
@@ -222,6 +309,17 @@
         _fechaLlegada = llegada.Date; _horaLlegada = llegada.TimeOfDay;
         _origen = traslado.Ubicaciones.SingleOrDefault(x => x.Tipo == "Origen") ?? Vacio("Origen", 1);
         _destino = traslado.Ubicaciones.SingleOrDefault(x => x.Tipo == "Destino") ?? Vacio("Destino", 2);
+        _clienteDestinoId = traslado.ClienteDestinoId;
+        _observaciones = traslado.Observaciones;
+        _relacionados.Clear();
+        _relacionados.AddRange(traslado.Relacionados ?? []);
+        if (_clienteDestino?.Id != _clienteDestinoId)
+        {
+            _clienteDestino = null;
+            if (_clienteDestinoId is { } clienteId && await Clientes.ObtenerAsync(clienteId) is { } cliente)
+                _clienteDestino = new ClienteEnListaDto(cliente.Id, cliente.ClaveInterna, cliente.Rfc,
+                    cliente.Nombre, cliente.RegimenFiscal, cliente.DomicilioFiscalCp, cliente.CorreoPrincipal, cliente.Activo);
+        }
         _mercancias.Clear();
         _mercancias.AddRange(traslado.Mercancias.OrderBy(x => x.Orden).Select(x => new RenglonMercancia
         {
@@ -229,12 +327,119 @@
             Descripcion = x.Descripcion,
             Cantidad = x.Cantidad,
             Unidad = new ClaveSatDto("c_ClaveUnidad", x.ClaveUnidad, x.ClaveUnidad, true),
-            PesoEnKg = x.PesoEnKg
+            PesoEnKg = x.PesoEnKg,
+            PesoUnitarioKg = x.PesoUnitarioKg,
+            UnidadPropia = x.Unidad ?? string.Empty,
+            Dimensiones = x.Dimensiones ?? string.Empty
         }));
         if (_mercancias.Count == 0) _mercancias.Add(new());
     }
 
     private void AgregarMercancia() => _mercancias.Add(new RenglonMercancia());
+
+    private void ActualizarOrigen(DomicilioSatDto domicilio)
+    {
+        _origen = ConDomicilio(_origen, domicilio);
+        _avisoOrigen = null;
+    }
+
+    private void ActualizarDestino(DomicilioSatDto domicilio)
+        => _destino = ConDomicilio(_destino, domicilio);
+
+    private static DomicilioSatDto ADomicilio(UbicacionCartaPorteDto ubicacion)
+        => new(ubicacion.Calle, ubicacion.NumeroExterior, ubicacion.NumeroInterior,
+            ubicacion.Estado, ubicacion.Municipio, ubicacion.CodigoPostal);
+
+    private static UbicacionCartaPorteDto ConDomicilio(UbicacionCartaPorteDto ubicacion, DomicilioSatDto domicilio)
+        => ubicacion with
+        {
+            Calle = domicilio.Calle,
+            NumeroExterior = domicilio.NumeroExterior ?? string.Empty,
+            NumeroInterior = domicilio.NumeroInterior,
+            Estado = domicilio.Estado,
+            Municipio = domicilio.Municipio,
+            CodigoPostal = domicilio.CodigoPostal
+        };
+
+    private void PrecargarOrigen(EmpresaDto empresa)
+    {
+        if (empresa.OrigenCartaPorte is not { } domicilio) return;
+
+        _origen = Vacio("Origen", 1) with
+        {
+            RfcRemitenteDestinatario = empresa.Rfc,
+            NombreRemitenteDestinatario = empresa.NombreFiscal,
+            Calle = domicilio.Calle,
+            NumeroExterior = domicilio.NumeroExterior ?? string.Empty,
+            NumeroInterior = domicilio.NumeroInterior,
+            Estado = domicilio.Estado,
+            Municipio = domicilio.Municipio,
+            CodigoPostal = domicilio.CodigoPostal
+        };
+        _avisoOrigen = "Origen precargado desde la configuración de Carta Porte de la empresa. Confirma que corresponde al lugar real de salida.";
+    }
+
+    private async Task AgregarRelacionadoAsync()
+    {
+        if (!PuedeAgregarRelacionado) return;
+
+        var (resuelto, error) = await Emision.ResolverRelacionadoAsync(_serieRelacionado.Trim(), _folioRelacionado!.Value);
+        if (error is not null)
+        {
+            _error = error;
+            return;
+        }
+
+        if (_relacionados.Any(x => x.UuidRelacionado == resuelto!.Uuid))
+        {
+            _error = ProblemaLocal("Ese CFDI ya está relacionado con el traslado.");
+            return;
+        }
+
+        _relacionados.Add(new ComprobanteRelacionadoDto(null, _tipoRelacion!, resuelto!.Uuid, resuelto.Serie, resuelto.Folio));
+        _tipoRelacion = null;
+        _serieRelacionado = string.Empty;
+        _folioRelacionado = null;
+        _error = null;
+    }
+
+    private async Task SeleccionarClienteDestinoAsync(ClienteEnListaDto? seleccionado)
+    {
+        _error = null;
+        if (seleccionado?.Rfc == "XEXX010101000")
+        {
+            _error = ProblemaLocal("Este traslado nacional requiere un destinatario con RFC mexicano.");
+            return;
+        }
+
+        if (_clienteDestinoId != seleccionado?.Id)
+        {
+            _destino = Vacio("Destino", 2) with
+            {
+                RfcRemitenteDestinatario = seleccionado?.Rfc ?? _origen.RfcRemitenteDestinatario,
+                NombreRemitenteDestinatario = seleccionado?.Nombre ?? _origen.NombreRemitenteDestinatario
+            };
+        }
+        _clienteDestino = seleccionado;
+        _clienteDestinoId = seleccionado?.Id;
+        if (seleccionado is null) return;
+
+        var cliente = await Clientes.ObtenerAsync(seleccionado.Id);
+        if (cliente is null || cliente.Pais is not (null or "MEX") ||
+            string.IsNullOrWhiteSpace(cliente.Calle) || string.IsNullOrWhiteSpace(cliente.Estado) ||
+            string.IsNullOrWhiteSpace(cliente.Municipio) || string.IsNullOrWhiteSpace(cliente.CodigoPostal))
+            return;
+
+        _destino = _destino with
+        {
+            Calle = cliente.Calle,
+            NumeroExterior = cliente.NumeroExterior ?? string.Empty,
+            NumeroInterior = cliente.NumeroInterior,
+            Estado = cliente.Estado,
+            Municipio = cliente.Municipio,
+            CodigoPostal = cliente.CodigoPostal
+        };
+    }
 
     private async Task GuardarAsync()
     {
@@ -252,7 +457,8 @@
                 _vehiculoId.Value, _figuraId.Value, Combinar(_fechaSalida, _horaSalida), Combinar(_fechaLlegada, _horaLlegada),
                 _distanciaKm, [_origen, _destino],
                 [.. _mercancias.Select((x, indice) => new MercanciaCartaPorteDto(indice + 1, x.Producto?.Clave ?? string.Empty,
-                    x.Descripcion, x.Cantidad, x.Unidad?.Clave ?? string.Empty, x.PesoEnKg))]);
+                    x.Descripcion, x.Cantidad, x.Unidad?.Clave ?? string.Empty, x.PesoEnKg, x.UnidadPropia, x.Dimensiones,
+                    x.PesoUnitarioKg))], _clienteDestinoId, _relacionados, _observaciones);
 
             var resultado = EsNuevo
                 ? await Traslados.CrearAsync(peticion)
@@ -260,7 +466,7 @@
             _error = resultado.Error;
             if (resultado.Exito is not { } guardado) return;
 
-            Rehidratar(guardado);
+            await RehidratarAsync(guardado);
             if (EsNuevo) Navegacion.NavigateTo($"/traslados-carta-porte/{guardado.ComprobanteId}", replace: true);
         }
         finally
@@ -351,6 +557,28 @@
     }
 
     private static DateTime Combinar(DateTime fecha, TimeSpan? hora) => fecha.Date.Add(hora ?? TimeSpan.Zero);
+    private static void CambiarCantidad(RenglonMercancia renglon, decimal cantidad)
+    {
+        renglon.Cantidad = cantidad;
+        RecalcularPeso(renglon);
+    }
+    private static void CambiarPesoUnitario(RenglonMercancia renglon, decimal? pesoUnitario)
+    {
+        renglon.PesoUnitarioKg = pesoUnitario;
+        RecalcularPeso(renglon);
+    }
+    private static void CambiarPesoTotal(RenglonMercancia renglon, decimal pesoTotal)
+    {
+        renglon.PesoEnKg = pesoTotal;
+        renglon.PesoUnitarioKg = null;
+    }
+    private static void RecalcularPeso(RenglonMercancia renglon)
+    {
+        if (renglon.PesoUnitarioKg is not { } unitario || renglon.Cantidad < 0 || unitario < 0 ||
+            renglon.Cantidad > 999999999999.999999m || unitario > 999999999999.999999m)
+            return;
+        renglon.PesoEnKg = Math.Round(renglon.Cantidad * unitario, 3, MidpointRounding.ToEven);
+    }
     private static UbicacionCartaPorteDto Vacio(string tipo, int orden) => new(tipo, orden, null, string.Empty, string.Empty, null, string.Empty, string.Empty, string.Empty);
     private static DetalleProblema ProblemaLocal(string detalle) => new("urn:facturacion:error:carta-porte", "Falta algo en la captura", 400, detalle, null, string.Empty, null);
 
@@ -361,5 +589,8 @@
         public decimal Cantidad { get; set; } = 1m;
         public ClaveSatDto? Unidad { get; set; }
         public decimal PesoEnKg { get; set; }
+        public decimal? PesoUnitarioKg { get; set; }
+        public string UnidadPropia { get; set; } = string.Empty;
+        public string Dimensiones { get; set; } = string.Empty;
     }
 }

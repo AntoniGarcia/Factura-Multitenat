@@ -1,5 +1,9 @@
 # Fases de desarrollo y arquitectura
 
+> **Mapa histórico de fases.** Para saber qué está implementado y qué falta hoy,
+> consultar [REPORTE_ESTADO_SISTEMA.md](REPORTE_ESTADO_SISTEMA.md). Las fases originales
+> no reflejan todos los módulos agregados después.
+
 Vista unificada de cómo se construyó el sistema: qué problema resolvió cada fase, con qué
 solución y qué introdujo en la arquitectura. Los documentos originales de cada fase se
 conservan (`PROMPT-FASES-A.md`, `PROMPT-FASES-B.md`, `REPORTE_ESTADO_SISTEMA.md`,

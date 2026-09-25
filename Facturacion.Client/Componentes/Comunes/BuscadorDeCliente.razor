@@ -9,7 +9,7 @@
 *@
 
 <MudAutocomplete T="ClienteEnListaDto"
-                  Label="Cliente"
+                  Label="@Etiqueta"
                   Value="@Valor"
                   ValueChanged="@(v => ValorCambiado.InvokeAsync(v))"
                   SearchFunc="Buscar"
@@ -19,6 +19,7 @@
                   ResetValueOnEmptyText="true"
                   CoerceText="false"
                   Clearable="true"
+                  Disabled="@Deshabilitado"
                   Required="@Requerido"
                   Placeholder="Escribe RFC, nombre o clave…">
     <ItemTemplate Context="cliente">
@@ -36,6 +37,12 @@
 
     [Parameter]
     public bool Requerido { get; set; }
+
+    [Parameter]
+    public bool Deshabilitado { get; set; }
+
+    [Parameter]
+    public string Etiqueta { get; set; } = "Cliente";
 
     private async Task<IEnumerable<ClienteEnListaDto>> Buscar(string texto, CancellationToken ct)
     {

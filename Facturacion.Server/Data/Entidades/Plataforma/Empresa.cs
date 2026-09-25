@@ -71,6 +71,14 @@ public sealed class Empresa
     /// </summary>
     public string? CodigoPostal { get; set; }
 
+    // Origen predeterminado de Carta Porte: claves SAT, independiente del domicilio general.
+    public string? CartaPorteCalle { get; set; }
+    public string? CartaPorteNumeroExterior { get; set; }
+    public string? CartaPorteNumeroInterior { get; set; }
+    public string? CartaPorteEstado { get; set; }
+    public string? CartaPorteMunicipio { get; set; }
+    public string? CartaPorteCodigoPostal { get; set; }
+
     // ── Contacto ───────────────────────────────────────────────────────────────────────
     public string? Telefono { get; set; }
 

@@ -13,6 +13,7 @@ public static class ObrasEndpoints
             .RequireAuthorization(Permisos.Timbrar);
         grupo.MapGet("/{comprobanteId:guid}", Obtener);
         grupo.MapPut("/{comprobanteId:guid}", Guardar);
+        grupo.MapGet("/{comprobanteId:guid}/conciliacion-fiscal", ConciliacionFiscal);
         grupo.MapGet("/{comprobanteId:guid}/estimacion.pdf", EstimacionPdf);
     }
 
@@ -28,6 +29,13 @@ public static class ObrasEndpoints
         ServicioDeObras obras, HttpContext contexto, CancellationToken ct)
     {
         var resultado = await obras.GuardarAsync(comprobanteId, peticion, ct);
+        return resultado.EsFallo ? resultado.Error!.AResultado(contexto) : Results.Ok(resultado.Valor);
+    }
+
+    private static async Task<IResult> ConciliacionFiscal(Guid comprobanteId, ServicioDeObras obras,
+        HttpContext contexto, CancellationToken ct)
+    {
+        var resultado = await obras.ConciliarFiscalmenteAsync(comprobanteId, ct);
         return resultado.EsFallo ? resultado.Error!.AResultado(contexto) : Results.Ok(resultado.Valor);
     }
 

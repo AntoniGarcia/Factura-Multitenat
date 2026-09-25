@@ -11,6 +11,7 @@ public sealed class TrasladoCartaPorte : IEntidadDeEmpresa
     public Comprobante Comprobante { get; set; } = null!;
     public Guid VehiculoId { get; set; }
     public Guid FiguraTransporteId { get; set; }
+    public Guid? ClienteDestinoId { get; set; }
     /// <summary>Identificador requerido por Carta Porte 3.1, estable desde el borrador.</summary>
     public string? IdCcp { get; set; }
     // Copias de los datos del catálogo maestro que el complemento usa.
@@ -44,6 +45,7 @@ public sealed class UbicacionCartaPorte : IEntidadDeEmpresa
     public required string Tipo { get; set; }
     public int Orden { get; set; }
     public string? RfcRemitenteDestinatario { get; set; }
+    public string? NombreRemitenteDestinatario { get; set; }
     public required string Calle { get; set; }
     public required string NumeroExterior { get; set; }
     public string? NumeroInterior { get; set; }
@@ -64,4 +66,7 @@ public sealed class MercanciaCartaPorte : IEntidadDeEmpresa
     public decimal Cantidad { get; set; }
     public required string ClaveUnidad { get; set; }
     public decimal PesoEnKg { get; set; }
+    public decimal? PesoUnitarioKg { get; set; }
+    public string? Unidad { get; set; }
+    public string? Dimensiones { get; set; }
 }

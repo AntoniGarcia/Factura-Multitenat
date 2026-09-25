@@ -6,16 +6,14 @@
 <MudDialog>
     <DialogContent>
         <p class="seccion-ayuda">
-            Contraseña nueva para @NombreUsuario. No hace falta la anterior: esto sirve
-            justamente para cuando se olvidó.
+            Contraseña nueva para @NombreUsuario.
         </p>
 
         @* Se avisa antes de guardar, no después: cerrar las sesiones abiertas es lo que
            hace útil este botón cuando alguien deja la empresa, pero si el motivo es un
            simple olvido, conviene saber que va a tener que volver a entrar. *@
         <p class="seccion-ayuda">
-            Al guardar se cierran todas sus sesiones abiertas y tendrá que entrar de nuevo
-            con la contraseña nueva. Comunícasela tú.
+            Al guardar se cerrarán todas sus sesiones. Avísale que deberá entrar con la nueva contraseña.
         </p>
 
         <PanelErrores Problema="_error" />

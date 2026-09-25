@@ -4,6 +4,7 @@ using Facturacion.Server.Data;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 #nullable disable
@@ -11,9 +12,11 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace Facturacion.Server.Migrations
 {
     [DbContext(typeof(AppDbContext))]
-    partial class AppDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260924191512_20260924_P_PesoUnitarioCartaPorte")]
+    partial class _20260924_P_PesoUnitarioCartaPorte
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -2359,30 +2362,6 @@ namespace Facturacion.Server.Migrations
                         .HasMaxLength(128)
                         .HasColumnType("nvarchar(128)");
 
-                    b.Property<string>("CartaPorteCalle")
-                        .HasMaxLength(128)
-                        .HasColumnType("nvarchar(128)");
-
-                    b.Property<string>("CartaPorteCodigoPostal")
-                        .HasMaxLength(5)
-                        .HasColumnType("nvarchar(5)");
-
-                    b.Property<string>("CartaPorteEstado")
-                        .HasMaxLength(3)
-                        .HasColumnType("nvarchar(3)");
-
-                    b.Property<string>("CartaPorteMunicipio")
-                        .HasMaxLength(3)
-                        .HasColumnType("nvarchar(3)");
-
-                    b.Property<string>("CartaPorteNumeroExterior")
-                        .HasMaxLength(32)
-                        .HasColumnType("nvarchar(32)");
-
-                    b.Property<string>("CartaPorteNumeroInterior")
-                        .HasMaxLength(32)
-                        .HasColumnType("nvarchar(32)");
-
                     b.Property<string>("CodigoPostal")
                         .HasMaxLength(5)
                         .HasColumnType("nvarchar(5)");
@@ -3469,9 +3448,6 @@ namespace Facturacion.Server.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uniqueidentifier");
 
-                    b.Property<Guid?>("ClienteDestinoId")
-                        .HasColumnType("uniqueidentifier");
-
                     b.Property<Guid>("ComprobanteId")
                         .HasColumnType("uniqueidentifier");
 
@@ -3597,10 +3573,6 @@ namespace Facturacion.Server.Migrations
                         .IsRequired()
                         .HasMaxLength(3)
                         .HasColumnType("nvarchar(3)");
-
-                    b.Property<string>("NombreRemitenteDestinatario")
-                        .HasMaxLength(254)
-                        .HasColumnType("nvarchar(254)");
 
                     b.Property<string>("NumeroExterior")
                         .IsRequired()

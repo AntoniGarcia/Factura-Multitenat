@@ -4,6 +4,7 @@ using Facturacion.Server.Data;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 #nullable disable
@@ -11,9 +12,11 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace Facturacion.Server.Migrations
 {
     [DbContext(typeof(AppDbContext))]
-    partial class AppDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260924150447_20260924_N_TipoObra")]
+    partial class _20260924_N_TipoObra
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -2359,30 +2362,6 @@ namespace Facturacion.Server.Migrations
                         .HasMaxLength(128)
                         .HasColumnType("nvarchar(128)");
 
-                    b.Property<string>("CartaPorteCalle")
-                        .HasMaxLength(128)
-                        .HasColumnType("nvarchar(128)");
-
-                    b.Property<string>("CartaPorteCodigoPostal")
-                        .HasMaxLength(5)
-                        .HasColumnType("nvarchar(5)");
-
-                    b.Property<string>("CartaPorteEstado")
-                        .HasMaxLength(3)
-                        .HasColumnType("nvarchar(3)");
-
-                    b.Property<string>("CartaPorteMunicipio")
-                        .HasMaxLength(3)
-                        .HasColumnType("nvarchar(3)");
-
-                    b.Property<string>("CartaPorteNumeroExterior")
-                        .HasMaxLength(32)
-                        .HasColumnType("nvarchar(32)");
-
-                    b.Property<string>("CartaPorteNumeroInterior")
-                        .HasMaxLength(32)
-                        .HasColumnType("nvarchar(32)");
-
                     b.Property<string>("CodigoPostal")
                         .HasMaxLength(5)
                         .HasColumnType("nvarchar(5)");
@@ -3430,10 +3409,6 @@ namespace Facturacion.Server.Migrations
                         .HasMaxLength(1000)
                         .HasColumnType("nvarchar(1000)");
 
-                    b.Property<string>("Dimensiones")
-                        .HasMaxLength(14)
-                        .HasColumnType("nvarchar(14)");
-
                     b.Property<Guid>("EmpresaId")
                         .HasColumnType("uniqueidentifier");
 
@@ -3444,16 +3419,8 @@ namespace Facturacion.Server.Migrations
                         .HasPrecision(18, 6)
                         .HasColumnType("decimal(18,6)");
 
-                    b.Property<decimal?>("PesoUnitarioKg")
-                        .HasPrecision(18, 6)
-                        .HasColumnType("decimal(18,6)");
-
                     b.Property<Guid>("TrasladoCartaPorteId")
                         .HasColumnType("uniqueidentifier");
-
-                    b.Property<string>("Unidad")
-                        .HasMaxLength(20)
-                        .HasColumnType("nvarchar(20)");
 
                     b.HasKey("Id");
 
@@ -3467,9 +3434,6 @@ namespace Facturacion.Server.Migrations
                 {
                     b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("uniqueidentifier");
-
-                    b.Property<Guid?>("ClienteDestinoId")
                         .HasColumnType("uniqueidentifier");
 
                     b.Property<Guid>("ComprobanteId")
@@ -3597,10 +3561,6 @@ namespace Facturacion.Server.Migrations
                         .IsRequired()
                         .HasMaxLength(3)
                         .HasColumnType("nvarchar(3)");
-
-                    b.Property<string>("NombreRemitenteDestinatario")
-                        .HasMaxLength(254)
-                        .HasColumnType("nvarchar(254)");
 
                     b.Property<string>("NumeroExterior")
                         .IsRequired()

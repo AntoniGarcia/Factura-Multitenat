@@ -1,12 +1,13 @@
 @using Facturacion.Client.Servicios.Plataforma
 @using Facturacion.Shared.Contratos
+@using Facturacion.Shared.Plataforma
 @using Facturacion.Shared.Transporte
 @inject ServicioDeTransporte Transporte
 @inject IBusquedaDeCatalogo Busqueda
 
 <div class="rejilla-formulario">
     <MudTextField T="string" Label="Calle" Value="@_calle" ValueChanged="CambiarCalle" Disabled="@Deshabilitado" Required="true" />
-    <MudTextField T="string" Label="Número exterior" Value="@_numeroExterior" ValueChanged="CambiarNumeroExterior" Disabled="@Deshabilitado" Required="true" />
+    <MudTextField T="string" Label="Número exterior (opcional)" Value="@_numeroExterior" ValueChanged="CambiarNumeroExterior" Disabled="@Deshabilitado" />
     <MudTextField T="string" Label="Número interior" Value="@_numeroInterior" ValueChanged="CambiarNumeroInterior" Disabled="@Deshabilitado" />
 
     <BuscadorCatalogo @key="_estado?.Clave" Catalogo="c_Estado" Label="Estado" Valor="@_estado"
@@ -23,12 +24,11 @@
 </div>
 
 @code {
-    [Parameter, EditorRequired] public string Tipo { get; set; } = "Origen";
-    [Parameter, EditorRequired] public UbicacionCartaPorteDto Valor { get; set; } = null!;
-    [Parameter] public EventCallback<UbicacionCartaPorteDto> ValorCambiado { get; set; }
+    [Parameter, EditorRequired] public DomicilioSatDto Valor { get; set; } = null!;
+    [Parameter] public EventCallback<DomicilioSatDto> ValorCambiado { get; set; }
     [Parameter] public bool Deshabilitado { get; set; }
 
-    private UbicacionCartaPorteDto? _ultimoValor;
+    private DomicilioSatDto? _ultimoValor;
     private string _calle = string.Empty, _numeroExterior = string.Empty, _numeroInterior = string.Empty;
     private ClaveSatDto? _estado, _municipio, _codigoPostal;
     private List<ClaveSatDto> _municipiosDisponibles = [];
@@ -39,7 +39,7 @@
 
         _ultimoValor = Valor;
         _calle = Valor.Calle;
-        _numeroExterior = Valor.NumeroExterior;
+        _numeroExterior = Valor.NumeroExterior ?? string.Empty;
         _numeroInterior = Valor.NumeroInterior ?? string.Empty;
         _estado = AClave("c_Estado", Valor.Estado);
         _municipio = AClave("c_Municipio", Valor.Municipio);
@@ -111,7 +111,15 @@
 
     private async Task AplicarDomicilioPorCodigoPostalAsync(string codigoPostal)
     {
-        var domicilio = await Transporte.ResolverDomicilioPorCodigoPostalAsync(codigoPostal);
+        DomicilioPorCodigoPostalDto? domicilio;
+        try
+        {
+            domicilio = await Transporte.ResolverDomicilioPorCodigoPostalAsync(codigoPostal);
+        }
+        catch (HttpRequestException)
+        {
+            return;
+        }
         if (domicilio is null) return;
         _estado = new ClaveSatDto("c_Estado", domicilio.Estado, domicilio.NombreEstado, true);
         _municipio = domicilio.Municipio is null ? null : new ClaveSatDto("c_Municipio", domicilio.Municipio,
@@ -121,9 +129,8 @@
 
     private async Task EmitirAsync()
     {
-        var nuevo = new UbicacionCartaPorteDto(Tipo, Tipo == "Origen" ? 1 : 2, null, _calle,
-            _numeroExterior, Recortar(_numeroInterior), _estado?.Clave ?? string.Empty, _municipio?.Clave ?? string.Empty,
-            _codigoPostal?.Clave ?? string.Empty);
+        var nuevo = new DomicilioSatDto(_calle, Recortar(_numeroExterior), Recortar(_numeroInterior),
+            _estado?.Clave ?? string.Empty, _municipio?.Clave ?? string.Empty, _codigoPostal?.Clave ?? string.Empty);
         _ultimoValor = nuevo;
         await ValorCambiado.InvokeAsync(nuevo);
     }

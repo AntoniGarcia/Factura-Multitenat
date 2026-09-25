@@ -1,10 +1,14 @@
 # Estado del proyecto y cómo continuar
 
+> **Archivo histórico (19 de agosto de 2026).** Describe un corte anterior del proyecto.
+> No se debe usar para decidir el estado actual, los próximos pasos ni el despliegue.
+> Ver [el reporte vigente](../REPORTE_ESTADO_SISTEMA.md).
+
 Traspaso de contexto para retomar el proyecto en una sesión nueva.
 **Corte: 19 de agosto de 2026, rama `develop`.**
 
-Este documento reemplaza cualquier versión anterior. Si encuentras otro documento de
-traspaso, está viejo.
+En su fecha de corte, este documento reemplazaba los traspasos anteriores. Hoy se
+conserva solo como referencia histórica.
 
 Va acompañado de `docs/AUDITORIA-2026-08-19.md`, que es la lista de defectos, huecos de
 campo y limpieza pendiente. **Este documento dice dónde estamos; el otro dice qué está
