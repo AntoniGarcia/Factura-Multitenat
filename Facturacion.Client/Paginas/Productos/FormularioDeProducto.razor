@@ -3,6 +3,7 @@
 @attribute [Authorize(Policy = Permisos.ConfigurarEmpresa)]
 @using Facturacion.Shared.Contratos
 @inject ServicioDeProductos Productos
+@inject ServicioDeEmpresa Empresas
 @inject ServicioDeCatalogos Catalogos
 @inject IBusquedaDeCatalogo Busqueda
 @inject NavigationManager Navegacion
@@ -114,7 +115,22 @@ else
                         @atajo.Etiqueta
                     </MudButton>
                 }
+                @if (_impuestos.Count == 0 && HayTasasPredeterminadas)
+                {
+                    <MudButton Variant="Variant.Outlined" Size="Size.Small"
+                               OnClick="AplicarTasasDeLaEmpresa">
+                        Usar tasas de la empresa
+                    </MudButton>
+                }
             </div>
+
+            @if (_impuestos.Count == 0 && HayTasasPredeterminadas)
+            {
+                <p class="seccion-ayuda">
+                    Se agregarán las tasas mayores que cero configuradas para esta empresa.
+                    Revisa el desglose antes de guardar. Para IVA 0 % o exento, usa el atajo correspondiente.
+                </p>
+            }
 
             <MudSimpleTable Dense="true" Class="tabla-impuestos">
                 <thead>
@@ -201,6 +217,7 @@ else
     private bool _cargando = true;
     private bool _guardando;
     private int _codigoInterno;
+    private ConfiguracionEmpresaDto? _configuracionEmpresa;
 
     private string _descripcion = string.Empty;
     private string _unidadTexto = string.Empty;
@@ -213,6 +230,11 @@ else
     private ClaveSatDto? _claveUnidadSel;
 
     private readonly List<ImpuestoDeProductoDto> _impuestos = [];
+
+    private bool HayTasasPredeterminadas => _configuracionEmpresa is { } configuracion
+        && (configuracion.TasaIvaPorDefecto > 0
+            || configuracion.TasaRetencionIvaPorDefecto > 0
+            || configuracion.TasaRetencionIsrPorDefecto > 0);
 
     private string _nuevoImpuesto = "002";
     private string _nuevoFactor = "Tasa";
@@ -236,6 +258,7 @@ else
     protected override async Task OnParametersSetAsync()
     {
         _cargando = true;
+        _configuracionEmpresa = await Empresas.ObtenerConfiguracionAsync();
 
         if (Id is { } id)
         {
@@ -304,6 +327,24 @@ else
         // configurados a mano, se respetan.
         _impuestos.RemoveAll(i => i is { Impuesto: "002", EsRetencion: false });
         _impuestos.Insert(0, new ImpuestoDeProductoDto("002", atajo.Factor, atajo.Tasa, EsRetencion: false));
+    }
+
+    private void AplicarTasasDeLaEmpresa()
+    {
+        if (!LlevaDesglose || _impuestos.Count > 0 || _configuracionEmpresa is not { } configuracion)
+            return;
+
+        if (configuracion.TasaIvaPorDefecto > 0)
+            _impuestos.Add(new ImpuestoDeProductoDto(
+                "002", "Tasa", configuracion.TasaIvaPorDefecto, EsRetencion: false));
+
+        if (configuracion.TasaRetencionIvaPorDefecto > 0)
+            _impuestos.Add(new ImpuestoDeProductoDto(
+                "002", "Tasa", configuracion.TasaRetencionIvaPorDefecto, EsRetencion: true));
+
+        if (configuracion.TasaRetencionIsrPorDefecto > 0)
+            _impuestos.Add(new ImpuestoDeProductoDto(
+                "001", "Tasa", configuracion.TasaRetencionIsrPorDefecto, EsRetencion: true));
     }
 
     private void AgregarImpuesto()
