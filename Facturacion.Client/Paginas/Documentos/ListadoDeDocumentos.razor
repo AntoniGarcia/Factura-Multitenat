@@ -1,5 +1,6 @@
 @page "/documentos"
 @attribute [Authorize(Policy = Permisos.Timbrar)]
+@using Facturacion.Client.Componentes.Documentos
 @using Facturacion.Client.Servicios.Documentos
 @using Facturacion.Shared.Comun
 @using Facturacion.Shared.Documentos
@@ -225,6 +226,16 @@
                     </MudButton>
                 }
 
+                @if (_detalleSeleccionado is { } detalleEnviable && EsEnviable(detalleEnviable))
+                {
+                    <MudButton Variant="Variant.Text"
+                               StartIcon="@Icons.Material.Filled.Email"
+                               Disabled="@_dialogoAbierto"
+                               OnClick="EnviarPorCorreoAsync">
+                        Enviar por correo
+                    </MudButton>
+                }
+
                 <SiTienePermiso Permiso="@Permisos.Cancelar">
                     @if (seleccionado.Estatus == EstatusComprobante.Timbrado)
                     {
@@ -345,7 +356,38 @@
         => comprobante.Estatus is "timbrado" or "cancelado" && comprobante.Uuid is not null;
 
     private static bool TienePdfFiscal(ComprobanteDto comprobante)
-        => EsCfdiFiscal(comprobante) && comprobante.TipoDeComprobante is "I" or "T";
+        => EsCfdiFiscal(comprobante) && comprobante.TipoDeComprobante is "I" or "T" or "P";
+
+    /// <summary>Lo mismo que exige el servidor: solo lo timbrado y vigente se le manda a alguien.</summary>
+    private static bool EsEnviable(ComprobanteDto comprobante)
+        => comprobante.Estatus == "timbrado" && comprobante.Uuid is not null;
+
+    private async Task EnviarPorCorreoAsync()
+    {
+        if (_detalleSeleccionado is not { } detalle || _dialogoAbierto) return;
+
+        _dialogoAbierto = true;
+
+        try
+        {
+            var parametros = new DialogParameters<DialogoDeEnvioDeCorreo>
+            {
+                { x => x.ComprobanteId, detalle.Id }
+            };
+
+            var referencia = await Dialogos.ShowAsync<DialogoDeEnvioDeCorreo>(
+                "Enviar por correo",
+                parametros,
+                new DialogOptions { MaxWidth = MaxWidth.Medium, FullWidth = true, CloseOnEscapeKey = true });
+
+            if (await referencia.Result is { Canceled: false, Data: EnvioDeCorreoDto envio })
+                _aviso = $"Correo enviado a {string.Join(", ", envio.Destinatarios)}.";
+        }
+        finally
+        {
+            _dialogoAbierto = false;
+        }
+    }
 
     private async Task VerPdfFiscalAsync()
     {

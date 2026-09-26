@@ -10,17 +10,19 @@ namespace Facturacion.Server.Infra.Correo;
 /// </summary>
 public sealed class ServicioDeCorreoConsola(ILogger<ServicioDeCorreoConsola> registro) : IServicioDeCorreo
 {
-    public Task EnviarAsync(
-        string destinatario, string asunto, string cuerpoHtml, CancellationToken ct,
-        string? responderA = null, IReadOnlyList<AdjuntoDeCorreo>? adjuntos = null)
+    public Task EnviarAsync(MensajeDeCorreo mensaje, CancellationToken ct)
     {
-        var listaAdjuntos = adjuntos is { Count: > 0 }
-            ? " | Adjuntos: " + string.Join(", ", adjuntos.Select(a => a.NombreArchivo))
+        var copia = mensaje.CopiaOculta is { Count: > 0 }
+            ? " | CCO: " + string.Join(", ", mensaje.CopiaOculta)
+            : string.Empty;
+
+        var adjuntos = mensaje.Adjuntos is { Count: > 0 }
+            ? " | Adjuntos: " + string.Join(", ", mensaje.Adjuntos.Select(a => $"{a.NombreArchivo} ({a.Contenido.Length} B)"))
             : string.Empty;
 
         registro.LogInformation(
-            "Correo simulado (Correo:Servidor no configurado) → {Destinatario} | {Asunto}{Adjuntos}\n{Cuerpo}",
-            destinatario, asunto, listaAdjuntos, cuerpoHtml);
+            "Correo simulado (Correo:Servidor no configurado) → {Destinatarios}{Copia} | Responder a: {ResponderA} | {Asunto}{Adjuntos}\n{Cuerpo}",
+            string.Join(", ", mensaje.Para), copia, mensaje.ResponderA ?? "—", mensaje.Asunto, adjuntos, mensaje.CuerpoHtml);
 
         return Task.CompletedTask;
     }

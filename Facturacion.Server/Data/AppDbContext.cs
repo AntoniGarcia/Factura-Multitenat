@@ -112,6 +112,7 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> opciones, IConte
     public DbSet<Pago> Pagos => Set<Pago>();
     public DbSet<DocumentoPagado> PagosDocumentos => Set<DocumentoPagado>();
     public DbSet<ImpuestoDocumentoPagado> PagosDocumentosImpuestos => Set<ImpuestoDocumentoPagado>();
+    public DbSet<EnvioDeCorreo> EnviosDeCorreo => Set<EnvioDeCorreo>();
 
     protected override void OnModelCreating(ModelBuilder constructor)
     {

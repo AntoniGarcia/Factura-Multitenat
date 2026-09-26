@@ -31,6 +31,7 @@ public static class EmisionEndpoints
         grupo.MapGet("/{id:guid}/vista-previa.pdf", VistaPreviaPdf);
         grupo.MapGet("/{id:guid}/pdf", DescargarPdf);
         grupo.MapGet("/{id:guid}/xml", DescargarXml);
+        grupo.MapGet("/{id:guid}/descarga", DescargarZip);
         grupo.MapPut("/{id:guid}", Guardar);
         grupo.MapDelete("/{id:guid}", EliminarBorrador);
         grupo.MapGet("/relacionados/resolver", ResolverRelacionado);
@@ -84,6 +85,16 @@ public static class EmisionEndpoints
         Guid id, ServicioDeSalidasFiscales salidas, HttpContext http, CancellationToken ct)
     {
         var resultado = await salidas.ObtenerXmlAsync(id, ct);
+
+        return resultado.EsFallo
+            ? resultado.Error!.AResultado(http)
+            : Results.File(resultado.Valor!.Contenido, resultado.Valor.TipoContenido, resultado.Valor.Nombre);
+    }
+
+    private static async Task<IResult> DescargarZip(
+        Guid id, ServicioDeSalidasFiscales salidas, HttpContext http, CancellationToken ct)
+    {
+        var resultado = await salidas.GenerarZipAsync(id, ct);
 
         return resultado.EsFallo
             ? resultado.Error!.AResultado(http)

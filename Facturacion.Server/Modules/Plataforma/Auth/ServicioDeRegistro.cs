@@ -1,5 +1,4 @@
 using System.Security.Cryptography;
-using System.Text.RegularExpressions;
 using Facturacion.Server.Data;
 using Facturacion.Server.Data.Entidades.Plataforma;
 using Facturacion.Server.Infra.Bitacora;
@@ -358,12 +357,12 @@ public sealed class ServicioDeRegistro(
     {
         var plantillas = (await configuracionDelSistema.ObtenerAsync(ct)).Mensajes;
 
-        var cuerpo = Renderizar(plantillas.CuerpoVerificacion,
+        var cuerpo = PlantillaDeCorreo.Renderizar(plantillas.CuerpoVerificacion,
             (OpcionesDeMensajes.MarcadorNombre, nombre),
             (OpcionesDeMensajes.MarcadorCodigo, codigo),
             (OpcionesDeMensajes.MarcadorMinutos, VigenciaDelCodigo.TotalMinutes.ToString("0")));
 
-        var asunto = Rellenar(plantillas.AsuntoVerificacion, (OpcionesDeMensajes.MarcadorNombre, nombre));
+        var asunto = PlantillaDeCorreo.Rellenar(plantillas.AsuntoVerificacion,(OpcionesDeMensajes.MarcadorNombre, nombre));
 
         await EnviarSinTumbarElAltaAsync(destinatario, asunto, cuerpo, ct);
     }
@@ -372,47 +371,14 @@ public sealed class ServicioDeRegistro(
     {
         var plantillas = (await configuracionDelSistema.ObtenerAsync(ct)).Mensajes;
 
-        var cuerpo = Renderizar(plantillas.CuerpoContrasena,
+        var cuerpo = PlantillaDeCorreo.Renderizar(plantillas.CuerpoContrasena,
             (OpcionesDeMensajes.MarcadorNombre, nombre),
             (OpcionesDeMensajes.MarcadorCorreo, destinatario),
             (OpcionesDeMensajes.MarcadorClaveObsoleto, "la que elegiste durante el registro"));
 
-        var asunto = Rellenar(plantillas.AsuntoContrasena, (OpcionesDeMensajes.MarcadorNombre, nombre));
+        var asunto = PlantillaDeCorreo.Rellenar(plantillas.AsuntoContrasena,(OpcionesDeMensajes.MarcadorNombre, nombre));
 
         await EnviarSinTumbarElAltaAsync(destinatario, asunto, cuerpo, ct);
-    }
-
-    /// <summary>
-    /// Sustituye los marcadores de una plantilla del operador. Son palabras completas en
-    /// mayúsculas (NOMBRE, CODIGO, CORREO…), no corchetes ni llaves: un operador sin
-    /// experiencia técnica puede leer el mensaje tal y como quedará.
-    /// </summary>
-    private static string Rellenar(string plantilla, params (string Marcador, string Valor)[] valores)
-    {
-        var resultado = plantilla;
-
-        foreach (var (marcador, valor) in valores)
-            resultado = Regex.Replace(resultado, $@"\b{Regex.Escape(marcador)}\b", valor);
-
-        return resultado;
-    }
-
-    /// <summary>
-    /// El operador escribe el mensaje en texto normal; el correo necesita HTML. Se sustituyen
-    /// primero los marcadores (con los valores en bruto, aún sin escapar) y se escapa y
-    /// convierte todo al final: así un nombre o un correo raros no pueden colar etiquetas
-    /// dentro del mensaje, por mucho que la plantilla esté en manos del operador.
-    /// </summary>
-    private static string Renderizar(string plantilla, params (string Marcador, string Valor)[] valores)
-    {
-        var texto = Rellenar(plantilla, valores);
-
-        return string.Join("\n",
-            texto
-                .Replace("\r\n", "\n")
-                .Split("\n\n", StringSplitOptions.RemoveEmptyEntries)
-                .Select(bloque =>
-                    $"<p>{string.Join("<br>\n", bloque.Split('\n').Select(linea => Escapar(linea.TrimEnd())))}</p>"));
     }
 
     private async Task AvisarQueYaExisteAsync(string destinatario, CancellationToken ct)
@@ -439,15 +405,13 @@ public sealed class ServicioDeRegistro(
     {
         try
         {
-            await correo.EnviarAsync(destinatario, asunto, cuerpo, ct);
+            await correo.EnviarAsync(new MensajeDeCorreo([destinatario], asunto, cuerpo), ct);
         }
         catch (Exception excepcion)
         {
             registro.LogError(excepcion, "No se pudo enviar el correo del registro");
         }
     }
-
-    private static string Escapar(string texto) => System.Net.WebUtility.HtmlEncode(texto);
 
     private static string Redondear(TimeSpan espera)
         => espera.TotalMinutes >= 1

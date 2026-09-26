@@ -49,7 +49,7 @@ public static class DocumentosModule
         servicios.AddScoped<GeneradorDePdfCartaPorte>();
         servicios.AddScoped<ServicioDePdfBorrador>();
         servicios.AddScoped<ServicioDeSalidasFiscales>();
-        servicios.AddScoped<ServicioDeDescargas>();
+        servicios.AddScoped<ServicioDeEnvioDeComprobantes>();
         servicios.AddScoped<ServicioDeXmlCfdi>();
 
         servicios.AddScoped<CierreDeTimbrado>();
@@ -141,8 +141,8 @@ public static class DocumentosModule
         aplicacion.MapTrasladosCartaPorte();
         aplicacion.MapNotaria();
         aplicacion.MapObras();
-        aplicacion.MapDescargas();
         aplicacion.MapComercioExterior();
+        aplicacion.MapEnvios();
 
         return aplicacion;
     }

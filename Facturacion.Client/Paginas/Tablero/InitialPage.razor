@@ -494,7 +494,7 @@
         => comprobante.Estatus is "timbrado" or "cancelado" && comprobante.Uuid is not null;
 
     private static bool TienePdfFiscal(ComprobanteDto comprobante)
-        => EsCfdiFiscal(comprobante) && comprobante.TipoDeComprobante is "I" or "T";
+        => EsCfdiFiscal(comprobante) && comprobante.TipoDeComprobante is "I" or "T" or "P";
 
     private async Task VerPdfFiscalAsync()
     {

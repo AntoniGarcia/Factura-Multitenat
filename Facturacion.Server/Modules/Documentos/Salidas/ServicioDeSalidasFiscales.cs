@@ -1,4 +1,5 @@
 using System.Globalization;
+using System.IO.Compression;
 using System.Security.Cryptography;
 using System.Xml;
 using System.Xml.Linq;
@@ -38,16 +39,22 @@ public sealed class ServicioDeSalidasFiscales(
             return ErrorNegocio.Conflicto(
                 "comprobante-sin-cfdi", "El PDF fiscal solo está disponible después del timbrado.");
 
-        // El complemento de pagos no contiene los conceptos de una factura y fingir que sí
-        // los tiene produciría un reporte incorrecto. Carta Porte usa su propio generador.
-        if (comprobante.TipoDeComprobante is not ("I" or "T"))
+        // Carta Porte usa su propio generador; el complemento de pagos tiene su propia sección
+        // en GeneradorDePdfCfdi, sin conceptos. Nómina y egresos no se emiten todavía.
+        if (comprobante.TipoDeComprobante is not ("I" or "T" or "P"))
             return ErrorNegocio.Conflicto(
                 "pdf-no-disponible-para-tipo",
                 "La representación PDF para este tipo de comprobante todavía no está disponible.");
 
+        // La raíz de un pago va en XXX, sin decimales; sus importes viven en el complemento y
+        // se escriben con los de la moneda del pago, igual que en ServicioDeXmlCfdi.
+        var monedaDeImportes = comprobante.TipoDeComprobante == "P" && comprobante.Pagos.Count > 0
+            ? comprobante.Pagos[0].MonedaP
+            : comprobante.Moneda;
+
         var decimales = await baseDeDatos.SatMonedas
             .AsNoTracking()
-            .Where(m => m.Clave == comprobante.Moneda)
+            .Where(m => m.Clave == monedaDeImportes)
             .Select(m => (int?)m.Decimales)
             .FirstOrDefaultAsync(ct) ?? 2;
 
@@ -65,7 +72,7 @@ public sealed class ServicioDeSalidasFiscales(
                     "traslado-sin-carta-porte", "El CFDI de traslado no tiene los datos de Carta Porte requeridos.");
 
             return new ArchivoFiscal(
-                NombreDeArchivo(comprobante, "pdf"), "application/pdf",
+                NombreDeArchivoFiscal.Construir(comprobante, zona, "pdf"), "application/pdf",
                 generadorCartaPorte.Generar(comprobante, traslado, zona, esBorrador: false));
         }
 
@@ -93,7 +100,7 @@ public sealed class ServicioDeSalidasFiscales(
             new DatosDelPdf(fechaLocal, decimales, logo?.Contenido, Notaria: datosNotariales,
                 RetencionCincoAlMillar: retencionCincoAlMillar));
 
-        return new ArchivoFiscal(NombreDeArchivo(comprobante, "pdf"), "application/pdf", contenido);
+        return new ArchivoFiscal(NombreDeArchivoFiscal.Construir(comprobante, zona, "pdf"), "application/pdf", contenido);
     }
 
     private static decimal? LeerCincoAlMillar(byte[] contenido)
@@ -144,7 +151,10 @@ public sealed class ServicioDeSalidasFiscales(
             var contenido = await almacen.LeerAsync(
                 comprobante.EmpresaId, CategoriasDeArchivo.XmlTimbrado, comprobante.RutaXml, ct);
 
-            return new ArchivoFiscal(NombreDeArchivo(comprobante, "xml"), "application/xml", contenido);
+            var zona = await huso.ObtenerAsync(ct);
+
+            return new ArchivoFiscal(
+                NombreDeArchivoFiscal.Construir(comprobante, zona, "xml"), "application/xml", contenido);
         }
         catch (FileNotFoundException ex)
         {
@@ -164,24 +174,41 @@ public sealed class ServicioDeSalidasFiscales(
         }
     }
 
+    /// <summary>El XML timbrado y su PDF juntos, con las mismas validaciones que cada uno por separado.</summary>
+    public async Task<Resultado<ArchivoFiscal>> GenerarZipAsync(Guid comprobanteId, CancellationToken ct)
+    {
+        var xml = await ObtenerXmlAsync(comprobanteId, ct);
+        if (xml.EsFallo) return xml.Error!;
+
+        var pdf = await GenerarPdfAsync(comprobanteId, ct);
+        if (pdf.EsFallo) return pdf.Error!;
+
+        using var memoria = new MemoryStream();
+        using (var zip = new ZipArchive(memoria, ZipArchiveMode.Create, leaveOpen: true))
+        {
+            foreach (var archivo in new[] { xml.Valor, pdf.Valor })
+            {
+                await using var flujo = zip.CreateEntry(archivo.Nombre, CompressionLevel.Optimal).Open();
+                await flujo.WriteAsync(archivo.Contenido, ct);
+            }
+        }
+
+        return new ArchivoFiscal(Path.ChangeExtension(xml.Valor.Nombre, "zip"), "application/zip", memoria.ToArray());
+    }
+
     private async Task<Comprobante?> CargarAsync(Guid comprobanteId, CancellationToken ct)
         => await baseDeDatos.Comprobantes
             .AsNoTracking()
             .Include(c => c.Conceptos.OrderBy(x => x.Orden))
                 .ThenInclude(x => x.Impuestos)
             .Include(c => c.Relacionados)
+            .Include(c => c.Pagos).ThenInclude(p => p.Documentos).ThenInclude(d => d.Impuestos)
+            .AsSplitQuery()
             .FirstOrDefaultAsync(c => c.Id == comprobanteId, ct);
 
     private static bool EsFiscal(Comprobante comprobante)
         => comprobante.Estatus is "timbrado" or "cancelado" && comprobante.Uuid is not null;
 
-    private static string NombreDeArchivo(Comprobante comprobante, string extension)
-    {
-        var serie = string.IsNullOrWhiteSpace(comprobante.Serie) ? string.Empty : $"{comprobante.Serie}-";
-        var folio = comprobante.Folio?.ToString() ?? comprobante.Uuid!.Value.ToString("N");
-
-        return $"cfdi-{serie}{folio}.{extension}";
-    }
 }
 
 /// <summary>Archivo fiscal preparado para una respuesta HTTP autenticada.</summary>

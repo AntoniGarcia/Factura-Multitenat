@@ -60,6 +60,7 @@ builder.Services.AddScoped<ServicioDeObras>();
 builder.Services.AddScoped<ServicioDeComercioExterior>();
 builder.Services.AddScoped<ServicioDeListado>();
 builder.Services.AddScoped<ServicioDeCancelacion>();
+builder.Services.AddScoped<ServicioDeEnvios>();
 builder.Services.AddScoped<ServicioDePagos>();
 
 // El mismo objeto atiende las dos cosas: la barra superior lo ve como IIndicadorDeTimbres y

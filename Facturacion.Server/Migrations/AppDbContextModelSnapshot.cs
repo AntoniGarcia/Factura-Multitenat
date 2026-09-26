@@ -567,6 +567,56 @@ namespace Facturacion.Server.Migrations
                     b.ToTable("PagosDocumentos", (string)null);
                 });
 
+            modelBuilder.Entity("Facturacion.Server.Data.Entidades.Documentos.EnvioDeCorreo", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("Asunto")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
+
+                    b.Property<Guid>("ComprobanteId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("CopiaOculta")
+                        .HasMaxLength(254)
+                        .HasColumnType("nvarchar(254)");
+
+                    b.Property<string>("Destinatarios")
+                        .IsRequired()
+                        .HasMaxLength(2600)
+                        .HasColumnType("nvarchar(2600)");
+
+                    b.Property<Guid>("EmpresaId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<Guid>("EnviadoPorUsuarioId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTime>("EnviadoUtc")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("Error")
+                        .HasMaxLength(64)
+                        .HasColumnType("nvarchar(64)");
+
+                    b.Property<bool>("Exitoso")
+                        .HasColumnType("bit");
+
+                    b.Property<bool>("IncluyoXml")
+                        .HasColumnType("bit");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ComprobanteId", "EnviadoUtc")
+                        .HasDatabaseName("IX_EnviosDeCorreo_PorComprobante");
+
+                    b.ToTable("EnviosDeCorreo", (string)null);
+                });
+
             modelBuilder.Entity("Facturacion.Server.Data.Entidades.Documentos.ImpuestoConcepto", b =>
                 {
                     b.Property<Guid>("Id")
@@ -3855,6 +3905,17 @@ namespace Facturacion.Server.Migrations
                         .IsRequired();
 
                     b.Navigation("Pago");
+                });
+
+            modelBuilder.Entity("Facturacion.Server.Data.Entidades.Documentos.EnvioDeCorreo", b =>
+                {
+                    b.HasOne("Facturacion.Server.Data.Entidades.Documentos.Comprobante", "Comprobante")
+                        .WithMany()
+                        .HasForeignKey("ComprobanteId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Comprobante");
                 });
 
             modelBuilder.Entity("Facturacion.Server.Data.Entidades.Documentos.ImpuestoConcepto", b =>
