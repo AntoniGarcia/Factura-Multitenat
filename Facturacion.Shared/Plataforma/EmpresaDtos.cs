@@ -37,9 +37,8 @@ public sealed record DomicilioSatDto(
     string CodigoPostal);
 
 /// <summary>
-/// Licencias de los módulos de fase 2. Se guardan y se muestran, pero <b>no habilitan nada</b>:
-/// Carta Porte, Comercio Exterior, Notaría e INE están fuera del MVP (REPARTO-EQUIPO.md §1).
-/// Viajan aparte para que en la interfaz sea evidente que son un bloque reservado.
+/// Licencias de los módulos especiales. El operador las administra y el servidor valida
+/// las correspondientes al usar Notaría, Obras y Comercio Exterior.
 /// </summary>
 public sealed record LicenciasDto(
     bool Notarios,

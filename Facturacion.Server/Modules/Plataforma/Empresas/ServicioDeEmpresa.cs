@@ -84,8 +84,7 @@ public sealed class ServicioDeEmpresa(
         var comoGuardar = new PeticionGuardarEmpresa(
             nombre.Normalizado, peticion.RegimenFiscal, peticion.CodigoPostalExpedicion, peticion.ZonaHoraria,
             null, null, null, null, null, null, null, null, null, null, null, null,
-            // Sin licencias de los módulos de la fase 2: se activan después, y aquí solo se
-            // usa este objeto para reaprovechar la validación fiscal.
+            // Una empresa nueva inicia sin licencias especiales; el operador puede asignarlas.
             new LicenciasDto(false, false, false, false));
 
         var validacion = await ValidarFiscalesAsync(rfc, comoGuardar, ct);

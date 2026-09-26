@@ -9,13 +9,10 @@ namespace Facturacion.Server.Modules.Plataforma.Timbres;
 /// Es como el operador del SaaS confirma un pago recibido y suelta los timbres a la bolsa de
 /// la empresa que compró.
 ///
-/// <para><b>Por qué consola y no un endpoint</b></para>
-/// Acreditar es crear dinero: mete timbres a una bolsa sin que nadie haya pagado desde el
-/// sistema. Quien puede hacerlo es el dueño del SaaS, no un usuario del inquilino —permitir
-/// que un cliente acredite su propia compra sería regalarle timbres—. Y una identidad de
-/// operador de plataforma no existe todavía; inventarla aquí sería adelantarse a la fase 8,
-/// que es la que define usuarios y permisos. Mientras tanto, el permiso es tener acceso al
-/// servidor, que es exactamente quien debe tenerlo.
+/// <para>
+/// Es una alternativa de operación manual al panel del operador. Requiere acceso al
+/// servidor; el inquilino no puede acreditar su propia compra.
+/// </para>
 /// </summary>
 public static class AcreditacionDeCompraCli
 {

@@ -12,7 +12,7 @@ namespace Facturacion.Server.Modules.Plataforma.Auth;
 public sealed record TokenEmitido(string Token, DateTime ExpiraUtc);
 
 /// <summary>
-/// Emite el access token. Los claims son exactamente los cinco de la fase 1: usuario,
+/// Emite el access token. Los claims del inquilino son: usuario,
 /// cuenta, empresa activa, permisos en esa empresa y familia de sesión.
 /// <para>
 /// La empresa activa va <b>dentro del token</b> y no como parámetro de las peticiones: es

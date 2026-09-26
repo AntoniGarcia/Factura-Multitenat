@@ -27,8 +27,8 @@ public sealed class ServicioDeTablero(
     IResumenDocumentos? documentos = null)
 {
     /// <summary>
-    /// Timbres restantes a partir de los cuales se avisa. Lo fija la fase 9 del prompt.
-    /// Viaja al Client dentro del DTO en vez de estar compilado allá.
+    /// Timbres restantes a partir de los cuales se avisa. Viaja al Client dentro del DTO
+    /// en vez de estar compilado allá.
     /// </summary>
     private const int UmbralAvisoTimbres = 50;
 
