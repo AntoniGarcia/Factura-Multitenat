@@ -11,7 +11,9 @@ namespace Facturacion.Server.Modules.Documentos.Salidas;
 /// <summary>Representación impresa de un CFDI de traslado con Carta Porte 3.1.</summary>
 public sealed class GeneradorDePdfCartaPorte
 {
-    public byte[] Generar(Comprobante comprobante, TrasladoCartaPorte traslado, TimeZoneInfo zona, bool esBorrador = true)
+    /// <param name="leyendaDelTimbre">El atributo <c>Leyenda</c> del timbre; ver <see cref="DatosDelPdf"/>.</param>
+    public byte[] Generar(Comprobante comprobante, TrasladoCartaPorte traslado, TimeZoneInfo zona, bool esBorrador = true,
+        string? leyendaDelTimbre = null)
         => Document.Create(documento => documento.Page(pagina =>
         {
             pagina.Size(PageSizes.Letter);
@@ -21,6 +23,8 @@ public sealed class GeneradorDePdfCartaPorte
             {
                 if (esBorrador)
                     c.Item().Border(1).Padding(5).AlignCenter().Text("BORRADOR — SIN VALIDEZ FISCAL").Bold();
+                else if (!string.IsNullOrWhiteSpace(leyendaDelTimbre))
+                    c.Item().Border(1).Padding(5).AlignCenter().Text(leyendaDelTimbre.ToUpperInvariant()).Bold();
                 c.Item().PaddingTop(6).Row(fila =>
                 {
                     fila.RelativeItem().Column(x => { x.Item().Text(comprobante.EmisorNombre).Bold().FontSize(12); x.Item().Text($"RFC {comprobante.EmisorRfc} · Régimen {comprobante.EmisorRegimenFiscal}"); });

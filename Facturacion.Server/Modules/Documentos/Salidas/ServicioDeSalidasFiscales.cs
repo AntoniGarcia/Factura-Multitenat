@@ -71,9 +71,24 @@ public sealed class ServicioDeSalidasFiscales(
                 return ErrorNegocio.Regla(
                     "traslado-sin-carta-porte", "El CFDI de traslado no tiene los datos de Carta Porte requeridos.");
 
+            var xmlDelTraslado = await ObtenerXmlAsync(comprobanteId, ct);
+            if (xmlDelTraslado.EsFallo) return xmlDelTraslado.Error!;
+
+            string? leyendaDelTraslado;
+            try
+            {
+                leyendaDelTraslado = LeerLeyendaDelTimbre(xmlDelTraslado.Valor.Contenido);
+            }
+            catch (XmlException ex)
+            {
+                registro.LogError(ex, "El XML timbrado de {Comprobante} no se pudo interpretar para el PDF.", comprobanteId);
+                return ErrorNegocio.Regla("xml-no-disponible",
+                    "El XML de este CFDI no se pudo leer para generar el PDF. Avisa a soporte.");
+            }
+
             return new ArchivoFiscal(
                 NombreDeArchivoFiscal.Construir(comprobante, zona, "pdf"), "application/pdf",
-                generadorCartaPorte.Generar(comprobante, traslado, zona, esBorrador: false));
+                generadorCartaPorte.Generar(comprobante, traslado, zona, esBorrador: false, leyendaDelTraslado));
         }
 
         var fechaLocal = TimeZoneInfo.ConvertTimeFromUtc(
@@ -84,10 +99,12 @@ public sealed class ServicioDeSalidasFiscales(
 
         DatosNotarialesDelPdf? datosNotariales;
         decimal? retencionCincoAlMillar;
+        string? leyenda;
         try
         {
             datosNotariales = DatosNotarialesDelPdf.DesdeXml(archivoXml.Valor.Contenido);
             retencionCincoAlMillar = LeerCincoAlMillar(archivoXml.Valor.Contenido);
+            leyenda = LeerLeyendaDelTimbre(archivoXml.Valor.Contenido);
         }
         catch (Exception ex) when (ex is XmlException or InvalidDataException or FormatException or OverflowException)
         {
@@ -98,10 +115,26 @@ public sealed class ServicioDeSalidasFiscales(
 
         var contenido = generadorPdf.Generar(comprobante,
             new DatosDelPdf(fechaLocal, decimales, logo?.Contenido, Notaria: datosNotariales,
-                RetencionCincoAlMillar: retencionCincoAlMillar));
+                RetencionCincoAlMillar: retencionCincoAlMillar, LeyendaDelTimbre: leyenda));
 
         return new ArchivoFiscal(NombreDeArchivoFiscal.Construir(comprobante, zona, "pdf"), "application/pdf", contenido);
     }
+
+    private static string? LeerLeyendaDelTimbre(byte[] contenido)
+    {
+        using var lector = XmlReader.Create(new MemoryStream(contenido), new XmlReaderSettings
+        {
+            DtdProcessing = DtdProcessing.Prohibit,
+            XmlResolver = null
+        });
+
+        return (string?)XDocument.Load(lector)
+            .Descendants(XNamespace.Get(EspacioDeNombresTimbre) + "TimbreFiscalDigital")
+            .FirstOrDefault()?
+            .Attribute("Leyenda");
+    }
+
+    private const string EspacioDeNombresTimbre = "http://www.sat.gob.mx/TimbreFiscalDigital";
 
     private static decimal? LeerCincoAlMillar(byte[] contenido)
     {

@@ -12,6 +12,10 @@ namespace Facturacion.Server.Modules.Documentos.Salidas;
 
 /// <summary>Lo que el PDF necesita y no está dentro del comprobante.</summary>
 /// <param name="Logo">Logo de la empresa, ya descifrado del almacén. Nulo si no tiene.</param>
+/// <param name="LeyendaDelTimbre">
+/// El atributo <c>Leyenda</c> del timbre fiscal: lo que el SAT o el PAC quieren que lea quien
+/// recibe el comprobante. Con el PAC simulado dice que no tiene validez fiscal.
+/// </param>
 public sealed record DatosDelPdf(
     DateTime FechaLocal,
     int Decimales,
@@ -19,7 +23,8 @@ public sealed record DatosDelPdf(
     bool EsBorrador = false,
     DatosNotarialesDelPdf? Notaria = null,
     DatosComercioExteriorDto? ComercioExterior = null,
-    decimal? RetencionCincoAlMillar = null);
+    decimal? RetencionCincoAlMillar = null,
+    string? LeyendaDelTimbre = null);
 
 /// <summary>
 /// Representación impresa del CFDI. Los campos son los que fija §1.4 del documento
@@ -99,6 +104,18 @@ public sealed class GeneradorDePdfCfdi
                     .Padding(5)
                     .AlignCenter()
                     .Text("BORRADOR — SIN VALIDEZ FISCAL")
+                    .Bold()
+                    .FontSize(10);
+            }
+
+            if (!datos.EsBorrador && !string.IsNullOrWhiteSpace(datos.LeyendaDelTimbre))
+            {
+                contenido.Item()
+                    .PaddingBottom(7)
+                    .Border(1)
+                    .Padding(5)
+                    .AlignCenter()
+                    .Text(datos.LeyendaDelTimbre.ToUpperInvariant())
                     .Bold()
                     .FontSize(10);
             }
