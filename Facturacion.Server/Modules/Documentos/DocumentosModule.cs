@@ -56,6 +56,7 @@ public static class DocumentosModule
         servicios.AddScoped<ServicioDeTimbrado>();
         servicios.AddScoped<Emision.ServicioDeEmision>();
         servicios.AddScoped<ServicioDeCancelacion>();
+        servicios.AddScoped<ServicioDeSolicitudesDeCancelacion>();
         servicios.AddScoped<ServicioDePagos>();
         servicios.AddScoped<ServicioDeTrasladosCartaPorte>();
         servicios.AddScoped<ServicioDeSalidasCartaPorte>();

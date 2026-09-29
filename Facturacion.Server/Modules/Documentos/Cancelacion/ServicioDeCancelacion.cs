@@ -400,7 +400,23 @@ public sealed class ServicioDeCancelacion(
             }
         }
 
-        if (comprobante.Estatus == antes) return;
+        if (solicitud is not null)
+        {
+            // Recortados a la columna: el texto lo pone el PAC y un cambio suyo no debe tumbar
+            // la consulta entera.
+            solicitud.EstadoCfdiSat = Recortar(estatus.EstadoCfdi, 32);
+            solicitud.EsCancelableSat = Recortar(estatus.EsCancelable, 64);
+            solicitud.EstatusCancelacionSat = Recortar(estatus.EstatusCancelacion, 64);
+            solicitud.ConsultadaUtc = DateTime.UtcNow;
+        }
+
+        if (comprobante.Estatus == antes)
+        {
+            // Sin cambio de estatus igual se guarda lo que dijo el SAT: la pantalla de
+            // solicitudes lo muestra con la hora de la consulta.
+            if (solicitud is not null) await baseDeDatos.SaveChangesAsync(ct);
+            return;
+        }
 
         comprobante.ModificadoUtc = DateTime.UtcNow;
 
@@ -414,6 +430,9 @@ public sealed class ServicioDeCancelacion(
         registro.LogInformation(
             "El SAT movió a {Comprobante} de '{Antes}' a '{Despues}'.", comprobante.Id, antes, comprobante.Estatus);
     }
+
+    private static string? Recortar(string? valor, int longitud)
+        => valor is null || valor.Length <= longitud ? valor : valor[..longitud];
 
     private static ResultadoDeCancelacionDto ADto(Comprobante comprobante, SolicitudCancelacion solicitud)
         => new(
