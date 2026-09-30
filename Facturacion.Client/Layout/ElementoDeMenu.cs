@@ -42,49 +42,40 @@ public static class MenuPrincipal
         public const string Empresa = "Mi empresa";
         public const string Administracion = "Administración";
 
-        public const string NewMenu = "Nuevo Menu";
+        public const string Tienda = "Tienda";
     }
 
     public static IReadOnlyList<ElementoDeMenu> Elementos { get; } =
     [
         // ── Diario: sin encabezado, siempre a la vista ──────────────────────────────────
         new("/", "Inicio", "home", Permiso: null),
+        new("/inicio", "Inicio", "home", Permiso: null),
         // Emitir no tiene entrada propia: se entra por «Documentos», que es donde se ve lo
         // que ya se emitió, y desde ahí se crea. Tener «Nueva factura» y «Documentos» como
         // hermanas obligaba a elegir entre dos puertas al mismo cuarto antes de saber
         // cuál de las dos se quería.
         new("/documentos", "Documentos", "description", Permisos.Timbrar),
+        new("/factura", "Nueva factura", "description", Permisos.Timbrar),
         // Aparte de Documentos porque es otro permiso y otro trabajo: dar seguimiento a lo que
         // sigue esperando la respuesta del receptor o del SAT (§30).
         new("/cancelaciones", "Cancelaciones", "cancel_presentation", Permisos.Cancelar),
         // new("/traslados-carta-porte/nuevo", "Carta Porte", "feature_play_list", Permisos.Timbrar),
         new("/clientes", "Clientes", "groups", Permiso: null),
-        new("/productos", "Productos", "inventory", Permiso: null),
-
+        new("/productos", "Productos", "inventory", Permiso: null),      
+        new("/catalogos", "Catálogos", "catalogo", Permiso: null),
         // ── Mi empresa: se configura una vez y se revisa de vez en cuando ───────────────      
-        new("/empresa", "Datos fiscales", "business", Permisos.ConfigurarEmpresa, Grupos.Empresa),
-        new("/empresa/nueva", "Agregar empresa", "domain_add", Permisos.ConfigurarEmpresa, Grupos.Empresa),
-        new("/empresa/series", "Series de folios", "tag", Permisos.ConfigurarEmpresa, Grupos.Empresa),
-        new("/empresa/certificados", "Certificados", "verified_user", Permisos.ConfigurarEmpresa, Grupos.Empresa),
-        new("/empresa/configuracion", "Configuración", "settings", Permisos.ConfigurarEmpresa, Grupos.Empresa),
+        new("/empresa/panel", "Panel de Actividad", "graficas", Permisos.ConfigurarEmpresa, Grupos.Empresa),
+        new("/empresa/series", "Series y folios", "tag", Permisos.ConfigurarEmpresa, Grupos.Empresa),
         new("/empresa/transporte", "Transporte", "local_shipping", Permisos.ConfigurarEmpresa, Grupos.Empresa),
-
-        // ── Administración: cuenta, gente y datos del SAT ───────────────────────────────
-        new("/timbres", "Timbres", "confirmation_number", Permisos.ComprarTimbres, Grupos.Administracion),
-        new("/usuarios", "Usuarios", "people", Permisos.AdministrarUsuarios, Grupos.Administracion),
+        new("/empresa/certificados", "Certificados", "verified_user", Permisos.ConfigurarEmpresa, Grupos.Empresa),
+        new("/empresa/usuarios", "Usuarios", "people", Permisos.AdministrarUsuarios, Grupos.Empresa),
+        new("/empresa/nueva", "Agregar empresa", "domain_add", Permisos.ConfigurarEmpresa, Grupos.Empresa),
+        new("/empresa", "Datos de la Empresa", "business", Permisos.ConfigurarEmpresa, Grupos.Empresa),
+        new("/empresa/tasas", "Tasas de Impuestos", "impuestos", Permisos.ConfigurarEmpresa, Grupos.Empresa),
+        new("/empresa/datos", "Datos Empresa", "business", Permisos.ConfigurarEmpresa, Grupos.Empresa),
+        new("empresa/configuracion", "Configuración", "settings", Permisos.ConfigurarEmpresa, Grupos.Empresa),
+        // ── Tienda: cuenta, gente y datos del SAT ───────────────────────────────
+        new("/timbres", "Timbres", "confirmation_number", Permisos.ComprarTimbres, Grupos.Tienda),
         // new("/admin/catalogos-sat", "Catálogos del SAT", "inventory_2", Permiso: null, Grupos.Administracion)
-
-        // --─ Nuevo menú: para probar cosas nuevas ───────────────────────────────
-        new("/inicio", "Inicio", "home", Permiso: null, Grupos.NewMenu),
-        new("/nuevaFactura", "Nueva factura", "description", Permiso: null, Grupos.NewMenu),
-        new("/catalogos", "Catálogos", "catalogo", Permiso: null, Grupos.NewMenu),
-
-        new("/panelDeActividad", "Panel de Actividad", "graficas", Permisos.ConfigurarEmpresa, Grupos.NewMenu),
-        new("/datosEmpresa", "Datos Empresa", "business", Permisos.ConfigurarEmpresa, Grupos.NewMenu), // Datos fiscales y configuración
-        new("/empresa/nueva", "Agregar empresa", "domain_add", Permisos.ConfigurarEmpresa, Grupos.NewMenu),
-        new("/empresa/series", "Series y folios", "tag", Permisos.ConfigurarEmpresa, Grupos.NewMenu),
-        new("/empresa/transporte", "Transporte", "local_shipping", Permisos.ConfigurarEmpresa, Grupos.NewMenu),
-        new("/empresa/certificados", "Certificados", "verified_user", Permisos.ConfigurarEmpresa, Grupos.NewMenu), // Certificados
-        new("/timbres", "Tienda", "tienda", Permisos.ComprarTimbres, Grupos.NewMenu), // Timbres, y más cosas de la tienda
     ];
 }

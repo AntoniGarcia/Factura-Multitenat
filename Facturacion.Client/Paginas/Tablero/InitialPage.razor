@@ -1,4 +1,4 @@
-﻿@page "/InitialPage"
+﻿@page "/inicio"
 @attribute [Authorize(Policy = Permisos.Timbrar)]
 @using Facturacion.Client.Servicios.Documentos
 @using Facturacion.Shared.Comun
@@ -10,6 +10,8 @@
 @inject NavigationManager Navegacion
 @inject IDialogService Dialogos
 
+<PageTitle>Inicio</PageTitle>
+<TituloDePagina Texto="Inicio" />
 <PanelErrores Problema="_error" />
 
 @if (_aviso is not null)
@@ -54,18 +56,6 @@
                               Clearable="true"
                               Placeholder="RFC, nombre o folio…" />
 
-                <MudSelect T="EstatusComprobante?"
-                           Label="Estatus"
-                           Value="_estatusBusqueda"
-                           ValueChanged="AlFiltrarEstatus"
-                           Clearable="true">
-                    <MudSelectItem T="EstatusComprobante?" Value="@(null)">Todos</MudSelectItem>
-                    @foreach (var estatus in Estatus)
-                    {
-                        <MudSelectItem T="EstatusComprobante?" Value="@estatus">@IndicadorEstado.Nombre(estatus)</MudSelectItem>
-                    }
-                </MudSelect>
-
                 <MudSelect T="string"
                            Label="Tipo"
                            Value="_tipoComprobante"
@@ -75,19 +65,6 @@
                     <MudSelectItem T="string" Value="@("I")">Facturas</MudSelectItem>
                     <MudSelectItem T="string" Value="@("P")">Pagos</MudSelectItem>
                     <MudSelectItem T="string" Value="@("T")">Traslados</MudSelectItem>
-                </MudSelect>
-
-                <BuscadorDeCliente Valor="_cliente" ValorCambiado="AlFiltrarCliente" />
-
-                <MudSelect T="Periodo"
-                           Label="Periodo"
-                           Value="_periodo"
-                           ValueChanged="AlFiltrarPeriodo">
-                    <MudSelectItem T="Periodo" Value="Periodo.Personalizado">Personalizado</MudSelectItem>
-                    <MudSelectItem T="Periodo" Value="Periodo.EsteMes">Este mes</MudSelectItem>
-                    <MudSelectItem T="Periodo" Value="Periodo.MesAnterior">Mes anterior</MudSelectItem>
-                    <MudSelectItem T="Periodo" Value="Periodo.UltimosTresMeses">Últimos 3 meses</MudSelectItem>
-                    <MudSelectItem T="Periodo" Value="Periodo.EsteAnio">Este año</MudSelectItem>
                 </MudSelect>
 
                 <CampoFecha Label="Desde" ValorUtc="_desdeUtc" ValorUtcCambiado="AlCambiarDesde" />
@@ -113,6 +90,7 @@
                     EsSeleccionado="EsSeleccionado"
                     TextoEntidad="documentos"
                     TextoSinDatos="No hay documentos que coincidan."
+                    TamanoPagina="15"
                     Height="calc(100vh - var(--alto-barra) - (var(--margen-pagina) * 2))" />
     </section>
 
@@ -282,9 +260,12 @@
     </aside>
 </div>
 
-@* ── Acciones frecuentes (rescatadas del inicio anterior) ─────────────────────────────
-   Se agregaron «Nuevo pago» y «Nueva Carta Porte» porque los botones de la cabecera de
-   /documentos ya no tienen dónde vivir. *@
+@* ── Acciones frecuentes ────────────────────────────────────────────────────────────
+   Reemplaza el listado anterior (Nueva factura, Nuevo pago, Nueva Carta Porte, Clientes,
+   Productos, Timbres, Empresa) por estos cuatro. "Catálogo" ahora cubre Clientes y
+   Productos en una sola pantalla con pestañas (/catalogos). Administración y Tienda
+   apuntan a las rutas que ya existían para Empresa y Timbres, respectivamente — si esos
+   nombres van a otra pantalla, dime la ruta y la cambio. *@
 <section class="panel tablero-accesos-panel" aria-labelledby="titulo-accesos-cliente">
     <header class="panel-encabezado">
         <h2 id="titulo-accesos-cliente" class="panel-titulo">Acciones frecuentes</h2>
@@ -296,41 +277,27 @@
                 <MudIcon Icon="@Icons.Material.Filled.AddCircle" Size="Size.Small" />
                 <span><strong>Nueva factura</strong><small>Capturar un comprobante</small></span>
             </a>
-            <a class="tablero-acceso" href="/pagos/nuevo">
-                <MudIcon Icon="@Icons.Material.Filled.Payments" Size="Size.Small" />
-                <span><strong>Nuevo pago</strong><small>Complemento de pago</small></span>
-            </a>
-            <a class="tablero-acceso" href="/traslados-carta-porte/nuevo">
-                <MudIcon Icon="@Icons.Material.Filled.FeaturedPlayList" Size="Size.Small" />
-                <span><strong>Nueva Carta Porte</strong><small>Traslado de mercancía</small></span>
-            </a>
         </SiTienePermiso>
-        <a class="tablero-acceso" href="/clientes">
-            <MudIcon Icon="@Icons.Material.Filled.Groups" Size="Size.Small" />
-            <span><strong>Clientes</strong><small>Administrar receptores</small></span>
+        <a class="tablero-acceso" href="/catalogos">
+            <MudIcon Icon="@Icons.Material.Filled.Category" Size="Size.Small" />
+            <span><strong>Catálogo</strong><small>Clientes y productos</small></span>
         </a>
-        <a class="tablero-acceso" href="/productos">
-            <MudIcon Icon="@Icons.Material.Filled.Inventory2" Size="Size.Small" />
-            <span><strong>Productos</strong><small>Precios, claves e impuestos</small></span>
-        </a>
-        <SiTienePermiso Permiso="@Permisos.ComprarTimbres">
-            <a class="tablero-acceso" href="/timbres">
-                <MudIcon Icon="@Icons.Material.Filled.ConfirmationNumber" Size="Size.Small" />
-                <span><strong>Timbres</strong><small>Saldo y paquetes</small></span>
-            </a>
-        </SiTienePermiso>
         <SiTienePermiso Permiso="@Permisos.ConfigurarEmpresa">
             <a class="tablero-acceso" href="/empresa">
                 <MudIcon Icon="@Icons.Material.Filled.Business" Size="Size.Small" />
-                <span><strong>Empresa</strong><small>Datos fiscales y configuración</small></span>
+                <span><strong>Administración</strong><small>Datos fiscales y configuración</small></span>
+            </a>
+        </SiTienePermiso>
+        <SiTienePermiso Permiso="@Permisos.ComprarTimbres">
+            <a class="tablero-acceso" href="/timbres">
+                <MudIcon Icon="@Icons.Material.Filled.Storefront" Size="Size.Small" />
+                <span><strong>Tienda</strong><small>Paquetes de timbres</small></span>
             </a>
         </SiTienePermiso>
     </div>
 </section>
 
 @code {
-    private static readonly EstatusComprobante[] Estatus = Enum.GetValues<EstatusComprobante>();
-
     /// <summary>Orden = índice de pestaña en el MudTabs de arriba.</summary>
     private enum Panel { Timbrados, Borradores, Timbrando, EnCancelacion, Cancelados, Buscar }
 
@@ -363,24 +330,19 @@
     private int _versionDeConteos;
 
     private string _texto = string.Empty;
-    private EstatusComprobante? _estatusBusqueda; // solo lo usa la pestaña «Buscar»
-    private ClienteEnListaDto? _cliente;
     private string? _tipoComprobante;
-    private Periodo _periodo = Periodo.EsteAnio;
 
     // El rango que pide §1.1 del documento funcional: del inicio del año en curso a hoy.
     private DateTime? _desdeUtc = InicioDelAnio();
     private DateTime? _hastaUtc = DateTime.UtcNow;
-
-    private enum Periodo { Personalizado, EsteMes, MesAnterior, UltimosTresMeses, EsteAnio }
 
     private IReadOnlyList<ColumnaDeTabla<ComprobanteEnListaDto>> _columnas = [];
 
     private bool EnPestanaBuscar => _panel == (int)Panel.Buscar;
 
     /// <summary>
-    /// El estatus que realmente se consulta: el fijo de la pestaña, o el del selector cuando
-    /// se está en «Buscar».
+    /// El estatus que realmente se consulta: el fijo de la pestaña, o ninguno cuando se está
+    /// en «Buscar» — ese selector se quitó, así que ahí ya no se filtra por estatus.
     /// </summary>
     private EstatusComprobante? EstatusEfectivo => (Panel)_panel switch
     {
@@ -389,7 +351,7 @@
         Panel.Timbrando => EstatusComprobante.Timbrando,
         Panel.EnCancelacion => EstatusComprobante.EnCancelacion,
         Panel.Cancelados => EstatusComprobante.Cancelado,
-        _ => _estatusBusqueda
+        _ => null
     };
 
     private int Conteo(EstatusComprobante estatus)
@@ -430,7 +392,7 @@
         var consultas = EstatusDePestanas.Select(async estatus =>
         {
             var (pagina, _) = await Listado.ListarAsync(
-                _texto, estatus, _cliente?.Id, _tipoComprobante, _desdeUtc, FinDelRango(),
+                _texto, estatus, null, _tipoComprobante, _desdeUtc, FinDelRango(),
                 1, 1, null, false, CancellationToken.None);
 
             return (estatus, total: pagina?.Total ?? 0);
@@ -494,7 +456,7 @@
         => comprobante.Estatus is "timbrado" or "cancelado" && comprobante.Uuid is not null;
 
     private static bool TienePdfFiscal(ComprobanteDto comprobante)
-        => EsCfdiFiscal(comprobante) && comprobante.TipoDeComprobante is "I" or "T" or "P";
+        => EsCfdiFiscal(comprobante) && comprobante.TipoDeComprobante is "I" or "T";
 
     private async Task VerPdfFiscalAsync()
     {
@@ -571,7 +533,7 @@
         PeticionDePagina peticion, CancellationToken ct)
     {
         var (pagina, error) = await Listado.ListarAsync(
-            _texto, EstatusEfectivo, _cliente?.Id, _tipoComprobante, _desdeUtc, FinDelRango(),
+            _texto, EstatusEfectivo, null, _tipoComprobante, _desdeUtc, FinDelRango(),
             peticion.Pagina, peticion.TamanoPagina, peticion.ClaveOrden, peticion.Descendente, ct);
 
         _error = error;
@@ -600,70 +562,21 @@
         await RecargarTodoAsync();
     }
 
-    private async Task AlFiltrarCliente(ClienteEnListaDto? cliente)
-    {
-        _cliente = cliente;
-        await RecargarTodoAsync();
-    }
-
     private async Task AlFiltrarTipo(string? tipo)
     {
         _tipoComprobante = string.IsNullOrWhiteSpace(tipo) ? null : tipo;
         await RecargarTodoAsync();
     }
 
-    /// <summary>
-    /// Traduce el periodo elegido a las dos fechas. Se calcula en hora local y se convierte a
-    /// UTC, no al revés: «este mes» es el mes del calendario que ve el usuario, y para una
-    /// empresa al oeste del meridiano, tomar el mes en UTC correría el corte varias horas y
-    /// metería o dejaría fuera lo emitido el día primero.
-    /// </summary>
-    private async Task AlFiltrarPeriodo(Periodo periodo)
-    {
-        _periodo = periodo;
-
-        if (periodo is not Periodo.Personalizado)
-        {
-            var hoy = DateTime.Now.Date;
-
-            var (desde, hasta) = periodo switch
-            {
-                Periodo.EsteMes => (new DateTime(hoy.Year, hoy.Month, 1), hoy),
-                Periodo.MesAnterior => (
-                    new DateTime(hoy.Year, hoy.Month, 1).AddMonths(-1),
-                    new DateTime(hoy.Year, hoy.Month, 1).AddDays(-1)),
-                Periodo.UltimosTresMeses => (new DateTime(hoy.Year, hoy.Month, 1).AddMonths(-2), hoy),
-                _ => (new DateTime(hoy.Year, 1, 1), hoy)
-            };
-
-            _desdeUtc = DateTime.SpecifyKind(desde, DateTimeKind.Local).ToUniversalTime();
-            _hastaUtc = DateTime.SpecifyKind(hasta, DateTimeKind.Local).ToUniversalTime();
-        }
-
-        await RecargarTodoAsync();
-    }
-
-    // El selector de estatus solo aplica en «Buscar»: las demás pestañas ya fijan su estatus,
-    // así que no hace falta recontar (los conteos siempre son por estatus de pestaña).
-    private async Task AlFiltrarEstatus(EstatusComprobante? estatus)
-    {
-        _estatusBusqueda = estatus;
-        await RecargarAsync();
-    }
-
-    // Tocar una fecha a mano deshace el atajo: dejar «Este mes» marcado mientras el rango
-    // ya no es este mes le mentiría al usuario sobre lo que está viendo.
     private async Task AlCambiarDesde(DateTime? valorUtc)
     {
         _desdeUtc = valorUtc;
-        _periodo = Periodo.Personalizado;
         await RecargarTodoAsync();
     }
 
     private async Task AlCambiarHasta(DateTime? valorUtc)
     {
         _hastaUtc = valorUtc;
-        _periodo = Periodo.Personalizado;
         await RecargarTodoAsync();
     }
 

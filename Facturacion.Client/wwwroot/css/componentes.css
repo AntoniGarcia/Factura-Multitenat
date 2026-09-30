@@ -1962,3 +1962,12 @@
     background: rgba(var(--acento-calido-rgb), 0.15);
     color: var(--acento-calido);
 }
+
+/* Contenido de los diálogos de catálogo (DialogoDeCliente, DialogoDeProducto): scroll
+   propio con alto máximo, para que el diálogo no crezca más que la pantalla. Los botones
+   de DialogActions quedan fuera de este contenedor, así que se ven siempre. */
+.dialogo-formulario-scroll {
+    max-height: 65vh;
+    overflow-y: auto;
+    padding-right: 0.5rem;
+}
