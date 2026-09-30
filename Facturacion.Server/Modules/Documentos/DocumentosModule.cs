@@ -106,9 +106,25 @@ public static class DocumentosModule
             return servicios;
         }
 
+        if (opciones.Modo == ModoDePac.Simulado)
+        {
+            if (!entorno.IsDevelopment())
+                throw new InvalidOperationException(
+                    "'Pac:Modo=Simulado' solo se permite en Development: produce timbres inventados.");
+
+            // Los dos juntos: sin PAC real tampoco hay quién valide el sello, y sin el doble del
+            // CSD no se podría timbrar en una empresa que todavía no carga su certificado.
+            // Registrado después de PlataformaModule, el del CSD sustituye al real; la
+            // verificación de contratos lo reporta al arrancar.
+            servicios.AddSingleton<IProveedorPac, Dobles.DobleProveedorPac>();
+            servicios.AddSingleton<IProveedorCsdParaTimbrado, Dobles.DobleProveedorCsdParaTimbrado>();
+
+            return servicios;
+        }
+
         if (opciones.Modo != ModoDePac.Real)
             throw new InvalidOperationException(
-                $"El valor '{opciones.Modo}' de 'Pac:Modo' no es válido. Usa 'Real' o 'Deshabilitado'.");
+                $"El valor '{opciones.Modo}' de 'Pac:Modo' no es válido. Usa 'Real', 'Deshabilitado' o 'Simulado'.");
 
         if (!opciones.EstaConfigurado)
         {
