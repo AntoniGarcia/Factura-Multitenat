@@ -84,12 +84,41 @@
                     <ul>
                         @foreach (var elemento in grupo)
                         {
-                            <li>
-                                <NavLink href="@elemento.Ruta" Match="NavLinkMatch.All" title="@elemento.Etiqueta">
-                                    <MudIcon Icon="@ObtenerIcono(elemento.Icono)" Size="Size.Small" />
-                                    <span>@elemento.Etiqueta</span>
-                                </NavLink>
-                            </li>
+                            @if (elemento.Hijos is { } hijos)
+                            {
+                                var abierto = _submenusAbiertos.Contains(elemento.Etiqueta);
+                                var idSubmenu = $"submenu-{elemento.Etiqueta.ToLowerInvariant()}";
+
+                                <li class="menu-con-submenu">
+                                    <button type="button" class="menu-submenu-boton"
+                                            aria-expanded="@(abierto ? "true" : "false")" aria-controls="@idSubmenu"
+                                            title="@elemento.Etiqueta" @onclick="() => AlternarSubmenu(elemento)">
+                                        <MudIcon Icon="@ObtenerIcono(elemento.Icono)" Size="Size.Small" />
+                                        <span>@elemento.Etiqueta</span>
+                                        <MudIcon Icon="@Icons.Material.Filled.ExpandMore" Size="Size.Small" Class="menu-submenu-flecha" />
+                                    </button>
+                                    <ul id="@idSubmenu" class="menu-submenu @(abierto ? "abierto" : null)">
+                                        @foreach (var hijo in hijos.Where(EsVisible))
+                                        {
+                                            <li>
+                                                <NavLink href="@hijo.Ruta" Match="NavLinkMatch.All" title="@hijo.Etiqueta">
+                                                    <MudIcon Icon="@ObtenerIcono(hijo.Icono)" Size="Size.Small" />
+                                                    <span>@hijo.Etiqueta</span>
+                                                </NavLink>
+                                            </li>
+                                        }
+                                    </ul>
+                                </li>
+                            }
+                            else
+                            {
+                                <li>
+                                    <NavLink href="@elemento.Ruta" Match="NavLinkMatch.All" title="@elemento.Etiqueta">
+                                        <MudIcon Icon="@ObtenerIcono(elemento.Icono)" Size="Size.Small" />
+                                        <span>@elemento.Etiqueta</span>
+                                    </NavLink>
+                                </li>
+                            }
                         }
                     </ul>
                 }
@@ -179,6 +208,8 @@
     {
         Sesion.Cambio += Redibujar;
         Encabezado.Cambio += Redibujar;
+        Navegacion.LocationChanged += AlCambiarDeRuta;
+        AbrirSubmenuDeLaRutaActual();
 
         // Un usuario con varias empresas y ninguna elegida todavía no debería estar aquí:
         // /seleccionar-empresa vive fuera de este layout porque no hay nada que poner en la
@@ -201,10 +232,43 @@
     {
         Sesion.Cambio -= Redibujar;
         Encabezado.Cambio -= Redibujar;
+        Navegacion.LocationChanged -= AlCambiarDeRuta;
     }
 
     private bool EsVisible(ElementoDeMenu elemento)
-        => elemento.Permiso is null || Sesion.TienePermiso(elemento.Permiso);
+        => elemento.Hijos is { } hijos
+            ? hijos.Any(EsVisible)
+            : elemento.Permiso is null || Sesion.TienePermiso(elemento.Permiso);
+
+    // Submenús desplegados, por etiqueta. El usuario los abre y cierra a mano; además, llegar a
+    // una de sus rutas —por un enlace o un marcador— abre el que la contiene, para que la
+    // entrada activa nunca quede escondida.
+    private readonly HashSet<string> _submenusAbiertos = [];
+
+    private void AlternarSubmenu(ElementoDeMenu submenu)
+    {
+        if (!_submenusAbiertos.Remove(submenu.Etiqueta))
+            _submenusAbiertos.Add(submenu.Etiqueta);
+    }
+
+    private void AlCambiarDeRuta(object? sender, LocationChangedEventArgs e)
+    {
+        AbrirSubmenuDeLaRutaActual();
+        Redibujar();
+    }
+
+    private void AbrirSubmenuDeLaRutaActual()
+    {
+        var actual = "/" + Navegacion.ToBaseRelativePath(Navegacion.Uri).Split('?', '#')[0].TrimEnd('/');
+
+        foreach (var submenu in MenuPrincipal.Elementos.Where(e => e.Hijos is not null))
+        {
+            // Por prefijo: /clientes/nuevo también está dentro de Catálogos.
+            if (submenu.Hijos!.Any(h => actual.Equals(h.Ruta, StringComparison.OrdinalIgnoreCase) ||
+                                         actual.StartsWith(h.Ruta + "/", StringComparison.OrdinalIgnoreCase)))
+                _submenusAbiertos.Add(submenu.Etiqueta);
+        }
+    }
 
     private void Redibujar() => InvokeAsync(StateHasChanged);
 
@@ -212,14 +276,22 @@
     {
         "home" => Icons.Material.Filled.Home,
         "description" => Icons.Material.Filled.Description,
+        "cancel_presentation" => Icons.Material.Filled.CancelPresentation,
+        "feature_play_list" => Icons.Material.Filled.FeaturedPlayList,
         "groups" => Icons.Material.Filled.Groups,
         "inventory" => Icons.Material.Filled.Inventory,
+        "domain_add" => Icons.Material.Filled.DomainAdd,
         "business" => Icons.Material.Filled.Business,
         "tag" => Icons.Material.Filled.Tag,
         "verified_user" => Icons.Material.Filled.VerifiedUser,
         "settings" => Icons.Material.Filled.Settings,
+        "local_shipping" => Icons.Material.Filled.LocalShipping,
         "confirmation_number" => Icons.Material.Filled.ConfirmationNumber,
         "people" => Icons.Material.Filled.People,
+        "catalogo" => Icons.Material.Filled.MenuBook,
+        "tienda" => Icons.Material.Filled.ShoppingCart,
+        "graficas" => Icons.Material.Filled.BarChart,
+        "impuestos" => Icons.Material.Filled.Percent,
         _ => Icons.Material.Filled.Circle
     };
 }

@@ -1,5 +1,6 @@
 @page "/documentos"
 @attribute [Authorize(Policy = Permisos.Timbrar)]
+@using Facturacion.Client.Componentes.Documentos
 @using Facturacion.Client.Servicios.Documentos
 @using Facturacion.Shared.Comun
 @using Facturacion.Shared.Documentos
@@ -9,6 +10,7 @@
 @inject ServicioDeDescargas Descargas
 @inject NavigationManager Navegacion
 @inject IDialogService Dialogos
+@inject IServicioDeConfirmacion Confirmacion
 
 <PageTitle>Documentos</PageTitle>
 <TituloDePagina Texto="Documentos" />
@@ -23,18 +25,8 @@
 <div class="documentos-cabecera-acciones">
     <MudButton Variant="Variant.Filled" Color="Color.Primary"
                StartIcon="@Icons.Material.Filled.Add"
-               OnClick="@(() => Navegacion.NavigateTo("/facturas/nueva"))">
-        Nueva factura
-    </MudButton>
-    <MudButton Variant="Variant.Outlined"
-               StartIcon="@Icons.Material.Filled.Payments"
-               OnClick="@(() => Navegacion.NavigateTo("/pagos/nuevo"))">
-        Nuevo pago
-    </MudButton>
-    <MudButton Variant="Variant.Outlined"
-               StartIcon="@Icons.Material.Filled.LocalShipping"
-               OnClick="@(() => Navegacion.NavigateTo("/traslados-carta-porte/nuevo"))">
-        Nueva Carta Porte
+               OnClick="AbrirNuevoComprobanteAsync">
+        Nuevo comprobante
     </MudButton>
 </div>
 
@@ -205,6 +197,17 @@
                     Abrir
                 </MudButton>
 
+                @if (seleccionado.Estatus == EstatusComprobante.Borrador && _detalleSeleccionado is not null)
+                {
+                    <MudButton Variant="Variant.Outlined" Color="Color.Primary"
+                               StartIcon="@Icons.Material.Filled.Verified"
+                               Disabled="@(_timbrando || !PuedeTimbrar)"
+                               title="@(PuedeTimbrar ? null : "El timbrado no está disponible: falta la integración con el PAC.")"
+                               OnClick="TimbrarSeleccionadoAsync">
+                        @(_timbrando ? "Timbrando…" : "Timbrar")
+                    </MudButton>
+                }
+
                 @if (_detalleSeleccionado is { } detalleFiscal && TienePdfFiscal(detalleFiscal))
                 {
                     <MudButton Variant="Variant.Outlined"
@@ -225,12 +228,31 @@
                     </MudButton>
                 }
 
+                @if (_detalleSeleccionado is { } detalleEnviable && EsEnviable(detalleEnviable))
+                {
+                    <MudButton Variant="Variant.Text"
+                               StartIcon="@Icons.Material.Filled.Email"
+                               Disabled="@_dialogoAbierto"
+                               OnClick="EnviarPorCorreoAsync">
+                        Enviar por correo
+                    </MudButton>
+                }
+
                 <SiTienePermiso Permiso="@Permisos.Cancelar">
                     @if (seleccionado.Estatus == EstatusComprobante.Timbrado)
                     {
                         <MudButton Variant="Variant.Outlined" Color="Color.Error"
                                    Disabled="@_dialogoAbierto" OnClick="@(() => Cancelar(seleccionado))">
                             Cancelar
+                        </MudButton>
+                    }
+
+                    @if (seleccionado.Estatus == EstatusComprobante.EnCancelacion)
+                    {
+                        <MudButton Variant="Variant.Outlined"
+                                   StartIcon="@Icons.Material.Filled.CancelPresentation"
+                                   OnClick="@(() => Navegacion.NavigateTo("/cancelaciones"))">
+                            Ver solicitudes de cancelación
                         </MudButton>
                     }
 
@@ -257,7 +279,11 @@
     private bool _cargandoVista;
     private bool _preparandoPdf;
     private bool _descargandoXml;
+    private bool _timbrando;
     private int _versionDeVista;
+    private EstadoDeIntegracionFiscalDto? _integracionFiscal;
+
+    private bool PuedeTimbrar => _integracionFiscal?.TimbradoDisponible == true;
 
     // Evita apilar diálogos de cancelación al doble clic.
     private bool _dialogoAbierto;
@@ -279,6 +305,11 @@
 
     private IReadOnlyList<ColumnaDeTabla<ComprobanteEnListaDto>> _columnas = [];
 
+    private Task AbrirNuevoComprobanteAsync()
+        => Dialogos.ShowAsync<DialogoDeNuevoComprobante>(
+            "Nuevo comprobante",
+            new DialogOptions { MaxWidth = MaxWidth.ExtraSmall, FullWidth = true });
+
     private void AbrirDocumento(ComprobanteEnListaDto d)
     => Navegacion.NavigateTo(d.TipoDeComprobante == "P" ? $"/pagos/{d.Id}" : $"/facturas/{d.Id}");
 
@@ -297,6 +328,9 @@
                           <MudIcon Icon="@Icons.Material.Filled.Visibility" Size="Size.Small" />
                       </button>)
     ];
+
+    protected override async Task OnInitializedAsync()
+        => _integracionFiscal = await Emision.ObtenerEstadoDeIntegracionAsync();
 
     private bool EsSeleccionado(ComprobanteEnListaDto documento)
         => documento.Id == _seleccionado?.Id;
@@ -345,7 +379,38 @@
         => comprobante.Estatus is "timbrado" or "cancelado" && comprobante.Uuid is not null;
 
     private static bool TienePdfFiscal(ComprobanteDto comprobante)
-        => EsCfdiFiscal(comprobante) && comprobante.TipoDeComprobante is "I" or "T";
+        => EsCfdiFiscal(comprobante) && comprobante.TipoDeComprobante is "I" or "T" or "P";
+
+    /// <summary>Lo mismo que exige el servidor: solo lo timbrado y vigente se le manda a alguien.</summary>
+    private static bool EsEnviable(ComprobanteDto comprobante)
+        => comprobante.Estatus == "timbrado" && comprobante.Uuid is not null;
+
+    private async Task EnviarPorCorreoAsync()
+    {
+        if (_detalleSeleccionado is not { } detalle || _dialogoAbierto) return;
+
+        _dialogoAbierto = true;
+
+        try
+        {
+            var parametros = new DialogParameters<DialogoDeEnvioDeCorreo>
+            {
+                { x => x.ComprobanteId, detalle.Id }
+            };
+
+            var referencia = await Dialogos.ShowAsync<DialogoDeEnvioDeCorreo>(
+                "Enviar por correo",
+                parametros,
+                new DialogOptions { MaxWidth = MaxWidth.Medium, FullWidth = true, CloseOnEscapeKey = true });
+
+            if (await referencia.Result is { Canceled: false, Data: EnvioDeCorreoDto envio })
+                _aviso = $"Correo enviado a {string.Join(", ", envio.Destinatarios)}.";
+        }
+        finally
+        {
+            _dialogoAbierto = false;
+        }
+    }
 
     private async Task VerPdfFiscalAsync()
     {
@@ -512,6 +577,55 @@
     }
 
     private Task RecargarAsync() => _tabla?.RecargarAsync() ?? Task.CompletedTask;
+
+    // ── Timbrado desde la vista previa ──────────────────────────────────────────────────
+
+    /// <summary>
+    /// Timbra el borrador tal como quedó guardado, sin pasar por su formulario. Lo que el
+    /// formulario revisa antes de timbrar —cliente, conceptos, datos de obra o de comercio
+    /// exterior— lo vuelve a validar el servidor, y si algo falta el error sale en el panel.
+    /// </summary>
+    private async Task TimbrarSeleccionadoAsync()
+    {
+        if (_detalleSeleccionado is not { } detalle || _timbrando || !PuedeTimbrar) return;
+
+        var receptor = string.IsNullOrWhiteSpace(_seleccionado?.ReceptorNombre) ? "el receptor" : _seleccionado.ReceptorNombre;
+
+        var confirmado = await Confirmacion.ConfirmarAsync(
+            "Timbrar CFDI",
+            $"Se consumirá un timbre para emitir el CFDI de {receptor} por {detalle.Total:N2} {detalle.Moneda}. " +
+            "Después ya no podrás editarlo.",
+            "Timbrar CFDI");
+
+        if (!confirmado) return;
+
+        _timbrando = true;
+        _error = null;
+        _aviso = null;
+
+        try
+        {
+            // Clave nueva por cada clic real: el filtro de idempotencia del servidor es el que
+            // detiene un reintento de la misma petición, no esto.
+            var (exito, error) = await Emision.TimbrarAsync(detalle.Id, Guid.NewGuid().ToString("N"));
+
+            _error = error;
+
+            if (exito is not null)
+            {
+                _aviso = exito.Uuid is { } uuid
+                    ? $"Comprobante timbrado. Folio fiscal {uuid}."
+                    : "El comprobante quedó en proceso de timbrado.";
+                CerrarVistaPrevia();
+            }
+
+            await RecargarAsync();
+        }
+        finally
+        {
+            _timbrando = false;
+        }
+    }
 
     // ── Cancelación (B8) ────────────────────────────────────────────────────────────────
 

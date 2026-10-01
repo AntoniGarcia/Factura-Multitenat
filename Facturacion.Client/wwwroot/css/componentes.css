@@ -559,6 +559,48 @@
     margin: 0 0 1rem;
 }
 
+.dialogo-envio {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+    min-width: min(36rem, 100%);
+}
+
+.dialogo-envio-cargando {
+    align-items: center;
+    color: var(--texto-suave);
+    display: flex;
+    gap: 0.5rem;
+}
+
+.dialogo-envio-subtitulo {
+    color: var(--texto-suave);
+    font-size: 0.8125rem;
+    font-weight: 500;
+    margin: 0.5rem 0 0.25rem;
+}
+
+.dialogo-envio-adjuntos {
+    border: 1px solid var(--borde);
+    border-radius: var(--radio);
+    list-style: none;
+    margin: 0;
+    padding: 0.5rem 0.75rem;
+}
+
+.dialogo-envio-adjuntos li {
+    overflow-wrap: anywhere;
+}
+
+.dialogo-envio-oculto {
+    clip: rect(0 0 0 0);
+    height: 1px;
+    overflow: hidden;
+    position: absolute;
+    white-space: nowrap;
+    width: 1px;
+}
+
 .tabla-datos-estado {
     color: var(--texto-suave);
     padding: 1.5rem 0;
@@ -1919,4 +1961,24 @@
 :root[data-tema="calido"] .permiso-chip {
     background: rgba(var(--acento-calido-rgb), 0.15);
     color: var(--acento-calido);
+}
+
+/* Contenido de los diálogos de catálogo (DialogoDeCliente, DialogoDeProducto): scroll
+   propio con alto máximo, para que el diálogo no crezca más que la pantalla. Los botones
+   de DialogActions quedan fuera de este contenedor, así que se ven siempre. */
+.dialogo-formulario-scroll {
+    max-height: 65vh;
+    overflow-y: auto;
+    padding-right: 0.5rem;
+}
+
+/* Opciones de DialogoDeNuevoComprobante: los mismos accesos del tablero, en una sola
+   columna para que el diálogo se lea de arriba abajo. */
+.selector-de-comprobante {
+    grid-template-columns: minmax(0, 1fr);
+    border-top: 1px solid var(--borde);
+}
+
+.selector-de-comprobante .tablero-acceso {
+    border-right: 0;
 }

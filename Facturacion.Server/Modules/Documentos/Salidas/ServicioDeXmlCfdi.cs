@@ -48,6 +48,12 @@ public sealed class ServicioDeXmlCfdi(
     IProveedorCsdParaTimbrado csd,
     ILogger<ServicioDeXmlCfdi> registro)
 {
+    // XNamespace y no string: «espacio + "Nodo"» entre dos string solo concatena, y el nombre
+    // resultante —con los «:» de la URL— hace que XName reviente al buscar el nodo.
+    private static readonly XNamespace EspacioNotarios = EsquemasSat.EspacioDeNombresNotariosPublicos;
+    private static readonly XNamespace EspacioComercio = EsquemasSat.EspacioDeNombresComercioExterior20;
+    private static readonly XNamespace EspacioImpuestosLocales = EsquemasSat.EspacioDeNombresImpuestosLocales;
+
     public async Task<Resultado<CfdiSellado>> GenerarAsync(Comprobante comprobante, CancellationToken ct)
     {
         var esPago = comprobante.TipoDeComprobante == TiposDeComprobante.Pago;
@@ -224,9 +230,9 @@ public sealed class ServicioDeXmlCfdi(
         try
         {
             if (Validar(documento, comprobante.TipoDeComprobante == TiposDeComprobante.Traslado,
-                    documento.Descendants(EsquemasSat.EspacioDeNombresNotariosPublicos + "NotariosPublicos").Any(),
-                    documento.Descendants(EsquemasSat.EspacioDeNombresComercioExterior20 + "ComercioExterior").Any(),
-                    documento.Descendants(EsquemasSat.EspacioDeNombresImpuestosLocales + "ImpuestosLocales").Any()) is { } error)
+                    documento.Descendants(EspacioNotarios + "NotariosPublicos").Any(),
+                    documento.Descendants(EspacioComercio + "ComercioExterior").Any(),
+                    documento.Descendants(EspacioImpuestosLocales + "ImpuestosLocales").Any()) is { } error)
                 return error;
         }
         catch (FileNotFoundException ex)

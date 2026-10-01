@@ -1,0 +1,118 @@
+﻿@using Facturacion.Client.Servicios.Documentos
+@using Facturacion.Shared.Comun
+@using Facturacion.Shared.Contratos
+@using Facturacion.Shared.Notaria
+@inject ServicioDeNotaria Notaria
+
+@*
+    Mismo formulario que antes vivía en /empresa/notaria, ahora como MudDialog — mismo
+    patrón que DialogoDeCliente/DialogoDeProducto. Esa página @page se deja intacta por si
+    algo más la enlaza directo; DatosEmpresa.razor ya no navega ahí.
+
+    A diferencia de los diálogos de catálogo, aquí "Guardar" no cierra el diálogo: es una
+    configuración, no un alta, y el formulario original tampoco navegaba fuera al guardar
+    —solo refrescaba los campos con lo que el servidor confirmó—. "Cerrar" es la única
+    salida.
+*@
+
+<MudDialog>
+    <TitleContent>
+        Configuración de Notaría
+    </TitleContent>
+    <DialogContent>
+        <PanelErrores Problema="_error" />
+
+        @if (_cargando)
+        {
+            <p class="tabla-datos-estado">Cargando…</p>
+        }
+        else
+        {
+            <EditForm Model="this" OnValidSubmit="GuardarAsync" id="formulario-dialogo-notaria">
+                <h2 class="seccion-titulo">Datos del notario</h2>
+                <p class="seccion-ayuda">
+                    Estos datos se reutilizarán al emitir una factura notarial y se validan contra el catálogo SAT.
+                </p>
+
+                <div class="rejilla-campos">
+                    <MudTextField @bind-Value="_curp" Label="CURP" Class="cifra-tabular" Immediate="true"
+                                  MaxLength="18" Required="true" />
+                    <MudNumericField T="int" @bind-Value="_numeroNotaria" Label="Número de notaría"
+                                     Min="1" Max="999" Required="true" />
+                    <BuscadorCatalogo Catalogo="c_Estado" Label="Entidad federativa" Valor="_estado"
+                                      ValorCambiado="v => _estado = v" Requerido="true" MostrarOpciones="true" />
+                    <MudTextField @bind-Value="_adscripcion" Label="Adscrito a la plaza" MaxLength="255" />
+                </div>
+
+                @if (_guardado)
+                {
+                    <span class="mensaje-exito" role="status">Configuración guardada.</span>
+                }
+            </EditForm>
+        }
+    </DialogContent>
+    <DialogActions>
+        <MudButton Variant="Variant.Text" OnClick="Cerrar">Cerrar</MudButton>
+        <MudButton ButtonType="ButtonType.Submit" form="formulario-dialogo-notaria"
+                   Variant="Variant.Filled" Color="Color.Primary" Disabled="@(_cargando || _guardando)">
+            @(_guardando ? "Guardando…" : "Guardar configuración")
+        </MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter]
+    private IMudDialogInstance MudDialog { get; set; } = default!;
+
+    private DetalleProblema? _error;
+    private bool _cargando = true, _guardando, _guardado;
+    private string _curp = string.Empty;
+    private int _numeroNotaria;
+    private ClaveSatDto? _estado;
+    private string? _adscripcion;
+
+    protected override async Task OnInitializedAsync()
+    {
+        var (configuracion, error) = await Notaria.ObtenerAsync();
+        _error = error;
+
+        if (configuracion is not null)
+        {
+            _curp = configuracion.Curp;
+            _numeroNotaria = configuracion.NumeroNotaria;
+            _estado = new ClaveSatDto("c_Estado", configuracion.Estado, configuracion.Estado, true);
+            _adscripcion = configuracion.Adscripcion;
+        }
+
+        _cargando = false;
+    }
+
+    private async Task GuardarAsync()
+    {
+        _guardando = true;
+        _guardado = false;
+        _error = null;
+
+        try
+        {
+            var (configuracion, error) = await Notaria.GuardarAsync(new PeticionGuardarConfiguracionNotario(
+                _curp, _numeroNotaria, _estado?.Clave ?? string.Empty, _adscripcion));
+            _error = error;
+
+            if (configuracion is not null)
+            {
+                _curp = configuracion.Curp;
+                _numeroNotaria = configuracion.NumeroNotaria;
+                _estado = new ClaveSatDto("c_Estado", configuracion.Estado, configuracion.Estado, true);
+                _adscripcion = configuracion.Adscripcion;
+                _guardado = true;
+            }
+        }
+        finally
+        {
+            _guardando = false;
+        }
+    }
+
+    private void Cerrar() => MudDialog.Close(DialogResult.Ok(true));
+}

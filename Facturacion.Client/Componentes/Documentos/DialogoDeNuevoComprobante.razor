@@ -1,0 +1,50 @@
+@inject NavigationManager Navegacion
+
+@*
+    Primer paso de «Nuevo comprobante»: elegir el tipo antes de abrir su formulario. Cada tipo
+    conserva su propia pantalla; el diálogo solo decide a cuál ir, así que agregar un tipo es
+    agregar una opción aquí. E (egreso) y N (nómina) no aparecen porque no existen en el sistema.
+
+    Navega por su cuenta en vez de devolver la ruta: quien lo abra no tiene que repetir el
+    cierre y la navegación.
+*@
+
+<MudDialog>
+    <DialogContent>
+        <nav class="tablero-accesos selector-de-comprobante" aria-label="Tipo de comprobante">
+            @foreach (var opcion in Opciones)
+            {
+                <a class="tablero-acceso" href="@opcion.Ruta"
+                   @onclick="() => Ir(opcion.Ruta)" @onclick:preventDefault="true">
+                    <MudIcon Icon="@opcion.Icono" Size="Size.Small" />
+                    <span><strong>@opcion.Titulo</strong><small>@opcion.Descripcion</small></span>
+                </a>
+            }
+        </nav>
+    </DialogContent>
+    <DialogActions>
+        <MudButton Variant="Variant.Text" OnClick="@(() => Dialogo.Cancel())">Cancelar</MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter]
+    private IMudDialogInstance Dialogo { get; set; } = default!;
+
+    private sealed record Opcion(string Ruta, string Icono, string Titulo, string Descripcion);
+
+    private static readonly Opcion[] Opciones =
+    [
+        new("/facturas/nueva", Icons.Material.Filled.ReceiptLong, "Factura", "Ingreso por venta de productos o servicios"),
+        new("/pagos/nuevo", Icons.Material.Filled.Payments, "Complemento de pago", "Cobro de facturas en parcialidades o diferidas"),
+        new("/traslados-carta-porte/nuevo", Icons.Material.Filled.LocalShipping, "Traslado con Carta Porte", "Movimiento de mercancía propia, sin importe"),
+    ];
+
+    private void Ir(string ruta)
+    {
+        // El proveedor de diálogos vive en MainLayout y sobrevive a la navegación: sin cerrar
+        // antes, el diálogo quedaría abierto encima del formulario.
+        Dialogo.Close();
+        Navegacion.NavigateTo(ruta);
+    }
+}

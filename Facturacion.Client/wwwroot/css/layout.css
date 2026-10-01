@@ -389,6 +389,104 @@ html, body {
     padding: 0.875rem 0.75rem;
 }
 
+/* ── Submenú del menú lateral (Catálogos) ─────────────────────────────────────────────
+   Un solo nivel. El botón se ve igual que un enlace del menú y la flecha indica si está
+   abierto; los hijos van sangrados debajo. */
+.menu-submenu-boton {
+    display: flex;
+    align-items: center;
+    gap: 0.625rem;
+    width: 100%;
+    height: var(--alto-control);
+    padding: 0 0.625rem;
+    border: 0;
+    border-radius: var(--radio);
+    background: transparent;
+    color: var(--texto);
+    font: inherit;
+    font-size: var(--cuerpo-sm-tam);
+    text-align: left;
+    white-space: nowrap;
+    cursor: pointer;
+}
+
+.menu-submenu-boton:hover {
+    background: var(--acento-suave);
+}
+
+.cascaron-cliente .menu-submenu-boton {
+    color: var(--cliente-menu-texto);
+}
+
+.cascaron-cliente .menu-submenu-boton:hover {
+    background: var(--cliente-menu-hover);
+}
+
+.menu-submenu-flecha {
+    margin-left: auto;
+    transition: transform 0.15s ease;
+}
+
+.menu-submenu-boton[aria-expanded="true"] .menu-submenu-flecha {
+    transform: rotate(180deg);
+}
+
+.menu-lateral ul.menu-submenu {
+    padding: 0.125rem 0 0 1rem;
+}
+
+.menu-lateral ul.menu-submenu:not(.abierto) {
+    display: none;
+}
+
+/* En el riel: solo el icono, sin flecha ni sangría. Al desplegarse vuelve todo. */
+.cuerpo.menu-colapsado .menu-submenu-boton span,
+.cuerpo.menu-colapsado .menu-submenu-flecha {
+    display: none;
+}
+
+.cuerpo.menu-colapsado .menu-submenu-boton {
+    justify-content: center;
+    padding: 0.5rem;
+}
+
+.cuerpo.menu-colapsado .menu-lateral ul.menu-submenu {
+    padding-left: 0;
+}
+
+.cuerpo.menu-colapsado .menu-lateral:hover .menu-submenu-boton span,
+.cuerpo.menu-colapsado .menu-lateral:focus-within .menu-submenu-boton span,
+.cuerpo.menu-colapsado .menu-lateral:hover .menu-submenu-flecha,
+.cuerpo.menu-colapsado .menu-lateral:focus-within .menu-submenu-flecha {
+    display: block;
+}
+
+.cuerpo.menu-colapsado .menu-lateral:hover .menu-submenu-boton,
+.cuerpo.menu-colapsado .menu-lateral:focus-within .menu-submenu-boton {
+    justify-content: flex-start;
+    padding: 0 0.625rem;
+}
+
+.cuerpo.menu-colapsado .menu-lateral:hover ul.menu-submenu,
+.cuerpo.menu-colapsado .menu-lateral:focus-within ul.menu-submenu {
+    padding-left: 1rem;
+}
+
+/* En la barra inferior de móvil el submenú se aplana: el botón desaparece y los hijos se
+   vuelven pestañas de la misma fila, abiertos o no. Un desplegable dentro de una barra que
+   se desplaza de lado no se alcanza con el pulgar. */
+@media (max-width: 768px) {
+    .menu-submenu-boton {
+        display: none;
+    }
+
+    .menu-lateral li.menu-con-submenu,
+    .menu-lateral ul.menu-submenu,
+    .menu-lateral ul.menu-submenu:not(.abierto) {
+        display: contents;
+    }
+}
+
 /* Ancla del menú flotante: sin esto, el desplegado se posicionaría contra la ventana. */
 .cuerpo {
     position: relative;

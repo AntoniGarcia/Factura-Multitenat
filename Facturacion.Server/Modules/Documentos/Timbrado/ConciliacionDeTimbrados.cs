@@ -175,6 +175,7 @@ public sealed class ConciliacionDeTimbrados(
             new ServicioDeFolios(baseDeDatos, tenencia, bitacora),
             new ServicioDeTimbres(baseDeDatos, tenencia, bitacora),
             almacen,
+            bitacora,
             fabricaDeRegistros.CreateLogger<CierreDeTimbrado>());
 
         if (respuesta.Resultado == ResultadoDePac.Timbrado)

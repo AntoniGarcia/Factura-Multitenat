@@ -1,0 +1,194 @@
+@using Facturacion.Client.Servicios.Documentos
+@using Facturacion.Shared.Documentos
+@inject ServicioDeEnvios Envios
+
+@*
+    El panel «Parámetros de envío CFD» de §1.3 del documento funcional: para, asunto, mensaje,
+    casilla del XML y la lista de adjuntos. La copia a la cuenta de la empresa es el
+    «Enviar a cuenta única» del sistema anterior, convertido en casilla.
+
+    El diálogo envía por su cuenta en vez de devolver la petición: si el correo falla, el
+    usuario tiene que ver el error sin perder lo que escribió.
+*@
+
+<MudDialog>
+    <DialogContent>
+        <PanelErrores Problema="_error" />
+
+        @if (_cargando)
+        {
+            <div class="dialogo-envio-cargando" role="status">
+                <MudProgressCircular Indeterminate="true" Size="Size.Small" />
+                <span>Preparando el envío…</span>
+            </div>
+        }
+        else if (_propuesta is { } propuesta)
+        {
+            <div class="dialogo-envio">
+                <MudTextField T="string"
+                              Label="Para"
+                              @bind-Value="_para"
+                              Immediate="true"
+                              AutoFocus="true"
+                              HelperText="@($"Separa varios correos con coma. Máximo {ReglasDeEnvio.MaximoDestinatarios}.")"
+                              Error="@(_para.Length > 0 && Destinatarios.Count > ReglasDeEnvio.MaximoDestinatarios)"
+                              ErrorText="@($"Son más de {ReglasDeEnvio.MaximoDestinatarios} correos.")" />
+
+                <MudTextField T="string"
+                              Label="Asunto"
+                              @bind-Value="_asunto"
+                              Immediate="true"
+                              MaxLength="ReglasDeEnvio.LongitudMaximaAsunto" />
+
+                <MudTextField T="string"
+                              Label="Mensaje"
+                              @bind-Value="_mensaje"
+                              Lines="4"
+                              MaxLength="ReglasDeEnvio.LongitudMaximaMensaje"
+                              Placeholder="Opcional. Se agrega antes de los datos del comprobante." />
+
+                <MudCheckBox T="bool" @bind-Value="_incluirXml" Label="Incluir archivo XML" />
+
+                @if (propuesta.CorreoDeLaEmpresa is { } correoDeLaEmpresa)
+                {
+                    <MudCheckBox T="bool" @bind-Value="_copiaALaEmpresa"
+                                 Label="@($"Enviar copia oculta a {correoDeLaEmpresa}")" />
+                }
+
+                <section aria-labelledby="titulo-adjuntos">
+                    <h3 id="titulo-adjuntos" class="dialogo-envio-subtitulo">Adjuntos</h3>
+                    <ul class="dialogo-envio-adjuntos">
+                        <li class="cifra-tabular">@propuesta.NombreArchivoPdf</li>
+                        @if (_incluirXml)
+                        {
+                            <li class="cifra-tabular">@propuesta.NombreArchivoXml</li>
+                        }
+                    </ul>
+                </section>
+
+                @if (propuesta.Historial.Count > 0)
+                {
+                    <section aria-labelledby="titulo-historial">
+                        <h3 id="titulo-historial" class="dialogo-envio-subtitulo">Envíos anteriores</h3>
+                        <MudSimpleTable Dense="true" Hover="true">
+                            <thead>
+                                <tr>
+                                    <th scope="col">Fecha</th>
+                                    <th scope="col">Para</th>
+                                    <th scope="col">Resultado</th>
+                                    <th scope="col"><span class="dialogo-envio-oculto">Acción</span></th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @foreach (var envio in propuesta.Historial)
+                                {
+                                    <tr>
+                                        <td class="cifra-tabular">@envio.EnviadoUtc.ToLocalTime().ToString("dd/MM/yyyy HH:mm")</td>
+                                        <td>@string.Join(", ", envio.Destinatarios)</td>
+                                        <td>@(envio.Exitoso ? "Enviado" : $"No se envió ({envio.Error})")</td>
+                                        <td>
+                                            <MudButton Size="Size.Small" Variant="Variant.Text"
+                                                       OnClick="@(() => UsarDestinatarios(envio))">
+                                                Usar estos correos
+                                            </MudButton>
+                                        </td>
+                                    </tr>
+                                }
+                            </tbody>
+                        </MudSimpleTable>
+                    </section>
+                }
+            </div>
+        }
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="@(() => Dialogo.Cancel())">Cerrar</MudButton>
+        <MudButton Color="Color.Primary" Variant="Variant.Filled"
+                   StartIcon="@Icons.Material.Filled.Send"
+                   Disabled="@(!SePuedeEnviar)"
+                   OnClick="EnviarAsync">
+            @(_enviando ? "Enviando…" : "Enviar")
+        </MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter]
+    private IMudDialogInstance Dialogo { get; set; } = default!;
+
+    [Parameter, EditorRequired]
+    public Guid ComprobanteId { get; set; }
+
+    private PropuestaDeEnvioDto? _propuesta;
+    private DetalleProblema? _error;
+    private bool _cargando = true;
+    private bool _enviando;
+
+    private string _para = string.Empty;
+    private string _asunto = string.Empty;
+    private string _mensaje = string.Empty;
+    private bool _incluirXml = true;
+    private bool _copiaALaEmpresa;
+
+    /// <summary>
+    /// Solo separa y limpia. Qué es un correo válido lo decide el servidor; aquí basta con no
+    /// dejar enviar lo que obviamente va a rechazar.
+    /// </summary>
+    private IReadOnlyList<string> Destinatarios
+        => _para.Split([',', ';'], StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+
+    private bool SePuedeEnviar
+        => _propuesta is not null
+           && !_enviando
+           && Destinatarios.Count is > 0 and <= ReglasDeEnvio.MaximoDestinatarios
+           && !string.IsNullOrWhiteSpace(_asunto);
+
+    protected override async Task OnInitializedAsync()
+    {
+        var (propuesta, error) = await Envios.ObtenerPropuestaAsync(ComprobanteId);
+
+        _propuesta = propuesta;
+        _error = error;
+        _cargando = false;
+
+        if (propuesta is null) return;
+
+        _para = string.Join(", ", propuesta.Destinatarios);
+        _asunto = propuesta.Asunto;
+    }
+
+    private void UsarDestinatarios(EnvioDeCorreoDto envio)
+        => _para = string.Join(", ", envio.Destinatarios);
+
+    private async Task EnviarAsync()
+    {
+        if (!SePuedeEnviar) return;
+
+        _enviando = true;
+        _error = null;
+
+        try
+        {
+            var (envio, error) = await Envios.EnviarAsync(ComprobanteId, new PeticionDeEnvio(
+                Destinatarios, _asunto, string.IsNullOrWhiteSpace(_mensaje) ? null : _mensaje,
+                _incluirXml, _copiaALaEmpresa));
+
+            if (envio is not null)
+            {
+                Dialogo.Close(DialogResult.Ok(envio));
+                return;
+            }
+
+            _error = error;
+
+            // Un fallo del servidor de correo también queda en el historial: se recarga para
+            // que el usuario vea el intento, sin tocar lo que ya escribió.
+            var (propuesta, _) = await Envios.ObtenerPropuestaAsync(ComprobanteId);
+            if (propuesta is not null) _propuesta = propuesta;
+        }
+        finally
+        {
+            _enviando = false;
+        }
+    }
+}

@@ -17,6 +17,13 @@
         <MudIcon Icon="@Icons.Material.Filled.Person" Size="Size.Small" />
         Mi perfil
     </MudMenuItem>
+    @if (Sesion.TienePermiso(Permisos.ConfigurarEmpresa))
+    {
+        <MudMenuItem OnClick="@(() => Navegacion.NavigateTo("/empresa/datos"))">
+            <MudIcon Icon="@Icons.Material.Filled.Business" Size="Size.Small" />
+            Mi empresa
+        </MudMenuItem>
+    }
     @if (Instalacion.PuedeInstalarse)
     {
         <MudMenuItem OnClick="Instalar">

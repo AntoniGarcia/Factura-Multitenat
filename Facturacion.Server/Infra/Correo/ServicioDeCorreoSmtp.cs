@@ -1,5 +1,3 @@
-using Facturacion.Server.Infra.Correo;
-using Microsoft.Win32;
 using System.Net;
 using System.Net.Mail;
 
@@ -10,9 +8,7 @@ public sealed class ServicioDeCorreoSmtp(
     IProveedorDeConfiguracionDelSistema configuracion,
     ILogger<ServicioDeCorreoSmtp> registro) : IServicioDeCorreo
 {
-    public async Task EnviarAsync(
-        string destinatario, string asunto, string cuerpoHtml, CancellationToken ct,
-        string? responderA = null, IReadOnlyList<AdjuntoDeCorreo>? adjuntos = null)
+    public async Task EnviarAsync(MensajeDeCorreo mensaje, CancellationToken ct)
     {
         var config = (await configuracion.ObtenerAsync(ct)).Correo;
 
@@ -22,42 +18,42 @@ public sealed class ServicioDeCorreoSmtp(
             Credentials = new NetworkCredential(config.Usuario, config.Contrasena)
         };
 
-        using var mensaje = new MailMessage
+        using var correo = new MailMessage
         {
             From = new MailAddress(config.RemitenteCorreo, config.RemitenteNombre),
-            Subject = asunto,
-            Body = cuerpoHtml,
+            Subject = mensaje.Asunto,
+            Body = mensaje.CuerpoHtml,
             IsBodyHtml = true
         };
 
-        mensaje.To.Add(destinatario);
+        foreach (var destinatario in mensaje.Para)
+            correo.To.Add(destinatario);
 
-        if (!string.IsNullOrWhiteSpace(responderA))
-            mensaje.ReplyToList.Add(responderA);
+        foreach (var oculto in mensaje.CopiaOculta ?? [])
+            correo.Bcc.Add(oculto);
+
+        if (!string.IsNullOrWhiteSpace(mensaje.ResponderA))
+            correo.ReplyToList.Add(mensaje.ResponderA);
 
         // Los MemoryStream quedan vivos hasta después de SendMailAsync: Attachment no copia
         // el contenido, lo lee al enviar.
-
         var flujos = new List<MemoryStream>();
 
-        if (adjuntos is { Count: > 0 })
+        foreach (var adjunto in mensaje.Adjuntos ?? [])
         {
-            foreach (var adjunto in adjuntos)
-            {
-                var flujo = new MemoryStream(adjunto.Contenido);
-                flujos.Add(flujo);
-                mensaje.Attachments.Add(new Attachment(flujo, adjunto.NombreArchivo, adjunto.TipoMime));
-            }
+            var flujo = new MemoryStream(adjunto.Contenido);
+            flujos.Add(flujo);
+            correo.Attachments.Add(new Attachment(flujo, adjunto.NombreArchivo, adjunto.TipoMime));
         }
 
         try
         {
-            await cliente.SendMailAsync(mensaje, ct);
+            await cliente.SendMailAsync(correo, ct);
         }
         catch (SmtpException excepcion)
         {
-
-            registro.LogError(excepcion, "Falló el envío de correo al dominio {DominioDestinatario}", DominioDe(destinatario));
+            registro.LogError(excepcion, "Falló el envío de correo a los dominios {Dominios}",
+                string.Join(", ", mensaje.Para.Select(DominioDe).Distinct()));
             throw;
         }
         finally
@@ -65,12 +61,13 @@ public sealed class ServicioDeCorreoSmtp(
             foreach (var flujo in flujos) await flujo.DisposeAsync();
         }
     }
-        private static string DominioDe(string destinatario)
-        {
+
+    /// <summary>Solo el dominio: el log no guarda direcciones completas de terceros.</summary>
+    private static string DominioDe(string destinatario)
+    {
         var separador = destinatario.LastIndexOf('@');
         return separador >= 0 && separador < destinatario.Length - 1
             ? destinatario[(separador + 1)..]
             : "no-disponible";
-        }
-
+    }
 }

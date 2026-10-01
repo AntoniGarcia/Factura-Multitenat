@@ -1,5 +1,6 @@
 using Facturacion.Server.Data;
 using Facturacion.Server.Data.Entidades.Documentos;
+using Facturacion.Server.Infra.Bitacora;
 using Facturacion.Server.Infra.Tenencia;
 using Facturacion.Server.Modules.Documentos.Pac;
 using Facturacion.Shared.Comun;
@@ -34,6 +35,7 @@ public sealed class ServicioDeCancelacion(
     AppDbContext baseDeDatos,
     IContextoEmpresaInterno contexto,
     IProveedorCsdParaTimbrado csd,
+    IServicioDeBitacora bitacora,
     ILogger<ServicioDeCancelacion> registro,
     IProveedorPac? pac = null)
 {
@@ -144,8 +146,19 @@ public sealed class ServicioDeCancelacion(
 
         baseDeDatos.SolicitudesCancelacion.Add(solicitud);
 
+        var estatusAnterior = comprobante.Estatus;
+
         comprobante.Estatus = EstatusComprobante.EnCancelacion.ACadena();
         comprobante.ModificadoUtc = DateTime.UtcNow;
+
+        bitacora.Registrar(
+            EntidadesDeBitacora.Comprobante, comprobante.Id.ToString(), AccionesDeBitacora.CancelacionSolicitada,
+            new { Estatus = estatusAnterior },
+            new
+            {
+                comprobante.Estatus, comprobante.Uuid, SolicitudId = solicitud.Id,
+                solicitud.Motivo, solicitud.UuidSustituye
+            });
 
         await baseDeDatos.SaveChangesAsync(ct);
         await transaccion.CommitAsync(ct);
@@ -209,6 +222,8 @@ public sealed class ServicioDeCancelacion(
         Comprobante comprobante, SolicitudCancelacion solicitud, RespuestaDeCancelacion respuesta,
         CancellationToken ct)
     {
+        var estatusAnterior = comprobante.Estatus;
+
         solicitud.CodigoRespuesta = respuesta.CodigoRespuesta;
         solicitud.MensajeRespuesta = respuesta.Mensaje;
 
@@ -244,6 +259,9 @@ public sealed class ServicioDeCancelacion(
         }
 
         comprobante.ModificadoUtc = DateTime.UtcNow;
+
+        RegistrarResolucion(comprobante, solicitud, estatusAnterior);
+
         await baseDeDatos.SaveChangesAsync(ct);
 
         if (respuesta.Resultado == ResultadoDeCancelacion.Rechazado)
@@ -263,6 +281,8 @@ public sealed class ServicioDeCancelacion(
     private async Task RevertirAsync(
         Comprobante comprobante, SolicitudCancelacion solicitud, string motivo, CancellationToken ct)
     {
+        var estatusAnterior = comprobante.Estatus;
+
         comprobante.Estatus = EstatusComprobante.Timbrado.ACadena();
         comprobante.ModificadoUtc = DateTime.UtcNow;
 
@@ -270,8 +290,25 @@ public sealed class ServicioDeCancelacion(
         solicitud.CodigoRespuesta = motivo;
         solicitud.ResueltaUtc = DateTime.UtcNow;
 
+        RegistrarResolucion(comprobante, solicitud, estatusAnterior);
+
         await baseDeDatos.SaveChangesAsync(ct);
     }
+
+    /// <summary>
+    /// Se registra también la respuesta que deja todo en espera —del receptor o de la consulta
+    /// de estatus—, no solo la definitiva: es la que explica por qué el comprobante sigue en
+    /// <c>en_cancelacion</c> días después.
+    /// </summary>
+    private void RegistrarResolucion(Comprobante comprobante, SolicitudCancelacion solicitud, string estatusAnterior)
+        => bitacora.Registrar(
+            EntidadesDeBitacora.Comprobante, comprobante.Id.ToString(), AccionesDeBitacora.CancelacionResuelta,
+            new { Estatus = estatusAnterior },
+            new
+            {
+                comprobante.Estatus, SolicitudId = solicitud.Id, solicitud.Estado,
+                solicitud.CodigoRespuesta, solicitud.MensajeRespuesta
+            });
 
     // ── Consulta de estatus (§30) ───────────────────────────────────────────────────────
 
@@ -363,14 +400,39 @@ public sealed class ServicioDeCancelacion(
             }
         }
 
-        if (comprobante.Estatus == antes) return;
+        if (solicitud is not null)
+        {
+            // Recortados a la columna: el texto lo pone el PAC y un cambio suyo no debe tumbar
+            // la consulta entera.
+            solicitud.EstadoCfdiSat = Recortar(estatus.EstadoCfdi, 32);
+            solicitud.EsCancelableSat = Recortar(estatus.EsCancelable, 64);
+            solicitud.EstatusCancelacionSat = Recortar(estatus.EstatusCancelacion, 64);
+            solicitud.ConsultadaUtc = DateTime.UtcNow;
+        }
+
+        if (comprobante.Estatus == antes)
+        {
+            // Sin cambio de estatus igual se guarda lo que dijo el SAT: la pantalla de
+            // solicitudes lo muestra con la hora de la consulta.
+            if (solicitud is not null) await baseDeDatos.SaveChangesAsync(ct);
+            return;
+        }
 
         comprobante.ModificadoUtc = DateTime.UtcNow;
+
+        bitacora.Registrar(
+            EntidadesDeBitacora.Comprobante, comprobante.Id.ToString(), AccionesDeBitacora.EstatusSincronizadoConSat,
+            new { Estatus = antes },
+            new { comprobante.Estatus, estatus.EstadoCfdi, estatus.EstatusCancelacion, estatus.CodigoEstatus });
+
         await baseDeDatos.SaveChangesAsync(ct);
 
         registro.LogInformation(
             "El SAT movió a {Comprobante} de '{Antes}' a '{Despues}'.", comprobante.Id, antes, comprobante.Estatus);
     }
+
+    private static string? Recortar(string? valor, int longitud)
+        => valor is null || valor.Length <= longitud ? valor : valor[..longitud];
 
     private static ResultadoDeCancelacionDto ADto(Comprobante comprobante, SolicitudCancelacion solicitud)
         => new(

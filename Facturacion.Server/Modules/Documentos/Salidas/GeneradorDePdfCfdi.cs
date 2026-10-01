@@ -12,6 +12,10 @@ namespace Facturacion.Server.Modules.Documentos.Salidas;
 
 /// <summary>Lo que el PDF necesita y no está dentro del comprobante.</summary>
 /// <param name="Logo">Logo de la empresa, ya descifrado del almacén. Nulo si no tiene.</param>
+/// <param name="LeyendaDelTimbre">
+/// El atributo <c>Leyenda</c> del timbre fiscal: lo que el SAT o el PAC quieren que lea quien
+/// recibe el comprobante. Con el PAC simulado dice que no tiene validez fiscal.
+/// </param>
 public sealed record DatosDelPdf(
     DateTime FechaLocal,
     int Decimales,
@@ -19,7 +23,8 @@ public sealed record DatosDelPdf(
     bool EsBorrador = false,
     DatosNotarialesDelPdf? Notaria = null,
     DatosComercioExteriorDto? ComercioExterior = null,
-    decimal? RetencionCincoAlMillar = null);
+    decimal? RetencionCincoAlMillar = null,
+    string? LeyendaDelTimbre = null);
 
 /// <summary>
 /// Representación impresa del CFDI. Los campos son los que fija §1.4 del documento
@@ -66,7 +71,10 @@ public sealed class GeneradorDePdfCfdi
 
     public IDocument Construir(Comprobante comprobante, DatosDelPdf datos)
     {
-        var qr = Qr(comprobante, datos.Decimales);
+        // El QR lleva el total tal como está en el XML. En un pago la raíz dice Total="0" con
+        // moneda XXX; los decimales de la moneda del pago lo volverían «0.00» y el SAT no
+        // encontraría el comprobante.
+        var qr = Qr(comprobante, comprobante.TipoDeComprobante == "P" ? 0 : datos.Decimales);
 
         return Document.Create(documento =>
         {
@@ -96,6 +104,18 @@ public sealed class GeneradorDePdfCfdi
                     .Padding(5)
                     .AlignCenter()
                     .Text("BORRADOR — SIN VALIDEZ FISCAL")
+                    .Bold()
+                    .FontSize(10);
+            }
+
+            if (!datos.EsBorrador && !string.IsNullOrWhiteSpace(datos.LeyendaDelTimbre))
+            {
+                contenido.Item()
+                    .PaddingBottom(7)
+                    .Border(1)
+                    .Padding(5)
+                    .AlignCenter()
+                    .Text(datos.LeyendaDelTimbre.ToUpperInvariant())
                     .Bold()
                     .FontSize(10);
             }
@@ -416,12 +436,13 @@ public sealed class GeneradorDePdfCfdi
 
     // ── Piezas comunes ──────────────────────────────────────────────────────────────────
 
-    private static void Dato(IContainer contenedor, string etiqueta, string valor, bool negrita = false)
+    private static void Dato(IContainer contenedor, string etiqueta, string valor, bool negrita = false,
+        float anchoDelValor = 120)
         => contenedor.Row(fila =>
         {
             fila.RelativeItem().Text(etiqueta).FontSize(7).Light();
 
-            var texto = fila.ConstantItem(120).AlignRight().Text(valor).FontSize(7);
+            var texto = fila.ConstantItem(anchoDelValor).AlignRight().Text(valor).FontSize(7);
             if (negrita) texto.Bold();
         });
 
@@ -463,6 +484,12 @@ public sealed class GeneradorDePdfCfdi
 
     // ── Complemento de pago ─────────────────────────────────────────────────────────────
 
+    /// <summary>
+    /// Más angosto que el de los totales: en los datos del pago caben tres pares por renglón,
+    /// y con el ancho normal las etiquetas se parten en dos líneas.
+    /// </summary>
+    private const float AnchoDeValorDelPago = 90;
+
     private static void ComplementoDePago(IContainer contenedor, List<Pago> pagos, int decimales)
         => contenedor.Column(columna =>
         {
@@ -472,18 +499,22 @@ public sealed class GeneradorDePdfCfdi
                 {
                     bloque.Item().Text("DATOS DEL PAGO").Bold();
 
+                    // Tres pares etiqueta-valor por renglón: sin separación, el valor de una
+                    // columna queda pegado a la etiqueta de la siguiente.
                     bloque.Item().PaddingTop(3).Row(fila =>
                     {
-                        fila.RelativeItem().Element(e => Dato(e, "Fecha de pago", pago.FechaPagoUtc.ToString("dd/MM/yyyy HH:mm:ss", CultureInfo.InvariantCulture)));
-                        fila.RelativeItem().Element(e => Dato(e, "Forma de pago", pago.FormaDePagoP));
-                        fila.RelativeItem().Element(e => Dato(e, "Moneda", pago.MonedaP));
+                        fila.Spacing(16);
+                        fila.RelativeItem().Element(e => Dato(e, "Fecha de pago", pago.FechaPagoUtc.ToString("dd/MM/yyyy HH:mm:ss", CultureInfo.InvariantCulture), anchoDelValor: AnchoDeValorDelPago));
+                        fila.RelativeItem().Element(e => Dato(e, "Forma de pago", pago.FormaDePagoP, anchoDelValor: AnchoDeValorDelPago));
+                        fila.RelativeItem().Element(e => Dato(e, "Moneda", pago.MonedaP, anchoDelValor: AnchoDeValorDelPago));
                     });
 
                     bloque.Item().Row(fila =>
                     {
-                        fila.RelativeItem().Element(e => Dato(e, "Monto", Cifra(pago.Monto, decimales)));
-                        fila.RelativeItem().Element(e => Dato(e, "Tipo de cambio", pago.TipoCambioP is { } tc ? Cifra(tc, 6) : "—"));
-                        fila.RelativeItem().Element(e => Dato(e, "No. de operación", pago.NumOperacion ?? "—"));
+                        fila.Spacing(16);
+                        fila.RelativeItem().Element(e => Dato(e, "Monto", Cifra(pago.Monto, decimales), anchoDelValor: AnchoDeValorDelPago));
+                        fila.RelativeItem().Element(e => Dato(e, "Tipo de cambio", pago.TipoCambioP is { } tc ? Cifra(tc, 6) : "—", anchoDelValor: AnchoDeValorDelPago));
+                        fila.RelativeItem().Element(e => Dato(e, "No. de operación", pago.NumOperacion ?? "—", anchoDelValor: AnchoDeValorDelPago));
                     });
 
                     // Los datos bancarios son opcionales en el complemento: solo se muestran si vienen capturados.
@@ -491,9 +522,10 @@ public sealed class GeneradorDePdfCfdi
                     {
                         bloque.Item().PaddingTop(2).Row(fila =>
                         {
-                            fila.RelativeItem().Element(e => Dato(e, "Cuenta ordenante", pago.CtaOrdenante ?? "—"));
-                            fila.RelativeItem().Element(e => Dato(e, "Banco ordenante", pago.RfcEmisorCtaOrd ?? pago.NomBancoOrdExt ?? "—"));
-                            fila.RelativeItem().Element(e => Dato(e, "Cuenta beneficiaria", pago.CtaBeneficiario ?? "—"));
+                            fila.Spacing(16);
+                            fila.RelativeItem().Element(e => Dato(e, "Cuenta ordenante", pago.CtaOrdenante ?? "—", anchoDelValor: AnchoDeValorDelPago));
+                            fila.RelativeItem().Element(e => Dato(e, "Banco ordenante", pago.RfcEmisorCtaOrd ?? pago.NomBancoOrdExt ?? "—", anchoDelValor: AnchoDeValorDelPago));
+                            fila.RelativeItem().Element(e => Dato(e, "Cuenta beneficiaria", pago.CtaBeneficiario ?? "—", anchoDelValor: AnchoDeValorDelPago));
                         });
                     }
 

@@ -45,6 +45,9 @@ public sealed class SolicitudCancelacionConfiguracion : IEntityTypeConfiguration
         constructor.Property(s => s.Estado).HasMaxLength(32);
         constructor.Property(s => s.CodigoRespuesta).HasMaxLength(32);
         constructor.Property(s => s.MensajeRespuesta).HasMaxLength(2000);
+        constructor.Property(s => s.EstadoCfdiSat).HasMaxLength(32);
+        constructor.Property(s => s.EsCancelableSat).HasMaxLength(64);
+        constructor.Property(s => s.EstatusCancelacionSat).HasMaxLength(64);
 
         constructor.HasOne(s => s.Comprobante)
             .WithMany()
