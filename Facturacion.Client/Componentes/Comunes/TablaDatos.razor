@@ -93,7 +93,7 @@
     public Func<PeticionDePagina, CancellationToken, Task<ResultadoDePagina<T>>> CargarPagina { get; set; } = default!;
 
     [Parameter]
-    public int TamanoPagina { get; set; } = 15;
+    public int TamanoPagina { get; set; } = 12;
 
     [Parameter]
     public string TextoSinDatos { get; set; } = "No hay registros que mostrar.";
@@ -133,7 +133,7 @@
     private bool AlturaFija => !string.IsNullOrWhiteSpace(Height);
 
     /// <summary>Opciones del selector de tamaño de página.</summary>
-    private static readonly int[] TamanosDisponibles = [15, 30, 60];
+    private static readonly int[] TamanosDisponibles = [12, 24, 48];
 
     private MudTable<T>? _tabla;
     private bool _cargando;
@@ -141,7 +141,7 @@
     // Estado que alimenta la paginación propia (texto y botones numerados). Se refresca en
     // cada carga del servidor, que es cuando cambian la página, el tamaño o el total.
     private int _pagina;
-    private int _tamano = 15;
+    private int _tamano = 12;
     private int _total;
     private int _enPagina;
     private int _totalPaginas = 1;

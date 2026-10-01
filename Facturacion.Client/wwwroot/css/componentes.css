@@ -1971,3 +1971,14 @@
     overflow-y: auto;
     padding-right: 0.5rem;
 }
+
+/* Opciones de DialogoDeNuevoComprobante: los mismos accesos del tablero, en una sola
+   columna para que el diálogo se lea de arriba abajo. */
+.selector-de-comprobante {
+    grid-template-columns: minmax(0, 1fr);
+    border-top: 1px solid var(--borde);
+}
+
+.selector-de-comprobante .tablero-acceso {
+    border-right: 0;
+}

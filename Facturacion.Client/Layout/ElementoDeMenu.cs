@@ -11,7 +11,21 @@ namespace Facturacion.Client.Layout;
 /// Encabezado bajo el que se agrupa, o <c>null</c> para el trabajo diario, que va suelto
 /// arriba y sin título.
 /// </param>
-public sealed record ElementoDeMenu(string Ruta, string Etiqueta, string Icono, string? Permiso, string? Grupo = null);
+/// <param name="Hijos">
+/// Entradas de un submenú. Si trae hijos, la entrada no navega: solo abre y cierra la lista,
+/// su <c>Ruta</c> va vacía y se ve mientras el usuario pueda ver al menos uno de los hijos.
+/// </param>
+public sealed record ElementoDeMenu(
+    string Ruta,
+    string Etiqueta,
+    string Icono,
+    string? Permiso,
+    string? Grupo = null,
+    IReadOnlyList<ElementoDeMenu>? Hijos = null)
+{
+    public static ElementoDeMenu Submenu(string etiqueta, string icono, IReadOnlyList<ElementoDeMenu> hijos, string? grupo = null)
+        => new(string.Empty, etiqueta, icono, Permiso: null, grupo, hijos);
+}
 
 /// <summary>
 /// Las secciones del sistema. Cada fase agrega la suya aquí, no en <c>MainLayout</c>, para
@@ -23,9 +37,9 @@ public sealed record ElementoDeMenu(string Ruta, string Etiqueta, string Icono, 
 /// lo que se toca una vez al mes queda bajo su título.
 ///
 /// <para>
-/// Son <b>encabezados</b>, no menús desplegables anidados. Un árbol de desplegables dentro de
-/// desplegables es lo que peor sobrevive al paso a barra inferior en móvil (ARQUITECTURA.md §8), y
-/// obliga a dos clics para llegar a donde antes se llegaba con uno.
+/// Los grupos son <b>encabezados</b>. Los submenús existen, pero de un solo nivel: un árbol de
+/// desplegables dentro de desplegables es lo que peor sobrevive al paso a barra inferior en
+/// móvil (ARQUITECTURA.md §8). En móvil el submenú se aplana y sus hijos quedan en la barra.
 /// </para>
 ///
 /// <para>
@@ -41,7 +55,6 @@ public static class MenuPrincipal
     {
         public const string Empresa = "Mi empresa";
         public const string Administracion = "Administración";
-
         public const string Tienda = "Tienda";
     }
 
@@ -49,31 +62,30 @@ public static class MenuPrincipal
     [
         // ── Diario: sin encabezado, siempre a la vista ──────────────────────────────────
         new("/", "Inicio", "home", Permiso: null),
-        new("/inicio", "Inicio", "home", Permiso: null),
         // Emitir no tiene entrada propia: se entra por «Documentos», que es donde se ve lo
         // que ya se emitió, y desde ahí se crea. Tener «Nueva factura» y «Documentos» como
         // hermanas obligaba a elegir entre dos puertas al mismo cuarto antes de saber
         // cuál de las dos se quería.
         new("/documentos", "Documentos", "description", Permisos.Timbrar),
-        new("/factura", "Nueva factura", "description", Permisos.Timbrar),
         // Aparte de Documentos porque es otro permiso y otro trabajo: dar seguimiento a lo que
         // sigue esperando la respuesta del receptor o del SAT (§30).
-        new("/cancelaciones", "Cancelaciones", "cancel_presentation", Permisos.Cancelar),
-        // new("/traslados-carta-porte/nuevo", "Carta Porte", "feature_play_list", Permisos.Timbrar),
-        new("/clientes", "Clientes", "groups", Permiso: null),
-        new("/productos", "Productos", "inventory", Permiso: null),      
-        new("/catalogos", "Catálogos", "catalogo", Permiso: null),
-        // ── Mi empresa: se configura una vez y se revisa de vez en cuando ───────────────      
-        new("/empresa/panel", "Panel de Actividad", "graficas", Permisos.ConfigurarEmpresa, Grupos.Empresa),
-        new("/empresa/series", "Series y folios", "tag", Permisos.ConfigurarEmpresa, Grupos.Empresa),
-        new("/empresa/transporte", "Transporte", "local_shipping", Permisos.ConfigurarEmpresa, Grupos.Empresa),
-        new("/empresa/certificados", "Certificados", "verified_user", Permisos.ConfigurarEmpresa, Grupos.Empresa),
-        new("/empresa/usuarios", "Usuarios", "people", Permisos.AdministrarUsuarios, Grupos.Empresa),
-        new("/empresa/nueva", "Agregar empresa", "domain_add", Permisos.ConfigurarEmpresa, Grupos.Empresa),
-        new("/empresa", "Datos de la Empresa", "business", Permisos.ConfigurarEmpresa, Grupos.Empresa),
-        new("/empresa/tasas", "Tasas de Impuestos", "impuestos", Permisos.ConfigurarEmpresa, Grupos.Empresa),
-        new("/empresa/datos", "Datos Empresa", "business", Permisos.ConfigurarEmpresa, Grupos.Empresa),
-        new("empresa/configuracion", "Configuración", "settings", Permisos.ConfigurarEmpresa, Grupos.Empresa),
+        //new("/catalogos", "Catálogos", "catalogo", Permiso: null),
+        // Cada hijo conserva su propio permiso: quien no configura la empresa ve Clientes y
+        // Productos, y Series y Transporte no le aparecen.
+        ElementoDeMenu.Submenu("Catálogos", "catalogo",
+        [
+            new("/clientes", "Clientes", "groups", Permiso: null),
+            new("/productos", "Productos", "inventory", Permiso: null),
+            new("/empresa/series", "Series y folios", "tag", Permisos.ConfigurarEmpresa),
+            new("/empresa/transporte", "Transporte", "local_shipping", Permisos.ConfigurarEmpresa),
+        ]),
+        // ── Mi Administración: se configura una vez y se revisa de vez en cuando ───────────────       
+        // new("/empresa", "Datos de la Empresa", "business", Permisos.ConfigurarEmpresa, Grupos.Administracion),
+        new("/empresa/nueva", "Empresas", "domain_add", Permisos.ConfigurarEmpresa, Grupos.Administracion),
+        new("/empresa/usuarios", "Usuarios", "people", Permisos.AdministrarUsuarios, Grupos.Administracion),
+        new("/empresa/certificados", "Certificados", "verified_user", Permisos.ConfigurarEmpresa, Grupos.Administracion),
+        new("/empresa/tasas", "Tasas de Impuestos", "impuestos", Permisos.ConfigurarEmpresa, Grupos.Administracion),  
+        //new("/empresa/configuracion", "Configuración", "settings", Permisos.ConfigurarEmpresa, Grupos.Administracion),
         // ── Tienda: cuenta, gente y datos del SAT ───────────────────────────────
         new("/timbres", "Timbres", "confirmation_number", Permisos.ComprarTimbres, Grupos.Tienda),
         // new("/admin/catalogos-sat", "Catálogos del SAT", "inventory_2", Permiso: null, Grupos.Administracion)
