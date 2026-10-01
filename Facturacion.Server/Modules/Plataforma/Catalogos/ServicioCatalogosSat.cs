@@ -6,9 +6,7 @@ using Microsoft.EntityFrameworkCore;
 namespace Facturacion.Server.Modules.Plataforma.Catalogos;
 
 /// <summary>
-/// Implementación real de <see cref="IServicioCatalogosSat"/> del contrato congelado
-/// (REPARTO-EQUIPO.md §5). En cuanto esta fase cierra, la mitad B sustituye su doble por
-/// esto cambiando un registro (REPARTO-EQUIPO.md §7).
+/// Implementación real de <see cref="IServicioCatalogosSat"/> del contrato congelado.
 /// </summary>
 public sealed class ServicioCatalogosSat(AppDbContext db) : IServicioCatalogosSat
 {

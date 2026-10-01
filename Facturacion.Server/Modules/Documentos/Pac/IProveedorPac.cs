@@ -84,10 +84,9 @@ public sealed record RespuestaDePac(
     string? Mensaje = null);
 
 /// <summary>
-/// La frontera con el PAC. Es una interfaz y no una clase concreta porque cada PAC del
-/// mercado tiene su propia API, y la elección todavía no está tomada: todo lo caro de este
-/// módulo —las transacciones cortas, la idempotencia, la conciliación— es independiente de
-/// cuál sea, y esta interfaz es lo único que hay que escribir cuando se decida.
+/// La frontera con el PAC. Cada proveedor tiene su propia API; esta interfaz mantiene
+/// las transacciones, la idempotencia y la conciliación independientes del proveedor.
+/// Existe un adaptador para SW Sapien, cuya operación real requiere credenciales y pruebas.
 ///
 /// <para><b>La clave de idempotencia es el centro de todo</b></para>
 /// Se genera una vez por intento de timbrado y se reutiliza en cada reintento y en la

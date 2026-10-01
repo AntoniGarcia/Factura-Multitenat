@@ -27,7 +27,7 @@ public sealed class Empresa
     /// <summary>Razón social ya normalizada como exige CFDI 4.0.</summary>
     public required string NombreFiscal { get; set; }
 
-    /// <summary>Clave de <c>c_RegimenFiscal</c>. La fase 3 le pondrá la llave foránea al catálogo.</summary>
+    /// <summary>Clave de <c>c_RegimenFiscal</c>, validada al guardar la empresa.</summary>
     public required string RegimenFiscal { get; set; }
 
     /// <summary>Código postal del lugar de expedición.</summary>
@@ -93,8 +93,7 @@ public sealed class Empresa
 
     public string? LogoNombreOriginal { get; set; }
 
-    // Licencias de los módulos de la fase 2. Se guardan desde ahora para que agregar esos
-    // módulos no obligue a rehacer el esquema; hoy no habilitan nada.
+    // Las licencias controlan el acceso a módulos especiales; las administra el operador.
     public bool LicNotarios { get; set; }
 
     public bool LicObras { get; set; }

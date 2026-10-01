@@ -28,8 +28,7 @@ public sealed record ElementoDeMenu(
 }
 
 /// <summary>
-/// Las secciones del sistema. Cada fase agrega la suya aquí, no en <c>MainLayout</c>, para
-/// que el layout no tenga que volver a tocarse cada vez que aparece una pantalla nueva.
+/// Las secciones del sistema se declaran aquí para que el layout no duplique sus rutas.
 ///
 /// <para><b>Por qué agrupado y por qué así</b></para>
 /// Diez entradas planas —cuatro de ellas de configuración de empresa— obligan a leer la lista
@@ -43,10 +42,8 @@ public sealed record ElementoDeMenu(
 /// </para>
 ///
 /// <para>
-/// Aquí <b>solo</b> aparece lo que existe y funciona. Nada de entradas apagadas de módulos
-/// que llegarán: un menú lleno de opciones muertas enseña al usuario a desconfiar de lo que
-/// ve. Los módulos de la fase 2 —Cotizaciones, Notaría, Constructoras, Comercio Exterior,
-/// Carta Porte, Addendas— entran cuando se construyan (ARQUITECTURA.md §6).
+/// Aquí <b>solo</b> aparece lo que existe y funciona. Nada de entradas apagadas: un menú
+/// lleno de opciones muertas enseña al usuario a desconfiar de lo que ve.
 /// </para>
 /// </summary>
 public static class MenuPrincipal

@@ -8,8 +8,7 @@ namespace Facturacion.Server.Modules.Plataforma.Auth;
 
 /// <summary>
 /// Crea una cuenta con dos empresas y un usuario para poder probar el circuito de identidad
-/// de punta a punta. El alta real de cuentas y empresas es la fase 4; hasta entonces no hay
-/// ninguna forma de entrar al sistema.
+/// de punta a punta. No sustituye el registro normal de cuentas y empresas.
 ///
 /// <para><b>Por qué no puede colarse a producción</b></para>
 /// Corre solo si el entorno es <c>Development</c> <b>y</b> si existen <c>Sembrado:Correo</c>

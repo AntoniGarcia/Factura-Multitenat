@@ -25,9 +25,11 @@ public static class DocumentosModule
     public static IServiceCollection AddDocumentos(
         this IServiceCollection servicios, IConfiguration configuracion, IHostEnvironment entorno)
     {
+
         // Implementación real, no un doble: lee comprobantes de verdad. Es el único contrato
         // que va de B hacia A —lo consume el tablero— y hasta la fase B0 no existía, así que
         // la verificación de arranque lo reportaba como ausente en cada arranque.
+
         servicios.AddScoped<IResumenDocumentos, ResumenDocumentos>();
 
         servicios.AddOptions<OpcionesDeEsquemasSat>().Bind(configuracion.GetSection(OpcionesDeEsquemasSat.Seccion));

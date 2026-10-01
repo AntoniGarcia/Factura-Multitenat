@@ -1,9 +1,6 @@
 @*
-    Fecha con el huso horario del lugar de expedición (ARQUITECTURA.md §5): la base guarda todo en
-    UTC, y este campo es el único lugar donde esa fecha se convierte a la hora local para
-    mostrarse o capturarse. Quien use el componente pasa el huso de la empresa activa —hoy
-    ninguna página lo hace todavía, porque la empresa emisora es la fase 4— en vez de que el
-    componente lo adivine.
+    La base guarda fechas en UTC. Este campo muestra y captura la fecha en el huso indicado
+    por ZonaHoraria; si una página no lo proporciona, usa el valor predeterminado.
 *@
 
 <MudDatePicker Label="@Label"
@@ -28,9 +25,8 @@
     public EventCallback<DateTime?> ValorUtcCambiado { get; set; }
 
     /// <summary>
-    /// Id de huso horario (el mismo formato que guarda <c>Empresa.ZonaHoraria</c>). Por
-    /// omisión, el del área central de México, para que el campo sea usable antes de que la
-    /// fase 4 conecte la empresa emisora de verdad.
+    /// Id de huso horario (el mismo formato que guarda <c>Empresa.ZonaHoraria</c>).
+    /// Por omisión, el del área central de México.
     /// </summary>
     [Parameter]
     public string ZonaHoraria { get; set; } = "Central Standard Time (Mexico)";
