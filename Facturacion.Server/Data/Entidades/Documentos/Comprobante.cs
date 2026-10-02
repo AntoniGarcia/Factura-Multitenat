@@ -50,6 +50,12 @@ public sealed class Comprobante : IEntidadDeEmpresa
     /// <summary>Clave de <c>c_TipoDeComprobante</c>: I, E, T, N o P.</summary>
     public required string TipoDeComprobante { get; set; }
 
+    /// <summary>
+    /// Una de <c>VariantesDeFactura</c>: básica, Notaría, Comercio Exterior u Obra. Se fija al
+    /// crear el borrador y no se edita. Nula en pagos y traslados.
+    /// </summary>
+    public string? Variante { get; set; }
+
     /// <summary>Fecha de emisión. En UTC en la base; se muestra en el huso de la empresa.</summary>
     public DateTime FechaEmisionUtc { get; set; }
 

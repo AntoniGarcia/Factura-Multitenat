@@ -2,7 +2,9 @@ using Facturacion.Server.Data;
 using Facturacion.Server.Data.Entidades.Documentos;
 using Facturacion.Server.Infra.Bitacora;
 using Facturacion.Server.Infra.Tenencia;
+using Facturacion.Server.Modules.Documentos.Emision;
 using Facturacion.Shared.Comun;
+using Facturacion.Shared.Documentos;
 using Facturacion.Shared.Obras;
 using Microsoft.EntityFrameworkCore;
 
@@ -60,6 +62,8 @@ public sealed class ServicioDeObras(
             return ErrorNegocio.NoEncontrado("factura-no-encontrada", "No se encontró la factura.");
         if (comprobante.Estatus is not ("borrador" or "error"))
             return ErrorNegocio.Conflicto("obra-no-editable", "Los datos de obra solo se editan en un borrador.");
+        if (ReglaDeVariante.Exigir(comprobante, VariantesDeFactura.Obra, "factura de obra") is { } variante)
+            return variante;
         if (comprobante.SubTotal <= 0)
             return ErrorNegocio.Validacion("obra-sin-trabajos", "Guarda primero los conceptos de la factura.");
         if (peticion.TipoObra is not (TiposDeObra.Publica or TiposDeObra.Privada))

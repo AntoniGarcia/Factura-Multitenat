@@ -13,10 +13,12 @@ namespace Facturacion.Shared.Documentos;
 /// timbrar y hasta entonces va nulo, así que sin este identificador el formulario no tiene de
 /// dónde recuperar lo que el borrador traía guardado.
 /// </param>
+/// <param name="Variante">Una de <see cref="VariantesDeFactura"/>; nula en pagos y traslados.</param>
 public sealed record ComprobanteDto(
     Guid Id,
     string Estatus,
     string TipoDeComprobante,
+    string? Variante,
     Guid? SerieId,
     string? Serie,
     int? Folio,
