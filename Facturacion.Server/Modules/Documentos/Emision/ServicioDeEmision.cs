@@ -165,7 +165,7 @@ public sealed class ServicioDeEmision(
         var antes = comprobante.ModificadoUtc is null ? null : ADto(comprobante);
 
         AplicarCabecera(comprobante, peticion, receptor.Valor);
-        AplicarConceptos(baseDeDatos, comprobante, conceptosResueltos.Valor, calculado.Valor); 
+        AplicarConceptos(comprobante, conceptosResueltos.Valor, calculado.Valor);
         AplicarRelacionados(comprobante, peticion.Relacionados);
         AplicarTotales(comprobante, decimalesMoneda.Value);
 
@@ -457,8 +457,7 @@ public sealed class ServicioDeEmision(
     }
 
     private static void AplicarConceptos(
-    AppDbContext baseDeDatos, Comprobante comprobante,
-    IReadOnlyList<ConceptoResuelto> resueltos, ComprobanteCalculado calculado)
+        Comprobante comprobante, IReadOnlyList<ConceptoResuelto> resueltos, ComprobanteCalculado calculado)
     {
         comprobante.Conceptos.Clear();
 
@@ -500,11 +499,9 @@ public sealed class ServicioDeEmision(
                     EsRetencion = impuestoCalculado.EsRetencion
                 };
                 concepto.Impuestos.Add(impuesto);
-                baseDeDatos.ConceptosImpuestos.Add(impuesto);   
             }
 
             comprobante.Conceptos.Add(concepto);
-            baseDeDatos.Conceptos.Add(concepto);            
         }
     }
 
