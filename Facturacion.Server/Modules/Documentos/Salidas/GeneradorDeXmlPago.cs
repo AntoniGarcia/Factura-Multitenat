@@ -33,7 +33,7 @@ public static class TiposDeComprobante
 public static class GeneradorDeXmlPago
 {
     private static readonly XNamespace Cfdi = EsquemasSat.EspacioDeNombresCfdi;
-    private static readonly XNamespace Pago20 = "http://www.sat.gob.mx/Pagos20";
+    private static readonly XNamespace Pago20 = EsquemasSat.EspacioDeNombresPagos20;
     private static readonly XNamespace Xsi = "http://www.w3.org/2001/XMLSchema-instance";
 
     private const string MonedaSinValor = "XXX";
