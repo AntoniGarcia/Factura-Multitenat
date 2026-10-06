@@ -53,6 +53,7 @@ public sealed class ServicioDeXmlCfdi(
     private static readonly XNamespace EspacioNotarios = EsquemasSat.EspacioDeNombresNotariosPublicos;
     private static readonly XNamespace EspacioComercio = EsquemasSat.EspacioDeNombresComercioExterior20;
     private static readonly XNamespace EspacioImpuestosLocales = EsquemasSat.EspacioDeNombresImpuestosLocales;
+    private static readonly XNamespace EspacioPagos = EsquemasSat.EspacioDeNombresPagos20;
 
     public async Task<Resultado<CfdiSellado>> GenerarAsync(Comprobante comprobante, CancellationToken ct)
     {
@@ -232,7 +233,8 @@ public sealed class ServicioDeXmlCfdi(
             if (Validar(documento, comprobante.TipoDeComprobante == TiposDeComprobante.Traslado,
                     documento.Descendants(EspacioNotarios + "NotariosPublicos").Any(),
                     documento.Descendants(EspacioComercio + "ComercioExterior").Any(),
-                    documento.Descendants(EspacioImpuestosLocales + "ImpuestosLocales").Any()) is { } error)
+                    documento.Descendants(EspacioImpuestosLocales + "ImpuestosLocales").Any(),
+                    documento.Descendants(EspacioPagos + "Pagos").Any()) is { } error)
                 return error;
         }
         catch (FileNotFoundException ex)
@@ -286,7 +288,7 @@ public sealed class ServicioDeXmlCfdi(
     }
 
     private ErrorNegocio? Validar(XDocument documento, bool esCartaPorte, bool esNotaria, bool esComercio,
-        bool esImpuestosLocales)
+        bool esImpuestosLocales, bool esPago)
     {
         var problemas = new List<string>();
 
@@ -295,7 +297,8 @@ public sealed class ServicioDeXmlCfdi(
             ValidationType = ValidationType.Schema,
             Schemas = esCartaPorte ? esquemas.EsquemaCartaPorte : esNotaria ? esquemas.EsquemaNotaria :
                 esComercio ? esquemas.EsquemaCfdiComercioExterior :
-                esImpuestosLocales ? esquemas.EsquemaCfdiImpuestosLocales : esquemas.Esquema,
+                esImpuestosLocales ? esquemas.EsquemaCfdiImpuestosLocales :
+                esPago ? esquemas.EsquemaCfdiPagos : esquemas.Esquema,
             DtdProcessing = DtdProcessing.Prohibit
         };
 

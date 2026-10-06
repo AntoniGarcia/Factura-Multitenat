@@ -19,7 +19,7 @@
     </MudMenuItem>
     @if (Sesion.TienePermiso(Permisos.ConfigurarEmpresa))
     {
-        <MudMenuItem OnClick="@(() => Navegacion.NavigateTo("/empresa/datos"))">
+        <MudMenuItem OnClick="@(() => Navegacion.NavigateTo("/empresa"))">
             <MudIcon Icon="@Icons.Material.Filled.Business" Size="Size.Small" />
             Mi empresa
         </MudMenuItem>

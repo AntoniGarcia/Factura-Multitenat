@@ -1982,3 +1982,9 @@
 .selector-de-comprobante .tablero-acceso {
     border-right: 0;
 }
+
+/* Las descripciones de las opciones son frases completas: se dejan partir en dos renglones
+   en vez de cortarlas con puntos suspensivos. */
+.selector-de-comprobante .tablero-acceso small {
+    white-space: normal;
+}

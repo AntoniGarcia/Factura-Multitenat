@@ -1,18 +1,23 @@
 @page "/empresa/usuarios"
 @attribute [Authorize(Policy = Permisos.AdministrarUsuarios)]
 @using Facturacion.Client.Componentes.Comunes
+@using Facturacion.Client.Componentes.Usuarios
 @using Facturacion.Client.Servicios.Plataforma
 @using Facturacion.Shared.Comun
 @using Facturacion.Shared.Plataforma
 @inject ServicioDeUsuarios Usuarios
 @inject IDialogService Dialogos
 @inject IServicioDeConfirmacion Confirmacion
-@inject NavigationManager Navegacion
 
 <PageTitle>Usuarios</PageTitle>
 <TituloDePagina Texto="Usuarios" />
 
 <PanelErrores Problema="_error" />
+
+@if (_aviso is not null)
+{
+    <p class="mensaje-exito" role="status">@_aviso</p>
+}
 
 @if (_datos is null)
 {
@@ -28,7 +33,7 @@ else
 
     <div class="acciones-formulario">
         <MudButton Variant="Variant.Filled" Color="Color.Primary" StartIcon="@Icons.Material.Filled.PersonAdd"
-                   OnClick="@(() => Navegacion.NavigateTo("/usuarios/nuevo"))" Disabled="@_enElLimite">
+                   OnClick="AbrirNuevoUsuarioAsync" Disabled="@(_enElLimite || _dialogoAbierto)">
             Nuevo usuario
         </MudButton>
     </div>
@@ -103,6 +108,7 @@ else
 @code {
     private UsuariosDeLaEmpresaDto? _datos;
     private DetalleProblema? _error;
+    private string? _aviso;
 
     // Evita apilar diálogos al doble clic: mientras uno esté abierto, los botones de la fila
     // quedan deshabilitados y los handlers salen temprano.
@@ -114,6 +120,31 @@ else
     protected override Task OnInitializedAsync() => CargarAsync();
 
     private async Task CargarAsync() => _datos = await Usuarios.ListarAsync();
+
+    private async Task AbrirNuevoUsuarioAsync()
+    {
+        if (_dialogoAbierto) return;
+        _dialogoAbierto = true;
+        _aviso = null;
+        try
+        {
+            // Sin cerrar con clic fuera: un clic distraído borraría la contraseña y los
+            // permisos ya capturados. Escape y Cancelar siguen cerrando.
+            var opciones = new DialogOptions { MaxWidth = MaxWidth.Medium, FullWidth = true, BackdropClick = false };
+            var referencia = await Dialogos.ShowAsync<DialogoDeUsuario>("Nuevo usuario", opciones);
+            var resultado = await referencia.Result;
+
+            if (resultado is { Canceled: false, Data: RespuestaCrearUsuario respuesta })
+            {
+                _aviso = respuesta.Mensaje;
+                await CargarAsync();
+            }
+        }
+        finally
+        {
+            _dialogoAbierto = false;
+        }
+    }
 
     private static string Etiquetas(IReadOnlyList<string> permisos)
         => permisos.Count == 0 ? "—" : string.Join(", ", permisos.Select(Permisos.EtiquetaCorta));

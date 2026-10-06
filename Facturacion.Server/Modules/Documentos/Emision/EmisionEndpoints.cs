@@ -37,8 +37,16 @@ public static class EmisionEndpoints
         grupo.MapGet("/relacionados/resolver", ResolverRelacionado);
     }
 
-    private static async Task<IResult> CrearBorrador(ServicioDeEmision emision, CancellationToken ct)
-        => Results.Ok(await emision.CrearBorradorAsync(ct));
+    // Cuerpo opcional: sin él se crea una factura básica, como antes de que existieran las variantes.
+    private static async Task<IResult> CrearBorrador(
+        PeticionCrearBorrador? peticion, ServicioDeEmision emision, HttpContext http, CancellationToken ct)
+    {
+        var resultado = await emision.CrearBorradorAsync(peticion?.Variante, ct);
+
+        return resultado.EsFallo
+            ? resultado.Error!.AResultado(http)
+            : Results.Ok(resultado.Valor);
+    }
 
     private static async Task<IResult> Obtener(
         Guid id, ServicioDeEmision emision, HttpContext http, CancellationToken ct)

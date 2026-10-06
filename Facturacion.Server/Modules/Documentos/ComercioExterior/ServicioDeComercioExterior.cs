@@ -3,9 +3,11 @@ using Facturacion.Server.Data;
 using Facturacion.Server.Data.Entidades.Documentos;
 using Facturacion.Server.Infra.Bitacora;
 using Facturacion.Server.Infra.Tenencia;
+using Facturacion.Server.Modules.Documentos.Emision;
 using Facturacion.Server.Modules.Documentos.Salidas;
 using Facturacion.Shared.ComercioExterior;
 using Facturacion.Shared.Comun;
+using Facturacion.Shared.Documentos;
 using Microsoft.EntityFrameworkCore;
 
 namespace Facturacion.Server.Modules.Documentos.ComercioExterior;
@@ -76,8 +78,8 @@ public sealed class ServicioDeComercioExterior(
             return ErrorNegocio.NoEncontrado("factura-no-encontrada", "No se encontró la factura.");
         if (comprobante.Estatus is not ("borrador" or "error"))
             return ErrorNegocio.Conflicto("comercio-no-editable", "Los datos de comercio exterior solo se editan en borrador.");
-        if (comprobante.Exportacion != "02")
-            return ErrorNegocio.Validacion("comercio-exportacion-invalida", "Guarda la factura como exportación definitiva antes de capturar Comercio Exterior.");
+        if (ReglaDeVariante.Exigir(comprobante, VariantesDeFactura.ComercioExterior, "factura de Comercio Exterior") is { } variante)
+            return variante;
 
         if (peticion.DomicilioEmisor is null || peticion.DomicilioReceptor is null ||
             !ValidarLongitudes(peticion) ||

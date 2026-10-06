@@ -4,6 +4,7 @@ using Facturacion.Server.Data;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 #nullable disable
@@ -11,9 +12,11 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace Facturacion.Server.Migrations
 {
     [DbContext(typeof(AppDbContext))]
-    partial class AppDbContextModelSnapshot : ModelSnapshot
+    [Migration("20261001193227_20261001_B_VarianteDeFactura")]
+    partial class _20261001_B_VarianteDeFactura
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -25,6 +28,7 @@ namespace Facturacion.Server.Migrations
             modelBuilder.Entity("Facturacion.Server.Data.Entidades.Documentos.Comprobante", b =>
                 {
                     b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
                         .HasColumnType("uniqueidentifier");
 
                     b.Property<string>("CadenaOriginalSat")
@@ -224,6 +228,7 @@ namespace Facturacion.Server.Migrations
             modelBuilder.Entity("Facturacion.Server.Data.Entidades.Documentos.ComprobanteRelacionado", b =>
                 {
                     b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
                         .HasColumnType("uniqueidentifier");
 
                     b.Property<Guid>("ComprobanteId")
@@ -252,6 +257,7 @@ namespace Facturacion.Server.Migrations
             modelBuilder.Entity("Facturacion.Server.Data.Entidades.Documentos.Concepto", b =>
                 {
                     b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
                         .HasColumnType("uniqueidentifier");
 
                     b.Property<decimal>("Cantidad")
@@ -352,6 +358,7 @@ namespace Facturacion.Server.Migrations
             modelBuilder.Entity("Facturacion.Server.Data.Entidades.Documentos.DatosComercioExterior", b =>
                 {
                     b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
                         .HasColumnType("uniqueidentifier");
 
                     b.Property<Guid>("ComprobanteId")
@@ -375,6 +382,7 @@ namespace Facturacion.Server.Migrations
             modelBuilder.Entity("Facturacion.Server.Data.Entidades.Documentos.DatosNotaria", b =>
                 {
                     b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
                         .HasColumnType("uniqueidentifier");
 
                     b.Property<bool>("AdquirentesEnCopropiedad")
@@ -418,6 +426,7 @@ namespace Facturacion.Server.Migrations
             modelBuilder.Entity("Facturacion.Server.Data.Entidades.Documentos.DatosObra", b =>
                 {
                     b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
                         .HasColumnType("uniqueidentifier");
 
                     b.Property<Guid>("ComprobanteId")
@@ -501,6 +510,7 @@ namespace Facturacion.Server.Migrations
             modelBuilder.Entity("Facturacion.Server.Data.Entidades.Documentos.DocumentoPagado", b =>
                 {
                     b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
                         .HasColumnType("uniqueidentifier");
 
                     b.Property<Guid?>("ComprobantePagadoId")
@@ -567,6 +577,7 @@ namespace Facturacion.Server.Migrations
             modelBuilder.Entity("Facturacion.Server.Data.Entidades.Documentos.EnvioDeCorreo", b =>
                 {
                     b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
                         .HasColumnType("uniqueidentifier");
 
                     b.Property<string>("Asunto")
@@ -616,6 +627,7 @@ namespace Facturacion.Server.Migrations
             modelBuilder.Entity("Facturacion.Server.Data.Entidades.Documentos.ImpuestoConcepto", b =>
                 {
                     b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
                         .HasColumnType("uniqueidentifier");
 
                     b.Property<decimal>("Base")
@@ -661,6 +673,7 @@ namespace Facturacion.Server.Migrations
             modelBuilder.Entity("Facturacion.Server.Data.Entidades.Documentos.ImpuestoDocumentoPagado", b =>
                 {
                     b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
                         .HasColumnType("uniqueidentifier");
 
                     b.Property<decimal>("Base")
@@ -707,6 +720,7 @@ namespace Facturacion.Server.Migrations
             modelBuilder.Entity("Facturacion.Server.Data.Entidades.Documentos.InmuebleNotarial", b =>
                 {
                     b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
                         .HasColumnType("uniqueidentifier");
 
                     b.Property<string>("Calle")
@@ -779,6 +793,7 @@ namespace Facturacion.Server.Migrations
             modelBuilder.Entity("Facturacion.Server.Data.Entidades.Documentos.IntentoTimbrado", b =>
                 {
                     b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
                         .HasColumnType("uniqueidentifier");
 
                     b.Property<string>("ClaveIdempotencia")
@@ -835,6 +850,7 @@ namespace Facturacion.Server.Migrations
             modelBuilder.Entity("Facturacion.Server.Data.Entidades.Documentos.Pago", b =>
                 {
                     b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
                         .HasColumnType("uniqueidentifier");
 
                     b.Property<Guid>("ComprobanteId")
@@ -900,6 +916,7 @@ namespace Facturacion.Server.Migrations
             modelBuilder.Entity("Facturacion.Server.Data.Entidades.Documentos.ParteNotarial", b =>
                 {
                     b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
                         .HasColumnType("uniqueidentifier");
 
                     b.Property<string>("ApellidoMaterno")
@@ -953,6 +970,7 @@ namespace Facturacion.Server.Migrations
             modelBuilder.Entity("Facturacion.Server.Data.Entidades.Documentos.SolicitudCancelacion", b =>
                 {
                     b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
                         .HasColumnType("uniqueidentifier");
 
                     b.Property<string>("CodigoRespuesta")
@@ -1019,6 +1037,7 @@ namespace Facturacion.Server.Migrations
             modelBuilder.Entity("Facturacion.Server.Data.Entidades.Plataforma.AltaPendiente", b =>
                 {
                     b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
                         .HasColumnType("uniqueidentifier");
 
                     b.Property<DateTime?>("ConsumidoUtc")
@@ -1071,6 +1090,7 @@ namespace Facturacion.Server.Migrations
             modelBuilder.Entity("Facturacion.Server.Data.Entidades.Plataforma.BolsaTimbres", b =>
                 {
                     b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
                         .HasColumnType("uniqueidentifier");
 
                     b.Property<DateTime>("ActualizadaUtc")
@@ -1959,6 +1979,7 @@ namespace Facturacion.Server.Migrations
             modelBuilder.Entity("Facturacion.Server.Data.Entidades.Plataforma.CertificadoCsd", b =>
                 {
                     b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
                         .HasColumnType("uniqueidentifier");
 
                     b.Property<bool>("Activo")
@@ -2012,6 +2033,7 @@ namespace Facturacion.Server.Migrations
             modelBuilder.Entity("Facturacion.Server.Data.Entidades.Plataforma.ClaveIdempotencia", b =>
                 {
                     b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
                         .HasColumnType("uniqueidentifier");
 
                     b.Property<string>("Clave")
@@ -2061,6 +2083,7 @@ namespace Facturacion.Server.Migrations
             modelBuilder.Entity("Facturacion.Server.Data.Entidades.Plataforma.Cliente", b =>
                 {
                     b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
                         .HasColumnType("uniqueidentifier");
 
                     b.Property<bool>("Activo")
@@ -2185,6 +2208,7 @@ namespace Facturacion.Server.Migrations
             modelBuilder.Entity("Facturacion.Server.Data.Entidades.Plataforma.CompraTimbres", b =>
                 {
                     b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
                         .HasColumnType("uniqueidentifier");
 
                     b.Property<DateTime?>("AcreditadaUtc")
@@ -2370,6 +2394,7 @@ namespace Facturacion.Server.Migrations
             modelBuilder.Entity("Facturacion.Server.Data.Entidades.Plataforma.Cuenta", b =>
                 {
                     b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
                         .HasColumnType("uniqueidentifier");
 
                     b.Property<bool>("Activa")
@@ -2396,6 +2421,7 @@ namespace Facturacion.Server.Migrations
             modelBuilder.Entity("Facturacion.Server.Data.Entidades.Plataforma.Empresa", b =>
                 {
                     b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
                         .HasColumnType("uniqueidentifier");
 
                     b.Property<bool>("Activa")
@@ -2539,6 +2565,7 @@ namespace Facturacion.Server.Migrations
             modelBuilder.Entity("Facturacion.Server.Data.Entidades.Plataforma.Membresia", b =>
                 {
                     b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
                         .HasColumnType("uniqueidentifier");
 
                     b.Property<DateTime>("CreadaUtc")
@@ -2568,6 +2595,7 @@ namespace Facturacion.Server.Migrations
             modelBuilder.Entity("Facturacion.Server.Data.Entidades.Plataforma.MovimientoTimbre", b =>
                 {
                     b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
                         .HasColumnType("uniqueidentifier");
 
                     b.Property<Guid?>("CompraId")
@@ -2616,6 +2644,7 @@ namespace Facturacion.Server.Migrations
             modelBuilder.Entity("Facturacion.Server.Data.Entidades.Plataforma.OperadorPlataforma", b =>
                 {
                     b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
                         .HasColumnType("uniqueidentifier");
 
                     b.Property<int>("AccesosFallidos")
@@ -2671,6 +2700,7 @@ namespace Facturacion.Server.Migrations
             modelBuilder.Entity("Facturacion.Server.Data.Entidades.Plataforma.Paquete", b =>
                 {
                     b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
                         .HasColumnType("uniqueidentifier");
 
                     b.Property<bool>("Activo")
@@ -2833,6 +2863,7 @@ namespace Facturacion.Server.Migrations
             modelBuilder.Entity("Facturacion.Server.Data.Entidades.Plataforma.Producto", b =>
                 {
                     b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
                         .HasColumnType("uniqueidentifier");
 
                     b.Property<bool>("Activo")
@@ -2897,6 +2928,7 @@ namespace Facturacion.Server.Migrations
             modelBuilder.Entity("Facturacion.Server.Data.Entidades.Plataforma.ProductoImpuesto", b =>
                 {
                     b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
                         .HasColumnType("uniqueidentifier");
 
                     b.Property<Guid>("EmpresaId")
@@ -2934,6 +2966,7 @@ namespace Facturacion.Server.Migrations
             modelBuilder.Entity("Facturacion.Server.Data.Entidades.Plataforma.RefreshToken", b =>
                 {
                     b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
                         .HasColumnType("uniqueidentifier");
 
                     b.Property<string>("AgenteUsuario")
@@ -2992,6 +3025,7 @@ namespace Facturacion.Server.Migrations
             modelBuilder.Entity("Facturacion.Server.Data.Entidades.Plataforma.RefreshTokenOperador", b =>
                 {
                     b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
                         .HasColumnType("uniqueidentifier");
 
                     b.Property<string>("AgenteUsuario")
@@ -3111,6 +3145,7 @@ namespace Facturacion.Server.Migrations
             modelBuilder.Entity("Facturacion.Server.Data.Entidades.Plataforma.ReservaFolio", b =>
                 {
                     b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
                         .HasColumnType("uniqueidentifier");
 
                     b.Property<Guid?>("ComprobanteId")
@@ -3150,6 +3185,7 @@ namespace Facturacion.Server.Migrations
             modelBuilder.Entity("Facturacion.Server.Data.Entidades.Plataforma.ReservaTimbre", b =>
                 {
                     b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
                         .HasColumnType("uniqueidentifier");
 
                     b.Property<Guid>("ComprobanteId")
@@ -3186,6 +3222,7 @@ namespace Facturacion.Server.Migrations
             modelBuilder.Entity("Facturacion.Server.Data.Entidades.Plataforma.Serie", b =>
                 {
                     b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
                         .HasColumnType("uniqueidentifier");
 
                     b.Property<bool>("Activa")
@@ -3362,6 +3399,7 @@ namespace Facturacion.Server.Migrations
             modelBuilder.Entity("Facturacion.Server.Data.Entidades.Transporte.FiguraTransporte", b =>
                 {
                     b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
                         .HasColumnType("uniqueidentifier");
 
                     b.Property<bool>("Activo")
@@ -3442,6 +3480,7 @@ namespace Facturacion.Server.Migrations
             modelBuilder.Entity("Facturacion.Server.Data.Entidades.Transporte.MercanciaCartaPorte", b =>
                 {
                     b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
                         .HasColumnType("uniqueidentifier");
 
                     b.Property<decimal>("Cantidad")
@@ -3499,6 +3538,7 @@ namespace Facturacion.Server.Migrations
             modelBuilder.Entity("Facturacion.Server.Data.Entidades.Transporte.TrasladoCartaPorte", b =>
                 {
                     b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
                         .HasColumnType("uniqueidentifier");
 
                     b.Property<Guid?>("ClienteDestinoId")
@@ -3604,6 +3644,7 @@ namespace Facturacion.Server.Migrations
             modelBuilder.Entity("Facturacion.Server.Data.Entidades.Transporte.UbicacionCartaPorte", b =>
                 {
                     b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
                         .HasColumnType("uniqueidentifier");
 
                     b.Property<string>("Calle")
@@ -3668,6 +3709,7 @@ namespace Facturacion.Server.Migrations
             modelBuilder.Entity("Facturacion.Server.Data.Entidades.Transporte.Vehiculo", b =>
                 {
                     b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
                         .HasColumnType("uniqueidentifier");
 
                     b.Property<bool>("Activo")

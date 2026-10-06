@@ -34,6 +34,13 @@ public sealed class OpcionesDeEsquemasSat
 /// </summary>
 public sealed class ResolutorDeEsquemasSat(string raiz) : XmlResolver
 {
+    /// <summary>
+    /// El primer archivo que no se encontró. <c>XmlSchemaSet</c> se traga la excepción de un
+    /// <c>xs:import</c> que no resuelve y la degrada a advertencia; lo que llega después es un
+    /// «tipo no declarado» que no dice qué archivo falta. Se guarda aquí para poder relanzarla.
+    /// </summary>
+    public FileNotFoundException? Faltante { get; private set; }
+
     public override object? GetEntity(Uri absoluteUri, string? role, Type? ofObjectToReturn)
     {
         var nombre = absoluteUri.Segments.Length > 0
@@ -45,10 +52,13 @@ public sealed class ResolutorDeEsquemasSat(string raiz) : XmlResolver
             if (File.Exists(candidata)) return File.OpenRead(candidata);
         }
 
-        throw new FileNotFoundException(
+        var faltante = new FileNotFoundException(
             $"Falta el archivo '{nombre}' que el SAT referencia como '{absoluteUri}'. " +
             $"Se busca en '{raiz}' y en '{Path.Combine(raiz, "xslt")}'. " +
             "Se descarga del portal del SAT; ver docs/DESPLIEGUE.md.");
+
+        Faltante ??= faltante;
+        throw faltante;
     }
 }
 
@@ -69,6 +79,7 @@ public sealed class EsquemasSat
     public const string EspacioDeNombresNotariosPublicos = "http://www.sat.gob.mx/notariospublicos";
     public const string EspacioDeNombresComercioExterior20 = "http://www.sat.gob.mx/ComercioExterior20";
     public const string EspacioDeNombresImpuestosLocales = "http://www.sat.gob.mx/implocal";
+    public const string EspacioDeNombresPagos20 = "http://www.sat.gob.mx/Pagos20";
 
     private readonly string _raiz;
     private readonly Lazy<XmlSchemaSet> _esquema;
@@ -77,6 +88,7 @@ public sealed class EsquemasSat
     private readonly Lazy<XmlSchemaSet> _esquemaComercioExterior;
     private readonly Lazy<XmlSchemaSet> _esquemaCfdiComercioExterior;
     private readonly Lazy<XmlSchemaSet> _esquemaCfdiImpuestosLocales;
+    private readonly Lazy<XmlSchemaSet> _esquemaCfdiPagos;
     private readonly Lazy<XslCompiledTransform> _cadenaOriginal;
 
     public EsquemasSat(IHostEnvironment entorno, Microsoft.Extensions.Options.IOptions<OpcionesDeEsquemasSat> opciones)
@@ -96,6 +108,7 @@ public sealed class EsquemasSat
         _esquemaComercioExterior = new Lazy<XmlSchemaSet>(CargarEsquemaComercioExterior);
         _esquemaCfdiComercioExterior = new Lazy<XmlSchemaSet>(CargarEsquemaCfdiComercioExterior);
         _esquemaCfdiImpuestosLocales = new Lazy<XmlSchemaSet>(CargarEsquemaCfdiImpuestosLocales);
+        _esquemaCfdiPagos = new Lazy<XmlSchemaSet>(CargarEsquemaCfdiPagos);
         _cadenaOriginal = new Lazy<XslCompiledTransform>(CargarCadenaOriginal);
     }
 
@@ -112,19 +125,25 @@ public sealed class EsquemasSat
 
     public XmlSchemaSet EsquemaCfdiImpuestosLocales => _esquemaCfdiImpuestosLocales.Value;
 
+    /// <summary>Esquema de CFDI 4.0 con el complemento de pagos 2.0.</summary>
+    public XmlSchemaSet EsquemaCfdiPagos => _esquemaCfdiPagos.Value;
+
     public XslCompiledTransform CadenaOriginal => _cadenaOriginal.Value;
 
-    private XmlSchemaSet CargarEsquema() => CargarEsquema(incluirCartaPorte: false, incluirNotaria: false, incluirComercio: false, incluirImpuestosLocales: false);
+    private XmlSchemaSet CargarEsquema() => CargarEsquema(incluirCartaPorte: false, incluirNotaria: false, incluirComercio: false, incluirImpuestosLocales: false, incluirPagos: false);
 
-    private XmlSchemaSet CargarEsquemaCartaPorte() => CargarEsquema(incluirCartaPorte: true, incluirNotaria: false, incluirComercio: false, incluirImpuestosLocales: false);
+    private XmlSchemaSet CargarEsquemaCartaPorte() => CargarEsquema(incluirCartaPorte: true, incluirNotaria: false, incluirComercio: false, incluirImpuestosLocales: false, incluirPagos: false);
 
-    private XmlSchemaSet CargarEsquemaNotaria() => CargarEsquema(incluirCartaPorte: false, incluirNotaria: true, incluirComercio: false, incluirImpuestosLocales: false);
+    private XmlSchemaSet CargarEsquemaNotaria() => CargarEsquema(incluirCartaPorte: false, incluirNotaria: true, incluirComercio: false, incluirImpuestosLocales: false, incluirPagos: false);
 
     private XmlSchemaSet CargarEsquemaCfdiComercioExterior()
-        => CargarEsquema(incluirCartaPorte: false, incluirNotaria: false, incluirComercio: true, incluirImpuestosLocales: false);
+        => CargarEsquema(incluirCartaPorte: false, incluirNotaria: false, incluirComercio: true, incluirImpuestosLocales: false, incluirPagos: false);
 
     private XmlSchemaSet CargarEsquemaCfdiImpuestosLocales()
-        => CargarEsquema(incluirCartaPorte: false, incluirNotaria: false, incluirComercio: false, incluirImpuestosLocales: true);
+        => CargarEsquema(incluirCartaPorte: false, incluirNotaria: false, incluirComercio: false, incluirImpuestosLocales: true, incluirPagos: false);
+
+    private XmlSchemaSet CargarEsquemaCfdiPagos()
+        => CargarEsquema(incluirCartaPorte: false, incluirNotaria: false, incluirComercio: false, incluirImpuestosLocales: false, incluirPagos: true);
 
     private XmlSchemaSet CargarEsquemaComercioExterior()
     {
@@ -140,17 +159,19 @@ public sealed class EsquemasSat
             XmlResolver = resolutor, DtdProcessing = DtdProcessing.Prohibit
         });
         conjunto.Add(EspacioDeNombresComercioExterior20, lector);
-        conjunto.Compile();
+        Compilar(conjunto, resolutor);
         return conjunto;
     }
 
-    private XmlSchemaSet CargarEsquema(bool incluirCartaPorte, bool incluirNotaria, bool incluirComercio, bool incluirImpuestosLocales)
+    private XmlSchemaSet CargarEsquema(bool incluirCartaPorte, bool incluirNotaria, bool incluirComercio, bool incluirImpuestosLocales,
+        bool incluirPagos)
     {
         var principal = Path.Combine(_raiz, "cfdv40.xsd");
         var cartaPorte = Path.Combine(_raiz, "CartaPorte31.xsd");
         var notaria = Path.Combine(_raiz, "notariospublicos.xsd");
         var comercio = Path.Combine(_raiz, "ComercioExterior20.xsd");
         var impuestosLocales = Path.Combine(_raiz, "implocal.xsd");
+        var pagos = Path.Combine(_raiz, "Pagos20.xsd");
 
         if (!File.Exists(principal))
             throw new FileNotFoundException(
@@ -175,7 +196,12 @@ public sealed class EsquemasSat
             throw new FileNotFoundException(
                 $"Falta 'implocal.xsd' en '{_raiz}'. Descárgalo del portal del SAT.", impuestosLocales);
 
-        var conjunto = new XmlSchemaSet { XmlResolver = new ResolutorDeEsquemasSat(_raiz) };
+        if (incluirPagos && !File.Exists(pagos))
+            throw new FileNotFoundException(
+                $"Falta 'Pagos20.xsd' en '{_raiz}'. Se descarga del portal del SAT; ver docs/DESPLIEGUE.md.", pagos);
+
+        var resolutor = new ResolutorDeEsquemasSat(_raiz);
+        var conjunto = new XmlSchemaSet { XmlResolver = resolutor };
 
         using var lector = XmlReader.Create(principal, new XmlReaderSettings
         {
@@ -223,9 +249,34 @@ public sealed class EsquemasSat
             });
             conjunto.Add(EspacioDeNombresImpuestosLocales, lectorImpuestosLocales);
         }
-        conjunto.Compile();
+        if (incluirPagos)
+        {
+            using var lectorPagos = XmlReader.Create(pagos, new XmlReaderSettings
+            {
+                XmlResolver = new ResolutorDeEsquemasSat(_raiz),
+                DtdProcessing = DtdProcessing.Prohibit
+            });
+            conjunto.Add(EspacioDeNombresPagos20, lectorPagos);
+        }
+        Compilar(conjunto, resolutor);
 
         return conjunto;
+    }
+
+    private static void Compilar(XmlSchemaSet conjunto, ResolutorDeEsquemasSat resolutor)
+    {
+        try
+        {
+            conjunto.Compile();
+        }
+        catch (XmlSchemaException) when (resolutor.Faltante is not null)
+        {
+            throw resolutor.Faltante;
+        }
+
+        // Un import faltante cuyos tipos nadie usa compila igual, pero el conjunto ya no es
+        // el que publicó el SAT.
+        if (resolutor.Faltante is not null) throw resolutor.Faltante;
     }
 
     private XslCompiledTransform CargarCadenaOriginal()
