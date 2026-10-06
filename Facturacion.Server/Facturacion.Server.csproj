@@ -8,6 +8,7 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <PackageReference Include="MailKit" />
     <PackageReference Include="Microsoft.AspNetCore.Authentication.JwtBearer" />
     <PackageReference Include="Microsoft.AspNetCore.Components.WebAssembly.Server" />
     <PackageReference Include="Microsoft.AspNetCore.Identity.EntityFrameworkCore" />
@@ -70,20 +71,12 @@
     el enlazado de WebAssembly cambia algunas huellas durante la publicación.
   -->
   <Target Name="CorregirMarcadoresDeIndexHtml" AfterTargets="Publish">
-    <MSBuild
-      Projects="..\Facturacion.Client\Facturacion.Client.csproj"
-      Targets="Publish"
-      Properties="Configuration=$(Configuration);TargetFramework=$(TargetFramework)"
-      RemoveProperties="PublishDir;PublishUrl" />
+    <MSBuild Projects="..\Facturacion.Client\Facturacion.Client.csproj" Targets="Publish" Properties="Configuration=$(Configuration);TargetFramework=$(TargetFramework)" RemoveProperties="PublishDir;PublishUrl" />
     <ItemGroup>
       <_IndexHtmlResuelto Include="..\Facturacion.Client\obj\$(Configuration)\$(TargetFramework)\staticwebassets\htmlassetplaceholders\publish\*.html" />
     </ItemGroup>
-    <Error
-      Condition="'@(_IndexHtmlResuelto)' == ''"
-      Text="No se encontró el index.html publicado del Client con los marcadores resueltos (¿dotnet/runtime#121993 ya se corrigió? Si es así, esta corrección manual sobra y hay que quitarla)." />
-    <Error
-      Condition="'@(_IndexHtmlResuelto->Count())' &gt; 1"
-      Text="Hay más de un index.html resuelto en obj/ del Client —probablemente restos de una publicación anterior—. Ejecuta 'dotnet clean' en Facturacion.Client antes de publicar." />
+    <Error Condition="'@(_IndexHtmlResuelto)' == ''" Text="No se encontró el index.html publicado del Client con los marcadores resueltos (¿dotnet/runtime#121993 ya se corrigió? Si es así, esta corrección manual sobra y hay que quitarla)." />
+    <Error Condition="'@(_IndexHtmlResuelto-&gt;Count())' &gt; 1" Text="Hay más de un index.html resuelto en obj/ del Client —probablemente restos de una publicación anterior—. Ejecuta 'dotnet clean' en Facturacion.Client antes de publicar." />
     <Copy SourceFiles="@(_IndexHtmlResuelto)" DestinationFiles="$(PublishDir)wwwroot\index.html" />
   </Target>
 

@@ -21,6 +21,8 @@ public static class OpcionesDeAppDbContext
         IContextoEmpresaInterno contexto)
         => constructor
             .UseSqlServer(cadenaDeConexion)
+            // El orden importa: el sellado pone EmpresaId, que en ConfiguracionEmpresa y
+            // CorreoDeEmpresa es la clave, antes de que se revise que ninguna alta llegue sin ella.
             .AddInterceptors(new SelladoDeEmpresaInterceptor(contexto), AltaSinClaveInterceptor.Instancia);
 
     /// <summary>Misma configuración, para quien necesita el constructor tipado y sus <c>Options</c>.</summary>

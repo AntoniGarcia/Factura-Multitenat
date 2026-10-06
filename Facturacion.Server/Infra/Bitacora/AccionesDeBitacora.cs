@@ -22,6 +22,7 @@ public static class AccionesDeBitacora
     // ── Empresa, certificados y folios (fase 4) ────────────────────────────────────────
     public const string EmpresaActualizada = "empresa_actualizada";
     public const string ConfiguracionActualizada = "configuracion_actualizada";
+    public const string CorreoDeEmpresaActualizado = "correo_de_empresa_actualizado";
     public const string ConfiguracionNotarioActualizada = "configuracion_notario_actualizada";
     public const string DatosNotariaActualizados = "datos_notaria_actualizados";
     public const string DatosObraActualizados = "datos_obra_actualizados";
@@ -146,6 +147,7 @@ public static class EntidadesDeBitacora
     public const string RefreshToken = "RefreshToken";
     public const string Empresa = "Empresa";
     public const string ConfiguracionEmpresa = "ConfiguracionEmpresa";
+    public const string CorreoDeEmpresa = "CorreoDeEmpresa";
     public const string ConfiguracionNotario = "ConfiguracionNotario";
     public const string DatosNotaria = "DatosNotaria";
     public const string DatosObra = "DatosObra";

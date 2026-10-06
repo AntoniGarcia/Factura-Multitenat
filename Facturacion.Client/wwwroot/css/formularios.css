@@ -585,6 +585,44 @@
     margin-bottom: 0.75rem;
 }
 
+/* Logo de la empresa en Configuración: vista previa acotada, sin deformar la imagen. */
+.logo-empresa {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 1rem;
+    margin-bottom: 0.75rem;
+}
+
+.logo-empresa-vista,
+.logo-empresa-vacio {
+    width: 12rem;
+    height: 6rem;
+    border: 1px solid var(--borde);
+    border-radius: var(--radio);
+    background: var(--superficie);
+}
+
+.logo-empresa-vista {
+    object-fit: contain;
+    padding: 0.5rem;
+}
+
+.logo-empresa-vacio {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-style: dashed;
+    color: var(--texto-suave);
+    font-size: 0.875rem;
+}
+
+.logo-empresa-acciones {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+}
+
 /* ── Productos ─────────────────────────────────────────────────────────────── */
 
 /* Descripción resuelta de una clave del SAT, debajo del buscador. */

@@ -243,8 +243,10 @@
 
     private bool HayTasasPredeterminadas => _configuracionEmpresa is { } configuracion
         && (configuracion.TasaIvaPorDefecto > 0
+            || configuracion.TasaIepsPorDefecto > 0
             || configuracion.TasaRetencionIvaPorDefecto > 0
-            || configuracion.TasaRetencionIsrPorDefecto > 0);
+            || configuracion.TasaRetencionIsrPorDefecto > 0
+            || configuracion.TasaRetencionIepsPorDefecto > 0);
 
     private string _nuevoImpuesto = "002";
     private string _nuevoFactor = "Tasa";
@@ -348,6 +350,10 @@
             _impuestos.Add(new ImpuestoDeProductoDto(
                 "002", "Tasa", configuracion.TasaIvaPorDefecto, EsRetencion: false));
 
+        if (configuracion.TasaIepsPorDefecto > 0)
+            _impuestos.Add(new ImpuestoDeProductoDto(
+                "003", "Tasa", configuracion.TasaIepsPorDefecto, EsRetencion: false));
+
         if (configuracion.TasaRetencionIvaPorDefecto > 0)
             _impuestos.Add(new ImpuestoDeProductoDto(
                 "002", "Tasa", configuracion.TasaRetencionIvaPorDefecto, EsRetencion: true));
@@ -355,6 +361,10 @@
         if (configuracion.TasaRetencionIsrPorDefecto > 0)
             _impuestos.Add(new ImpuestoDeProductoDto(
                 "001", "Tasa", configuracion.TasaRetencionIsrPorDefecto, EsRetencion: true));
+
+        if (configuracion.TasaRetencionIepsPorDefecto > 0)
+            _impuestos.Add(new ImpuestoDeProductoDto(
+                "003", "Tasa", configuracion.TasaRetencionIepsPorDefecto, EsRetencion: true));
     }
 
     private void AgregarImpuesto()

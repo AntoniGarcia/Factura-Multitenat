@@ -4,6 +4,7 @@ using Facturacion.Server.Data;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 #nullable disable
@@ -11,9 +12,11 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace Facturacion.Server.Migrations
 {
     [DbContext(typeof(AppDbContext))]
-    partial class AppDbContextModelSnapshot : ModelSnapshot
+    [Migration("20261005200758_20261005_A_CorreoDeEmpresa")]
+    partial class _20261005_A_CorreoDeEmpresa
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -2350,14 +2353,6 @@ namespace Facturacion.Server.Migrations
                     b.Property<int>("DiasAvisoCaducidadCertificado")
                         .HasColumnType("int");
 
-                    b.Property<decimal>("TasaIepsPorDefecto")
-                        .HasPrecision(18, 6)
-                        .HasColumnType("decimal(18,6)");
-
-                    b.Property<decimal>("TasaIshPorDefecto")
-                        .HasPrecision(18, 6)
-                        .HasColumnType("decimal(18,6)");
-
                     b.Property<decimal>("TasaIvaPorDefecto")
                         .HasPrecision(18, 6)
                         .HasColumnType("decimal(18,6)");
@@ -2391,10 +2386,6 @@ namespace Facturacion.Server.Migrations
                     b.Property<bool>("Habilitado")
                         .HasColumnType("bit");
 
-                    b.Property<string>("NombreRemitenteSistema")
-                        .HasMaxLength(128)
-                        .HasColumnType("nvarchar(128)");
-
                     b.Property<int>("Puerto")
                         .HasColumnType("int");
 
@@ -2405,10 +2396,6 @@ namespace Facturacion.Server.Migrations
                     b.Property<string>("RemitenteNombre")
                         .HasMaxLength(128)
                         .HasColumnType("nvarchar(128)");
-
-                    b.Property<string>("ResponderA")
-                        .HasMaxLength(254)
-                        .HasColumnType("nvarchar(254)");
 
                     b.Property<string>("Servidor")
                         .HasMaxLength(253)

@@ -80,11 +80,56 @@ public sealed record RespuestaGuardarEmpresa(
     NombreFiscalNormalizado Nombre);
 
 /// <summary>Valores por omisión de la empresa. Las tasas viajan como fracción: 0.16 es 16 %.</summary>
+/// <param name="TasaIshPorDefecto">Impuesto local; hoy ningún comprobante lo aplica.</param>
 public sealed record ConfiguracionEmpresaDto(
     decimal TasaIvaPorDefecto,
+    decimal TasaIepsPorDefecto,
     decimal TasaRetencionIvaPorDefecto,
     decimal TasaRetencionIsrPorDefecto,
+    decimal TasaRetencionIepsPorDefecto,
+    decimal TasaIshPorDefecto,
     int DiasAvisoCaducidadCertificado);
+
+/// <summary>
+/// Servidor SMTP propio de la empresa tal como sale del servidor: sin la contraseña, solo si
+/// hay una guardada (AGENTS.md §11).
+/// </summary>
+public sealed record CorreoDeEmpresaDto(
+    bool Habilitado,
+    string? Servidor,
+    int Puerto,
+    string? Usuario,
+    bool TieneContrasena,
+    string? RemitenteNombre,
+    string? RemitenteCorreo,
+    string? NombreRemitenteSistema,
+    string? ResponderA);
+
+/// <param name="Contrasena">Vacía o nula conserva la guardada.</param>
+/// <param name="NombreRemitenteSistema">Solo aplica cuando sale del remitente del sistema.</param>
+/// <param name="ResponderA">Solo aplica cuando sale del remitente del sistema.</param>
+public sealed record PeticionGuardarCorreoDeEmpresa(
+    bool Habilitado,
+    string? Servidor,
+    int Puerto,
+    string? Usuario,
+    string? Contrasena,
+    string? RemitenteNombre,
+    string? RemitenteCorreo,
+    string? NombreRemitenteSistema,
+    string? ResponderA);
+
+/// <summary>
+/// Los dos únicos puertos admitidos para el SMTP de una empresa. El puerto decide el cifrado:
+/// no hay modo sin cifrar, y el 25 de salida lo bloquea Azure.
+/// </summary>
+public static class PuertosSmtp
+{
+    public const int SslDirecto = 465;
+    public const int StartTls = 587;
+
+    public static bool EsAdmitido(int puerto) => puerto is SslDirecto or StartTls;
+}
 
 /// <summary>
 /// Certificado de sello digital, en la única forma en la que puede salir del servidor:

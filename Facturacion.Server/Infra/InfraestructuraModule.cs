@@ -240,6 +240,10 @@ public static class InfraestructuraModule
         else
             servicios.AddScoped<IServicioDeCorreo, ServicioDeCorreoConsola>();
 
+        // Los comprobantes salen por aquí: con el SMTP de la empresa si lo tiene, o con el anterior.
+        servicios.AddSingleton<IProtectorDeContrasenaSmtp, ProtectorDeContrasenaSmtp>();
+        servicios.AddScoped<IServicioDeCorreoDeEmpresa, ServicioDeCorreoDeEmpresa>();
+
         return servicios;
     }
 
