@@ -33,6 +33,9 @@ public static class EmpresasEndpoints
         grupo.MapGet("/configuracion", ObtenerConfiguracion).RequireAuthorization(Permisos.ConfigurarEmpresa);
         grupo.MapPut("/configuracion", GuardarConfiguracion).RequireAuthorization(Permisos.ConfigurarEmpresa);
 
+        grupo.MapGet("/correo", ObtenerCorreo).RequireAuthorization(Permisos.ConfigurarEmpresa);
+        grupo.MapPut("/correo", GuardarCorreo).RequireAuthorization(Permisos.ConfigurarEmpresa);
+
         // Lectura del logo: basta con tener sesión en la empresa. El endpoint no recibe
         // empresa ni ruta —las saca del claim—, así que no hay forma de pedir el de otra.
         grupo.MapGet("/logo", ObtenerLogo).RequireAuthorization();
@@ -85,6 +88,20 @@ public static class EmpresasEndpoints
         ConfiguracionEmpresaDto peticion, ServicioDeEmpresa empresas, HttpContext contexto, CancellationToken ct)
     {
         var resultado = await empresas.GuardarConfiguracionAsync(peticion, ct);
+
+        return resultado.EsFallo
+            ? resultado.Error!.AResultado(contexto)
+            : Results.Ok(resultado.Valor);
+    }
+
+    private static async Task<IResult> ObtenerCorreo(ServicioDeConfiguracionDeCorreo correo, CancellationToken ct)
+        => Results.Ok(await correo.ObtenerAsync(ct));
+
+    private static async Task<IResult> GuardarCorreo(
+        PeticionGuardarCorreoDeEmpresa peticion, ServicioDeConfiguracionDeCorreo correo,
+        HttpContext contexto, CancellationToken ct)
+    {
+        var resultado = await correo.GuardarAsync(peticion, ct);
 
         return resultado.EsFallo
             ? resultado.Error!.AResultado(contexto)

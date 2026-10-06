@@ -126,7 +126,8 @@ public sealed record RespuestaDeTimbradoDto(
 /// Capacidad fiscal real del servidor. <c>false</c> significa que el entorno permite trabajar
 /// con borradores, pero no debe ofrecer acciones que contacten al PAC.
 /// </summary>
-public sealed record EstadoDeIntegracionFiscalDto(bool TimbradoDisponible);
+/// <param name="Simulado">El PAC es el de desarrollo: sus timbres no tienen validez fiscal.</param>
+public sealed record EstadoDeIntegracionFiscalDto(bool TimbradoDisponible, bool Simulado = false);
 
 /// <summary>
 /// Un renglón del listado de documentos (§1.2 del documento funcional). El folio va nulo

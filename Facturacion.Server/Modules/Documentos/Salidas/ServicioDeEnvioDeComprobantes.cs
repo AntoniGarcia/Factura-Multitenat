@@ -14,8 +14,9 @@ namespace Facturacion.Server.Modules.Documentos.Salidas;
 /// Envío de un CFDI timbrado por correo (B6, §1.3 del documento funcional).
 ///
 /// <para><b>Quién envía</b></para>
-/// El remitente es siempre el del SaaS, con <c>Reply-To</c> al correo de la empresa emisora
-/// (ARQUITECTURA.md §6): no se guarda la configuración SMTP de nadie más.
+/// El SMTP propio de la empresa si lo tiene habilitado; si no, el del SaaS. En los dos casos
+/// <c>Reply-To</c> va al correo de la empresa emisora (AGENTS.md §6 y §11). Si el servidor de
+/// la empresa falla, el envío falla: no se reintenta por el del SaaS.
 ///
 /// <para><b>Qué se adjunta</b></para>
 /// Los mismos archivos que la descarga, generados por <see cref="ServicioDeSalidasFiscales"/>:
@@ -29,7 +30,7 @@ namespace Facturacion.Server.Modules.Documentos.Salidas;
 public sealed class ServicioDeEnvioDeComprobantes(
     AppDbContext baseDeDatos,
     ServicioDeSalidasFiscales salidas,
-    IServicioDeCorreo correo,
+    IServicioDeCorreoDeEmpresa correo,
     IServicioEmpresaEmisora empresaEmisora,
     IServicioClientes clientes,
     IContextoEmpresaInterno contexto,
@@ -108,19 +109,30 @@ public sealed class ServicioDeEnvioDeComprobantes(
 
         var copiaOculta = peticion.CopiaALaEmpresa ? correoDeLaEmpresa : null;
 
+        // La copia va siempre al correo de contacto; las respuestas, a donde la empresa las haya
+        // dirigido en Configuración.
+        var responderA = await correo.ResponderAAsync(correoDeLaEmpresa, ct);
+
         var mensaje = new MensajeDeCorreo(
             destinatarios.Valor,
             asunto,
-            Cuerpo(c, peticion.Mensaje, correoDeLaEmpresa is not null),
-            ResponderA: correoDeLaEmpresa,
+            Cuerpo(c, peticion.Mensaje, responderA is not null),
+            ResponderA: responderA,
             CopiaOculta: copiaOculta is null ? null : [copiaOculta],
             Adjuntos: adjuntos);
 
         string? error = null;
+        FalloDeCorreoDeEmpresa? falloDeLaEmpresa = null;
 
         try
         {
             await correo.EnviarAsync(mensaje, ct);
+        }
+        catch (FalloDeCorreoDeEmpresa ex)
+        {
+            // Ya lo registró ServicioDeCorreoDeEmpresa; aquí solo se conserva para el usuario.
+            falloDeLaEmpresa = ex;
+            error = ex.Codigo;
         }
         catch (Exception ex) when (ex is not OperationCanceledException)
         {
@@ -146,6 +158,10 @@ public sealed class ServicioDeEnvioDeComprobantes(
 
         baseDeDatos.EnviosDeCorreo.Add(envio);
         await baseDeDatos.SaveChangesAsync(ct);
+
+        if (falloDeLaEmpresa is not null)
+            return ErrorNegocio.Regla(falloDeLaEmpresa.Codigo,
+                $"{falloDeLaEmpresa.Message} El intento quedó registrado; revisa la pestaña Correo en Configuración.");
 
         if (error is not null)
             return ErrorNegocio.Regla("correo-no-enviado",

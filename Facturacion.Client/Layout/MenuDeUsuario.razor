@@ -23,6 +23,10 @@
             <MudIcon Icon="@Icons.Material.Filled.Business" Size="Size.Small" />
             Mi empresa
         </MudMenuItem>
+        <MudMenuItem OnClick="@(() => Navegacion.NavigateTo("/configuracion"))">
+            <MudIcon Icon="@Icons.Material.Filled.Settings" Size="Size.Small" />
+            Configuración
+        </MudMenuItem>
     }
     @if (Instalacion.PuedeInstalarse)
     {

@@ -209,7 +209,10 @@ public sealed class ServicioDeEmpresa(
         // Sin renglón todavía significa «nunca se ha configurado», no un error: se
         // devuelven los valores por omisión del modelo.
         return configuracion is null
-            ? new ConfiguracionEmpresaDto(0.160000m, 0m, 0m, 30)
+            ? new ConfiguracionEmpresaDto(
+                TasaIvaPorDefecto: 0.160000m, TasaIepsPorDefecto: 0m, TasaRetencionIvaPorDefecto: 0m,
+                TasaRetencionIsrPorDefecto: 0m, TasaRetencionIepsPorDefecto: 0m, TasaIshPorDefecto: 0m,
+                DiasAvisoCaducidadCertificado: 30)
             : AConfiguracionDto(configuracion);
     }
 
@@ -231,8 +234,11 @@ public sealed class ServicioDeEmpresa(
         }
 
         configuracion.TasaIvaPorDefecto = peticion.TasaIvaPorDefecto;
+        configuracion.TasaIepsPorDefecto = peticion.TasaIepsPorDefecto;
         configuracion.TasaRetencionIvaPorDefecto = peticion.TasaRetencionIvaPorDefecto;
         configuracion.TasaRetencionIsrPorDefecto = peticion.TasaRetencionIsrPorDefecto;
+        configuracion.TasaRetencionIepsPorDefecto = peticion.TasaRetencionIepsPorDefecto;
+        configuracion.TasaIshPorDefecto = peticion.TasaIshPorDefecto;
         configuracion.DiasAvisoCaducidadCertificado = peticion.DiasAvisoCaducidadCertificado;
 
         bitacora.Registrar(
@@ -297,11 +303,20 @@ public sealed class ServicioDeEmpresa(
         if (peticion.TasaIvaPorDefecto is < 0 or > 1)
             return ErrorNegocio.Validacion("iva-invalido", "La tasa de IVA va entre 0 y 1: 0.16 es 16 %.");
 
+        if (peticion.TasaIepsPorDefecto is < 0 or > 1)
+            return ErrorNegocio.Validacion("ieps-invalido", "La tasa de IEPS va entre 0 y 1.");
+
         if (peticion.TasaRetencionIvaPorDefecto is < 0 or > 1)
             return ErrorNegocio.Validacion("retencion-iva-invalida", "La retención de IVA va entre 0 y 1.");
 
         if (peticion.TasaRetencionIsrPorDefecto is < 0 or > 1)
             return ErrorNegocio.Validacion("retencion-isr-invalida", "La retención de ISR va entre 0 y 1.");
+
+        if (peticion.TasaRetencionIepsPorDefecto is < 0 or > 1)
+            return ErrorNegocio.Validacion("retencion-ieps-invalida", "La retención de IEPS va entre 0 y 1.");
+
+        if (peticion.TasaIshPorDefecto is < 0 or > 1)
+            return ErrorNegocio.Validacion("ish-invalido", "La tasa de ISH va entre 0 y 1.");
 
         if (peticion.DiasAvisoCaducidadCertificado is < 1 or > 365)
             return ErrorNegocio.Validacion("dias-aviso-invalidos",
@@ -363,6 +378,7 @@ public sealed class ServicioDeEmpresa(
             e.CartaPorteCodigoPostal ?? string.Empty));
 
     private static ConfiguracionEmpresaDto AConfiguracionDto(ConfiguracionEmpresa c) => new(
-        c.TasaIvaPorDefecto, c.TasaRetencionIvaPorDefecto,
-        c.TasaRetencionIsrPorDefecto, c.DiasAvisoCaducidadCertificado);
+        c.TasaIvaPorDefecto, c.TasaIepsPorDefecto, c.TasaRetencionIvaPorDefecto,
+        c.TasaRetencionIsrPorDefecto, c.TasaRetencionIepsPorDefecto, c.TasaIshPorDefecto,
+        c.DiasAvisoCaducidadCertificado);
 }
