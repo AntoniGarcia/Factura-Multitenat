@@ -1,9 +1,15 @@
+@using Facturacion.Shared.Documentos
 @inject NavigationManager Navegacion
+@inject ServicioDeEmpresa Empresa
 
 @*
-    Primer paso de «Nuevo comprobante»: elegir el tipo antes de abrir su formulario. Cada tipo
-    conserva su propia pantalla; el diálogo solo decide a cuál ir, así que agregar un tipo es
-    agregar una opción aquí. E (egreso) y N (nómina) no aparecen porque no existen en el sistema.
+    Primer paso de «Nuevo comprobante»: elegir qué se va a capturar antes de abrir el formulario.
+    Las facturas con complemento solo aparecen si la empresa tiene contratado el módulo; el
+    servidor lo vuelve a revisar al crear el borrador. E (egreso) y N (nómina) no aparecen
+    porque no existen en el sistema.
+
+    La variante elegida viaja en la URL solo hasta crear el borrador; desde ahí queda guardada en
+    el comprobante y es la que decide las pestañas del formulario.
 
     Navega por su cuenta en vez de devolver la ruta: quien lo abra no tiene que repetir el
     cierre y la navegación.
@@ -11,16 +17,23 @@
 
 <MudDialog>
     <DialogContent>
-        <nav class="tablero-accesos selector-de-comprobante" aria-label="Tipo de comprobante">
-            @foreach (var opcion in Opciones)
-            {
-                <a class="tablero-acceso" href="@opcion.Ruta"
-                   @onclick="() => Ir(opcion.Ruta)" @onclick:preventDefault="true">
-                    <MudIcon Icon="@opcion.Icono" Size="Size.Small" />
-                    <span><strong>@opcion.Titulo</strong><small>@opcion.Descripcion</small></span>
-                </a>
-            }
-        </nav>
+        @if (_opciones is null)
+        {
+            <p role="status">Cargando…</p>
+        }
+        else
+        {
+            <nav class="tablero-accesos selector-de-comprobante" aria-label="Tipo de comprobante">
+                @foreach (var opcion in _opciones)
+                {
+                    <a class="tablero-acceso" href="@opcion.Ruta"
+                       @onclick="() => Ir(opcion.Ruta)" @onclick:preventDefault="true">
+                        <MudIcon Icon="@opcion.Icono" Size="Size.Small" />
+                        <span><strong>@opcion.Titulo</strong><small>@opcion.Descripcion</small></span>
+                    </a>
+                }
+            </nav>
+        }
     </DialogContent>
     <DialogActions>
         <MudButton Variant="Variant.Text" OnClick="@(() => Dialogo.Cancel())">Cancelar</MudButton>
@@ -33,12 +46,39 @@
 
     private sealed record Opcion(string Ruta, string Icono, string Titulo, string Descripcion);
 
-    private static readonly Opcion[] Opciones =
-    [
-        new("/facturas/nueva", Icons.Material.Filled.ReceiptLong, "Factura", "Ingreso por venta de productos o servicios"),
-        new("/pagos/nuevo", Icons.Material.Filled.Payments, "Complemento de pago", "Cobro de facturas en parcialidades o diferidas"),
-        new("/traslados-carta-porte/nuevo", Icons.Material.Filled.LocalShipping, "Traslado con Carta Porte", "Movimiento de mercancía propia, sin importe"),
-    ];
+    private IReadOnlyList<Opcion>? _opciones;
+
+    protected override async Task OnInitializedAsync()
+    {
+        var licencias = (await Empresa.ObtenerAsync())?.Licencias;
+
+        List<Opcion> opciones =
+        [
+            new(RutaDeFactura(VariantesDeFactura.Basica), Icons.Material.Filled.ReceiptLong,
+                "Factura básica", "Ingreso por venta de productos o servicios estándar"),
+        ];
+
+        if (licencias?.Notarios == true)
+            opciones.Add(new(RutaDeFactura(VariantesDeFactura.Notaria), Icons.Material.Filled.Gavel,
+                "Factura con complemento Notaría", "Ingreso por operaciones de fe pública e inmuebles"));
+
+        if (licencias?.Comercio == true)
+            opciones.Add(new(RutaDeFactura(VariantesDeFactura.ComercioExterior), Icons.Material.Filled.Public,
+                "Factura con complemento Comercio Exterior", "Ingreso de exportación con datos aduanales"));
+
+        if (licencias?.Obras == true)
+            opciones.Add(new(RutaDeFactura(VariantesDeFactura.Obra), Icons.Material.Filled.Construction,
+                "Factura de obra", "Ingreso con amortización, retenciones e impuestos locales de obra"));
+
+        opciones.Add(new("/pagos/nuevo", Icons.Material.Filled.Payments,
+            "Complemento de pago", "Cobro de facturas en parcialidades o diferidas"));
+        opciones.Add(new("/traslados-carta-porte/nuevo", Icons.Material.Filled.LocalShipping,
+            "Carta Porte", "Movimiento de mercancía propia, sin importe"));
+
+        _opciones = opciones;
+    }
+
+    private static string RutaDeFactura(string variante) => $"/facturas/nueva?variante={variante}";
 
     private void Ir(string ruta)
     {

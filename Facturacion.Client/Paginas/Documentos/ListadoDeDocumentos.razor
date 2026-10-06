@@ -308,7 +308,7 @@
     private Task AbrirNuevoComprobanteAsync()
         => Dialogos.ShowAsync<DialogoDeNuevoComprobante>(
             "Nuevo comprobante",
-            new DialogOptions { MaxWidth = MaxWidth.ExtraSmall, FullWidth = true });
+            new DialogOptions { MaxWidth = MaxWidth.Small, FullWidth = true });
 
     private void AbrirDocumento(ComprobanteEnListaDto d)
     => Navegacion.NavigateTo(d.TipoDeComprobante == "P" ? $"/pagos/{d.Id}" : $"/facturas/{d.Id}");
