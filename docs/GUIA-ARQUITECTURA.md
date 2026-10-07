@@ -21,7 +21,7 @@
 9. Cómo se monta el servicio (despliegue)
 10. Comandos útiles del servidor
 11. Recorridos de extremo a extremo
-12. Lo que quedó fuera del MVP
+12. Alcance: lo que entró después y lo que quedó en fase 2
 13. Glosario
 
 ---
@@ -338,9 +338,15 @@ recomienda:
 
 ### Correo
 
-- El SMTP es **del SaaS**, no de los clientes. No se custodien contraseñas de correo de
-  terceros — eso era del sistema viejo y en un multitenant significa guardar contaminados
-  decenas de claves.
+- Por omisión el correo sale del SMTP **del SaaS**, con `Reply-To` a la empresa. Sin servidor
+  propio, la empresa puede fijar el nombre del remitente y el «Responder a» de sus
+  comprobantes.
+- Desde el 5 de octubre de 2026 una empresa puede usar **su propio SMTP** para sus
+  comprobantes (AGENTS.md §11). Su contraseña se guarda cifrada con un propósito por empresa
+  y nunca vuelve al navegador ni a la bitácora; el servidor se valida contra redes privadas y
+  locales, solo en los puertos 465 y 587, y la conexión va a la IP ya validada. Si falla, el
+  envío falla: no se reenvía por el SMTP del SaaS.
+- Los correos del sistema —registro, contraseñas, invitaciones— salen siempre del SaaS.
 
 ### Cabeceras de seguridad
 
@@ -415,7 +421,7 @@ sistema arranca pero **rechaza toda alta de cliente y producto**.
 ### 9.5 Esquemas y XSLT del SAT (obligatorio para timbrar)
 
 En `CatalogosSAT/`: `cfdv40.xsd`, `tdCFDI.xsd`, `catCFDI.xsd`, `cadenaoriginal_4_0.xslt` y los
-**33 XSLT de complemento** (todos, aunque el MVP no los use: la cadena los incluye por URL).
+**33 XSLT de complemento** (todos, aunque el sistema solo use algunos: la cadena los incluye por URL).
 El sistema **no sale a internet** a buscarlos (una llamada de red dentro del sellado pondría al
 SAT en el camino crítico de cada timbrado).
 
@@ -518,11 +524,22 @@ POST /api/operador/compras/{id}/acreditar     → exige permiso comprar_timbres
 
 ---
 
-## 12. Lo que quedó fuera del MVP (fase 2)
+## 12. Alcance: lo que entró después y lo que quedó en fase 2
 
-Carta Porte, Comercio Exterior, Notaría, Constructoras, Cotizaciones, Addendas, complemento
-INE, inventario. Sí están modelados los campos de licencia por empresa (`LicNotarios`,
-`LicObras`, `LicComercio`, `LicINE`), para que la fase 2 sea agregar módulos y no rehacer el
+La decisión original dejaba fuera del MVP Carta Porte, Comercio Exterior, Notaría y
+Constructoras. Después se pidió implementarlos antes de la entrega, así que **ya forman
+parte del alcance**: Carta Porte 3.1, Comercio Exterior 2.0, Notarios Públicos y
+Constructoras (con impuestos locales de obra pública). Su código existe; sus flujos
+fiscales completos siguen pendientes de validación manual (ver
+`REPORTE_ESTADO_SISTEMA.md`).
+
+Siguen en fase 2: Cotizaciones, Addendas, complemento INE, inventario y la consulta de RFC
+al servicio del SAT. El SMTP propio por empresa, que también estaba aquí, se adelantó el 5 de
+octubre de 2026 (AGENTS.md §11).
+
+Las licencias por empresa `LicNotarios`, `LicObras` y `LicComercio` habilitan por empresa
+las variantes de Notaría, Constructoras y Comercio Exterior. `LicINE` sigue modelada para
+que el complemento INE sea agregar un módulo y no rehacer el
 esquema.
 
 ---
@@ -535,7 +552,7 @@ esquema.
 | PAC | Proveedor Autorizado de Certificación; timbra (da validez fiscal) el XML |
 | CSD | Certificado de Sello Digital: `.cer` + `.key` para firmar el XML |
 | Cadena original | Texto transformado del XML por XSLT; se firma con el CSD |
-| Carta Porte / IEPS | Complementos y impuestos especiales (fase 2 / motor de impuestos) |
+| Carta Porte / IEPS | Complemento de traslado de mercancías / impuesto especial que calcula el motor de impuestos |
 | Tenencia | A qué empresa pertenece cada dato |
 | Query filter | Filtro que EF Core inyecta en cada SELECT por EmpresaId |
 | Interceptor | Hooks de EF Core antes de guardar (aquí: sellar EmpresaId) |
