@@ -5,9 +5,8 @@ namespace Facturacion.Server.Data.Entidades.Plataforma.Catalogos;
 /// SAT). Es el que valida <c>DomicilioFiscalReceptor</c>, obligatorio en CFDI 4.0
 /// (ARQUITECTURA.md §7).
 /// <para>
-/// No guarda el nombre de la localidad: el archivo del SAT trae ese catálogo aparte
-/// (<c>C_Localidad</c>) pero nada en el alcance de esta fase necesita mostrarlo —es relevante
-/// para Carta Porte, fuera del MVP (REPARTO-EQUIPO.md §1)—, así que no se carga.
+/// Guarda la clave de localidad, no su nombre: <c>c_Localidad</c> es un catálogo aparte
+/// que este importador no carga. No se debe presentar la clave como si fuera el nombre.
 /// </para>
 /// </summary>
 public sealed class SatCodigoPostal

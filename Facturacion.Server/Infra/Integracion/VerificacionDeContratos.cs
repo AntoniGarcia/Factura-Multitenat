@@ -13,10 +13,10 @@ namespace Facturacion.Server.Infra.Integracion;
 /// Vale mucho más un servicio que no levanta que uno que factura contra un doble.
 ///
 /// <para>
-/// Un <b>contrato sin implementación</b> solo se registra en el log. La mitad A tiene que
-/// poder desplegarse antes de que la mitad B exista, y hoy <c>IResumenDocumentos</c> es
-/// justamente eso. Quien resuelva un contrato ausente recibe <c>null</c> y decide qué hacer;
-/// el tablero, por ejemplo, omite el recuadro en vez de inventar cifras.
+/// Un <b>contrato sin implementación</b> se registra en el log. Todos los contratos
+/// deberían tener implementación en la aplicación completa; si falta uno, el diagnóstico
+/// permite identificarlo al arrancar. El tablero admite que falte
+/// <c>IResumenDocumentos</c> en una configuración parcial y omite el recuadro.
 /// </para>
 /// </summary>
 public static class VerificacionDeContratos

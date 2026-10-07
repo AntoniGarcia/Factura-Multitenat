@@ -1,5 +1,6 @@
 using Facturacion.Server.Data;
 using Facturacion.Server.Data.Entidades.Documentos;
+using Facturacion.Server.Infra.Bitacora;
 using Facturacion.Server.Modules.Documentos.Pac;
 using Facturacion.Server.Modules.Documentos.Obras;
 using Facturacion.Server.Modules.Documentos.Salidas;
@@ -43,6 +44,7 @@ public sealed class ServicioDeTimbrado(
     IServicioFolios folios,
     IServicioTimbres timbres,
     CierreDeTimbrado cierre,
+    IServicioDeBitacora bitacora,
     ILogger<ServicioDeTimbrado> registro,
     IProveedorPac? pac = null)
 {
@@ -251,8 +253,18 @@ public sealed class ServicioDeTimbrado(
 
         baseDeDatos.IntentosTimbrado.Add(intento);
 
+        var estatusAnterior = comprobante.Estatus;
+
         comprobante.Estatus = EstatusComprobante.Timbrando.ACadena();
         comprobante.ModificadoUtc = DateTime.UtcNow;
+
+        // Se registra al apartar y no solo al cerrar: si la llamada al PAC nunca vuelve, este
+        // renglón es lo único que dice quién mandó a timbrar el comprobante que la conciliación
+        // resuelva horas después.
+        bitacora.Registrar(
+            EntidadesDeBitacora.Comprobante, comprobante.Id.ToString(), AccionesDeBitacora.TimbradoIniciado,
+            new { Estatus = estatusAnterior },
+            new { comprobante.Estatus, Intento = intento.Numero, comprobante.Serie, comprobante.Folio, comprobante.Total });
 
         await baseDeDatos.SaveChangesAsync(ct);
         await transaccion.CommitAsync(ct);

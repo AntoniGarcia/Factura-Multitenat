@@ -1,0 +1,21 @@
+@using Facturacion.Shared.Plataforma
+
+@*
+    «Nuevo usuario» sin salir de la lista. El formulario es el mismo de /usuarios/nuevo
+    (FormularioDeUsuario); este componente solo pone el marco y devuelve la respuesta del
+    servidor para que ListaDeUsuarios recargue y muestre el mensaje.
+*@
+
+<MudDialog>
+    <DialogContent>
+        <div class="dialogo-formulario-scroll">
+            <FormularioDeUsuario AlCrear="r => MudDialog.Close(DialogResult.Ok(r))"
+                                 AlCancelar="() => MudDialog.Cancel()" />
+        </div>
+    </DialogContent>
+</MudDialog>
+
+@code {
+    [CascadingParameter]
+    private IMudDialogInstance MudDialog { get; set; } = default!;
+}

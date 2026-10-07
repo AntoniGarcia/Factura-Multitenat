@@ -1,0 +1,517 @@
+@page "/configuracion"
+@attribute [Authorize(Policy = Permisos.ConfigurarEmpresa)]
+@using Facturacion.Client.Servicios.Documentos
+@using Facturacion.Shared.Documentos
+@inject ServicioDeEmpresa Empresas
+@inject ServicioDeEmision Emision
+@inject IServicioDeConfirmacion Confirmacion
+
+@*
+    Los campos de la configuración del sistema anterior (§3 del documento funcional), por
+    pestañas.
+    El logo se guarda en cuanto se elige; el resto, con «Guardar», que solo envía lo que cambió.
+*@
+
+<PageTitle>Configuración</PageTitle>
+<TituloDePagina Texto="Configuración" />
+
+<PanelErrores Problema="_error" />
+
+@if (_cargando)
+{
+    <p>Cargando…</p>
+}
+else
+{
+    <MudTabs @bind-ActivePanelIndex="_pestana">
+
+        <MudTabPanel Text="General" Icon="@Icons.Material.Filled.Tune">
+            <h2 class="seccion-titulo">Timbrado</h2>
+            <p class="seccion-ayuda">
+                El timbrado lo hace el proveedor de la plataforma y consume timbres de tu bolsa.
+            </p>
+            <p role="status">
+                <span class="indicador-estado @ClaseDelPac">@TextoDelPac</span>
+            </p>
+            @if (DetalleDelPac is { } detalle)
+            {
+                <p class="seccion-ayuda">@detalle</p>
+            }
+
+            <h2 class="seccion-titulo">Logo de la empresa</h2>
+            <p class="seccion-ayuda">
+                Aparece en el PDF de tus comprobantes. PNG o JPG de hasta 2 MB; se guarda en cuanto lo eliges.
+            </p>
+            <div class="logo-empresa">
+                @if (_logo is not null)
+                {
+                    <img src="@_logo" alt="Logo de la empresa" class="logo-empresa-vista" />
+                }
+                else
+                {
+                    <div class="logo-empresa-vacio">Sin logo</div>
+                }
+
+                <div class="logo-empresa-acciones">
+                    <MudFileUpload T="IBrowserFile" FilesChanged="SubirLogoAsync" Accept=".png,.jpg,.jpeg">
+                        <CustomContent Context="carga">
+                            <MudButton Variant="Variant.Outlined" Disabled="_trabajandoLogo"
+                                       StartIcon="@Icons.Material.Filled.Upload"
+                                       OnClick="@(() => carga.OpenFilePickerAsync())">
+                                @(_logo is null ? "Agregar logo" : "Cambiar logo")
+                            </MudButton>
+                        </CustomContent>
+                    </MudFileUpload>
+                    <MudButton Variant="Variant.Text" Disabled="@(_logo is null || _trabajandoLogo)"
+                               StartIcon="@Icons.Material.Filled.Delete" OnClick="QuitarLogoAsync">
+                        Quitar logo
+                    </MudButton>
+                </div>
+            </div>
+            @if (_errorLogo is not null)
+            {
+                <p class="texto-error" role="alert">@_errorLogo</p>
+            }
+
+            <h2 class="seccion-titulo">Notificaciones</h2>
+            <div class="rejilla-campos">
+                <MudNumericField @bind-Value="_diasAviso" Label="Avisar caducidad del certificado"
+                                 Min="1" Max="365" HelperText="Días antes de que caduque."
+                                 Error="@(ErrorDiasAviso is not null)" ErrorText="@ErrorDiasAviso"
+                                 Class="cifra-tabular" />
+            </div>
+        </MudTabPanel>
+
+        <MudTabPanel Text="Correo" Icon="@Icons.Material.Filled.Email">
+            <h2 class="seccion-titulo">Servidor de correo</h2>
+            <p class="seccion-ayuda">
+                Con tu propio servidor, los comprobantes salen desde tu dirección. Sin él, salen de la
+                dirección del sistema con el nombre y el «Responder a» que pongas aquí.
+            </p>
+
+            <MudSwitch @bind-Value="_habilitado" Label="Usar mi propio servidor de correo" Color="Color.Primary" />
+
+            @if (_habilitado)
+            {
+                <div class="rejilla-campos">
+                    <MudTextField @bind-Value="_servidor" Label="Servidor SMTP" Placeholder="smtp.miempresa.com"
+                                  MaxLength="253" Immediate="true"
+                                  Error="@(ErrorServidor is not null)" ErrorText="@ErrorServidor" />
+                    <MudNumericField @bind-Value="_puerto" Label="Puerto"
+                                     HideSpinButtons="true" Immediate="true" Class="cifra-tabular"
+                                     HelperText="465 o 587."
+                                     Error="@(ErrorPuerto is not null)" ErrorText="@ErrorPuerto" />
+                    <MudTextField @bind-Value="_usuario" Label="Usuario" Placeholder="facturas@miempresa.com"
+                                  MaxLength="254" Immediate="true"
+                                  Error="@(ErrorUsuario is not null)" ErrorText="@ErrorUsuario" />
+                    <MudTextField @bind-Value="_contrasena" Label="Contraseña"
+                                  InputType="@(_verContrasena ? InputType.Text : InputType.Password)"
+                                  Adornment="Adornment.End"
+                                  AdornmentIcon="@(_verContrasena ? Icons.Material.Filled.VisibilityOff : Icons.Material.Filled.Visibility)"
+                                  AdornmentAriaLabel="@(_verContrasena ? "Ocultar contraseña" : "Mostrar contraseña")"
+                                  OnAdornmentClick="@(() => _verContrasena = !_verContrasena)"
+                                  MaxLength="512" Immediate="true"
+                                  HelperText="@(_tieneContrasena ? "Guardada; déjala vacía para conservarla." : "Sin contraseña guardada.")"
+                                  Error="@(ErrorContrasena is not null)" ErrorText="@ErrorContrasena" />
+                </div>
+
+                <div class="rejilla-campos">
+                    <MudSwitch T="bool" Value="true" Disabled="true" Color="Color.Primary"
+                               Label="Requiere autenticación SSL/TLS" />
+                </div>
+                <p class="seccion-ayuda">
+                    Siempre cifrado: el 465 usa SSL directo y el 587, STARTTLS. Gmail y Outlook piden una
+                    contraseña de aplicación en lugar de la contraseña de la cuenta.
+                </p>
+
+                <h3 class="seccion-subtitulo">Remitente (De)</h3>
+                <div class="rejilla-campos">
+                    <MudTextField @bind-Value="_remitenteNombre" Label="Nombre del remitente" Placeholder="Facturación Mi Empresa"
+                                  MaxLength="128" Immediate="true" />
+                    <MudTextField @bind-Value="_remitenteCorreo" Label="Correo del remitente" Placeholder="facturas@miempresa.com"
+                                  InputType="InputType.Email" MaxLength="254" Immediate="true"
+                                  HelperText="Normalmente, la misma cuenta del usuario."
+                                  Error="@(ErrorRemitente is not null)" ErrorText="@ErrorRemitente" />
+                </div>
+            }
+            else
+            {
+                <h3 class="seccion-subtitulo">Remitente del sistema</h3>
+                <div class="rejilla-campos">
+                    <MudTextField @bind-Value="_nombreRemitenteSistema" Label="Nombre del remitente"
+                                  Placeholder="Facturación Mi Empresa" MaxLength="128" Immediate="true"
+                                  HelperText="Vacío: el nombre del sistema."
+                                  Error="@(ErrorNombreRemitenteSistema is not null)" ErrorText="@ErrorNombreRemitenteSistema" />
+                    <MudTextField @bind-Value="_responderA" Label="Responder a" Placeholder="contacto@miempresa.com"
+                                  InputType="InputType.Email" MaxLength="254" Immediate="true"
+                                  HelperText="Vacío: el correo de contacto de Mi empresa."
+                                  Error="@(ErrorResponderA is not null)" ErrorText="@ErrorResponderA" />
+                </div>
+            }
+        </MudTabPanel>
+
+        <MudTabPanel Text="Impuestos" Icon="@Icons.Material.Filled.Percent">
+            <p class="seccion-ayuda mt-3">
+                Estas tasas son una sugerencia al configurar productos. Los impuestos de la factura
+                se calculan con los que tenga guardados cada producto.
+            </p>
+
+            <h2 class="seccion-titulo">Impuesto trasladado</h2>
+            <div class="rejilla-campos">
+                <MudNumericField @bind-Value="_ivaPct" Label="IVA %" Min="0M" Max="100M" Step="1M" Format="N2"
+                                 Class="cifra-tabular" HelperText="16 es 16 %." />
+                <MudNumericField @bind-Value="_iepsPct" Label="IEPS %" Min="0M" Max="100M" Format="N2"
+                                 Class="cifra-tabular" HelperText="Cero si la empresa no lo cobra." />
+            </div>
+
+            <h2 class="seccion-titulo">Impuesto retenido</h2>
+            <div class="rejilla-campos">
+                <MudNumericField @bind-Value="_retIvaPct" Label="IVA %" Min="0M" Max="100M" Format="N2"
+                                 Class="cifra-tabular" HelperText="Cero si la empresa no retiene." />
+                <MudNumericField @bind-Value="_retIsrPct" Label="ISR %" Min="0M" Max="100M" Format="N2"
+                                 Class="cifra-tabular" HelperText="Cero si la empresa no retiene." />
+                <MudNumericField @bind-Value="_retIepsPct" Label="IEPS %" Min="0M" Max="100M" Format="N2"
+                                 Class="cifra-tabular" HelperText="Cero si la empresa no retiene." />
+            </div>
+
+            <h2 class="seccion-titulo">Impuestos locales</h2>
+            <p class="seccion-ayuda">
+                Se guardan para los documentos que los apliquen. Hoy ningún comprobante los usa: los
+                impuestos locales viajan en su propio complemento, que solo usa la factura de obra pública.
+            </p>
+            <div class="rejilla-campos">
+                <MudNumericField @bind-Value="_ishPct" Label="ISH %" Min="0M" Max="100M" Format="N2"
+                                 Class="cifra-tabular" HelperText="Impuesto sobre hospedaje." />
+            </div>
+        </MudTabPanel>
+    </MudTabs>
+
+    <div class="acciones-formulario">
+        <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="GuardarAsync"
+                   Disabled="@(_guardando || !HayCambios)">
+            @(_guardando ? "Guardando…" : "Guardar")
+        </MudButton>
+        <MudButton Variant="Variant.Text" OnClick="Cancelar" Disabled="@(_guardando || !HayCambios)">
+            Cancelar
+        </MudButton>
+
+        @if (_guardado)
+        {
+            <span class="mensaje-exito" role="status">Configuración guardada.</span>
+        }
+    </div>
+}
+
+@code {
+    private const long TopeLogo = 2 * 1024 * 1024;
+
+    private bool _cargando = true, _guardando, _guardado, _trabajandoLogo, _verContrasena;
+    private int _pestana;
+    private DetalleProblema? _error;
+    private string? _errorLogo;
+
+    private EstadoDeIntegracionFiscalDto? _pac;
+    private string? _logo;
+
+    // Lo último que confirmó el servidor: contra esto se calcula qué cambió y a qué vuelve «Cancelar».
+    private ConfiguracionEmpresaDto _configuracion = null!;
+    private CorreoDeEmpresaDto _correo = null!;
+
+    // Las tasas se capturan en por ciento, como en el sistema anterior; viajan como fracción.
+    private decimal _ivaPct, _iepsPct, _retIvaPct, _retIsrPct, _retIepsPct, _ishPct;
+    private int _diasAviso;
+
+    private bool _habilitado, _tieneContrasena;
+    private string? _servidor, _usuario, _contrasena, _remitenteNombre, _remitenteCorreo;
+    private string? _nombreRemitenteSistema, _responderA;
+    private int _puerto;
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            var configuracion = Empresas.ObtenerConfiguracionAsync();
+            var correo = Empresas.ObtenerCorreoAsync();
+            var pac = ConsultarPacAsync();
+            var logo = CargarLogoAsync();
+
+            await Task.WhenAll(configuracion, correo, pac, logo);
+
+            AplicarConfiguracion((await configuracion)!);
+            AplicarCorreo((await correo)!);
+        }
+        finally
+        {
+            _cargando = false;
+        }
+    }
+
+    // ── Estado del PAC ──────────────────────────────────────────────────────────────
+
+    private async Task ConsultarPacAsync()
+    {
+        try
+        {
+            _pac = await Emision.ObtenerEstadoDeIntegracionAsync();
+        }
+        catch (HttpRequestException)
+        {
+            _pac = null;
+        }
+    }
+
+    private string TextoDelPac => _pac switch
+    {
+        null => "Estado del PAC desconocido",
+        { TimbradoDisponible: false } => "PAC no disponible",
+        { Simulado: true } => "PAC disponible en modo simulado",
+        _ => "PAC disponible"
+    };
+
+    private string ClaseDelPac => _pac switch
+    {
+        null => "indicador-estado-borrador",
+        { TimbradoDisponible: false } => "indicador-estado-cancelada",
+        { Simulado: true } => "indicador-estado-advertencia",
+        _ => "indicador-estado-timbrada"
+    };
+
+    private string? DetalleDelPac => _pac switch
+    {
+        null => "No se pudo consultar. Vuelve a abrir esta pantalla en unos minutos.",
+        { TimbradoDisponible: false } => "Puedes capturar borradores, pero no timbrar hasta que el PAC esté disponible.",
+        { Simulado: true } => "Los timbres de este entorno son de prueba y no tienen validez fiscal.",
+        _ => null
+    };
+
+    // ── Logo ────────────────────────────────────────────────────────────────────────
+
+    private async Task CargarLogoAsync()
+    {
+        try
+        {
+            var logo = await Empresas.ObtenerLogoAsync();
+            _logo = logo is { } l ? $"data:{l.TipoMime};base64,{Convert.ToBase64String(l.Contenido)}" : null;
+        }
+        catch (HttpRequestException)
+        {
+            _errorLogo = "No se pudo cargar el logo.";
+        }
+    }
+
+    private async Task SubirLogoAsync(IBrowserFile? archivo)
+    {
+        if (archivo is null) return;
+
+        _errorLogo = null;
+        _error = null;
+        _trabajandoLogo = true;
+
+        try
+        {
+            await using var flujo = archivo.OpenReadStream(TopeLogo);
+            var error = await Empresas.SubirLogoAsync(flujo, archivo.Name);
+
+            if (error is not null)
+            {
+                _error = error;
+                return;
+            }
+
+            await CargarLogoAsync();
+        }
+        catch (IOException)
+        {
+            _errorLogo = "El logo pesa más de 2 MB.";
+        }
+        finally
+        {
+            _trabajandoLogo = false;
+        }
+    }
+
+    private async Task QuitarLogoAsync()
+    {
+        if (!await Confirmacion.ConfirmarAsync(
+                "Quitar logo", "Los PDF nuevos saldrán sin logo. ¿Quitarlo?", "Quitar", esPeligrosa: true))
+            return;
+
+        _trabajandoLogo = true;
+
+        try
+        {
+            await Empresas.QuitarLogoAsync();
+            _logo = null;
+        }
+        finally
+        {
+            _trabajandoLogo = false;
+        }
+    }
+
+    // ── Validación inmediata (la que cuenta es la del servidor) ─────────────────────
+
+    private string? ErrorDiasAviso => _diasAviso is < 1 or > 365 ? "Entre 1 y 365 días." : null;
+
+    private string? ErrorServidor => _habilitado && string.IsNullOrWhiteSpace(_servidor)
+        ? "Escribe el servidor SMTP." : null;
+
+    private string? ErrorPuerto => _habilitado && _puerto is not (PuertosSmtp.SslDirecto or PuertosSmtp.StartTls)
+        ? "Usa 465 (SSL directo) o 587 (STARTTLS)." : null;
+
+    private string? ErrorUsuario => _habilitado && string.IsNullOrWhiteSpace(_usuario)
+        ? "Escribe el usuario." : null;
+
+    private string? ErrorContrasena => _habilitado && !_tieneContrasena && string.IsNullOrEmpty(_contrasena)
+        ? "Escribe la contraseña." : null;
+
+    private string? ErrorRemitente => !_habilitado ? null
+        : string.IsNullOrWhiteSpace(_remitenteCorreo) ? "Escribe el correo del remitente."
+        : !PareceCorreo(_remitenteCorreo.Trim()) ? "Escribe solo la dirección, como facturas@miempresa.com."
+        : null;
+
+    private string? ErrorNombreRemitenteSistema => !_habilitado && _nombreRemitenteSistema?.Contains('@') == true
+        ? "Sin «@»: el nombre no debe parecer otra dirección." : null;
+
+    private string? ErrorResponderA => !_habilitado && !string.IsNullOrWhiteSpace(_responderA) && !PareceCorreo(_responderA.Trim())
+        ? "Escribe solo la dirección, como contacto@miempresa.com." : null;
+
+    private bool CorreoTieneErrores
+        => ErrorServidor is not null || ErrorPuerto is not null || ErrorUsuario is not null ||
+           ErrorContrasena is not null || ErrorRemitente is not null ||
+           ErrorNombreRemitenteSistema is not null || ErrorResponderA is not null;
+
+    private static bool PareceCorreo(string texto)
+    {
+        var arroba = texto.IndexOf('@');
+        return arroba > 0 && arroba == texto.LastIndexOf('@') && !texto.Any(char.IsWhiteSpace) &&
+               texto.IndexOf('.', arroba) > arroba + 1 && !texto.EndsWith('.');
+    }
+
+    // ── Guardar y cancelar ──────────────────────────────────────────────────────────
+
+    private ConfiguracionEmpresaDto ConfiguracionCapturada => new(
+        TasaIvaPorDefecto: AFraccion(_ivaPct),
+        TasaIepsPorDefecto: AFraccion(_iepsPct),
+        TasaRetencionIvaPorDefecto: AFraccion(_retIvaPct),
+        TasaRetencionIsrPorDefecto: AFraccion(_retIsrPct),
+        TasaRetencionIepsPorDefecto: AFraccion(_retIepsPct),
+        TasaIshPorDefecto: AFraccion(_ishPct),
+        DiasAvisoCaducidadCertificado: _diasAviso);
+
+    private PeticionGuardarCorreoDeEmpresa CorreoCapturado => new(
+        _habilitado, _servidor, _puerto, _usuario,
+        string.IsNullOrEmpty(_contrasena) ? null : _contrasena, _remitenteNombre, _remitenteCorreo,
+        _nombreRemitenteSistema, _responderA);
+
+    private bool ConfiguracionCambio => ConfiguracionCapturada != _configuracion;
+
+    private bool CorreoCambio
+        => _habilitado != _correo.Habilitado || _puerto != _correo.Puerto || !string.IsNullOrEmpty(_contrasena) ||
+           Distinto(_servidor, _correo.Servidor) || Distinto(_usuario, _correo.Usuario) ||
+           Distinto(_remitenteNombre, _correo.RemitenteNombre) || Distinto(_remitenteCorreo, _correo.RemitenteCorreo) ||
+           Distinto(_nombreRemitenteSistema, _correo.NombreRemitenteSistema) || Distinto(_responderA, _correo.ResponderA);
+
+    private bool HayCambios => ConfiguracionCambio || CorreoCambio;
+
+    private static bool Distinto(string? a, string? b)
+        => !string.Equals(string.IsNullOrWhiteSpace(a) ? null : a.Trim(), b, StringComparison.Ordinal);
+
+    private async Task GuardarAsync()
+    {
+        _error = null;
+        _guardado = false;
+
+        if (ErrorDiasAviso is not null)
+        {
+            _pestana = 0;
+            return;
+        }
+
+        if (CorreoCambio && CorreoTieneErrores)
+        {
+            _pestana = 1;
+            return;
+        }
+
+        _guardando = true;
+
+        try
+        {
+            // El correo primero: es el que puede fallar por el DNS, y así un error no deja las
+            // tasas guardadas a medias con un aviso que hable de otra pestaña.
+            if (CorreoCambio)
+            {
+                var (correo, errorCorreo) = await Empresas.GuardarCorreoAsync(CorreoCapturado);
+
+                if (errorCorreo is not null)
+                {
+                    _error = errorCorreo;
+                    _pestana = 1;
+                    return;
+                }
+
+                AplicarCorreo(correo!);
+            }
+
+            if (ConfiguracionCambio)
+            {
+                var (configuracion, errorConfiguracion) = await Empresas.GuardarConfiguracionAsync(ConfiguracionCapturada);
+
+                if (errorConfiguracion is not null)
+                {
+                    _error = errorConfiguracion;
+                    return;
+                }
+
+                AplicarConfiguracion(configuracion!);
+            }
+
+            _guardado = true;
+        }
+        finally
+        {
+            _guardando = false;
+        }
+    }
+
+    private void Cancelar()
+    {
+        _error = null;
+        _guardado = false;
+        AplicarConfiguracion(_configuracion);
+        AplicarCorreo(_correo);
+    }
+
+    private void AplicarConfiguracion(ConfiguracionEmpresaDto c)
+    {
+        _configuracion = c;
+        _ivaPct = APorciento(c.TasaIvaPorDefecto);
+        _iepsPct = APorciento(c.TasaIepsPorDefecto);
+        _retIvaPct = APorciento(c.TasaRetencionIvaPorDefecto);
+        _retIsrPct = APorciento(c.TasaRetencionIsrPorDefecto);
+        _retIepsPct = APorciento(c.TasaRetencionIepsPorDefecto);
+        _ishPct = APorciento(c.TasaIshPorDefecto);
+        _diasAviso = c.DiasAvisoCaducidadCertificado;
+    }
+
+    private void AplicarCorreo(CorreoDeEmpresaDto c)
+    {
+        _correo = c;
+        _habilitado = c.Habilitado;
+        _servidor = c.Servidor;
+        _puerto = c.Puerto;
+        _usuario = c.Usuario;
+        _tieneContrasena = c.TieneContrasena;
+        _contrasena = null;
+        _remitenteNombre = c.RemitenteNombre;
+        _remitenteCorreo = c.RemitenteCorreo;
+        _nombreRemitenteSistema = c.NombreRemitenteSistema;
+        _responderA = c.ResponderA;
+    }
+
+    private static decimal APorciento(decimal fraccion) => fraccion * 100m;
+
+    // Seis decimales, como la columna: 10.6667 % se guarda como 0.106667.
+    private static decimal AFraccion(decimal porciento) => Math.Round(porciento / 100m, 6);
+}

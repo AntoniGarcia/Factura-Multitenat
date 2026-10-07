@@ -28,8 +28,10 @@ public static class TimbradoEndpoints
     {
         var grupo = rutas.MapGroup("/api/documentos").WithTags("Documentos");
 
+        // Solo exige sesión: dice si el timbrado de la plataforma está disponible, sin datos
+        // de ninguna empresa, y Configuración lo muestra a quien no necesariamente timbra.
         grupo.MapGet("/integracion-fiscal", ObtenerEstadoDeIntegracion)
-            .RequireAuthorization(Permisos.Timbrar);
+            .RequireAuthorization();
 
         grupo.MapPost("/{id:guid}/timbrar", Timbrar)
             .RequireAuthorization(Permisos.Timbrar)
@@ -37,8 +39,10 @@ public static class TimbradoEndpoints
     }
 
     private static IResult ObtenerEstadoDeIntegracion(IServiceProvider servicios)
-        => Results.Ok(new EstadoDeIntegracionFiscalDto(
-            servicios.GetService<IProveedorPac>() is not null));
+    {
+        var pac = servicios.GetService<IProveedorPac>();
+        return Results.Ok(new EstadoDeIntegracionFiscalDto(pac is not null, pac is Dobles.DobleProveedorPac));
+    }
 
     private static async Task<IResult> Timbrar(
         Guid id, ServicioDeTimbrado timbrado, HttpContext http, CancellationToken ct)

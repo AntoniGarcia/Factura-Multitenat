@@ -1,6 +1,5 @@
 using Facturacion.Server.Modules.Documentos.Cancelacion;
 using Facturacion.Server.Modules.Documentos.ComercioExterior;
-using Facturacion.Server.Modules.Documentos.Dobles;
 using Facturacion.Server.Modules.Documentos.Emision;
 using Facturacion.Server.Modules.Documentos.Pagos;
 using Facturacion.Server.Modules.Documentos.Pac;
@@ -26,19 +25,11 @@ public static class DocumentosModule
     public static IServiceCollection AddDocumentos(
         this IServiceCollection servicios, IConfiguration configuracion, IHostEnvironment entorno)
     {
-        // Dobles de prueba (REPARTO-EQUIPO.md §7): solo en Development para que B pueda probar
-        // sin esperar a que A termine sus módulos. Sin estos, B queda bloqueado desde octubre.
-        if (entorno.IsDevelopment())
-        {
-            servicios.AddScoped<IServicioClientes, DobleServicioClientes>();
-            servicios.AddScoped<IServicioEmpresaEmisora, DobleServicioEmpresaEmisora>();
-            servicios.AddScoped<IServicioFolios, DobleServicioFolios>();
-            servicios.AddScoped<IServicioTimbres, DobleServicioTimbres>();
-        }
 
         // Implementación real, no un doble: lee comprobantes de verdad. Es el único contrato
         // que va de B hacia A —lo consume el tablero— y hasta la fase B0 no existía, así que
         // la verificación de arranque lo reportaba como ausente en cada arranque.
+
         servicios.AddScoped<IResumenDocumentos, ResumenDocumentos>();
 
         servicios.AddOptions<OpcionesDeEsquemasSat>().Bind(configuracion.GetSection(OpcionesDeEsquemasSat.Seccion));
@@ -60,13 +51,14 @@ public static class DocumentosModule
         servicios.AddScoped<GeneradorDePdfCartaPorte>();
         servicios.AddScoped<ServicioDePdfBorrador>();
         servicios.AddScoped<ServicioDeSalidasFiscales>();
-        servicios.AddScoped<ServicioDeDescargas>();
+        servicios.AddScoped<ServicioDeEnvioDeComprobantes>();
         servicios.AddScoped<ServicioDeXmlCfdi>();
 
         servicios.AddScoped<CierreDeTimbrado>();
         servicios.AddScoped<ServicioDeTimbrado>();
         servicios.AddScoped<Emision.ServicioDeEmision>();
         servicios.AddScoped<ServicioDeCancelacion>();
+        servicios.AddScoped<ServicioDeSolicitudesDeCancelacion>();
         servicios.AddScoped<ServicioDePagos>();
         servicios.AddScoped<ServicioDeTrasladosCartaPorte>();
         servicios.AddScoped<ServicioDeSalidasCartaPorte>();
@@ -116,9 +108,25 @@ public static class DocumentosModule
             return servicios;
         }
 
+        if (opciones.Modo == ModoDePac.Simulado)
+        {
+            if (!entorno.IsDevelopment())
+                throw new InvalidOperationException(
+                    "'Pac:Modo=Simulado' solo se permite en Development: produce timbres inventados.");
+
+            // Los dos juntos: sin PAC real tampoco hay quién valide el sello, y sin el doble del
+            // CSD no se podría timbrar en una empresa que todavía no carga su certificado.
+            // Registrado después de PlataformaModule, el del CSD sustituye al real; la
+            // verificación de contratos lo reporta al arrancar.
+            servicios.AddSingleton<IProveedorPac, Dobles.DobleProveedorPac>();
+            servicios.AddSingleton<IProveedorCsdParaTimbrado, Dobles.DobleProveedorCsdParaTimbrado>();
+
+            return servicios;
+        }
+
         if (opciones.Modo != ModoDePac.Real)
             throw new InvalidOperationException(
-                $"El valor '{opciones.Modo}' de 'Pac:Modo' no es válido. Usa 'Real' o 'Deshabilitado'.");
+                $"El valor '{opciones.Modo}' de 'Pac:Modo' no es válido. Usa 'Real', 'Deshabilitado' o 'Simulado'.");
 
         if (!opciones.EstaConfigurado)
         {
@@ -152,8 +160,8 @@ public static class DocumentosModule
         aplicacion.MapTrasladosCartaPorte();
         aplicacion.MapNotaria();
         aplicacion.MapObras();
-        aplicacion.MapDescargas();
         aplicacion.MapComercioExterior();
+        aplicacion.MapEnvios();
 
         return aplicacion;
     }

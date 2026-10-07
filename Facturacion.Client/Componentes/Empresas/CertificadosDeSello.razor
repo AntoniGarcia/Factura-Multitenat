@@ -1,9 +1,10 @@
-@page "/empresa/certificados"
-@attribute [Authorize(Policy = Permisos.ConfigurarEmpresa)]
 @inject ServicioDeEmpresa Empresas
 
-<PageTitle>Certificados de sello digital</PageTitle>
-<TituloDePagina Texto="Certificados de sello digital" />
+@*
+    Pestaña «Certificados» de Mi empresa. Antes era una página propia; la ruta
+    /empresa/certificados sigue existiendo y abre Mi empresa en esta pestaña. El permiso lo
+    exige la página que la contiene, y el servidor otra vez en cada endpoint.
+*@
 
 <PanelErrores Problema="_error" />
 

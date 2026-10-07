@@ -83,6 +83,7 @@ public static class PlataformaModule
         servicios.AddScoped<IServicioCatalogosSat, ServicioCatalogosSat>();
 
         servicios.AddScoped<ServicioDeEmpresa>();
+        servicios.AddScoped<ServicioDeConfiguracionDeCorreo>();
         servicios.AddScoped<ServicioDeLogo>();
         servicios.AddScoped<ServicioDeCsd>();
         servicios.AddScoped<ServicioDeSeries>();

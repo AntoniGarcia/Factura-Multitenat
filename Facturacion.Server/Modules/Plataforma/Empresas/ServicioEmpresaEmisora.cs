@@ -36,7 +36,10 @@ public sealed class ServicioEmpresaEmisora(
             empresa.NombreFiscal,
             empresa.RegimenFiscal,
             empresa.CodigoPostalExpedicion,
-            empresa.ZonaHoraria);
+            empresa.ZonaHoraria,
+            // Es el Reply-To de los correos del CFDI: la respuesta del cliente va a la empresa,
+            // no al buzón del SaaS (ARQUITECTURA.md §6).
+            empresa.CorreoContacto);
     }
 
     public Task<ArchivoDto?> ObtenerLogoAsync(CancellationToken ct) => logos.ObtenerAsync(ct);

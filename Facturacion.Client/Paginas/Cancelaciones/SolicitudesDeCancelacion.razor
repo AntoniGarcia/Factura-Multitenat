@@ -1,0 +1,232 @@
+@page "/cancelaciones"
+@attribute [Authorize(Policy = Permisos.Cancelar)]
+@using Facturacion.Client.Servicios.Documentos
+@using Facturacion.Shared.Documentos
+@inject ServicioDeCancelacion Cancelacion
+
+@*
+    «Solicitudes de cancelación» de §30. Una cancelación con aceptación del receptor no termina
+    al pulsar el botón: queda esperando días. Esta pantalla es donde se ve qué sigue abierto y
+    donde se le pregunta al SAT, de una pasada, en qué quedó cada una.
+
+    Lo que dice el SAT se muestra con la hora de la consulta: es una foto, no el estado en vivo.
+*@
+
+<PageTitle>Solicitudes de cancelación</PageTitle>
+<TituloDePagina Texto="Solicitudes de cancelación" />
+
+<PanelErrores Problema="_error" />
+
+@if (_aviso is not null)
+{
+    <div class="aviso-documentos" role="status">@_aviso</div>
+}
+
+<div class="documentos-cabecera-acciones">
+    <MudButton Variant="Variant.Filled" Color="Color.Primary"
+               StartIcon="@Icons.Material.Filled.Sync"
+               Disabled="@(_verificando || _abiertas == 0)"
+               OnClick="VerificarAbiertasAsync">
+        @(_verificando ? "Consultando al SAT…" : $"Verificar estatus SAT ({_abiertas} abiertas)")
+    </MudButton>
+</div>
+
+<section class="documentos-filtros" aria-label="Filtros de solicitudes">
+    <div class="filtros-documentos">
+        <MudTextField T="string"
+                      Label="Buscar"
+                      Value="_busca"
+                      ValueChanged="AlBuscar"
+                      DebounceInterval="300"
+                      Immediate="true"
+                      Clearable="true"
+                      Placeholder="RFC, nombre o folio…" />
+
+        <MudSelect T="string" Label="Mostrar" Value="_filtro" ValueChanged="AlFiltrar">
+            <MudSelectItem T="string" Value="@FiltrosDeSolicitudes.Abiertas">Abiertas</MudSelectItem>
+            <MudSelectItem T="string" Value="@FiltrosDeSolicitudes.Todas">Todas</MudSelectItem>
+            <MudSelectItem T="string" Value="@("cancelada")">Canceladas</MudSelectItem>
+            <MudSelectItem T="string" Value="@("rechazada")">Rechazadas</MudSelectItem>
+            <MudSelectItem T="string" Value="@("error")">Con error de envío</MudSelectItem>
+        </MudSelect>
+    </div>
+</section>
+
+<TablaDatos T="SolicitudDeCancelacionEnListaDto"
+            @ref="_tabla"
+            Columnas="_columnas"
+            CargarPagina="CargarAsync"
+            TextoEntidad="solicitudes"
+            TextoSinDatos="@(_filtro == FiltrosDeSolicitudes.Abiertas ? "No hay solicitudes esperando respuesta." : "No hay solicitudes que coincidan.")" />
+
+@code {
+    private TablaDatos<SolicitudDeCancelacionEnListaDto>? _tabla;
+    private DetalleProblema? _error;
+    private string? _aviso;
+    private string _filtro = FiltrosDeSolicitudes.Abiertas;
+    private string _busca = string.Empty;
+    private int _abiertas;
+    private bool _verificando;
+    private Guid? _verificandoComprobante;
+
+    private IReadOnlyList<ColumnaDeTabla<SolicitudDeCancelacionEnListaDto>> _columnas = [];
+
+    protected override void OnInitialized() => _columnas =
+    [
+        new("Folio", s => @<span class="cifra-tabular">@Folio(s)</span>, Tabular: true),
+        new("Solicitada", s => @<span class="cifra-tabular">@s.SolicitadaUtc.ToLocalTime().ToString("dd/MM/yyyy HH:mm")</span>, Tabular: true),
+        new("UUID", s => @<span class="cifra-tabular">@(s.Uuid?.ToString().ToUpperInvariant() ?? "—")</span>, Tabular: true),
+        new("Receptor", s => @<text>@s.ReceptorNombre</text>),
+        new("Total", s => @<span class="cifra-tabular">@s.Total.ToString("N2")</span>, Tabular: true),
+        new("Motivo", s => @<span class="cifra-tabular" title="@NombreDelMotivo(s.Motivo)">@s.Motivo</span>),
+        new("Solicitud", s => @<span class="indicador-estado indicador-estado-@ClaseDelEstado(s.Estado)" title="@s.MensajeRespuesta">@NombreDelEstado(s.Estado)</span>),
+        new("Es cancelable", s => @<text>@(s.EsCancelableSat ?? "—")</text>),
+        new("Estatus SAT", s => @<text>@EstatusSat(s)</text>),
+        new("Consultado", s => @<span class="cifra-tabular">@(s.ConsultadaUtc?.ToLocalTime().ToString("dd/MM/yyyy HH:mm") ?? "Nunca")</span>, Tabular: true),
+        new("", s => @<text>
+            @if (EsAbierta(s))
+            {
+                <MudButton Size="Size.Small" Variant="Variant.Text"
+                           Disabled="@(_verificando || _verificandoComprobante is not null)"
+                           OnClick="@(() => VerificarUnaAsync(s))">
+                    @(_verificandoComprobante == s.ComprobanteId ? "Consultando…" : "Verificar")
+                </MudButton>
+            }
+        </text>)
+    ];
+
+    private async Task<ResultadoDePagina<SolicitudDeCancelacionEnListaDto>> CargarAsync(
+        PeticionDePagina peticion, CancellationToken ct)
+    {
+        var (pagina, error) = await Cancelacion.ListarSolicitudesAsync(
+            _filtro, _busca, peticion.Pagina, peticion.TamanoPagina, ct);
+
+        _error = error;
+
+        if (pagina is null) return ResultadoDePagina<SolicitudDeCancelacionEnListaDto>.Vacio;
+
+        _abiertas = pagina.Abiertas;
+        StateHasChanged();
+
+        return new ResultadoDePagina<SolicitudDeCancelacionEnListaDto>(pagina.Elementos, pagina.Total);
+    }
+
+    private async Task VerificarAbiertasAsync()
+    {
+        if (_verificando) return;
+
+        _verificando = true;
+        _error = null;
+        _aviso = null;
+
+        try
+        {
+            var (resultado, error) = await Cancelacion.VerificarAbiertasAsync();
+            _error = error;
+
+            if (resultado is not null)
+                _aviso = MensajeDe(resultado);
+
+            await RecargarAsync();
+        }
+        finally
+        {
+            _verificando = false;
+        }
+    }
+
+    private async Task VerificarUnaAsync(SolicitudDeCancelacionEnListaDto solicitud)
+    {
+        if (_verificandoComprobante is not null) return;
+
+        _verificandoComprobante = solicitud.ComprobanteId;
+        _error = null;
+        _aviso = null;
+
+        try
+        {
+            var (estatus, error) = await Cancelacion.ConsultarEstatusAsync(solicitud.ComprobanteId);
+            _error = error;
+
+            if (estatus is not null)
+                _aviso = $"{Folio(solicitud)}: el SAT reporta «{estatus.EstadoCfdi ?? "sin dato"}»" +
+                         (estatus.EstatusCancelacion is { Length: > 0 } cancelacion ? $", cancelación «{cancelacion}»." : ".");
+
+            await RecargarAsync();
+        }
+        finally
+        {
+            _verificandoComprobante = null;
+        }
+    }
+
+    private static string MensajeDe(ResultadoDeVerificacionMasivaDto r)
+    {
+        var mensaje = r.Revisadas == 1
+            ? "Se consultó 1 comprobante"
+            : $"Se consultaron {r.Revisadas} comprobantes";
+
+        mensaje += r.Actualizadas switch
+        {
+            0 => "; ninguno cambió de estatus.",
+            1 => "; 1 cambió de estatus.",
+            _ => $"; {r.Actualizadas} cambiaron de estatus."
+        };
+
+        if (r.Fallidas > 0)
+            mensaje += $" {r.Fallidas} no se pudieron consultar; vuelve a intentarlo más tarde.";
+
+        if (r.Restantes > 0)
+            mensaje += $" Quedan {r.Restantes} por revisar: pulsa de nuevo para seguir.";
+
+        return mensaje;
+    }
+
+    private async Task AlBuscar(string texto)
+    {
+        _busca = texto ?? string.Empty;
+        await RecargarAsync();
+    }
+
+    private async Task AlFiltrar(string filtro)
+    {
+        _filtro = filtro;
+        await RecargarAsync();
+    }
+
+    private Task RecargarAsync() => _tabla?.RecargarAsync() ?? Task.CompletedTask;
+
+    private static bool EsAbierta(SolicitudDeCancelacionEnListaDto s)
+        => s.Estado is "en_proceso" or "en_espera_del_receptor";
+
+    private static string Folio(SolicitudDeCancelacionEnListaDto s)
+        => s.Folio is { } folio
+            ? string.IsNullOrEmpty(s.Serie) ? folio.ToString() : $"{s.Serie}-{folio}"
+            : "—";
+
+    /// <summary>Lo que contestó el SAT de la cancelación; si no hay, el estado del CFDI.</summary>
+    private static string EstatusSat(SolicitudDeCancelacionEnListaDto s)
+        => s.EstatusCancelacionSat is { Length: > 0 } cancelacion ? cancelacion
+            : s.EstadoCfdiSat ?? "Sin consultar";
+
+    private static string NombreDelEstado(string estado) => estado switch
+    {
+        "en_proceso" => "En proceso",
+        "en_espera_del_receptor" => "Esperando al receptor",
+        "cancelada" => "Cancelada",
+        "rechazada" => "Rechazada",
+        "error" => "Error al enviar",
+        _ => estado
+    };
+
+    private static string ClaseDelEstado(string estado) => estado switch
+    {
+        "en_proceso" or "en_espera_del_receptor" => "advertencia",
+        "cancelada" => "cancelada",
+        "rechazada" => "borrador",
+        _ => "error"
+    };
+
+    private static string NombreDelMotivo(string motivo)
+        => DialogoDeCancelacion.Motivos.FirstOrDefault(m => m.Clave == motivo).Texto ?? motivo;
+}

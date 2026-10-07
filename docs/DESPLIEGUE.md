@@ -198,6 +198,8 @@ Van en la misma carpeta que los catálogos (`EsquemasSat:Ruta`, por omisión `Ca
 | `ComercioExterior20.xsd` | raíz | valida el complemento Comercio Exterior 2.0 ([SAT](http://www.sat.gob.mx/sitio_internet/cfd/ComercioExterior20/ComercioExterior20.xsd)) |
 | `notariospublicos.xsd` | raíz | esquema del complemento Notarios Públicos 1.0 ([SAT](https://www.sat.gob.mx/sitio_internet/cfd/notariospublicos/notariospublicos.xsd)) |
 | `implocal.xsd` | raíz | esquema del complemento de impuestos locales para el 5 al millar de obra pública ([SAT](https://www.sat.gob.mx/sitio_internet/cfd/implocal/implocal.xsd)) |
+| `Pagos20.xsd` | raíz | esquema del complemento de pagos 2.0 ([SAT](http://www.sat.gob.mx/sitio_internet/cfd/Pagos/Pagos20.xsd)) |
+| `catPagos.xsd` | raíz | catálogo que importa el anterior ([SAT](http://www.sat.gob.mx/sitio_internet/cfd/catalogos/Pagos/catPagos.xsd)) |
 | `catCartaPorte.xsd` | raíz | claves del complemento Carta Porte 3.1 |
 | `catComExt.xsd` | raíz | catálogo importado por los esquemas Carta Porte 3.1 y Comercio Exterior 2.0 |
 | `cadenaoriginal_4_0.xslt` | raíz | cadena original |

@@ -57,9 +57,10 @@
     /// <summary>
     /// Los textos son los del SAT, acortados a lo que distingue un motivo de otro. El catálogo
     /// vive aquí y no en <c>c_</c> nada: son cuatro valores fijos del anexo 20, no un catálogo
-    /// descargable (ARQUITECTURA.md §7).
+    /// descargable (ARQUITECTURA.md §7). Público para que la pantalla de solicitudes nombre los
+    /// motivos con las mismas palabras.
     /// </summary>
-    private static readonly (string Clave, string Texto)[] Motivos =
+    public static readonly (string Clave, string Texto)[] Motivos =
     [
         ("01", "Comprobante emitido con errores con relación"),
         ("02", "Comprobante emitido con errores sin relación"),

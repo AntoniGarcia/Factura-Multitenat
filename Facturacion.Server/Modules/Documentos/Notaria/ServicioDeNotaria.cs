@@ -3,8 +3,10 @@ using Facturacion.Server.Data;
 using Facturacion.Server.Data.Entidades.Documentos;
 using Facturacion.Server.Infra.Bitacora;
 using Facturacion.Server.Infra.Tenencia;
+using Facturacion.Server.Modules.Documentos.Emision;
 using Facturacion.Server.Modules.Documentos.Salidas;
 using Facturacion.Shared.Comun;
+using Facturacion.Shared.Documentos;
 using Facturacion.Shared.Notaria;
 using Microsoft.EntityFrameworkCore;
 
@@ -134,6 +136,9 @@ public sealed class ServicioDeNotaria(
             return ErrorNegocio.Conflicto(
                 "comprobante-notarial-no-editable",
                 "Solo se pueden editar los datos notariales de una factura en borrador o con error.");
+
+        if (ReglaDeVariante.Exigir(comprobante, VariantesDeFactura.Notaria, "factura notarial") is { } variante)
+            return variante;
 
         var validacion = await ValidarDatosAsync(peticion, ct);
         if (validacion.EsFallo) return validacion.Error!;

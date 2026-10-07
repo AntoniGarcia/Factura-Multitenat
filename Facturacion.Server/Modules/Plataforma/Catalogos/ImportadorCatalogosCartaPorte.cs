@@ -165,24 +165,35 @@ public sealed class ImportadorCatalogosCartaPorte(AppDbContext baseDeDatos)
 
             if (!tieneClave || !tieneDescripcion) continue;
 
-            var inicio = columnas.FirstOrDefault(x => x.Texto.Contains("fechainicio", StringComparison.Ordinal)).Columna;
-            var fin = columnas.FirstOrDefault(x => x.Texto.Contains("fechafin", StringComparison.Ordinal)).Columna;
+            var inicio = columnas.FirstOrDefault(x => EsEncabezadoDeInicio(x.Texto)).Columna;
+            var fin = columnas.FirstOrDefault(x => EsEncabezadoDeFin(x.Texto)).Columna;
 
             return new Encabezado(
                 renglon,
                 clave,
                 descripcion,
-                columnas.Any(x => x.Columna == inicio && x.Texto.Contains("fechainicio", StringComparison.Ordinal)) ? inicio : null,
-                columnas.Any(x => x.Columna == fin && x.Texto.Contains("fechafin", StringComparison.Ordinal)) ? fin : null);
+                columnas.Any(x => x.Columna == inicio && EsEncabezadoDeInicio(x.Texto)) ? inicio : null,
+                columnas.Any(x => x.Columna == fin && EsEncabezadoDeFin(x.Texto)) ? fin : null);
         }
 
         throw new InvalidOperationException(
             $"No se encontraron las columnas Clave y Descripción en las primeras filas de '{hoja.SheetName}'.");
     }
 
+    // La hoja c_ClaveProdServCP titula su columna «c_ClaveProdServ», sin el sufijo CP.
     private static bool EsEncabezadoDeClave(string texto) =>
         texto.StartsWith("clave", StringComparison.Ordinal) ||
-        texto is "cconfigautotransporte" or "ctipopermiso" or "cfiguratransporte" or "cclaveprodservcp";
+        texto is "cconfigautotransporte" or "ctipopermiso" or "cfiguratransporte" or "cclaveprodservcp"
+            or "cclaveprodserv";
+
+    // Unas hojas dicen «FechaInicioVigencia» y otras «Fecha de inicio de vigencia»: ya
+    // normalizado, el «de» intermedio impide buscar «fechainicio» como un solo bloque.
+    private static bool EsEncabezadoDeInicio(string texto) =>
+        texto.StartsWith("fecha", StringComparison.Ordinal) && texto.Contains("inicio", StringComparison.Ordinal);
+
+    private static bool EsEncabezadoDeFin(string texto) =>
+        texto.StartsWith("fecha", StringComparison.Ordinal) && !texto.Contains("inicio", StringComparison.Ordinal) &&
+        texto.Contains("fin", StringComparison.Ordinal);
 
     private static bool EsEncabezadoDeDescripcion(string texto) =>
         texto.StartsWith("descripcion", StringComparison.Ordinal) ||

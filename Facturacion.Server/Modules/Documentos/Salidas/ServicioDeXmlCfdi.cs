@@ -48,6 +48,13 @@ public sealed class ServicioDeXmlCfdi(
     IProveedorCsdParaTimbrado csd,
     ILogger<ServicioDeXmlCfdi> registro)
 {
+    // XNamespace y no string: «espacio + "Nodo"» entre dos string solo concatena, y el nombre
+    // resultante —con los «:» de la URL— hace que XName reviente al buscar el nodo.
+    private static readonly XNamespace EspacioNotarios = EsquemasSat.EspacioDeNombresNotariosPublicos;
+    private static readonly XNamespace EspacioComercio = EsquemasSat.EspacioDeNombresComercioExterior20;
+    private static readonly XNamespace EspacioImpuestosLocales = EsquemasSat.EspacioDeNombresImpuestosLocales;
+    private static readonly XNamespace EspacioPagos = EsquemasSat.EspacioDeNombresPagos20;
+
     public async Task<Resultado<CfdiSellado>> GenerarAsync(Comprobante comprobante, CancellationToken ct)
     {
         var esPago = comprobante.TipoDeComprobante == TiposDeComprobante.Pago;
@@ -224,9 +231,10 @@ public sealed class ServicioDeXmlCfdi(
         try
         {
             if (Validar(documento, comprobante.TipoDeComprobante == TiposDeComprobante.Traslado,
-                    documento.Descendants(EsquemasSat.EspacioDeNombresNotariosPublicos + "NotariosPublicos").Any(),
-                    documento.Descendants(EsquemasSat.EspacioDeNombresComercioExterior20 + "ComercioExterior").Any(),
-                    documento.Descendants(EsquemasSat.EspacioDeNombresImpuestosLocales + "ImpuestosLocales").Any()) is { } error)
+                    documento.Descendants(EspacioNotarios + "NotariosPublicos").Any(),
+                    documento.Descendants(EspacioComercio + "ComercioExterior").Any(),
+                    documento.Descendants(EspacioImpuestosLocales + "ImpuestosLocales").Any(),
+                    documento.Descendants(EspacioPagos + "Pagos").Any()) is { } error)
                 return error;
         }
         catch (FileNotFoundException ex)
@@ -280,7 +288,7 @@ public sealed class ServicioDeXmlCfdi(
     }
 
     private ErrorNegocio? Validar(XDocument documento, bool esCartaPorte, bool esNotaria, bool esComercio,
-        bool esImpuestosLocales)
+        bool esImpuestosLocales, bool esPago)
     {
         var problemas = new List<string>();
 
@@ -289,7 +297,8 @@ public sealed class ServicioDeXmlCfdi(
             ValidationType = ValidationType.Schema,
             Schemas = esCartaPorte ? esquemas.EsquemaCartaPorte : esNotaria ? esquemas.EsquemaNotaria :
                 esComercio ? esquemas.EsquemaCfdiComercioExterior :
-                esImpuestosLocales ? esquemas.EsquemaCfdiImpuestosLocales : esquemas.Esquema,
+                esImpuestosLocales ? esquemas.EsquemaCfdiImpuestosLocales :
+                esPago ? esquemas.EsquemaCfdiPagos : esquemas.Esquema,
             DtdProcessing = DtdProcessing.Prohibit
         };
 

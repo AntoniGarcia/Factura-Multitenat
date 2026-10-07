@@ -47,10 +47,11 @@ public sealed class VerificacionDeAltaPruebas : IAsyncLifetime
     {
         public List<(string Destinatario, string Asunto, string Cuerpo)> Enviados { get; } = [];
 
-        public Task EnviarAsync(
-            string destinatario, string asunto, string cuerpoHtml, CancellationToken ct, string? responderA = null, IReadOnlyList<AdjuntoDeCorreo>? adjuntos = null)
+        public Task EnviarAsync(MensajeDeCorreo mensaje, CancellationToken ct)
         {
-            Enviados.Add((destinatario, asunto, cuerpoHtml));
+            foreach (var destinatario in mensaje.Para)
+                Enviados.Add((destinatario, mensaje.Asunto, mensaje.CuerpoHtml));
+
             return Task.CompletedTask;
         }
     }

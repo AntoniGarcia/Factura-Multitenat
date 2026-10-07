@@ -40,6 +40,16 @@ public sealed class ServicioDeEmpresa(IHttpClientFactory fabrica)
         return await LeerAsync<ConfiguracionEmpresaDto>(respuesta, ct);
     }
 
+    public Task<CorreoDeEmpresaDto?> ObtenerCorreoAsync(CancellationToken ct = default)
+        => Cliente.GetFromJsonAsync<CorreoDeEmpresaDto>("api/empresa/correo", ct);
+
+    public async Task<(CorreoDeEmpresaDto? Exito, DetalleProblema? Error)> GuardarCorreoAsync(
+        PeticionGuardarCorreoDeEmpresa peticion, CancellationToken ct = default)
+    {
+        using var respuesta = await Cliente.PutAsJsonAsync("api/empresa/correo", peticion, ct);
+        return await LeerAsync<CorreoDeEmpresaDto>(respuesta, ct);
+    }
+
     public async Task<IReadOnlyList<CertificadoCsdDto>> ListarCertificadosAsync(CancellationToken ct = default)
         => await Cliente.GetFromJsonAsync<IReadOnlyList<CertificadoCsdDto>>("api/empresa/certificados", ct) ?? [];
 
@@ -71,6 +81,23 @@ public sealed class ServicioDeEmpresa(IHttpClientFactory fabrica)
 
     public async Task QuitarLogoAsync(CancellationToken ct = default)
         => await Cliente.DeleteAsync("api/empresa/logo", ct);
+
+    /// <summary>
+    /// El logo se pide con el token y no con un <c>&lt;img src&gt;</c> directo: el token vive solo
+    /// en memoria, así que el navegador no lo mandaría (ARQUITECTURA.md §4). Nulo si no hay.
+    /// </summary>
+    public async Task<(byte[] Contenido, string TipoMime)?> ObtenerLogoAsync(CancellationToken ct = default)
+    {
+        using var respuesta = await Cliente.GetAsync("api/empresa/logo", ct);
+
+        if (respuesta.StatusCode == System.Net.HttpStatusCode.NotFound)
+            return null;
+
+        respuesta.EnsureSuccessStatusCode();
+
+        return (await respuesta.Content.ReadAsByteArrayAsync(ct),
+                respuesta.Content.Headers.ContentType?.MediaType ?? "image/png");
+    }
 
     public async Task<IReadOnlyList<SerieDto>> ListarSeriesAsync(CancellationToken ct = default)
         => await Cliente.GetFromJsonAsync<IReadOnlyList<SerieDto>>("api/series", ct) ?? [];

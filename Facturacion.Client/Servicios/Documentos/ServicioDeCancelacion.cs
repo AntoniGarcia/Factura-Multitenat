@@ -35,6 +35,25 @@ public sealed class ServicioDeCancelacion(IHttpClientFactory fabrica)
         return await LeerAsync<EstatusSatDto>(respuesta, ct);
     }
 
+    public async Task<(PaginaDeSolicitudesDeCancelacion? Exito, DetalleProblema? Error)> ListarSolicitudesAsync(
+        string filtro, string? busca, int pagina, int tamano, CancellationToken ct = default)
+    {
+        var ruta = $"api/cancelaciones?filtro={Uri.EscapeDataString(filtro)}&pagina={pagina}&tamano={tamano}";
+
+        if (!string.IsNullOrWhiteSpace(busca))
+            ruta += $"&busca={Uri.EscapeDataString(busca.Trim())}";
+
+        using var respuesta = await Cliente.GetAsync(ruta, ct);
+        return await LeerAsync<PaginaDeSolicitudesDeCancelacion>(respuesta, ct);
+    }
+
+    public async Task<(ResultadoDeVerificacionMasivaDto? Exito, DetalleProblema? Error)> VerificarAbiertasAsync(
+        CancellationToken ct = default)
+    {
+        using var respuesta = await Cliente.PostAsync("api/cancelaciones/verificar", null, ct);
+        return await LeerAsync<ResultadoDeVerificacionMasivaDto>(respuesta, ct);
+    }
+
     private static async Task<(T? Exito, DetalleProblema? Error)> LeerAsync<T>(
         HttpResponseMessage respuesta, CancellationToken ct)
         => respuesta.IsSuccessStatusCode

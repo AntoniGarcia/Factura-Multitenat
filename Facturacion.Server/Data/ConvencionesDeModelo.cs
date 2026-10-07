@@ -18,6 +18,9 @@ public static class ConvencionesDeModelo
 
         // ARQUITECTURA.md §5: las fechas se guardan en UTC.
         constructor.Properties<DateTime>().HaveConversion<FechaUtcConverter>();
+
+        // Las claves Guid las asigna el código; ver ClavesAsignadasPorElCodigo.
+        constructor.Conventions.Add(_ => new ClavesAsignadasPorElCodigo());
     }
 }
 

@@ -32,7 +32,12 @@
 }
 else if (_comprobante is null)
 {
-    <p>No se encontró ese comprobante.</p>
+    @* Si no se pudo crear el borrador, PanelErrores ya dice por qué; «no se encontró» lo
+       contradiría. *@
+    @if (_error is null)
+    {
+        <p>No se encontró ese comprobante.</p>
+    }
 }
 else if (!EsEditable)
 {
@@ -65,22 +70,12 @@ else
 
     <div class="emision-layout">
     <div class="emision-captura">
-    @if (_tieneLicenciaObras)
-    {
-        <MudCheckBox T="bool" @bind-Value="_esFacturaDeObra" Disabled="@(_obraGuardada || _esFacturaComercio)"
-                     Label="Esta factura corresponde a una estimación de obra" />
-    }
-    @if (_tieneLicenciaComercio)
-    {
-        <MudCheckBox T="bool" @bind-Value="_esFacturaComercio" Disabled="@(_comercioGuardado || _esFacturaDeObra)"
-                     Label="Esta factura corresponde a Comercio Exterior" />
-    }
     <MudTabs Class="emision-pestanas">
         <MudTabPanel Text="Detalle y conceptos">
             <section class="emision-seccion">
             <h2 class="seccion-titulo">General</h2>
             <div class="rejilla-campos">
-                <MudTextField T="string" Value="@("Factura")" Label="Tipo de documento" ReadOnly="true" />
+                <MudTextField T="string" Value="@NombreDeVariante" Label="Tipo de documento" ReadOnly="true" />
                 <MudTextField T="string" Value="@FolioMostrado" Label="Folio" ReadOnly="true" Class="cifra-tabular" />
 
                 <MudSelect T="string" @bind-Value="_moneda" Label="Moneda">
@@ -169,7 +164,7 @@ else
                                              Label="Cantidad" Format="N2" Min="0.000001m"
                                              Class="concepto-editor-cantidad cifra-tabular" />
 
-                            @if (_esFacturaComercio)
+                            @if (EsFacturaComercio)
                             {
                                 <MudTextField @bind-Value="renglon.NoIdentificacion"
                                               Label="Identificador de mercancía" MaxLength="100"
@@ -298,20 +293,20 @@ else
                 </div>
             }
         </MudTabPanel>
-        @if (_tieneLicenciaNotaria)
+        @if (EsFacturaNotarial)
         {
             <MudTabPanel Text="Notaría">
                 <DatosNotarialesDeFactura ComprobanteId="@_comprobante.Id" Editable="@EsEditable" />
             </MudTabPanel>
         }
-        @if (_tieneLicenciaObras && _esFacturaDeObra)
+        @if (EsFacturaDeObra)
         {
-            <MudTabPanel Text="Constructoras">
+            <MudTabPanel Text="Obra">
                 <DatosDeObraDeFactura ComprobanteId="@_comprobante.Id" ImporteTrabajos="@_comprobante.SubTotal" GuardarFactura="GuardarAsync"
                                       AlGuardar="@(() => _obraGuardada = true)" />
             </MudTabPanel>
         }
-        @if (_tieneLicenciaComercio && _esFacturaComercio)
+        @if (EsFacturaComercio)
         {
             <MudTabPanel Text="Comercio exterior">
                 <DatosDeComercioExteriorDeFactura ComprobanteId="@_comprobante.Id" GuardarFactura="GuardarAsync"
@@ -358,9 +353,9 @@ else
         </dl>
 
         <p class="emision-resumen-nota">
-            @(_esFacturaDeObra
+            @(EsFacturaDeObra
                 ? "La vista fiscal admite obra privada sin ajustes u obra pública con solo 5 al millar al 0.50 %, siempre que el CFDI coincida. La estimación comercial se consulta aparte."
-                : _esFacturaComercio && !_comercioGuardado
+                : EsFacturaComercio && !_comercioGuardado
                     ? "Guarda y valida los datos de Comercio Exterior antes de timbrar."
                     : "Importes calculados por el servidor al guardar el borrador.")
         </p>
@@ -368,16 +363,16 @@ else
         <footer class="emision-resumen-acciones">
             <MudButton Variant="Variant.Outlined" OnClick="GuardarAsync"
                        Disabled="@(_guardando || _generando || _preparandoVista)">
-                @(_guardando ? "Guardando…" : _esFacturaDeObra || _esFacturaComercio ? "Guardar conceptos" : "Guardar borrador")
+                @(_guardando ? "Guardando…" : EsFacturaDeObra || EsFacturaComercio ? "Guardar conceptos" : "Guardar borrador")
             </MudButton>
             <MudButton Variant="Variant.Outlined" StartIcon="@Icons.Material.Filled.PictureAsPdf"
                        OnClick="VistaPreviaAsync"
-                       Disabled="@(_guardando || _generando || _preparandoVista || _renglones.Count == 0 || (_esFacturaDeObra && !_obraGuardada) || _esFacturaComercio)">
+                       Disabled="@(_guardando || _generando || _preparandoVista || _renglones.Count == 0 || (EsFacturaDeObra && !_obraGuardada) || EsFacturaComercio)">
                 @(_preparandoVista ? "Preparando…" : "Vista previa PDF")
             </MudButton>
             <MudButton Variant="Variant.Filled" Color="Color.Primary"
                        OnClick="TimbrarCfdiAsync"
-                       Disabled="@(_guardando || _generando || _preparandoVista || _renglones.Count == 0 || !PuedeTimbrar || (_esFacturaDeObra && !_obraGuardada) || (_esFacturaComercio && !_comercioGuardado))">
+                       Disabled="@(_guardando || _generando || _preparandoVista || _renglones.Count == 0 || !PuedeTimbrar || (EsFacturaDeObra && !_obraGuardada) || (EsFacturaComercio && !_comercioGuardado))">
                 @(_generando ? "Timbrando…" : "Timbrar CFDI")
             </MudButton>
             <MudButton Variant="Variant.Text" OnClick="@(() => Navegacion.NavigateTo("/documentos"))">
@@ -395,6 +390,13 @@ else
     [Parameter]
     public Guid? Id { get; set; }
 
+    /// <summary>
+    /// La que se eligió en «Nuevo comprobante». Solo cuenta al crear el borrador: después manda
+    /// la que quedó guardada en el comprobante, que es la que el servidor hace respetar.
+    /// </summary>
+    [SupplyParameterFromQuery(Name = "variante")]
+    public string? VarianteSolicitada { get; set; }
+
     private bool EsNuevo => Id is null;
 
     private ComprobanteDto? _comprobante;
@@ -404,11 +406,6 @@ else
     private bool _preparandoVista;
     private DetalleProblema? _error;
     private EstadoDeIntegracionFiscalDto? _integracionFiscal;
-    private bool _tieneLicenciaNotaria;
-    private bool _tieneLicenciaObras;
-    private bool _tieneLicenciaComercio;
-    private bool _esFacturaDeObra;
-    private bool _esFacturaComercio;
     private bool _obraGuardada;
     private bool _comercioGuardado;
     private ClienteDto? _clienteDetalle;
@@ -440,6 +437,21 @@ else
     private int? _globalAnio = DateTime.UtcNow.Year;
 
     private bool EsEditable => _comprobante is { Estatus: "borrador" or "error" };
+
+    // Un borrador anterior a la columna Variante llega sin ella; la migración la llenó, pero si
+    // faltara se trata como básica, que es lo único que no activa ningún complemento.
+    private string Variante => _comprobante?.Variante ?? VariantesDeFactura.Basica;
+    private bool EsFacturaNotarial => Variante == VariantesDeFactura.Notaria;
+    private bool EsFacturaDeObra => Variante == VariantesDeFactura.Obra;
+    private bool EsFacturaComercio => Variante == VariantesDeFactura.ComercioExterior;
+
+    private string NombreDeVariante => Variante switch
+    {
+        VariantesDeFactura.Notaria => "Factura con complemento Notaría",
+        VariantesDeFactura.ComercioExterior => "Factura con complemento Comercio Exterior",
+        VariantesDeFactura.Obra => "Factura de obra",
+        _ => "Factura básica"
+    };
 
     private EstatusComprobante EstatusVisual
         => EstatusComprobanteExtensiones.Desde(_comprobante?.Estatus ?? "borrador");
@@ -476,18 +488,22 @@ else
         _cargando = true;
         _error = null;
         _integracionFiscal = await Emision.ObtenerEstadoDeIntegracionAsync();
-        var empresa = await Empresa.ObtenerAsync();
-        _tieneLicenciaNotaria = empresa?.Licencias.Notarios == true;
-        _tieneLicenciaObras = empresa?.Licencias.Obras == true;
-        _tieneLicenciaComercio = empresa?.Licencias.Comercio == true;
 
         if (EsNuevo)
         {
             // Se crea aquí, no al dar clic en "Guardar": el comprobante ES el borrador desde
             // el primer momento (ver ServicioDeEmision), y la URL con el id real es lo que
             // permite recargar la página sin perderlo.
-            var nuevo = await Emision.CrearBorradorAsync();
-            Navegacion.NavigateTo($"/facturas/{nuevo.Id}", replace: true);
+            var (nuevo, errorAlCrear) = await Emision.CrearBorradorAsync(VarianteSolicitada);
+
+            if (errorAlCrear is not null)
+            {
+                _error = errorAlCrear;
+                _cargando = false;
+                return;
+            }
+
+            Navegacion.NavigateTo($"/facturas/{nuevo!.Id}", replace: true);
             return;
         }
 
@@ -501,17 +517,15 @@ else
 
         if (comprobante is not null)
         {
-            if (_tieneLicenciaObras)
+            if (EsFacturaDeObra)
             {
                 var (datosObra, _) = await Obras.ObtenerAsync(comprobante.Id);
                 _obraGuardada = datosObra is not null;
-                _esFacturaDeObra = _obraGuardada;
             }
-            if (_tieneLicenciaComercio)
+            if (EsFacturaComercio)
             {
                 var (datosComercio, _) = await ComercioExterior.ObtenerAsync(comprobante.Id);
                 _comercioGuardado = datosComercio is not null;
-                _esFacturaComercio = _comercioGuardado;
             }
             _moneda = comprobante.Moneda;
             _tipoCambio = comprobante.TipoCambio;
@@ -666,7 +680,7 @@ else
             _moneda == "MXN" ? null : _tipoCambio,
             _formaPago,
             _metodoPago,
-            _esFacturaComercio ? "02" : "01",
+            EsFacturaComercio ? "02" : "01",
             _condicionesDePago,
             _observaciones,
             _cliente?.Id,

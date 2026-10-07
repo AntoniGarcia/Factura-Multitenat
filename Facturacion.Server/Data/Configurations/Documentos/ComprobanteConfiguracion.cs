@@ -16,6 +16,7 @@ public sealed class ComprobanteConfiguracion : IEntityTypeConfiguration<Comproba
         constructor.Property(c => c.Estatus).HasMaxLength(16);
         constructor.Property(c => c.Serie).HasMaxLength(25);
         constructor.Property(c => c.TipoDeComprobante).HasMaxLength(1);
+        constructor.Property(c => c.Variante).HasMaxLength(20);
         constructor.Property(c => c.LugarExpedicion).HasMaxLength(5);
         constructor.Property(c => c.Moneda).HasMaxLength(3);
         constructor.Property(c => c.FormaPago).HasMaxLength(2);

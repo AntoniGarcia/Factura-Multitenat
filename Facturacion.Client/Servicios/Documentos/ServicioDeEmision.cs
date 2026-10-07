@@ -10,12 +10,14 @@ public sealed class ServicioDeEmision(IHttpClientFactory fabrica)
 {
     private HttpClient Cliente => fabrica.CreateClient(ClientesHttp.Api);
 
-    public async Task<ComprobanteDto> CrearBorradorAsync(CancellationToken ct = default)
+    /// <param name="variante">Una de <see cref="VariantesDeFactura"/>; nula crea una factura básica.</param>
+    public async Task<(ComprobanteDto? Exito, DetalleProblema? Error)> CrearBorradorAsync(
+        string? variante, CancellationToken ct = default)
     {
-        using var respuesta = await Cliente.PostAsync("api/documentos/borradores", null, ct);
-        respuesta.EnsureSuccessStatusCode();
+        using var respuesta = await Cliente.PostAsJsonAsync(
+            "api/documentos/borradores", new PeticionCrearBorrador(variante), ct);
 
-        return (await respuesta.Content.ReadFromJsonAsync<ComprobanteDto>(ct))!;
+        return await LeerAsync<ComprobanteDto>(respuesta, ct);
     }
 
     public Task<ComprobanteDto?> ObtenerAsync(Guid id, CancellationToken ct = default)

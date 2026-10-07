@@ -1,5 +1,6 @@
 using Facturacion.Server.Data;
 using Facturacion.Server.Data.Entidades.Documentos;
+using Facturacion.Server.Infra.Bitacora;
 using Facturacion.Server.Infra.Tenencia;
 using Facturacion.Server.Modules.Documentos.Impuestos;
 using Facturacion.Server.Modules.Documentos.Salidas;
@@ -30,16 +31,28 @@ public sealed class ServicioDeEmision(
     IContextoEmpresaInterno contexto,
     IServicioEmpresaEmisora empresaEmisora,
     IServicioClientes clientes,
-    IServicioProductos productos)
+    IServicioProductos productos,
+    IServicioDeBitacora bitacora)
 {
     /// <summary>Único tipo de comprobante de esta fase: factura de ingreso estándar.</summary>
     private const string TipoFactura = "I";
 
-    /// <summary>Sin objeto de exportación: fuera del alcance del MVP (ARQUITECTURA.md §6).</summary>
+    /// <summary>Sin objeto de exportación: la de toda factura que no es de Comercio Exterior.</summary>
     private const string SinExportacion = "01";
 
-    public async Task<ComprobanteDto> CrearBorradorAsync(CancellationToken ct)
+    /// <summary>Exportación definitiva: la que exige el complemento de Comercio Exterior.</summary>
+    private const string ExportacionDefinitiva = "02";
+
+    public async Task<Resultado<ComprobanteDto>> CrearBorradorAsync(string? variante, CancellationToken ct)
     {
+        variante ??= VariantesDeFactura.Basica;
+
+        if (!VariantesDeFactura.EsValida(variante))
+            return ErrorNegocio.Validacion("variante-desconocida", $"'{variante}' no es una clase de factura conocida.");
+
+        if (await ValidarLicenciaDeVarianteAsync(variante, ct) is { } sinLicencia)
+            return sinLicencia;
+
         var emisor = await empresaEmisora.ObtenerParaTimbradoAsync(ct);
 
         var comprobante = new Comprobante
@@ -47,10 +60,13 @@ public sealed class ServicioDeEmision(
             Id = Guid.NewGuid(),
             Estatus = EstatusComprobante.Borrador.ACadena(),
             TipoDeComprobante = TipoFactura,
+            Variante = variante,
             FechaEmisionUtc = DateTime.UtcNow,
             LugarExpedicion = emisor.CodigoPostalExpedicion,
             Moneda = "MXN",
-            Exportacion = SinExportacion,
+            // Se deriva de la variante y no de la petición de guardado: así una factura de
+            // Comercio Exterior nace exportación definitiva y ninguna otra puede llegar a serlo.
+            Exportacion = variante == VariantesDeFactura.ComercioExterior ? ExportacionDefinitiva : SinExportacion,
             EmisorRfc = emisor.Rfc,
             EmisorNombre = emisor.Nombre,
             EmisorRegimenFiscal = emisor.RegimenFiscal,
@@ -69,6 +85,33 @@ public sealed class ServicioDeEmision(
         await baseDeDatos.SaveChangesAsync(ct);
 
         return ADto(comprobante);
+    }
+
+    /// <summary>
+    /// Ocultar la opción en el modal no basta (ARQUITECTURA.md §4): sin el módulo contratado no se
+    /// crea el borrador, aunque la petición llegue armada a mano.
+    /// </summary>
+    private async Task<ErrorNegocio?> ValidarLicenciaDeVarianteAsync(string variante, CancellationToken ct)
+    {
+        if (variante == VariantesDeFactura.Basica) return null;
+
+        var licencias = await baseDeDatos.Empresas.AsNoTracking()
+            .Where(e => e.Id == contexto.EmpresaId)
+            .Select(e => new { e.LicNotarios, e.LicComercio, e.LicObras })
+            .FirstOrDefaultAsync(ct);
+
+        var contratado = variante switch
+        {
+            VariantesDeFactura.Notaria => licencias?.LicNotarios == true,
+            VariantesDeFactura.ComercioExterior => licencias?.LicComercio == true,
+            VariantesDeFactura.Obra => licencias?.LicObras == true,
+            _ => false
+        };
+
+        return contratado
+            ? null
+            : ErrorNegocio.Regla("modulo-no-contratado",
+                "Esta empresa no tiene contratado el módulo de esa clase de factura. Solicítalo al operador del sistema.");
     }
 
     public async Task<ComprobanteDto?> ObtenerAsync(Guid id, CancellationToken ct)
@@ -117,12 +160,20 @@ public sealed class ServicioDeEmision(
             return ErrorNegocio.Validacion("moneda-desconocida",
                 "La moneda no está en el catálogo del SAT. Selecciona una moneda válida antes de guardar.");
 
+        // Sin ModificadoUtc el borrador nunca se guardó: no hay valor anterior que valga la
+        // pena conservar, y el registro queda como alta.
+        var antes = comprobante.ModificadoUtc is null ? null : ADto(comprobante);
+
         AplicarCabecera(comprobante, peticion, receptor.Valor);
-        AplicarConceptos(baseDeDatos, comprobante, conceptosResueltos.Valor, calculado.Valor); 
+        AplicarConceptos(comprobante, conceptosResueltos.Valor, calculado.Valor);
         AplicarRelacionados(comprobante, peticion.Relacionados);
         AplicarTotales(comprobante, decimalesMoneda.Value);
 
         comprobante.ModificadoUtc = DateTime.UtcNow;
+
+        bitacora.Registrar(
+            EntidadesDeBitacora.Comprobante, comprobante.Id.ToString(), AccionesDeBitacora.ComprobanteGuardado,
+            antes, ADto(comprobante));
 
         /*
         foreach (var e in baseDeDatos.ChangeTracker.Entries<Concepto>())
@@ -146,7 +197,7 @@ public sealed class ServicioDeEmision(
     /// </summary>
     public async Task<Resultado> EliminarBorradorAsync(Guid id, CancellationToken ct)
     {
-        var comprobante = await baseDeDatos.Comprobantes.FirstOrDefaultAsync(c => c.Id == id, ct);
+        var comprobante = await CargarAsync(id, ct);
 
         if (comprobante is null)
             return ErrorNegocio.NoEncontrado("comprobante-no-encontrado", "Ese comprobante no existe.");
@@ -155,6 +206,13 @@ public sealed class ServicioDeEmision(
             return ErrorNegocio.Conflicto(
                 "comprobante-no-es-borrador",
                 "Solo se puede descartar un comprobante que nunca se intentó timbrar.");
+
+        // El formulario descarta su borrador cada vez que se sale sin guardar; registrar esos
+        // vacíos sería llenar la bitácora de lo mismo que el barrido de huérfanos ya no anota.
+        if (comprobante.ModificadoUtc is not null)
+            bitacora.Registrar(
+                EntidadesDeBitacora.Comprobante, comprobante.Id.ToString(), AccionesDeBitacora.BorradorDescartado,
+                antes: ADto(comprobante));
 
         baseDeDatos.Comprobantes.Remove(comprobante);
         await baseDeDatos.SaveChangesAsync(ct);
@@ -399,8 +457,7 @@ public sealed class ServicioDeEmision(
     }
 
     private static void AplicarConceptos(
-    AppDbContext baseDeDatos, Comprobante comprobante,
-    IReadOnlyList<ConceptoResuelto> resueltos, ComprobanteCalculado calculado)
+        Comprobante comprobante, IReadOnlyList<ConceptoResuelto> resueltos, ComprobanteCalculado calculado)
     {
         comprobante.Conceptos.Clear();
 
@@ -442,11 +499,9 @@ public sealed class ServicioDeEmision(
                     EsRetencion = impuestoCalculado.EsRetencion
                 };
                 concepto.Impuestos.Add(impuesto);
-                baseDeDatos.ConceptosImpuestos.Add(impuesto);   
             }
 
             comprobante.Conceptos.Add(concepto);
-            baseDeDatos.Conceptos.Add(concepto);            
         }
     }
 
@@ -486,7 +541,7 @@ public sealed class ServicioDeEmision(
             .FirstOrDefaultAsync(c => c.Id == id, ct);
 
     private static ComprobanteDto ADto(Comprobante c) => new(
-        c.Id, c.Estatus, c.TipoDeComprobante, c.SerieId, c.Serie, c.Folio,
+        c.Id, c.Estatus, c.TipoDeComprobante, c.Variante, c.SerieId, c.Serie, c.Folio,
         c.Moneda, c.TipoCambio, c.FormaPago, c.MetodoPago, c.Exportacion, c.CondicionesDePago,
         c.Observaciones,
         c.ClienteId,

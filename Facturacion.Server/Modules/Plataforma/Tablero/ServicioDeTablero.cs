@@ -14,10 +14,8 @@ namespace Facturacion.Server.Modules.Plataforma.Tablero;
 ///
 /// <para><b>El conteo de comprobantes es opcional a propósito</b></para>
 /// Lo aporta <c>IResumenDocumentos</c>, el único contrato que va de la mitad B hacia la A.
-/// Se resuelve como <c>IResumenDocumentos?</c> y no como dependencia obligatoria: mientras
-/// la mitad B no lo registre, el recuadro simplemente no se pinta. Rellenarlo con ceros
-/// sería peor que omitirlo — un cero se lee como «este mes no facturaste», que es una
-/// afirmación distinta de «esto aún no existe».
+/// Se resuelve como <c>IResumenDocumentos?</c> para que una configuración parcial no
+/// pinte cifras inventadas. En la aplicación completa el contrato está registrado.
 /// </summary>
 public sealed class ServicioDeTablero(
     ServicioDeCompras compras,
@@ -27,8 +25,8 @@ public sealed class ServicioDeTablero(
     IResumenDocumentos? documentos = null)
 {
     /// <summary>
-    /// Timbres restantes a partir de los cuales se avisa. Lo fija la fase 9 del prompt.
-    /// Viaja al Client dentro del DTO en vez de estar compilado allá.
+    /// Timbres restantes a partir de los cuales se avisa. Viaja al Client dentro del DTO
+    /// en vez de estar compilado allá.
     /// </summary>
     private const int UmbralAvisoTimbres = 50;
 
@@ -84,8 +82,7 @@ public sealed class ServicioDeTablero(
 
         // Se enumeran los seis estatus y no solo los que trajeron comprobantes: el contrato
         // permite omitir los que van en cero, y una rejilla que cambia de columnas según el
-        // mes es ilegible. Un cero aquí no miente —el periodo se está midiendo de verdad—,
-        // que es justo lo contrario del recuadro que la fase 9 se negó a pintar.
+        // mes es ilegible.
         var conteo = Enum.GetValues<EstatusComprobante>()
             .Select(e => new ConteoPorEstatusDto(
                 e.ACadena(),

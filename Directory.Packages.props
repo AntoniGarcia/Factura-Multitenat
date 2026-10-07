@@ -7,6 +7,7 @@
        ensamblados más nuevos que el host. Un solo archivo evita que las dos mitades
        diverjan de versión en sus .csproj. -->
   <ItemGroup>
+    <PackageVersion Include="MailKit" Version="4.18.1" />
     <PackageVersion Include="Microsoft.AspNetCore.Components.WebAssembly" Version="10.0.10" />
     <PackageVersion Include="MudBlazor" Version="9.8.0" />
     <PackageVersion Include="Microsoft.AspNetCore.Components.WebAssembly.DevServer" Version="10.0.10" />

@@ -2,6 +2,7 @@ using System.Text;
 using Facturacion.Server.Data;
 using Facturacion.Server.Data.Entidades.Documentos;
 using Facturacion.Server.Infra.Almacen;
+using Facturacion.Server.Infra.Bitacora;
 using Facturacion.Server.Modules.Documentos.Pac;
 using Facturacion.Shared.Comun;
 using Facturacion.Shared.Contratos;
@@ -24,6 +25,7 @@ public sealed class CierreDeTimbrado(
     IServicioFolios folios,
     IServicioTimbres timbres,
     IAlmacenDeArchivos almacen,
+    IServicioDeBitacora bitacora,
     ILogger<CierreDeTimbrado> registro)
 {
     /// <summary>Cierra bien. Es la única ruta que consume el timbre y confirma el folio.</summary>
@@ -37,6 +39,8 @@ public sealed class CierreDeTimbrado(
 
         await using var transaccion = await baseDeDatos.Database.BeginTransactionAsync(ct);
 
+        var estatusAnterior = comprobante.Estatus;
+
         comprobante.Estatus = EstatusComprobante.Timbrado.ACadena();
         comprobante.Uuid = respuesta.Uuid;
         comprobante.FechaTimbradoUtc = respuesta.FechaTimbradoUtc ?? DateTime.UtcNow;
@@ -47,6 +51,16 @@ public sealed class CierreDeTimbrado(
         comprobante.ModificadoUtc = DateTime.UtcNow;
 
         Cerrar(intento, ResultadosDeIntento.Timbrado, null, null);
+
+        bitacora.Registrar(
+            EntidadesDeBitacora.Comprobante, comprobante.Id.ToString(), AccionesDeBitacora.ComprobanteTimbrado,
+            new { Estatus = estatusAnterior },
+            new
+            {
+                comprobante.Estatus, comprobante.Uuid, comprobante.FechaTimbradoUtc,
+                comprobante.Serie, comprobante.Folio, comprobante.ReceptorRfc, comprobante.ReceptorNombre,
+                comprobante.Total, Intento = intento.Numero
+            });
 
         await baseDeDatos.SaveChangesAsync(ct);
 
@@ -72,10 +86,21 @@ public sealed class CierreDeTimbrado(
     {
         await using var transaccion = await baseDeDatos.Database.BeginTransactionAsync(ct);
 
+        var estatusAnterior = comprobante.Estatus;
+
         comprobante.Estatus = EstatusComprobante.Error.ACadena();
         comprobante.ModificadoUtc = DateTime.UtcNow;
 
         Cerrar(intento, ResultadosDeIntento.Rechazado, codigo, mensaje);
+
+        bitacora.Registrar(
+            EntidadesDeBitacora.Comprobante, comprobante.Id.ToString(), AccionesDeBitacora.TimbradoFallido,
+            new { Estatus = estatusAnterior },
+            new
+            {
+                comprobante.Estatus, comprobante.Serie, comprobante.Folio,
+                Intento = intento.Numero, Codigo = codigo, Mensaje = mensaje
+            });
 
         await baseDeDatos.SaveChangesAsync(ct);
 

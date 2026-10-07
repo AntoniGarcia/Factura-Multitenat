@@ -10,6 +10,7 @@ namespace Facturacion.Server.Data;
 /// un interceptor que hay que acordarse de agregar es un interceptor que algún día no se
 /// agrega. Con esto, cualquier <see cref="AppDbContext"/> —el de la aplicación, el de las
 /// herramientas de migración, el de las pruebas— nace con la protección de escritura puesta.
+/// Lo mismo vale para el aviso de altas sin clave (<see cref="AltaSinClaveInterceptor"/>).
 /// </para>
 /// </summary>
 public static class OpcionesDeAppDbContext
@@ -20,7 +21,9 @@ public static class OpcionesDeAppDbContext
         IContextoEmpresaInterno contexto)
         => constructor
             .UseSqlServer(cadenaDeConexion)
-            .AddInterceptors(new SelladoDeEmpresaInterceptor(contexto));
+            // El orden importa: el sellado pone EmpresaId, que en ConfiguracionEmpresa y
+            // CorreoDeEmpresa es la clave, antes de que se revise que ninguna alta llegue sin ella.
+            .AddInterceptors(new SelladoDeEmpresaInterceptor(contexto), AltaSinClaveInterceptor.Instancia);
 
     /// <summary>Misma configuración, para quien necesita el constructor tipado y sus <c>Options</c>.</summary>
     public static DbContextOptionsBuilder<AppDbContext> Configurar(

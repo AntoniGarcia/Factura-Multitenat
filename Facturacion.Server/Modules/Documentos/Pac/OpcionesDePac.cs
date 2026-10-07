@@ -22,6 +22,7 @@ public sealed class OpcionesDePac
     /// <summary>
     /// <c>Deshabilitado</c> permite levantar un entorno de revisión sin credenciales y sin
     /// simular documentos fiscales. <c>Real</c> exige la configuración completa del PAC.
+    /// <c>Simulado</c> es solo para <c>Development</c>: timbra y cancela con un doble.
     /// </summary>
     public ModoDePac Modo { get; init; } = ModoDePac.Real;
 
@@ -49,5 +50,11 @@ public sealed class OpcionesDePac
 public enum ModoDePac
 {
     Real,
-    Deshabilitado
+    Deshabilitado,
+
+    /// <summary>
+    /// Timbre y sello inventados para probar el circuito completo sin PAC ni CSD. Fuera de
+    /// <c>Development</c> no arranca. Se quita junto con los dobles cuando el PAC real esté listo.
+    /// </summary>
+    Simulado
 }

@@ -1,0 +1,89 @@
+@using Facturacion.Shared.Plataforma
+@inject ServicioDeUsuarios Usuarios
+
+@*
+    El alta de usuario, sin marco: lo usan la página /usuarios/nuevo y DialogoDeUsuario. Cada
+    contenedor decide qué hacer al terminar (mostrar el mensaje, cerrar el modal) a través de
+    AlCrear y AlCancelar.
+
+    No lleva PageTitle ni TituloDePagina: TituloDePagina borra el título de la barra al
+    desmontarse, y dentro del modal dejaría sin título la lista de usuarios al cerrarlo.
+*@
+
+<PanelErrores Problema="_error" />
+
+<p class="seccion-ayuda">
+    Cada empresa admite hasta tres usuarios: tú más dos auxiliares. Si el correo ya tiene
+    cuenta aquí, le das acceso a esta empresa sin tocar su contraseña.
+</p>
+
+<EditForm Model="this" OnValidSubmit="Crear">
+    <div class="rejilla-campos">
+        <MudTextField @bind-Value="_correo" Label="Correo" Immediate="true" InputType="InputType.Email" MaxLength="254" />
+        <MudTextField @bind-Value="_nombre" Label="Nombre" Immediate="true" MaxLength="128" />
+        <MudTextField @bind-Value="_contrasena" Label="Contraseña" Immediate="true"
+                      InputType="@(_verContrasena ? InputType.Text : InputType.Password)"
+                      Adornment="Adornment.End"
+                      AdornmentIcon="@(_verContrasena ? Icons.Material.Filled.VisibilityOff : Icons.Material.Filled.Visibility)"
+                      OnAdornmentClick="@(() => _verContrasena = !_verContrasena)"
+                      MaxLength="128" />
+    </div>
+
+    @* Se dice aquí y no en un aviso al final: quien está tecleando la contraseña tiene
+       que saber, antes de teclearla, que va a ser él quien se la comunique al usuario y
+       quien la cambie cuando haga falta. *@
+    <p class="seccion-ayuda">
+        La contraseña la fijas tú y se la comunicas al usuario por fuera del sistema. Él no
+        podrá cambiarla desde su perfil: si la olvida, se la cambias tú desde el listado de
+        usuarios, con el botón «Contraseña».
+    </p>
+
+    <h2 class="seccion-titulo">Permisos</h2>
+    <SelectorDePermisos @bind-Value="_permisos" />
+
+    <div class="tarjeta-formulario-acciones">
+        <MudButton Variant="Variant.Text" OnClick="AlCancelar">Cancelar</MudButton>
+        <MudButton Variant="Variant.Filled" Color="Color.Primary" ButtonType="ButtonType.Submit" Disabled="@_enviando">
+            @(_enviando ? "Guardando…" : "Crear usuario")
+        </MudButton>
+    </div>
+</EditForm>
+
+@code {
+    /// <summary>
+    /// Se invoca con la respuesta del servidor. Su mensaje no es decorativo: si el correo ya
+    /// tenía cuenta, es lo que explica que se dio acceso sin cambiar la contraseña.
+    /// </summary>
+    [Parameter]
+    public EventCallback<RespuestaCrearUsuario> AlCrear { get; set; }
+
+    [Parameter]
+    public EventCallback AlCancelar { get; set; }
+
+    private string _correo = string.Empty;
+    private string _nombre = string.Empty;
+    private string _contrasena = string.Empty;
+    private bool _verContrasena;
+    private List<string> _permisos = [];
+    private DetalleProblema? _error;
+    private bool _enviando;
+
+    private async Task Crear()
+    {
+        _enviando = true;
+        _error = null;
+
+        var (exito, error) = await Usuarios.CrearAsync(
+            new PeticionCrearUsuario(_correo, _nombre, _contrasena, _permisos));
+
+        _error = error;
+        _enviando = false;
+
+        if (exito is null) return;
+
+        // La contraseña no se queda en memoria más de lo necesario: si el alta salió bien, la
+        // pantalla ya no la necesita para nada.
+        _contrasena = string.Empty;
+        await AlCrear.InvokeAsync(exito);
+    }
+}

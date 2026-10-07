@@ -1,7 +1,10 @@
 @page "/"
 @attribute [Authorize]
 @using System.Globalization
+@using Facturacion.Client.Componentes.Catalogos
+@using Facturacion.Client.Componentes.Documentos
 @inject ServicioDeTablero Tablero
+@inject IDialogService Dialogos
 
 <PageTitle>Inicio</PageTitle>
 <TituloDePagina Texto="Inicio" />
@@ -245,34 +248,26 @@ else
             <span class="panel-nota">Atajos de la empresa activa</span>
         </header>
         <div class="tablero-accesos">
+            @* Nuevo documento y Catálogos abren un selector en vez de navegar: son botones, no
+               enlaces, para que se activen con Enter y con Espacio como cualquier acción. *@
             <SiTienePermiso Permiso="@Permisos.Timbrar">
-                <a class="tablero-acceso tablero-acceso-principal" href="/facturas/nueva">
+                <button type="button" class="tablero-acceso tablero-acceso-principal" @onclick="AbrirNuevoDocumentoAsync">
                     <MudIcon Icon="@Icons.Material.Filled.AddCircle" Size="Size.Small" />
-                    <span><strong>Nueva factura</strong><small>Capturar un comprobante</small></span>
-                </a>
+                    <span><strong>Nuevo documento</strong><small>Factura, pago o Carta Porte</small></span>
+                </button>
             </SiTienePermiso>
             <a class="tablero-acceso" href="/documentos">
                 <MudIcon Icon="@Icons.Material.Filled.Description" Size="Size.Small" />
                 <span><strong>Documentos</strong><small>Consultar y descargar</small></span>
             </a>
-            <a class="tablero-acceso" href="/clientes">
-                <MudIcon Icon="@Icons.Material.Filled.Groups" Size="Size.Small" />
-                <span><strong>Clientes</strong><small>Administrar receptores</small></span>
-            </a>
-            <a class="tablero-acceso" href="/productos">
-                <MudIcon Icon="@Icons.Material.Filled.Inventory2" Size="Size.Small" />
-                <span><strong>Productos</strong><small>Precios, claves e impuestos</small></span>
-            </a>
+            <button type="button" class="tablero-acceso" @onclick="AbrirCatalogosAsync">
+                <MudIcon Icon="@Icons.Material.Filled.MenuBook" Size="Size.Small" />
+                <span><strong>Catálogos</strong><small>Clientes, productos, series y transporte</small></span>
+            </button>
             <SiTienePermiso Permiso="@Permisos.ComprarTimbres">
                 <a class="tablero-acceso" href="/timbres">
                     <MudIcon Icon="@Icons.Material.Filled.ConfirmationNumber" Size="Size.Small" />
                     <span><strong>Timbres</strong><small>Saldo y paquetes</small></span>
-                </a>
-            </SiTienePermiso>
-            <SiTienePermiso Permiso="@Permisos.ConfigurarEmpresa">
-                <a class="tablero-acceso" href="/empresa">
-                    <MudIcon Icon="@Icons.Material.Filled.Business" Size="Size.Small" />
-                    <span><strong>Empresa</strong><small>Datos fiscales y configuración</small></span>
                 </a>
             </SiTienePermiso>
         </div>
@@ -281,6 +276,14 @@ else
 
 @code {
     private TableroDto? _datos;
+
+    private static readonly DialogOptions OpcionesDeSelector = new() { MaxWidth = MaxWidth.Small, FullWidth = true };
+
+    private Task AbrirNuevoDocumentoAsync()
+        => Dialogos.ShowAsync<DialogoDeNuevoComprobante>("Nuevo documento", OpcionesDeSelector);
+
+    private Task AbrirCatalogosAsync()
+        => Dialogos.ShowAsync<DialogoDeCatalogos>("Catálogos", OpcionesDeSelector);
 
     private bool CertificadoRequiereAtencion =>
         _datos?.Certificado is { } certificado && (!certificado.HayActivo || certificado.PorCaducar);

@@ -1,0 +1,44 @@
+@inject NavigationManager Navegacion
+@inject ServicioDeSesion Sesion
+
+@*
+    Selector de catálogos para el atajo de Inicio. Lee las mismas entradas que el submenú
+    «Catálogos» del menú lateral (MenuPrincipal.Catalogos), con el mismo filtro de permisos: lo
+    que no se ve en el menú tampoco aparece aquí.
+
+    Navega por su cuenta, igual que DialogoDeNuevoComprobante: quien lo abre no tiene que
+    repetir el cierre y la navegación.
+*@
+
+<MudDialog>
+    <DialogContent>
+        <nav class="tablero-accesos selector-de-comprobante" aria-label="Catálogos">
+            @foreach (var catalogo in MenuPrincipal.Catalogos.Where(EsVisible))
+            {
+                <a class="tablero-acceso" href="@catalogo.Ruta"
+                   @onclick="() => Ir(catalogo.Ruta)" @onclick:preventDefault="true">
+                    <MudIcon Icon="@IconosDeMenu.Obtener(catalogo.Icono)" Size="Size.Small" />
+                    <span><strong>@catalogo.Etiqueta</strong><small>@catalogo.Descripcion</small></span>
+                </a>
+            }
+        </nav>
+    </DialogContent>
+    <DialogActions>
+        <MudButton Variant="Variant.Text" OnClick="@(() => Dialogo.Cancel())">Cancelar</MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter]
+    private IMudDialogInstance Dialogo { get; set; } = default!;
+
+    private bool EsVisible(ElementoDeMenu catalogo)
+        => catalogo.Permiso is null || Sesion.TienePermiso(catalogo.Permiso);
+
+    private void Ir(string ruta)
+    {
+        // El proveedor de diálogos vive en MainLayout y sobrevive a la navegación.
+        Dialogo.Close();
+        Navegacion.NavigateTo(ruta);
+    }
+}

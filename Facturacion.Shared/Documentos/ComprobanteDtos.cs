@@ -13,10 +13,12 @@ namespace Facturacion.Shared.Documentos;
 /// timbrar y hasta entonces va nulo, así que sin este identificador el formulario no tiene de
 /// dónde recuperar lo que el borrador traía guardado.
 /// </param>
+/// <param name="Variante">Una de <see cref="VariantesDeFactura"/>; nula en pagos y traslados.</param>
 public sealed record ComprobanteDto(
     Guid Id,
     string Estatus,
     string TipoDeComprobante,
+    string? Variante,
     Guid? SerieId,
     string? Serie,
     int? Folio,
@@ -124,7 +126,8 @@ public sealed record RespuestaDeTimbradoDto(
 /// Capacidad fiscal real del servidor. <c>false</c> significa que el entorno permite trabajar
 /// con borradores, pero no debe ofrecer acciones que contacten al PAC.
 /// </summary>
-public sealed record EstadoDeIntegracionFiscalDto(bool TimbradoDisponible);
+/// <param name="Simulado">El PAC es el de desarrollo: sus timbres no tienen validez fiscal.</param>
+public sealed record EstadoDeIntegracionFiscalDto(bool TimbradoDisponible, bool Simulado = false);
 
 /// <summary>
 /// Un renglón del listado de documentos (§1.2 del documento funcional). El folio va nulo

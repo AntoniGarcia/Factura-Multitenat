@@ -22,6 +22,7 @@ public static class AccionesDeBitacora
     // ── Empresa, certificados y folios (fase 4) ────────────────────────────────────────
     public const string EmpresaActualizada = "empresa_actualizada";
     public const string ConfiguracionActualizada = "configuracion_actualizada";
+    public const string CorreoDeEmpresaActualizado = "correo_de_empresa_actualizado";
     public const string ConfiguracionNotarioActualizada = "configuracion_notario_actualizada";
     public const string DatosNotariaActualizados = "datos_notaria_actualizados";
     public const string DatosObraActualizados = "datos_obra_actualizados";
@@ -70,6 +71,25 @@ public static class AccionesDeBitacora
     public const string TimbreConsumido = "timbre_consumido";
     public const string TimbreDevuelto = "timbre_devuelto";
     public const string ReservaAbandonada = "reserva_de_timbre_abandonada";
+
+    // ── Comprobantes: emisión, timbrado, cancelación y pagos ──────────────────────────
+    //
+    // Crear el borrador vacío no se registra, por la misma razón por la que el barrido de
+    // huérfanos no deja rastro: todavía no lleva ningún dato fiscal. El primer guardado se
+    // registra como alta, sin valor anterior.
+    public const string ComprobanteGuardado = "comprobante_guardado";
+    public const string BorradorDescartado = "borrador_descartado";
+    public const string TimbradoIniciado = "timbrado_iniciado";
+    public const string ComprobanteTimbrado = "comprobante_timbrado";
+    public const string TimbradoFallido = "timbrado_fallido";
+    public const string CancelacionSolicitada = "cancelacion_solicitada";
+    public const string CancelacionResuelta = "cancelacion_resuelta";
+
+    /// <summary>
+    /// El SAT contestó un estatus distinto del que tenía el sistema y se ajustó al suyo. Es
+    /// el único cambio de estatus que no nace de una acción del usuario en esta aplicación.
+    /// </summary>
+    public const string EstatusSincronizadoConSat = "estatus_sincronizado_con_sat";
 
     // ── Documentos de traslado (Carta Porte) ──────────────────────────────────────────
     public const string TrasladoCartaPorteCreado = "traslado_carta_porte_creado";
@@ -127,6 +147,7 @@ public static class EntidadesDeBitacora
     public const string RefreshToken = "RefreshToken";
     public const string Empresa = "Empresa";
     public const string ConfiguracionEmpresa = "ConfiguracionEmpresa";
+    public const string CorreoDeEmpresa = "CorreoDeEmpresa";
     public const string ConfiguracionNotario = "ConfiguracionNotario";
     public const string DatosNotaria = "DatosNotaria";
     public const string DatosObra = "DatosObra";
@@ -143,6 +164,7 @@ public static class EntidadesDeBitacora
     public const string UsuarioEmpresa = "UsuarioEmpresa";
     public const string Perfil = "Perfil";
     public const string TrasladoCartaPorte = "TrasladoCartaPorte";
+    public const string Comprobante = "Comprobante";
 
     // ── Operador del SaaS ────────────────────────────────────────────────────────────────
     public const string OperadorPlataforma = "OperadorPlataforma";

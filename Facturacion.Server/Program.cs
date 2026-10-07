@@ -56,9 +56,8 @@ if (args is ["--cargar-catalogo-comercio", var catalogoComercio, var rutaCatalog
     return;
 }
 
-// Acreditación manual del pago de una compra de timbres (fase 7). Es una operación del
-// operador del SaaS, no del inquilino: crea saldo, así que no puede vivir como endpoint
-// mientras no exista una identidad de operador. Ver AcreditacionDeCompraCli.
+// Alternativa de consola para acreditar compras. El panel del operador ofrece la misma
+// operación con su propia identidad y autorización; un inquilino no puede acreditarse saldo.
 if (args is ["--compras-pendientes"])
 {
     Environment.ExitCode = await AcreditacionDeCompraCli.ListarPendientes(aplicacion.Services);
@@ -88,9 +87,7 @@ if (args is ["--cambiar-contrasena", var correoOperadorCon, var contrasenaOperad
     return;
 }
 
-// Antes de atender la primera petición: si un doble de prueba quedó registrado fuera de
-// Development, aquí revienta. Un doble que llega a producción no se nota — el sistema
-// responde y los datos son inventados (fase 9).
+// Antes de atender peticiones, se rechazan dobles de prueba fuera de Development.
 aplicacion.VerificarContratos();
 
 aplicacion.UsePipelineDeInfraestructura();

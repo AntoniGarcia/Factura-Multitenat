@@ -203,12 +203,19 @@ y se ejecuta siempre, sin excepción.
 factura estándar, timbrado, cancelación con motivos 01–04, PDF con QR y cadena original,
 envío por correo, complemento de pagos, bolsa de timbres y membresías.
 
-**Fuera del MVP, fase 2:** Carta Porte y sus catálogos (§10, §11, §26 del documento
-funcional), Comercio Exterior (§16–§19), Notaría (§20–§25), Constructoras (§15),
-Cotizaciones, Addendas, complemento INE, inventario.
+**También dentro de la entrega, agregados después:** Carta Porte 3.1 y sus catálogos
+(§10, §11, §26 del documento funcional), Comercio Exterior 2.0 (§16–§19), Notaría
+(§20–§25) y Constructoras (§15). La decisión original los dejaba en fase 2 —cada
+complemento del SAT tiene su propio esquema, validación y catálogo—; después se pidió
+implementarlos antes del 5 de diciembre. Que el código exista no significa que estén
+validados: sus flujos fiscales completos siguen pendientes de prueba manual
+(`REPORTE_ESTADO_SISTEMA.md`).
 
-Sí se modela desde ahora el campo de licencias por empresa (`LicNotarios`, `LicObras`,
-`LicComercio`, `LicINE`) para que la fase 2 sea agregar módulos y no rehacer el esquema.
+**Fuera del MVP, fase 2:** Cotizaciones, Addendas, complemento INE, inventario.
+
+Las licencias por empresa (`LicNotarios`, `LicObras`, `LicComercio`) habilitan por
+empresa las variantes de Notaría, Constructoras y Comercio Exterior. `LicINE` sigue
+modelada para que el complemento INE sea agregar un módulo y no rehacer el esquema.
 
 **Correo:** todo sale de un remitente propio del SaaS con dominio verificado (SPF, DKIM,
 DMARC), con `Reply-To` apuntando al correo de la empresa emisora. **No** se guarda la
@@ -330,3 +337,24 @@ accidente. Se mitiga así:
   ya existe, se extiende; no se duplica.
 - Al terminar cada fase, `dotnet build` debe pasar sin advertencias nuevas y la
   aplicación debe correr. Una fase que no compila no está terminada.
+
+---
+
+## 11. Cambios de funcionalidad posteriores
+
+Lo que está en esta sección **prevalece** sobre las secciones anteriores cuando las
+contradice. Las reglas originales se conservan arriba como historia de la decisión.
+
+**5 de octubre de 2026 — SMTP propio por empresa** (modifica §4 «Secretos y
+certificados» y §6 «Correo»).
+
+- Una empresa puede configurar su propio servidor SMTP para enviar **sus comprobantes**.
+  Los correos del sistema —registro, contraseñas, invitaciones— siempre salen del SaaS.
+- La contraseña se guarda cifrada con Data Protection, con un propósito propio por empresa
+  y distinto al del CSD. Nunca vuelve al `Client`, nunca se registra y nunca entra a la
+  bitácora.
+- El servidor capturado se valida en el `Server` antes de conectar: solo puertos 465 y
+  587, nunca una dirección privada, de loopback o local. El nombre se resuelve en el
+  servidor y la conexión va a la IP ya validada.
+- Si el SMTP de la empresa falla, el envío falla con un error claro; **no** se reenvía en
+  silencio por el SMTP del SaaS.

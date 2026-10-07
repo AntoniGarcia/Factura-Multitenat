@@ -1,0 +1,323 @@
+﻿@page "/catalogos"
+@attribute [Authorize]
+@using Facturacion.Client.Componentes.Catalogos
+@inject ServicioDeProductos Productos
+@inject ServicioDeClientes Clientes
+@inject NavigationManager Navegacion
+@inject IServicioDeConfirmacion Confirmacion
+@inject IDialogService Dialogos
+
+<PageTitle>Catálogos</PageTitle>
+<TituloDePagina Texto="Catálogos" />
+
+<PanelErrores Problema="_error" />
+
+@* Cada pestaña trae su propia tabla (tipos y servicios distintos), a diferencia de InitialPage,
+   donde las pestañas compartían una sola. MudTabs solo dibuja el panel activo: la tabla de la
+   otra pestaña no se carga hasta que se abre. Lo que se escribió en el buscador y el filtro de
+   activos vive en esta página, así que sobrevive al cambio de pestaña; la página y el orden de
+   la tabla, no. *@
+<MudTabs ActivePanelIndex="_panel" ActivePanelIndexChanged="AlCambiarPestana">
+
+    <MudTabPanel Text="Clientes" Icon="@Icons.Material.Filled.Groups">
+        <section class="catalogo-panel mt-3" aria-label="Catálogo de clientes">
+            <p class="catalogo-descripcion">
+                Receptores disponibles para facturar en la empresa activa. Los inactivos conservan su historial.
+            </p>
+
+            <BarraHerramientasCatalogo Texto="@_textoClientes"
+                                       TextoCambiado="AlBuscarClientes"
+                                       Placeholder="Buscar por nombre, RFC o correo…"
+                                       MuestraEstatus="true"
+                                       Activos="_activosClientes"
+                                       ActivosCambiado="AlFiltrarActivosClientes"
+                                       TextoNuevo="Nuevo cliente"
+                                       OnNuevo="AbrirNuevoClienteAsync"
+                                       OnExportar="ExportarClientes"
+                                       TextoSecundario="Importar CSV"
+                                       IconoSecundario="@Icons.Material.Filled.UploadFile"
+                                       OnSecundario="@(() => Navegacion.NavigateTo("/clientes/importar"))" />
+
+            <div class="catalogo-tabla">
+                <TablaDatos T="ClienteEnListaDto"
+                            @ref="_tablaClientes"
+                            Columnas="_columnasClientes"
+                            CargarPagina="CargarClientesAsync"
+                            TextoEntidad="clientes"
+                            TextoSinDatos="No hay clientes que coincidan." />
+            </div>
+        </section>
+    </MudTabPanel>
+
+    <MudTabPanel Text="Productos y servicios" Icon="@Icons.Material.Filled.Inventory2">
+        <section class="catalogo-panel mt-3" aria-label="Catálogo de productos y servicios">
+            <p class="catalogo-descripcion">
+                Conceptos reutilizables con sus claves del SAT, precio e impuestos configurados.
+            </p>
+
+            <BarraHerramientasCatalogo Texto="@_textoProductos"
+                                       TextoCambiado="AlBuscarProductos"
+                                       Placeholder="Buscar por código, descripción o clave SAT…"
+                                       MuestraEstatus="true"
+                                       Activos="_activosProductos"
+                                       ActivosCambiado="AlFiltrarActivosProductos"
+                                       TextoNuevo="Nuevo producto"
+                                       OnNuevo="AbrirNuevoProductoAsync"
+                                       OnExportar="ExportarProductos"
+                                       TextoSecundario="Importar CSV"
+                                       IconoSecundario="@Icons.Material.Filled.UploadFile"
+                                       OnSecundario="@(() => Navegacion.NavigateTo("/productos/importar"))" />
+
+            <div class="catalogo-tabla">
+                <TablaDatos T="ProductoEnListaDto"
+                            @ref="_tablaProductos"
+                            Columnas="_columnasProductos"
+                            CargarPagina="CargarProductosAsync"
+                            TextoEntidad="productos"
+                            TextoSinDatos="No hay productos que coincidan." />
+            </div>
+        </section>
+    </MudTabPanel>
+
+</MudTabs>
+
+@code {
+    private const int PestanaClientes = 0;
+    private const int PestanaProductos = 1;
+
+    /// <summary>
+    /// Permite abrir la página ya en una pestaña: <c>/catalogos?pestana=productos</c>. Sirve para
+    /// que las pantallas de alta y edición regresen a la pestaña de donde salieron.
+    /// </summary>
+    [Parameter, SupplyParameterFromQuery(Name = "pestana")]
+    public string? Pestana { get; set; }
+
+    private int _panel = PestanaClientes;
+    private DetalleProblema? _error;
+
+    protected override void OnParametersSet()
+        => _panel = string.Equals(Pestana, "productos", StringComparison.OrdinalIgnoreCase)
+            ? PestanaProductos
+            : PestanaClientes;
+
+    // El error de una pestaña no tiene por qué seguir a la vista en la otra.
+    private void AlCambiarPestana(int indice)
+    {
+        _panel = indice;
+        _error = null;
+    }
+
+    // ── Productos y servicios ───────────────────────────────────────────────────────────
+
+    private TablaDatos<ProductoEnListaDto>? _tablaProductos;
+    private string _textoProductos = string.Empty;
+    private bool? _activosProductos = true;
+
+    private IReadOnlyList<ColumnaDeTabla<ProductoEnListaDto>> _columnasProductos = [];
+    private IReadOnlyList<ColumnaDeTabla<ClienteEnListaDto>> _columnasClientes = [];
+
+    protected override void OnInitialized()
+    {
+        _columnasProductos =
+        [
+            new("Código", p => @<span class="cifra-tabular">@p.CodigoInterno</span>, ClaveOrden: "codigo", Tabular: true),
+            new("Producto o servicio", p => @<div class="catalogo-celda-principal">
+                                                <strong>@p.Descripcion</strong>
+                                                <span>@p.UnidadTexto</span>
+                                            </div>, ClaveOrden: "descripcion"),
+            new("Clave SAT", p => @<span class="cifra-tabular">@p.ClaveProdServ</span>, Tabular: true),
+            new("Precio", p => @<div class="catalogo-celda-precio">
+                                   <strong class="cifra-tabular">@p.ValorUnitario.ToString("N2")</strong>
+                                   <span>@(p.PesoKg is { } peso ? $"{peso:N3} kg" : "Sin peso")</span>
+                               </div>, ClaveOrden: "precio", Tabular: true),
+            new("Estado", p => @<span class="indicador-estado indicador-estado-@(p.Activo ? "timbrada" : "borrador")">
+                                    @(p.Activo ? "Activo" : "Inactivo")
+                                </span>),
+            new("", p => @<div class="acciones-renglon">
+                              <MudButton Size="Size.Small" OnClick="@(() => AbrirEditarProductoAsync(p.Id))">Editar</MudButton>
+                              <MudButton Size="Size.Small" OnClick="@(() => CambiarActivoProducto(p))">
+                                  @(p.Activo ? "Desactivar" : "Reactivar")
+                              </MudButton>
+                          </div>)
+        ];
+
+        _columnasClientes =
+        [
+            new("Clave", c => @<span class="cifra-tabular">@c.ClaveInterna</span>, ClaveOrden: "clave", Tabular: true),
+            new("Cliente", c => @<div class="catalogo-celda-principal">
+                                     <strong>@c.Nombre</strong>
+                                     <span class="cifra-tabular">@c.Rfc</span>
+                                 </div>, ClaveOrden: "nombre"),
+            new("Datos fiscales", c => @<div class="catalogo-celda-secundaria">
+                                           <span>Régimen <span class="cifra-tabular">@c.RegimenFiscal</span></span>
+                                           <span>C.P. <span class="cifra-tabular">@c.DomicilioFiscalCp</span></span>
+                                       </div>),
+            new("Correo", c => @<span class="catalogo-correo">@(c.CorreoPrincipal ?? "—")</span>),
+            new("Estado", c => @<span class="indicador-estado indicador-estado-@(c.Activo ? "timbrada" : "borrador")">
+                                    @(c.Activo ? "Activo" : "Inactivo")
+                                </span>),
+            new("", c => @<div class="acciones-renglon">
+                              <MudButton Size="Size.Small" OnClick="@(() => AbrirEditarClienteAsync(c.Id))">Editar</MudButton>
+                              <MudButton Size="Size.Small" OnClick="@(() => CambiarActivoCliente(c))">
+                                  @(c.Activo ? "Desactivar" : "Reactivar")
+                              </MudButton>
+                          </div>)
+        ];
+    }
+
+    private async Task<ResultadoDePagina<ProductoEnListaDto>> CargarProductosAsync(
+        PeticionDePagina peticion, CancellationToken ct)
+    {
+        var pagina = await Productos.ListarAsync(
+            _textoProductos, _activosProductos, peticion.Pagina, peticion.TamanoPagina,
+            peticion.ClaveOrden, peticion.Descendente, ct);
+
+        return new ResultadoDePagina<ProductoEnListaDto>(pagina.Elementos, pagina.Total);
+    }
+
+    private async Task AlBuscarProductos(string texto)
+    {
+        _textoProductos = texto;
+        await RecargarProductosAsync();
+    }
+
+    private async Task AlFiltrarActivosProductos(bool? activos)
+    {
+        _activosProductos = activos;
+        await RecargarProductosAsync();
+    }
+
+    private Task RecargarProductosAsync() => _tablaProductos?.RecargarAsync() ?? Task.CompletedTask;
+
+    private async Task CambiarActivoProducto(ProductoEnListaDto producto)
+    {
+        if (producto.Activo)
+        {
+            var confirmado = await Confirmacion.ConfirmarAsync(
+                "Desactivar producto",
+                $"«{producto.Descripcion}» dejará de aparecer al facturar. Los comprobantes ya emitidos no se tocan.",
+                "Desactivar");
+
+            if (!confirmado) return;
+        }
+
+        var (_, error) = await Productos.CambiarActivoAsync(producto.Id, !producto.Activo);
+
+        _error = error;
+
+        if (error is null) await RecargarProductosAsync();
+    }
+
+    private void ExportarProductos()
+        => Navegacion.NavigateTo(ServicioDeProductos.RutaDeExportacion(_activosProductos), forceLoad: true);
+
+    // Mismo patrón que DialogoDeCliente: /productos/nuevo y /productos/{Id} siguen
+    // existiendo por si algo más las enlaza directo; Catálogos ya no navega ahí.
+    private static readonly DialogOptions OpcionesDialogoProducto = new()
+    {
+        MaxWidth = MaxWidth.Medium,
+        FullWidth = true,
+        CloseOnEscapeKey = true
+    };
+
+    private async Task AbrirNuevoProductoAsync()
+    {
+        var referencia = await Dialogos.ShowAsync<DialogoDeProducto>("Nuevo producto", OpcionesDialogoProducto);
+        var resultado = await referencia.Result;
+
+        if (resultado is { Canceled: false }) await RecargarProductosAsync();
+    }
+
+    private async Task AbrirEditarProductoAsync(Guid id)
+    {
+        var parametros = new DialogParameters<DialogoDeProducto> { { x => x.Id, id } };
+        var referencia = await Dialogos.ShowAsync<DialogoDeProducto>("Editar producto", parametros, OpcionesDialogoProducto);
+        var resultado = await referencia.Result;
+
+        if (resultado is { Canceled: false }) await RecargarProductosAsync();
+    }
+
+    // ── Clientes ────────────────────────────────────────────────────────────────────────
+
+    private TablaDatos<ClienteEnListaDto>? _tablaClientes;
+    private string _textoClientes = string.Empty;
+    private bool? _activosClientes = true;
+
+    private async Task<ResultadoDePagina<ClienteEnListaDto>> CargarClientesAsync(
+        PeticionDePagina peticion, CancellationToken ct)
+    {
+        var pagina = await Clientes.ListarAsync(
+            _textoClientes, _activosClientes, peticion.Pagina, peticion.TamanoPagina,
+            peticion.ClaveOrden, peticion.Descendente, ct);
+
+        return new ResultadoDePagina<ClienteEnListaDto>(pagina.Elementos, pagina.Total);
+    }
+
+    private async Task AlBuscarClientes(string texto)
+    {
+        _textoClientes = texto;
+        await RecargarClientesAsync();
+    }
+
+    private async Task AlFiltrarActivosClientes(bool? activos)
+    {
+        _activosClientes = activos;
+        await RecargarClientesAsync();
+    }
+
+    private Task RecargarClientesAsync() => _tablaClientes?.RecargarAsync() ?? Task.CompletedTask;
+
+    /// <summary>
+    /// Dar de baja es reversible —solo apaga <c>Activo</c>— pero igual se confirma: en una
+    /// rejilla densa el botón de al lado es «Editar», y desactivar al cliente equivocado en
+    /// medio de una jornada de captura es una interrupción real.
+    /// </summary>
+    private async Task CambiarActivoCliente(ClienteEnListaDto cliente)
+    {
+        if (cliente.Activo)
+        {
+            var confirmado = await Confirmacion.ConfirmarAsync(
+                "Desactivar cliente",
+                $"«{cliente.Nombre}» dejará de aparecer al facturar. Sus comprobantes ya emitidos no se tocan.",
+                "Desactivar");
+
+            if (!confirmado) return;
+        }
+
+        var (_, error) = await Clientes.CambiarActivoAsync(cliente.Id, !cliente.Activo);
+
+        _error = error;
+
+        if (error is null) await RecargarClientesAsync();
+    }
+
+    private void ExportarClientes()
+        => Navegacion.NavigateTo(ServicioDeClientes.RutaDeExportacion(_activosClientes), forceLoad: true);
+
+    // El mismo ancho para crear y editar: el formulario es idéntico, solo cambia si Id
+    // llega precargado. /clientes/nuevo y /clientes/{Id} siguen existiendo por si algo más
+    // las enlaza directo; Catálogos ya no navega ahí.
+    private static readonly DialogOptions OpcionesDialogoCliente = new()
+    {
+        MaxWidth = MaxWidth.Medium,
+        FullWidth = true,
+        CloseOnEscapeKey = true
+    };
+
+    private async Task AbrirNuevoClienteAsync()
+    {
+        var referencia = await Dialogos.ShowAsync<DialogoDeCliente>("Nuevo cliente", OpcionesDialogoCliente);
+        var resultado = await referencia.Result;
+
+        if (resultado is { Canceled: false }) await RecargarClientesAsync();
+    }
+
+    private async Task AbrirEditarClienteAsync(Guid id)
+    {
+        var parametros = new DialogParameters<DialogoDeCliente> { { x => x.Id, id } };
+        var referencia = await Dialogos.ShowAsync<DialogoDeCliente>("Editar cliente", parametros, OpcionesDialogoCliente);
+        var resultado = await referencia.Result;
+
+        if (resultado is { Canceled: false }) await RecargarClientesAsync();
+    }
+}

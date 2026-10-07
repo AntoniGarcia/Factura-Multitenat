@@ -11,11 +11,29 @@ namespace Facturacion.Client.Layout;
 /// Encabezado bajo el que se agrupa, o <c>null</c> para el trabajo diario, que va suelto
 /// arriba y sin título.
 /// </param>
-public sealed record ElementoDeMenu(string Ruta, string Etiqueta, string Icono, string? Permiso, string? Grupo = null);
+/// <param name="Hijos">
+/// Entradas de un submenú. Si trae hijos, la entrada no navega: solo abre y cierra la lista,
+/// su <c>Ruta</c> va vacía y se ve mientras el usuario pueda ver al menos uno de los hijos.
+/// </param>
+/// <param name="Descripcion">
+/// Frase corta para los selectores con tarjetas (el de catálogos en Inicio). El menú lateral no
+/// la muestra.
+/// </param>
+public sealed record ElementoDeMenu(
+    string Ruta,
+    string Etiqueta,
+    string Icono,
+    string? Permiso,
+    string? Grupo = null,
+    IReadOnlyList<ElementoDeMenu>? Hijos = null,
+    string? Descripcion = null)
+{
+    public static ElementoDeMenu Submenu(string etiqueta, string icono, IReadOnlyList<ElementoDeMenu> hijos, string? grupo = null)
+        => new(string.Empty, etiqueta, icono, Permiso: null, grupo, hijos);
+}
 
 /// <summary>
-/// Las secciones del sistema. Cada fase agrega la suya aquí, no en <c>MainLayout</c>, para
-/// que el layout no tenga que volver a tocarse cada vez que aparece una pantalla nueva.
+/// Las secciones del sistema se declaran aquí para que el layout no duplique sus rutas.
 ///
 /// <para><b>Por qué agrupado y por qué así</b></para>
 /// Diez entradas planas —cuatro de ellas de configuración de empresa— obligan a leer la lista
@@ -23,16 +41,14 @@ public sealed record ElementoDeMenu(string Ruta, string Etiqueta, string Icono, 
 /// lo que se toca una vez al mes queda bajo su título.
 ///
 /// <para>
-/// Son <b>encabezados</b>, no menús desplegables anidados. Un árbol de desplegables dentro de
-/// desplegables es lo que peor sobrevive al paso a barra inferior en móvil (ARQUITECTURA.md §8), y
-/// obliga a dos clics para llegar a donde antes se llegaba con uno.
+/// Los grupos son <b>encabezados</b>. Los submenús existen, pero de un solo nivel: un árbol de
+/// desplegables dentro de desplegables es lo que peor sobrevive al paso a barra inferior en
+/// móvil (ARQUITECTURA.md §8). En móvil el submenú se aplana y sus hijos quedan en la barra.
 /// </para>
 ///
 /// <para>
-/// Aquí <b>solo</b> aparece lo que existe y funciona. Nada de entradas apagadas de módulos
-/// que llegarán: un menú lleno de opciones muertas enseña al usuario a desconfiar de lo que
-/// ve. Los módulos de la fase 2 —Cotizaciones, Notaría, Constructoras, Comercio Exterior,
-/// Carta Porte, Addendas— entran cuando se construyan (ARQUITECTURA.md §6).
+/// Aquí <b>solo</b> aparece lo que existe y funciona. Nada de entradas apagadas: un menú
+/// lleno de opciones muertas enseña al usuario a desconfiar de lo que ve.
 /// </para>
 /// </summary>
 public static class MenuPrincipal
@@ -41,7 +57,27 @@ public static class MenuPrincipal
     {
         public const string Empresa = "Mi empresa";
         public const string Administracion = "Administración";
+        public const string Tienda = "Tienda";
     }
+
+    /// <summary>
+    /// Los catálogos de la empresa. Están aparte porque los leen dos lugares —el submenú lateral y
+    /// el selector de catálogos de Inicio— y una ruta nueva no debe tener que agregarse dos veces.
+    /// Va antes de <see cref="Elementos"/>: los inicializadores estáticos corren en orden.
+    /// </summary>
+    public static IReadOnlyList<ElementoDeMenu> Catalogos { get; } =
+    [
+        // Cada uno conserva su propio permiso: quien no configura la empresa ve Clientes y
+        // Productos, y Series y Transporte no le aparecen.
+        new("/clientes", "Clientes", "groups", Permiso: null,
+            Descripcion: "Receptores de tus comprobantes"),
+        new("/productos", "Productos", "inventory", Permiso: null,
+            Descripcion: "Precios, claves del SAT e impuestos"),
+        new("/empresa/series", "Series y folios", "tag", Permisos.ConfigurarEmpresa,
+            Descripcion: "Numeración de cada tipo de comprobante"),
+        new("/empresa/transporte", "Transporte", "local_shipping", Permisos.ConfigurarEmpresa,
+            Descripcion: "Vehículos y figuras de Carta Porte"),
+    ];
 
     public static IReadOnlyList<ElementoDeMenu> Elementos { get; } =
     [
@@ -52,10 +88,12 @@ public static class MenuPrincipal
         // hermanas obligaba a elegir entre dos puertas al mismo cuarto antes de saber
         // cuál de las dos se quería.
         new("/documentos", "Documentos", "description", Permisos.Timbrar),
-        new("/traslados-carta-porte/nuevo", "Carta Porte", "local_shipping", Permisos.Timbrar),
-        new("/clientes", "Clientes", "groups", Permiso: null),
-        new("/productos", "Productos", "inventory", Permiso: null),
+        // Aparte de Documentos porque es otro permiso y otro trabajo: dar seguimiento a lo que
+        // sigue esperando la respuesta del receptor o del SAT (§30).
+        //new("/catalogos", "Catálogos", "catalogo", Permiso: null),
+        ElementoDeMenu.Submenu("Catálogos", "catalogo", Catalogos),
 
+<<<<<<< HEAD
         // ── Mi empresa: se configura una vez y se revisa de vez en cuando ───────────────
         new("/empresa/nueva", "Agregar empresa", "person", Permisos.ConfigurarEmpresa, Grupos.Empresa),
         new("/empresa", "Datos fiscales", "business", Permisos.ConfigurarEmpresa, Grupos.Empresa),
@@ -68,5 +106,14 @@ public static class MenuPrincipal
         new("/timbres", "Timbres", "confirmation_number", Permisos.ComprarTimbres, Grupos.Administracion),
         new("/usuarios", "Usuarios", "people", Permisos.AdministrarUsuarios, Grupos.Administracion),
         //new("/admin/catalogos-sat", "Catálogos del SAT", "inventory_2", Permiso: null, Grupos.Administracion)
+=======
+        // ── Mi Administración: se configura una vez y se revisa de vez en cuando ───────────────       
+        new("/empresa/nueva", "Empresas", "domain_add", Permisos.ConfigurarEmpresa, Grupos.Administracion),
+        new("/empresa/usuarios", "Usuarios", "people", Permisos.AdministrarUsuarios, Grupos.Administracion),
+
+        // ── Tienda: cuenta, gente y datos del SAT ───────────────────────────────
+        new("/timbres", "Timbres", "confirmation_number", Permisos.ComprarTimbres, Grupos.Tienda),
+        // new("/admin/catalogos-sat", "Catálogos del SAT", "inventory_2", Permiso: null, Grupos.Administracion)
+>>>>>>> bb34909164bf2df4931383e4d04b8d80b4b4c521
     ];
 }

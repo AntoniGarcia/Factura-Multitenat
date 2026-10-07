@@ -31,6 +31,35 @@ public static class CancelacionEndpoints
             .AddEndpointFilter<FiltroDeIdempotencia>();
 
         grupo.MapPost("/{id:guid}/estatus-sat", ConsultarEstatus);
+
+        var solicitudes = rutas.MapGroup("/api/cancelaciones")
+            .WithTags("Documentos")
+            .RequireAuthorization(Permisos.Cancelar);
+
+        solicitudes.MapGet("", ListarSolicitudes);
+        solicitudes.MapPost("/verificar", VerificarAbiertas);
+    }
+
+    private static async Task<IResult> ListarSolicitudes(
+        ServicioDeSolicitudesDeCancelacion solicitudes, HttpContext http, CancellationToken ct,
+        string? filtro = null, string? busca = null, int pagina = 0, int tamano = 25)
+    {
+        var resultado = await solicitudes.ListarAsync(
+            filtro, busca, Math.Max(pagina, 0), Math.Clamp(tamano, 1, 100), ct);
+
+        return resultado.EsFallo ? resultado.Error!.AResultado(http) : Results.Ok(resultado.Valor);
+    }
+
+    /// <summary>
+    /// Sin <c>Idempotency-Key</c>: repetirla no cambia nada que la primera no haya cambiado, solo
+    /// vuelve a preguntar al SAT.
+    /// </summary>
+    private static async Task<IResult> VerificarAbiertas(
+        ServicioDeSolicitudesDeCancelacion solicitudes, HttpContext http, CancellationToken ct)
+    {
+        var resultado = await solicitudes.VerificarAbiertasAsync(ct);
+
+        return resultado.EsFallo ? resultado.Error!.AResultado(http) : Results.Ok(resultado.Valor);
     }
 
     private static async Task<IResult> Cancelar(
