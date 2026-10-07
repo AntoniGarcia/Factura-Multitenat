@@ -1255,6 +1255,18 @@
     text-decoration: none;
 }
 
+/* Las tarjetas que abren un selector son <button>: se les quitan los estilos del navegador.
+   :where() no suma especificidad, así .tablero-acceso-principal sigue poniendo su fondo. */
+:where(button).tablero-acceso {
+    width: 100%;
+    border-top: 0;
+    border-left: 0;
+    background: transparent;
+    font: inherit;
+    text-align: left;
+    cursor: pointer;
+}
+
 .tablero-acceso:hover,
 .tablero-acceso:focus-visible {
     background: var(--superficie-elevada);
