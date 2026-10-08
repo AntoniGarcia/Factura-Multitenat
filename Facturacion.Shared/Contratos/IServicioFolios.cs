@@ -1,3 +1,5 @@
+using Facturacion.Shared.Comun;
+
 namespace Facturacion.Shared.Contratos;
 
 /// <summary>
@@ -6,6 +8,12 @@ namespace Facturacion.Shared.Contratos;
 /// </summary>
 public interface IServicioFolios
 {
+    /// <summary>
+    /// Valida sin reservar que la serie pertenece a la empresa activa, está habilitada
+    /// y corresponde al tipo de comprobante. No devuelve datos de series ajenas.
+    /// </summary>
+    Task<Resultado> ValidarSerieAsync(Guid serieId, string tipoComprobante, CancellationToken ct);
+
     /// <summary>
     /// Aparta el siguiente folio de la serie y devuelve la reserva.
     /// El folio no se le muestra al usuario hasta que el comprobante quede timbrado.
