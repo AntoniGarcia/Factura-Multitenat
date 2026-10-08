@@ -31,13 +31,13 @@
         </MudSelect>
         <MudTextField T="string" Value="@(ImporteTrabajos > 0 ? ImporteTrabajos.ToString("N2") : "Guarda los conceptos")"
                       Label="Importe de los trabajos" ReadOnly="true" Class="cifra-tabular" />
-        <MudNumericField T="decimal" @bind-Value="_porcentajeAmortizacion" Label="Amortización del anticipo (%)"
+        <MudNumericField T="decimal" @bind-Value="_porcentajeAmortizacion" Immediate="true" Label="Amortización del anticipo (%)"
                          Min="0" Max="100" Format="N2" Class="cifra-tabular" />
-        <MudNumericField T="decimal" @bind-Value="_porcentajeRetenciones" Label="Retenciones (%)"
+        <MudNumericField T="decimal" @bind-Value="_porcentajeRetenciones" Immediate="true" Label="Retenciones (%)"
                          Min="0" Max="100" Format="N2" Class="cifra-tabular" />
-        <MudNumericField T="decimal" @bind-Value="_porcentajeDevoluciones" Label="Devoluciones (%)"
+        <MudNumericField T="decimal" @bind-Value="_porcentajeDevoluciones" Immediate="true" Label="Devoluciones (%)"
                          Min="0" Max="100" Format="N2" Class="cifra-tabular" />
-        <MudNumericField T="decimal" @bind-Value="_porcentajeIva" Label="IVA estimado (%)"
+        <MudNumericField T="decimal" @bind-Value="_porcentajeIva" Immediate="true" Label="IVA estimado (%)"
                          Min="0" Max="100" Format="N2" Class="cifra-tabular" />
     </div>
     <p class="seccion-ayuda">
@@ -87,7 +87,7 @@
         var deduccion = _deducciones[i];
         <div class="rejilla-campos">
             <MudTextField @bind-Value="deduccion.Nombre" Label="Concepto" MaxLength="60" Required="true" />
-            <MudNumericField T="decimal" @bind-Value="deduccion.Porcentaje" Label="Porcentaje (%)"
+            <MudNumericField T="decimal" @bind-Value="deduccion.Porcentaje" Immediate="true" Label="Porcentaje (%)"
                              Min="0" Max="100" Format="N2" Class="cifra-tabular" />
         </div>
     }
