@@ -44,17 +44,15 @@ public sealed record ImpuestoDePagoCalculado(
 /// daría diferencias de un centavo contra su propia cuenta, y eso es rechazo.
 /// </para>
 ///
-/// <para><b>Pagar la factura completa devuelve exactamente sus números</b></para>
-/// Con proporción 1 el reparto es la identidad. Es la propiedad que hace comprobable el
-/// cálculo sin depender del SAT: el caso más común tiene que reproducir la factura tal cual.
-/// </para>
+/// <para>El desglose conserva seis decimales. El importe de una tasa se calcula sobre
+/// la base proporcional, y los totales en pesos se redondean después de agrupar.</para>
 /// </summary>
 public static class CalculoDeImpuestosDePago
 {
     /// <param name="impuestosDeLaFactura">Grupos de impuesto de la factura completa.</param>
     /// <param name="totalDeLaFactura">Total de la factura, contra el que se saca la proporción.</param>
     /// <param name="importePagado">Lo que se abona en este pago.</param>
-    /// <param name="decimalesDeMoneda">Decimales de <c>c_Moneda</c> del documento pagado.</param>
+    /// <param name="decimalesDeMoneda">Precisión del desglose: seis decimales para ImpuestosDR.</param>
     public static IReadOnlyList<ImpuestoDePagoCalculado> Repartir(
         IReadOnlyList<ImpuestoDeFactura> impuestosDeLaFactura,
         decimal totalDeLaFactura,
@@ -145,8 +143,8 @@ public static class CalculoDeImpuestosDePago
 }
 
 /// <summary>
-/// El nodo <c>Totales</c> del complemento. Cada campo es un atributo opcional del XML: se
-/// omite cuando va en cero, porque declarar una base de IVA al 8 % que no existe es rechazo.
+/// Valores del nodo <c>Totales</c> en MXN. El generador decide qué atributos están presentes
+/// según los grupos de impuesto: una tasa cero no equivale a la ausencia del impuesto.
 /// </summary>
 public sealed record TotalesDePago(
     decimal RetencionesIva,

@@ -28,7 +28,11 @@ public sealed record PagoDto(
     string? RfcEmisorCtaBen,
     string? CtaBeneficiario,
     Guid? Uuid,
-    IReadOnlyList<DocumentoPagadoDto> Documentos);
+    IReadOnlyList<DocumentoPagadoDto> Documentos)
+{
+    public DateTime? FechaPagoLocal { get; init; }
+    public string? ZonaHoraria { get; init; }
+}
 
 /// <summary>Un renglón de la rejilla de documentos pagados (§27).</summary>
 public sealed record DocumentoPagadoDto(
@@ -78,7 +82,11 @@ public sealed record PeticionGuardarPago(
     string? CtaOrdenante,
     string? RfcEmisorCtaBen,
     string? CtaBeneficiario,
-    IReadOnlyList<RenglonDePagoDto> Documentos);
+    IReadOnlyList<RenglonDePagoDto> Documentos)
+{
+    // Sin desplazamiento: el servidor interpreta esta hora en el huso de la empresa activa.
+    public DateTime? FechaPagoLocal { get; init; }
+}
 
 /// <summary>
 /// Un renglón que el cliente propone pagar. Solo manda el folio fiscal y el importe: el saldo

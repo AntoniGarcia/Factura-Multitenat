@@ -1,4 +1,5 @@
 using Facturacion.Server.Infra.Errores;
+using Facturacion.Server.Infra.Tenencia;
 using Facturacion.Shared.Comun;
 using Facturacion.Shared.Documentos;
 
@@ -27,23 +28,34 @@ public static class PagosEndpoints
         grupo.MapDelete("/{id:guid}", EliminarBorrador);
     }
 
-    private static async Task<IResult> CrearBorrador(ServicioDePagos pagos, CancellationToken ct)
-        => Results.Ok(await pagos.CrearBorradorAsync(ct));
+    private static async Task<IResult> CrearBorrador(ServicioDePagos pagos, HusoDeEmpresa huso, CancellationToken ct)
+        => Results.Ok(await ConHoraLocal(await pagos.CrearBorradorAsync(ct), huso, ct));
 
-    private static async Task<IResult> Obtener(Guid id, ServicioDePagos pagos, CancellationToken ct)
+    private static async Task<IResult> Obtener(Guid id, ServicioDePagos pagos, HusoDeEmpresa huso, CancellationToken ct)
     {
         var pago = await pagos.ObtenerAsync(id, ct);
-        return pago is null ? Results.NotFound() : Results.Ok(pago);
+        return pago is null ? Results.NotFound() : Results.Ok(await ConHoraLocal(pago, huso, ct));
     }
 
     private static async Task<IResult> Guardar(
-        Guid id, PeticionGuardarPago peticion, ServicioDePagos pagos, HttpContext http, CancellationToken ct)
+        Guid id, PeticionGuardarPago peticion, ServicioDePagos pagos, HusoDeEmpresa huso, HttpContext http, CancellationToken ct)
     {
         var resultado = await pagos.GuardarAsync(id, peticion, ct);
 
         return resultado.EsFallo
             ? resultado.Error!.AResultado(http)
-            : Results.Ok(resultado.Valor);
+            : Results.Ok(await ConHoraLocal(resultado.Valor, huso, ct));
+    }
+
+    private static async Task<PagoDto> ConHoraLocal(PagoDto pago, HusoDeEmpresa huso, CancellationToken ct)
+    {
+        var zona = await huso.ObtenerAsync(ct);
+        return pago with
+        {
+            FechaPagoLocal = DateTime.SpecifyKind(TimeZoneInfo.ConvertTimeFromUtc(
+                DateTime.SpecifyKind(pago.FechaPagoUtc, DateTimeKind.Utc), zona), DateTimeKind.Unspecified),
+            ZonaHoraria = zona.Id
+        };
     }
 
     /// <summary>El botón «Consulta» de §27: qué se le debe a una factura y qué parcialidad toca.</summary>
