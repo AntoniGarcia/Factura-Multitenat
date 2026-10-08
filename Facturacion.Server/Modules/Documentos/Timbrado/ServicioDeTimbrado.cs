@@ -199,6 +199,9 @@ public sealed class ServicioDeTimbrado(
             var notario = await baseDeDatos.ConfiguracionesNotario.AsNoTracking().FirstOrDefaultAsync(ct);
             if (GeneradorDeXmlNotaria.Validar(datosNotaria, notario) is { } errorNotaria)
                 return errorNotaria;
+
+            var validacionNotaria = await xml.GenerarAsync(comprobante, ct);
+            if (validacionNotaria.EsFallo) return validacionNotaria.Error!;
         }
 
         if (comprobante.TipoDeComprobante == TiposDeComprobante.Ingreso &&

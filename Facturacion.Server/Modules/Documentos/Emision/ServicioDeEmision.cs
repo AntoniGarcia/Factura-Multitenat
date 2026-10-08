@@ -405,6 +405,13 @@ public sealed class ServicioDeEmision(
                 return ErrorNegocio.Validacion("numero-identificacion-invalido",
                     $"El identificador del renglón {i + 1} debe tener hasta 100 caracteres y no contener '|'.");
 
+            // El concepto copia la unidad del producto en cada guardado: basta con corregir el
+            // producto. Detenerlo aquí evita que el error aparezca al timbrar, con el folio ya apartado.
+            if (!UnidadDeConcepto.EsValida(producto.UnidadTexto))
+                return ErrorNegocio.Validacion("unidad-de-concepto-invalida",
+                    $"El producto del renglón {i + 1} tiene la unidad «{producto.UnidadTexto}». " +
+                    $"{UnidadDeConcepto.Regla} Corrígela en el producto y vuelve a guardar.");
+
             resueltos.Add(new ConceptoResuelto(
                 Orden: i + 1,
                 Producto: producto,

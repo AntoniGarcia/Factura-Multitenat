@@ -6,6 +6,7 @@
 @inject NavigationManager Navegacion
 @inject IServicioDeConfirmacion Confirmacion
 @inject IDialogService Dialogos
+@inject ServicioDeSesion Sesion
 
 <PageTitle>Catálogos</PageTitle>
 <TituloDePagina Texto="Catálogos" />
@@ -32,11 +33,11 @@
                                        Activos="_activosClientes"
                                        ActivosCambiado="AlFiltrarActivosClientes"
                                        TextoNuevo="Nuevo cliente"
-                                       OnNuevo="AbrirNuevoClienteAsync"
+                                       OnNuevo="@(_puedeEditar ? EventCallback.Factory.Create(this, AbrirNuevoClienteAsync) : default)"
                                        OnExportar="ExportarClientes"
                                        TextoSecundario="Importar CSV"
                                        IconoSecundario="@Icons.Material.Filled.UploadFile"
-                                       OnSecundario="@(() => Navegacion.NavigateTo("/clientes/importar"))" />
+                                       OnSecundario="@(_puedeEditar ? EventCallback.Factory.Create(this, () => Navegacion.NavigateTo("/clientes/importar")) : default)" />
 
             <div class="catalogo-tabla">
                 <TablaDatos T="ClienteEnListaDto"
@@ -62,11 +63,11 @@
                                        Activos="_activosProductos"
                                        ActivosCambiado="AlFiltrarActivosProductos"
                                        TextoNuevo="Nuevo producto"
-                                       OnNuevo="AbrirNuevoProductoAsync"
+                                       OnNuevo="@(_puedeEditar ? EventCallback.Factory.Create(this, AbrirNuevoProductoAsync) : default)"
                                        OnExportar="ExportarProductos"
                                        TextoSecundario="Importar CSV"
                                        IconoSecundario="@Icons.Material.Filled.UploadFile"
-                                       OnSecundario="@(() => Navegacion.NavigateTo("/productos/importar"))" />
+                                       OnSecundario="@(_puedeEditar ? EventCallback.Factory.Create(this, () => Navegacion.NavigateTo("/productos/importar")) : default)" />
 
             <div class="catalogo-tabla">
                 <TablaDatos T="ProductoEnListaDto"
@@ -116,8 +117,14 @@
     private IReadOnlyList<ColumnaDeTabla<ProductoEnListaDto>> _columnasProductos = [];
     private IReadOnlyList<ColumnaDeTabla<ClienteEnListaDto>> _columnasClientes = [];
 
+    // Comodidad visual: sin configurar_empresa el servidor rechaza altas, ediciones y bajas, así
+    // que ni se ofrecen. La protección real es la política del endpoint.
+    private bool _puedeEditar;
+
     protected override void OnInitialized()
     {
+        _puedeEditar = Sesion.TienePermiso(Permisos.ConfigurarEmpresa);
+
         _columnasProductos =
         [
             new("Código", p => @<span class="cifra-tabular">@p.CodigoInterno</span>, ClaveOrden: "codigo", Tabular: true),
@@ -132,14 +139,15 @@
                                </div>, ClaveOrden: "precio", Tabular: true),
             new("Estado", p => @<span class="indicador-estado indicador-estado-@(p.Activo ? "timbrada" : "borrador")">
                                     @(p.Activo ? "Activo" : "Inactivo")
-                                </span>),
-            new("", p => @<div class="acciones-renglon">
+                                </span>)
+        ];
+
+        ColumnaDeTabla<ProductoEnListaDto> accionesProducto = new("", p => @<div class="acciones-renglon">
                               <MudButton Size="Size.Small" OnClick="@(() => AbrirEditarProductoAsync(p.Id))">Editar</MudButton>
                               <MudButton Size="Size.Small" OnClick="@(() => CambiarActivoProducto(p))">
                                   @(p.Activo ? "Desactivar" : "Reactivar")
                               </MudButton>
-                          </div>)
-        ];
+                          </div>);
 
         _columnasClientes =
         [
@@ -155,14 +163,21 @@
             new("Correo", c => @<span class="catalogo-correo">@(c.CorreoPrincipal ?? "—")</span>),
             new("Estado", c => @<span class="indicador-estado indicador-estado-@(c.Activo ? "timbrada" : "borrador")">
                                     @(c.Activo ? "Activo" : "Inactivo")
-                                </span>),
-            new("", c => @<div class="acciones-renglon">
+                                </span>)
+        ];
+
+        ColumnaDeTabla<ClienteEnListaDto> accionesCliente = new("", c => @<div class="acciones-renglon">
                               <MudButton Size="Size.Small" OnClick="@(() => AbrirEditarClienteAsync(c.Id))">Editar</MudButton>
                               <MudButton Size="Size.Small" OnClick="@(() => CambiarActivoCliente(c))">
                                   @(c.Activo ? "Desactivar" : "Reactivar")
                               </MudButton>
-                          </div>)
-        ];
+                          </div>);
+
+        if (_puedeEditar)
+        {
+            _columnasProductos = [.. _columnasProductos, accionesProducto];
+            _columnasClientes = [.. _columnasClientes, accionesCliente];
+        }
     }
 
     private async Task<ResultadoDePagina<ProductoEnListaDto>> CargarProductosAsync(

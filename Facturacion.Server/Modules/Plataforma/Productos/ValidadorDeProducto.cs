@@ -27,6 +27,10 @@ public sealed class ValidadorDeProducto(AppDbContext baseDeDatos)
             return ErrorNegocio.Validacion("unidad-vacia",
                 "Escribe la unidad de medida que verá el cliente en el PDF.");
 
+        if (!UnidadDeConcepto.EsValida(peticion.UnidadTexto))
+            return ErrorNegocio.Validacion("unidad-invalida",
+                $"{UnidadDeConcepto.Regla} Usa una abreviatura, por ejemplo «Servicio» o «g/cm²».");
+
         if (peticion.ValorUnitario < 0)
             return ErrorNegocio.Validacion("precio-negativo", "El precio de venta no puede ser negativo.");
 

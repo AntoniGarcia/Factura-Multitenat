@@ -343,7 +343,7 @@ public sealed class ServicioDeNotaria(
            EnRangoOpcional(inmueble.Localidad, 100) &&
            EnRangoOpcional(inmueble.Referencia, 100) &&
            EnRango(inmueble.Municipio, 100) &&
-           inmueble.Estado.Trim().Length == 2 &&
+           inmueble.Estado.Trim().Length == 3 &&
            inmueble.Pais.Trim().Length == 3 &&
            PatronCodigoPostal.IsMatch(inmueble.CodigoPostal.Trim());
 

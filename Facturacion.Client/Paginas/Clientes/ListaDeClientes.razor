@@ -3,6 +3,7 @@
 @inject ServicioDeClientes Clientes
 @inject NavigationManager Navegacion
 @inject IServicioDeConfirmacion Confirmacion
+@inject ServicioDeSesion Sesion
 
 <PageTitle>Clientes</PageTitle>
 <TituloDePagina Texto="Clientes" />
@@ -21,7 +22,7 @@
                                Activos="_activos"
                                ActivosCambiado="AlFiltrarActivos"
                                TextoNuevo="Nuevo cliente"
-                               OnNuevo="@(() => Navegacion.NavigateTo("/clientes/nuevo"))"
+                               OnNuevo="@(_puedeEditar ? EventCallback.Factory.Create(this, () => Navegacion.NavigateTo("/clientes/nuevo")) : default)"
                                OnExportar="Exportar" />
 
     <div class="catalogo-tabla">
@@ -40,9 +41,19 @@
     private string _texto = string.Empty;
     private bool? _activos = true;
 
+    // Comodidad visual: sin configurar_empresa el servidor rechaza altas, ediciones y bajas, así
+    // que ni se ofrecen. La protección real es la política del endpoint.
+    private bool _puedeEditar;
+
     private IReadOnlyList<ColumnaDeTabla<ClienteEnListaDto>> _columnas = [];
 
-    protected override void OnInitialized() => _columnas =
+    protected override void OnInitialized()
+    {
+        _puedeEditar = Sesion.TienePermiso(Permisos.ConfigurarEmpresa);
+        _columnas = _puedeEditar ? [.. Columnas, Acciones] : Columnas;
+    }
+
+    private IReadOnlyList<ColumnaDeTabla<ClienteEnListaDto>> Columnas =>
     [
         new("Clave", c => @<span class="cifra-tabular">@c.ClaveInterna</span>, ClaveOrden: "clave", Tabular: true),
         new("Cliente", c => @<div class="catalogo-celda-principal">
@@ -57,13 +68,14 @@
         new("Estado", c => @<span class="indicador-estado indicador-estado-@(c.Activo ? "timbrada" : "borrador")">
                                 @(c.Activo ? "Activo" : "Inactivo")
                             </span>),
-        new("", c => @<div class="acciones-renglon">
+    ];
+
+    private ColumnaDeTabla<ClienteEnListaDto> Acciones => new("", c => @<div class="acciones-renglon">
                           <MudButton Size="Size.Small" OnClick="@(() => Navegacion.NavigateTo($"/clientes/{c.Id}"))">Editar</MudButton>
                           <MudButton Size="Size.Small" OnClick="@(() => CambiarActivo(c))">
                               @(c.Activo ? "Desactivar" : "Reactivar")
                           </MudButton>
-                      </div>)
-    ];
+                      </div>);
 
     private async Task<ResultadoDePagina<ClienteEnListaDto>> CargarAsync(PeticionDePagina peticion, CancellationToken ct)
     {

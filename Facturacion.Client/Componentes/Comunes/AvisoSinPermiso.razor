@@ -1,0 +1,27 @@
+@inject NavigationManager Navegacion
+@inject ISnackbar Avisos
+
+@*
+    Lo que ve quien sí inició sesión pero no tiene el permiso de la pantalla. Antes caía en
+    RedirigirAInicioSesion y parecía que la sesión se había cerrado. Los botones de lo que no
+    puede hacer ya no se le ofrecen, así que esto solo aparece al entrar por dirección, marcador
+    o enlace viejo: no hay página anterior a la cual volver, y por eso va a Inicio. La navegación
+    es interna, sin recargar la aplicación.
+*@
+
+@code {
+    protected override void OnInitialized()
+    {
+        Avisos.Add(
+            "No tienes permiso para abrir esa pantalla. Pídeselo a quien administra los usuarios de tu cuenta.",
+            Severity.Warning,
+            configuracion =>
+            {
+                configuracion.VisibleStateDuration = 6000;
+                configuracion.ShowCloseIcon = true;
+            },
+            key: "sin-permiso");
+
+        Navegacion.NavigateTo("/", replace: true);
+    }
+}
