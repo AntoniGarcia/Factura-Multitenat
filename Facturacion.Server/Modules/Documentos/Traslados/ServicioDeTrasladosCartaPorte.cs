@@ -72,13 +72,13 @@ public sealed class ServicioDeTrasladosCartaPorte(
             despues: ParaBitacora(traslado));
 
         await baseDeDatos.SaveChangesAsync(ct);
-        return ADto(comprobante.Estatus, traslado);
+        return await ADtoAsync(comprobante.Estatus, traslado, ct);
     }
 
     public async Task<TrasladoCartaPorteDto?> ObtenerAsync(Guid comprobanteId, CancellationToken ct)
     {
         var traslado = await CargarAsync(comprobanteId, ct);
-        return traslado is null ? null : ADto(traslado.Comprobante.Estatus, traslado);
+        return traslado is null ? null : await ADtoAsync(traslado.Comprobante.Estatus, traslado, ct);
     }
 
     /// <summary>
@@ -147,7 +147,7 @@ public sealed class ServicioDeTrasladosCartaPorte(
             antes, ParaBitacora(traslado));
 
         await baseDeDatos.SaveChangesAsync(ct);
-        return ADto(traslado.Comprobante.Estatus, traslado);
+        return await ADtoAsync(traslado.Comprobante.Estatus, traslado, ct);
     }
 
     private async Task<Resultado<RecursosDeTransporte>> ValidarAsync(PeticionGuardarTrasladoCartaPorte p, CancellationToken ct)
@@ -210,6 +210,9 @@ public sealed class ServicioDeTrasladosCartaPorte(
             .FirstOrDefaultAsync(x => x.Id == p.FiguraTransporteId && x.Activo, ct);
         if (vehiculo is null || figura is null)
             return ErrorNegocio.Validacion("recurso-transporte-inactivo", "El vehículo y el operador deben existir y estar activos.");
+        if (figura.TipoFigura != "01")
+            return ErrorNegocio.Validacion("figura-no-es-operador",
+                "Elige una figura de tipo 01 — Operador. Este traslado por autotransporte necesita los datos del conductor y su licencia.");
 
         var placa = string.Concat(vehiculo.Placa.Where(c => c != '-' && !char.IsWhiteSpace(c))).ToUpperInvariant();
         if (vehiculo.PesoBrutoVehicular < 0.01m || Math.Round(vehiculo.PesoBrutoVehicular, 2) != vehiculo.PesoBrutoVehicular ||
@@ -217,6 +220,12 @@ public sealed class ServicioDeTrasladosCartaPorte(
             return ErrorNegocio.Validacion("vehiculo-carta-porte-invalido", "Actualiza la placa o el peso del vehículo en el catálogo de transporte antes de usarlo.");
         if (figura.TipoFigura == "01" && string.IsNullOrWhiteSpace(figura.NumeroLicencia))
             return ErrorNegocio.Validacion("operador-carta-porte-invalido", "Registra la licencia del operador en el catálogo de transporte antes de usarlo.");
+        if (!Rfc.Validar(figura.Rfc).EsValido ||
+            figura.NumeroLicencia is { Length: > 0 } licencia &&
+                (licencia.Length is < 6 or > 16 || licencia.Contains('|')) ||
+            string.IsNullOrWhiteSpace(figura.Nombre) || figura.Nombre.Length > 254 || figura.Nombre.Contains('|'))
+            return ErrorNegocio.Validacion("figura-carta-porte-invalida",
+                "Revisa el RFC y nombre de la figura en Transporte; la licencia, cuando se registra, debe tener entre 6 y 16 caracteres sin '|'.");
 
         var clavesProducto = p.Mercancias.Select(x => x.ClaveProdServ.Trim()).Distinct().ToArray();
         var clavesUnidad = p.Mercancias.Select(x => x.ClaveUnidad.Trim()).Distinct().ToArray();
@@ -353,7 +362,10 @@ public sealed class ServicioDeTrasladosCartaPorte(
             .Include(x => x.Ubicaciones).Include(x => x.Mercancias)
             .FirstOrDefaultAsync(x => x.ComprobanteId == comprobanteId, ct);
 
-    private static TrasladoCartaPorteDto ADto(string estatus, TrasladoCartaPorte x) => new(
+    private async Task<TrasladoCartaPorteDto> ADtoAsync(string estatus, TrasladoCartaPorte x, CancellationToken ct)
+    {
+        var zona = await huso.ObtenerAsync(ct);
+        return new(
         x.ComprobanteId, estatus, x.VehiculoId, x.FiguraTransporteId, x.FechaSalidaUtc, x.FechaLlegadaUtc,
         x.DistanciaRecorridaKm, x.PesoBrutoTotalKg, x.TotalMercancias,
         [.. x.Ubicaciones.OrderBy(y => y.Orden).Select(y => new UbicacionCartaPorteDto(y.Tipo, y.Orden,
@@ -364,7 +376,15 @@ public sealed class ServicioDeTrasladosCartaPorte(
         x.ClienteDestinoId,
         [.. x.Comprobante.Relacionados.OrderBy(y => y.TipoRelacion).ThenBy(y => y.UuidRelacionado)
             .Select(y => new Facturacion.Shared.Documentos.ComprobanteRelacionadoDto(y.Id, y.TipoRelacion, y.UuidRelacionado, null, null))],
-        x.Comprobante.Observaciones);
+        x.Comprobante.Observaciones)
+        {
+            // Son horas de captura: JSON no debe agregar un offset y convertirlas otra vez.
+            FechaSalidaLocal = DateTime.SpecifyKind(TimeZoneInfo.ConvertTimeFromUtc(
+                DateTime.SpecifyKind(x.FechaSalidaUtc, DateTimeKind.Utc), zona), DateTimeKind.Unspecified),
+            FechaLlegadaLocal = DateTime.SpecifyKind(TimeZoneInfo.ConvertTimeFromUtc(
+                DateTime.SpecifyKind(x.FechaLlegadaUtc, DateTimeKind.Utc), zona), DateTimeKind.Unspecified)
+        };
+    }
 
     private static object ParaBitacora(TrasladoCartaPorte x) => new
     {
