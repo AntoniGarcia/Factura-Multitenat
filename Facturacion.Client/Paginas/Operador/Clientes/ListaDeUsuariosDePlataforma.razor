@@ -1,6 +1,6 @@
 @page "/operador/usuarios"
 @layout LayoutDeOperador
-@attribute [Authorize(Policy = PoliticasDelPanel.PoliticaDeOperador)]
+@attribute [Authorize(Policy = PoliticasDelPanel.VerUsuarios)]
 @using Facturacion.Client.Componentes.Comunes
 @using Facturacion.Client.Servicios.Operador
 @using Facturacion.Client.Servicios.Plataforma
@@ -9,6 +9,7 @@
 @inject ServicioDeUsuariosDePlataforma Usuarios
 @inject IServicioDeConfirmacion Confirmacion
 @inject IDialogService Dialogos
+@inject ServicioDeSesionDeOperador Sesion
 
 <PageTitle>Usuarios</PageTitle>
 <TituloDePagina Texto="Usuarios" />
@@ -55,18 +56,27 @@
                                 @(u.Activo ? "Activo" : "Dado de baja")
                             </span>),
         new("", u => @<div class="acciones-renglon">
+                          @if (Sesion.TienePermiso(PoliticasDelPanel.RestablecerContrasenasUsuarios))
+                          {
                           <MudButton Size="Size.Small" Disabled="@_trabajando"
                                      OnClick="@(() => RestablecerContrasena(u))">
                               Contraseña
                           </MudButton>
+                          }
+                          @if (Sesion.TienePermiso(PoliticasDelPanel.CambiarCorreosUsuarios))
+                          {
                           <MudButton Size="Size.Small" Disabled="@_trabajando"
                                      OnClick="@(() => CambiarCorreo(u))">
                               Correo
                           </MudButton>
+                          }
+                          @if (Sesion.TienePermiso(PoliticasDelPanel.CambiarEstadoUsuarios))
+                          {
                           <MudButton Size="Size.Small" Disabled="@_trabajando"
                                      OnClick="@(() => CambiarActivo(u))">
                               @(u.Activo ? "Dar de baja" : "Reactivar")
                           </MudButton>
+                          }
                       </div>)
     ];
 

@@ -26,7 +26,7 @@ public static class OperadoresEndpoints
         grupo.MapGet("/{id:guid}", Obtener).RequireAuthorization(PoliticasDeOperador.VerOperadores);
         grupo.MapPost("/", Crear).RequireAuthorization(PoliticasDeOperador.AdministrarOperadores);
         grupo.MapPut("/{id:guid}", Actualizar).RequireAuthorization(PoliticasDeOperador.AdministrarOperadores);
-        grupo.MapPost("/{id:guid}/activo", CambiarActivo).RequireAuthorization(PoliticasDeOperador.AdministrarOperadores);
+        grupo.MapPost("/{id:guid}/activo", CambiarActivo).RequireAuthorization(PoliticasDeOperador.CambiarEstadoOperadores);
     }
 
     private static async Task<IResult> Listar(

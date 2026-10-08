@@ -1,6 +1,6 @@
 @page "/operador/paquetes"
 @layout LayoutDeOperador
-@attribute [Authorize(Policy = PoliticasDelPanel.PoliticaDeOperador)]
+@attribute [Authorize(Policy = PoliticasDelPanel.VerPaquetes)]
 @using Facturacion.Client.Componentes.Comunes
 @using Facturacion.Client.Servicios.Operador
 @using Facturacion.Client.Servicios.Plataforma
@@ -10,6 +10,7 @@
 @inject IServicioDeConfirmacion Confirmacion
 @inject IDialogService Dialogos
 @inject NavigationManager Navegacion
+@inject ServicioDeSesionDeOperador Sesion
 
 <PageTitle>Paquetes de timbres</PageTitle>
 <TituloDePagina Texto="Paquetes de timbres" />
@@ -21,12 +22,15 @@
     <div class="aviso-documentos" role="status">@_aviso</div>
 }
 
+@if (Sesion.TienePermiso(PoliticasDelPanel.AdministrarPaquetes))
+{
 <div class="acciones-formulario">
     <MudButton Variant="Variant.Filled" Color="Color.Primary" StartIcon="@Icons.Material.Filled.Add"
                OnClick="Nuevo">
         Nuevo paquete
     </MudButton>
 </div>
+}
 
 @if (_paquetes is null)
 {
@@ -70,14 +74,20 @@ else
                     </td>
                     <td>
                         <div class="acciones-renglon">
+                            @if (Sesion.TienePermiso(PoliticasDelPanel.AdministrarPaquetes))
+                            {
                             <MudButton Size="Size.Small"
                                        OnClick="@(() => Navegacion.NavigateTo($"/operador/paquetes/{paquete.Id}"))">
                                 Editar
                             </MudButton>
+                            }
+                            @if (Sesion.TienePermiso(PoliticasDelPanel.CambiarEstadoPaquetes))
+                            {
                             <MudButton Size="Size.Small" Disabled="@_trabajando"
                                        OnClick="@(() => CambiarActivo(paquete))">
                                 @(paquete.Activo ? "Retirar" : "Reactivar")
                             </MudButton>
+                            }
                         </div>
                     </td>
                 </tr>

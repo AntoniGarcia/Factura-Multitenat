@@ -81,6 +81,8 @@
         </MudButton>
     </div>
 
+    @if (Sesion.TienePermiso(PoliticasDelPanel.VerConfiguracion))
+    {
     <h2 class="seccion-titulo">Correo saliente</h2>
     <p class="seccion-ayuda">Remitente para los correos del sistema.</p>
 
@@ -91,19 +93,19 @@
     else
     {
         <div class="rejilla-campos">
-            <MudTextField @bind-Value="_servidor" Label="Servidor SMTP" Placeholder="smtp.ejemplo.com" />
-            <MudTextField @bind-Value="_puertoTexto" Label="Puerto" Class="cifra-tabular" />
-            <MudTextField @bind-Value="_usuarioSmtp" Label="Usuario" />
+            <MudTextField @bind-Value="_servidor" Label="Servidor SMTP" Placeholder="smtp.ejemplo.com" Disabled="@(!PuedeAdministrarSistema)" />
+            <MudTextField @bind-Value="_puertoTexto" Label="Puerto" Class="cifra-tabular" Disabled="@(!PuedeAdministrarSistema)" />
+            <MudTextField @bind-Value="_usuarioSmtp" Label="Usuario" Disabled="@(!PuedeAdministrarSistema)" />
             <MudTextField @bind-Value="_contrasenaSmtpNueva" Label="Nueva contraseña SMTP"
-                          InputType="InputType.Password"
+                          InputType="InputType.Password" Disabled="@(!PuedeAdministrarSistema)"
                           HelperText="@(_contrasenaSmtpConfigurada ? "Configurada; déjala vacía para conservarla." : "Sin credencial configurada.")" />
             <MudTextField @bind-Value="_remitenteCorreo" Label="Correo del remitente"
-                          InputType="InputType.Email" />
-            <MudTextField @bind-Value="_remitenteNombre" Label="Nombre del remitente" />
+                          InputType="InputType.Email" Disabled="@(!PuedeAdministrarSistema)" />
+            <MudTextField @bind-Value="_remitenteNombre" Label="Nombre del remitente" Disabled="@(!PuedeAdministrarSistema)" />
         </div>
 
         <div class="rejilla-campos">
-            <MudSwitch @bind-Value="_usarTls" Label="Usar conexión segura" Color="Color.Primary" />
+            <MudSwitch @bind-Value="_usarTls" Label="Usar conexión segura" Color="Color.Primary" Disabled="@(!PuedeAdministrarSistema)" />
         </div>
     }
 
@@ -112,7 +114,7 @@
     <div class="rejilla-campos">
         <MudTextField @bind-Value="_nombreDelSistema" Label="Nombre del sistema"
                       HelperText="Visible en correos y documentos."
-                      MaxLength="128" />
+                      MaxLength="128" Disabled="@(!PuedeAdministrarSistema)" />
     </div>
 
     <h2 class="seccion-titulo">Mensajes del registro</h2>
@@ -121,17 +123,19 @@
     <h3 class="seccion-subtitulo">Correo de verificación</h3>
 
     <div class="rejilla-campos">
-        <MudTextField @bind-Value="_asuntoVerificacion" Label="Asunto" MaxLength="128" />
+        <MudTextField @bind-Value="_asuntoVerificacion" Label="Asunto" MaxLength="128" Disabled="@(!PuedeAdministrarSistema)" />
     </div>
-    <MudTextField @bind-Value="_cuerpoVerificacion" Label="Mensaje" Lines="7" MaxLength="8000" />
+    <MudTextField @bind-Value="_cuerpoVerificacion" Label="Mensaje" Lines="7" MaxLength="8000" Disabled="@(!PuedeAdministrarSistema)" />
 
     <h3 class="seccion-subtitulo">Correo de bienvenida</h3>
 
     <div class="rejilla-campos">
-        <MudTextField @bind-Value="_asuntoContrasena" Label="Asunto" MaxLength="128" />
+        <MudTextField @bind-Value="_asuntoContrasena" Label="Asunto" MaxLength="128" Disabled="@(!PuedeAdministrarSistema)" />
     </div>
-    <MudTextField @bind-Value="_cuerpoContrasena" Label="Mensaje" Lines="7" MaxLength="8000" />
+    <MudTextField @bind-Value="_cuerpoContrasena" Label="Mensaje" Lines="7" MaxLength="8000" Disabled="@(!PuedeAdministrarSistema)" />
 
+    @if (PuedeAdministrarSistema)
+    {
     <div class="acciones-formulario">
         <MudButton Variant="Variant.Filled" Color="Color.Primary"
                    Disabled="@(_sistemaCargando || _trabajando)"
@@ -139,6 +143,8 @@
             Guardar configuración del sistema
         </MudButton>
     </div>
+    }
+    }
 
 </TarjetaFormulario>
 
@@ -147,6 +153,7 @@
     private string? _aviso;
     private bool _trabajando;
     private bool _verContrasena;
+    private bool PuedeAdministrarSistema => Sesion.TienePermiso(PoliticasDelPanel.AdministrarConfiguracion);
 
     private string _nombre = string.Empty;
     private string _correo = string.Empty;
@@ -186,7 +193,7 @@
 
     protected override async Task OnAfterRenderAsync(bool primeraVez)
     {
-        if (!primeraVez) return;
+        if (!primeraVez || !Sesion.TienePermiso(PoliticasDelPanel.VerConfiguracion)) return;
 
         var configuracion = await ConfiguracionDelSistema.ObtenerAsync();
 
@@ -267,7 +274,7 @@
 
     private async Task GuardarConfiguracionDelSistema()
     {
-        if (_trabajando || _sistemaCargando) return;
+        if (_trabajando || _sistemaCargando || !PuedeAdministrarSistema) return;
 
         if (!int.TryParse(_puertoTexto, out var puerto) || puerto is < 1 or > 65535)
         {

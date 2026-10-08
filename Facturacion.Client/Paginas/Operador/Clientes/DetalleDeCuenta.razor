@@ -1,6 +1,6 @@
 @page "/operador/cuentas/{Id:guid}"
 @layout LayoutDeOperador
-@attribute [Authorize(Policy = PoliticasDelPanel.PoliticaDeOperador)]
+@attribute [Authorize(Policy = PoliticasDelPanel.VerClientes)]
 @using Facturacion.Client.Componentes.Comunes
 @using Facturacion.Client.Servicios.Operador
 @using Facturacion.Client.Servicios.Plataforma
@@ -10,6 +10,7 @@
 @inject ServicioDeTableroDeOperador Suscripciones
 @inject IServicioDeConfirmacion Confirmacion
 @inject IDialogService Dialogos
+@inject ServicioDeSesionDeOperador Sesion
 
 <PageTitle>@(_detalle?.Cuenta.Nombre ?? "Ficha de cuenta") · Panel del operador</PageTitle>
 <TituloDePagina Texto="@(_detalle?.Cuenta.Nombre ?? "Ficha de cuenta")" />
@@ -47,12 +48,15 @@ else
                 <a href="@($"mailto:{_detalle.Cuenta.CorreoContacto}")">@_detalle.Cuenta.CorreoContacto</a>
             </div>
 
-            <MudButton Variant="Variant.Outlined"
-                       StartIcon="@Icons.Material.Filled.Edit"
-                       Disabled="@_trabajando"
-                       OnClick="EditarCorreoDeContacto">
-                Editar contacto
-            </MudButton>
+            @if (Sesion.TienePermiso(PoliticasDelPanel.EditarContactoCuentas))
+            {
+                <MudButton Variant="Variant.Outlined"
+                           StartIcon="@Icons.Material.Filled.Edit"
+                           Disabled="@_trabajando"
+                           OnClick="EditarCorreoDeContacto">
+                    Editar contacto
+                </MudButton>
+            }
         </div>
 
         <dl class="ficha-cuenta-metricas">
@@ -97,9 +101,12 @@ else
                     @(EmpresasConPendientes == 1 ? "empresa de esta cuenta" : "empresas de esta cuenta")
                 </span>
             </div>
-            <MudButton Href="/operador/compras" Variant="Variant.Text" Size="Size.Small">
-                Revisar pagos
-            </MudButton>
+            @if (Sesion.TienePermiso(PoliticasDelPanel.VerCompras))
+            {
+                <MudButton Href="/operador/compras" Variant="Variant.Text" Size="Size.Small">
+                    Revisar pagos
+                </MudButton>
+            }
         </div>
     }
 
@@ -183,15 +190,18 @@ else
                         <h2>Historial de membresía</h2>
                         <p>Vigencia actual y periodos registrados para esta cuenta.</p>
                     </div>
-                    <MudButton Variant="Variant.Filled"
-                               Color="Color.Primary"
-                               StartIcon="@Icons.Material.Filled.CardMembership"
-                               Disabled="@_trabajando"
-                               OnClick="RegistrarMembresia">
-                        @(_membresias.Any(membresia => membresia.Estado == "activa")
-                            ? "Renovar membresía"
-                            : "Registrar membresía")
-                    </MudButton>
+                    @if (Sesion.TienePermiso(PoliticasDelPanel.GestionarMembresias))
+                    {
+                        <MudButton Variant="Variant.Filled"
+                                   Color="Color.Primary"
+                                   StartIcon="@Icons.Material.Filled.CardMembership"
+                                   Disabled="@_trabajando"
+                                   OnClick="RegistrarMembresia">
+                            @(_membresias.Any(membresia => membresia.Estado == "activa")
+                                ? "Renovar membresía"
+                                : "Registrar membresía")
+                        </MudButton>
+                    }
                 </div>
 
                 <div class="suscripcion-actual">
@@ -230,7 +240,7 @@ else
                             </span>
                         </MudTd>
                         <MudTd DataLabel="Acciones" Class="celda-accion-ficha">
-                            @if (context.Estado == "activa")
+                            @if (context.Estado == "activa" && Sesion.TienePermiso(PoliticasDelPanel.GestionarMembresias))
                             {
                                 <MudButton Size="Size.Small"
                                            Color="Color.Error"

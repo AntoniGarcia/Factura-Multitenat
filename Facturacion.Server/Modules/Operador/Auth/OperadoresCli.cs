@@ -63,7 +63,7 @@ public static class OperadoresCli
             Activo = true,
             FechaAltaUtc = DateTime.UtcNow,
             // El primer operador creado por consola es el dueño del SaaS: nace con los
-            // trece permisos del panel y la marca de principal (no se puede desactivar).
+            // permisos del panel y la marca de principal (no se puede desactivar).
             EsPrincipal = !await baseDeDatos.OperadoresPlataforma.AnyAsync(o => o.EsPrincipal),
             Permisos = PermisosDePanel.Todos.Select(p => new PermisoOperador { Permiso = p }).ToList()
         };
