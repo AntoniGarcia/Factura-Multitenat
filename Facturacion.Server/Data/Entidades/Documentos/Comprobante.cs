@@ -109,6 +109,12 @@ public sealed class Comprobante : IEntidadDeEmpresa
     /// <summary>Clave de <c>c_UsoCFDI</c>.</summary>
     public required string ReceptorUsoCfdi { get; set; }
 
+    /// <summary>País de residencia fiscal congelado para el receptor extranjero.</summary>
+    public string? ReceptorResidenciaFiscal { get; set; }
+
+    /// <summary>Registro fiscal extranjero congelado junto con el receptor.</summary>
+    public string? ReceptorNumRegIdTrib { get; set; }
+
     // ── Información global (público en general) ──────────────────────────────────────
     //
     // Nodo opcional del CFDI, no una entidad aparte: es a lo sumo un renglón por

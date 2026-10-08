@@ -37,6 +37,8 @@ public sealed class ComprobanteConfiguracion : IEntityTypeConfiguration<Comproba
         // CP01 (pagos) y CN01 (nómina) son de cuatro. Estaba en tres desde B0 y lo destapó el
         // complemento de pagos, que siempre usa CP01; el catálogo de clientes ya la tenía bien.
         constructor.Property(c => c.ReceptorUsoCfdi).HasMaxLength(4);
+        constructor.Property(c => c.ReceptorResidenciaFiscal).HasMaxLength(3);
+        constructor.Property(c => c.ReceptorNumRegIdTrib).HasMaxLength(40);
 
         constructor.Property(c => c.GlobalPeriodicidad).HasMaxLength(2);
         constructor.Property(c => c.GlobalMeses).HasMaxLength(2);

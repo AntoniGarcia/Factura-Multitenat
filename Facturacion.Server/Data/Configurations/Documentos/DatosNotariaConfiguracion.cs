@@ -57,7 +57,7 @@ public sealed class InmuebleNotarialConfiguracion : IEntityTypeConfiguration<Inm
         configuracion.Property(x => x.Localidad).HasMaxLength(100);
         configuracion.Property(x => x.Referencia).HasMaxLength(100);
         configuracion.Property(x => x.Municipio).HasMaxLength(100);
-        configuracion.Property(x => x.Estado).HasMaxLength(2);
+        configuracion.Property(x => x.Estado).HasMaxLength(3);
         configuracion.Property(x => x.Pais).HasMaxLength(3);
         configuracion.Property(x => x.CodigoPostal).HasMaxLength(5);
         configuracion.HasIndex(x => new { x.DatosNotariaId, x.Orden }).IsUnique();
