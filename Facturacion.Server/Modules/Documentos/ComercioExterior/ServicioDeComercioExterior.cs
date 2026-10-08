@@ -51,7 +51,16 @@ public sealed class ServicioDeComercioExterior(
         var datos = JsonSerializer.Deserialize<DatosComercioExteriorDto>(contenido);
         if (datos is null)
             return ErrorNegocio.Regla("comercio-datos-corruptos", "No se pudieron leer los datos de comercio exterior guardados.");
-        var generado = generadorXml.Generar(comprobante, datos);
+        Resultado<byte[]> generado;
+        try
+        {
+            generado = generadorXml.Generar(comprobante, datos);
+        }
+        catch (FileNotFoundException)
+        {
+            return ErrorNegocio.Regla("esquemas-sat-incompletos",
+                "Falta el esquema SAT de Comercio Exterior 2.0 para generar el XML. Avisa a soporte.");
+        }
         return generado.EsFallo ? generado.Error! :
             new ArchivoXmlDeComercio($"borrador-complemento-comercio-exterior-{comprobanteId:N}.xml",
                 "application/xml", generado.Valor!);

@@ -1,42 +1,61 @@
 @using Facturacion.Shared.Operador
 
 @*
-    Los permisos del panel, por sección y con jerarquía. Cada sección se abre con su «ver»;
-    al marcarla se muestran las acciones de ese módulo (administrar, acreditar, asignar…).
-    No hay atajo de "todo" ni de rol: por permiso y solo por permiso.
+    Los permisos del panel, por sección y con jerarquía. La lista de módulos queda a la
+    izquierda y las acciones del módulo elegido se muestran a la derecha.
+    Los permisos generales anteriores cubren todas las acciones de su sección; los
+    permisos concretos permiten asignar solo una operación.
 
     La jerarquía no es solo visual: una acción no puede quedar marcada sin su sección, y lo que
     arma este selector ya sale coherente. Si alguien llegara a pegar una petición con una acción
     sin su sección, el servidor la rechaza igual (no es comodidad visual, es la defensa de fondo).
 *@
 
-<div class="permisos-secciones">
-    @foreach (var seccion in PermisosDePanel.Secciones)
-    {
-        var verMarcado = Value.Contains(seccion.Ver.Clave);
+<div class="selector-permisos-panel">
+    <div class="permisos-modulos" role="group" aria-label="Módulos del panel">
+        @foreach (var seccion in PermisosDePanel.Secciones)
+        {
+            var activa = SeccionActiva.Ver.Clave == seccion.Ver.Clave;
+            var verMarcado = Value.Contains(seccion.Ver.Clave);
 
-        <div class="seccion-permisos @(verMarcado ? "abierta" : null)">
-            <MudCheckBox T="bool"
-                          Value="@verMarcado"
-                          ValueChanged="@(marcado => CambiarVer(seccion, marcado))"
-                          Label="@seccion.Ver.Etiqueta"
-                          Disabled="@Deshabilitado" />
+            <div class="permiso-modulo @(activa ? "activo" : null)">
+                <MudCheckBox T="bool"
+                             Value="@verMarcado"
+                             ValueChanged="@(marcado => CambiarVer(seccion, marcado))"
+                             Label="@seccion.Ver.Etiqueta"
+                             Disabled="@Deshabilitado" />
+                <button type="button"
+                        class="permiso-modulo-mostrar"
+                        aria-label="@($"Mostrar acciones de {seccion.Titulo}")"
+                        aria-pressed="@activa"
+                        @onclick="@(() => SeleccionarSeccion(seccion))">
+                    <span class="permiso-modulo-cantidad">
+                        @Value.Count(p => seccion.Acciones.Any(a => a.Clave == p))
+                    </span>
+                    <MudIcon Icon="@Icons.Material.Filled.ChevronRight" Size="Size.Small" />
+                </button>
+            </div>
+        }
+    </div>
 
-            @if (verMarcado && seccion.Acciones.Count > 0)
+    <section class="permisos-detalle" aria-labelledby="permisos-detalle-titulo">
+        <div class="permisos-detalle-encabezado">
+            <h3 id="permisos-detalle-titulo">@SeccionActiva.Titulo</h3>
+            <span>@Value.Count(p => SeccionActiva.Acciones.Any(a => a.Clave == p)) de @SeccionActiva.Acciones.Count</span>
+        </div>
+        <p class="permisos-detalle-ayuda">Al marcar una acción, también se activa el permiso para ver el módulo.</p>
+        <div class="permisos-acciones" role="group" aria-label="@($"Acciones de {SeccionActiva.Titulo}")">
+            @foreach (var accion in SeccionActiva.Acciones)
             {
-                <div class="permisos-acciones">
-                    @foreach (var accion in seccion.Acciones)
-                    {
-                        <MudCheckBox T="bool"
-                                      Value="@Value.Contains(accion.Clave)"
-                                      ValueChanged="@(marcado => CambiarAccion(seccion, accion.Clave, marcado))"
-                                      Label="@accion.Etiqueta"
-                                      Disabled="@Deshabilitado" />
-                    }
-                </div>
+                <MudCheckBox T="bool"
+                             @key="accion.Clave"
+                             Value="@Value.Contains(accion.Clave)"
+                             ValueChanged="@(marcado => CambiarAccion(SeccionActiva, accion.Clave, marcado))"
+                             Label="@accion.Etiqueta"
+                             Disabled="@Deshabilitado" />
             }
         </div>
-    }
+    </section>
 </div>
 
 @code {
@@ -49,12 +68,23 @@
     [Parameter]
     public bool Deshabilitado { get; set; }
 
+    private string _seccionActivaClave = PermisosDePanel.Secciones[0].Ver.Clave;
+
+    private SeccionDePermisosDePanel SeccionActiva =>
+        PermisosDePanel.Secciones.FirstOrDefault(s => s.Ver.Clave == _seccionActivaClave)
+        ?? PermisosDePanel.Secciones[0];
+
+    private void SeleccionarSeccion(SeccionDePermisosDePanel seccion) =>
+        _seccionActivaClave = seccion.Ver.Clave;
+
     /// <summary>
-    /// Marcar el «ver» muestra las acciones de la sección. Desmarcarlo las quita todas: una
-    /// acción sin su sección no se sostiene (el servidor hace valer lo mismo).
+    /// Desmarcar «ver» quita también las acciones de esa sección: ninguna puede quedar
+    /// asignada sin acceso al módulo.
     /// </summary>
     private async Task CambiarVer(SeccionDePermisosDePanel seccion, bool marcado)
     {
+        SeleccionarSeccion(seccion);
+
         if (marcado)
         {
             await ValueChanged.InvokeAsync(SobreLista(Value, seccion.Ver.Clave, marcado: true));

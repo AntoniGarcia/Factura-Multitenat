@@ -84,6 +84,9 @@ public sealed class ServicioDeOperadores(
         var error = ValidarCreacion(peticion);
         if (error is not null) return error;
 
+        if (await ValidarPermisosDelegablesAsync(operadorActualId, peticion.Permisos, ct) is { } errorDelegacion)
+            return errorDelegacion;
+
         var correoNormalizado = peticion.Correo.Trim().ToUpperInvariant();
 
         var existe = await baseDeDatos.OperadoresPlataforma
@@ -153,7 +156,12 @@ public sealed class ServicioDeOperadores(
         if (ValidarPermisos(peticion.Permisos) is { } errorPermisos)
             return errorPermisos;
 
+        if (await ValidarPermisosDelegablesAsync(operadorActualId, peticion.Permisos, ct) is { } errorDelegacion)
+            return errorDelegacion;
+
         var antes = Retrato(operador);
+        var permisosAnteriores = operador.Permisos.Select(p => p.Permiso).ToHashSet(StringComparer.OrdinalIgnoreCase);
+        var cambiaronPermisos = !permisosAnteriores.SetEquals(peticion.Permisos);
 
         operador.Nombre = peticion.Nombre.Trim();
         operador.Correo = peticion.Correo.Trim();
@@ -192,6 +200,10 @@ public sealed class ServicioDeOperadores(
                 despues: new { SesionDelOperador = operador.Nombre, SesionesCerradas = true },
                 operadorId: operadorActualId);
         }
+
+        if (cambiaronPermisos && string.IsNullOrWhiteSpace(peticion.Contrasena))
+            await refrescos.InvalidarTodasLasFamiliasDelOperadorAsync(
+                id, "permisos modificados", ct);
 
         await baseDeDatos.SaveChangesAsync(ct);
 
@@ -318,13 +330,34 @@ public sealed class ServicioDeOperadores(
                 return ErrorNegocio.Validacion("permiso-invalido", $"Permiso desconocido: {permiso}");
 
             // Una acción sin su sección no se sostiene: para administrar algo hay que poder verlo.
-            if (PermisosDePanel.VerQueExige(permiso) is { } ver && !permisos.Contains(ver))
+            if (PermisosDePanel.VerQueExige(permiso) is { } ver && !permisos.Contains(ver, StringComparer.OrdinalIgnoreCase))
                 return ErrorNegocio.Validacion(
                     "accion-sin-seccion",
                     $"No puedes «{PermisosDePanel.EtiquetaCorta(permiso)}» sin «{PermisosDePanel.EtiquetaCorta(ver)}».");
         }
 
         return null;
+    }
+
+    private async Task<ErrorNegocio?> ValidarPermisosDelegablesAsync(
+        Guid operadorActualId, IReadOnlyList<string> permisos, CancellationToken ct)
+    {
+        var actual = await baseDeDatos.OperadoresPlataforma
+            .AsNoTracking()
+            .Include(o => o.Permisos)
+            .SingleOrDefaultAsync(o => o.Id == operadorActualId && o.Activo, ct);
+
+        if (actual is null)
+            return ErrorNegocio.Validacion("operador-no-activo", "Tu cuenta de operador no está activa.");
+
+        if (actual.EsPrincipal) return null;
+
+        var propios = actual.Permisos.Select(p => p.Permiso);
+        return permisos.FirstOrDefault(permiso => !PermisosDePanel.Autoriza(propios, permiso)) is { } noDelegable
+            ? ErrorNegocio.Regla(
+                "permiso-no-delegable",
+                $"No puedes otorgar «{PermisosDePanel.EtiquetaCorta(noDelegable)}» porque no tienes ese permiso.")
+            : null;
     }
 
     private static ErrorNegocio? ValidarActualizacion(PeticionGuardarOperador p)

@@ -425,35 +425,116 @@
     }
 }
 
-/* ── Selector de permisos del panel ─────────────────────────────────────────────
-   Jerárquico: cada sección se abre con su «ver» y, dentro, sus acciones. Las secciones van en
-   una cuadrícula para no estirar el diálogo en alto, y las acciones se alinean bajo su sección
-   sin sangría: el ahorro de espacio es lo que pide la pantalla, no una jerarquía dibujada. */
-.permisos-secciones {
+/* ── Selector de permisos del panel ─────────────────────────────────────────── */
+.selector-permisos-panel {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(12rem, 1fr));
-    gap: 0.25rem 1.5rem;
+    grid-template-columns: minmax(12rem, 0.9fr) minmax(0, 1.5fr);
+    gap: 0.75rem;
+    align-items: stretch;
 }
 
-.seccion-permisos {
-    padding: 0.35rem 0.5rem;
-    border-radius: 6px;
+.permisos-modulos,
+.permisos-detalle {
+    min-width: 0;
+    border: 1px solid var(--borde);
+    border-radius: var(--radio);
+    background: var(--superficie);
 }
 
-.seccion-permisos > .mud-checkbox {
+.permisos-modulos {
+    overflow-y: auto;
+    max-height: 18rem;
+}
+
+.permiso-modulo {
+    display: flex;
+    align-items: center;
+    min-height: 2.75rem;
+    border-bottom: 1px solid var(--borde);
+}
+
+.permiso-modulo:last-child {
+    border-bottom: 0;
+}
+
+.permiso-modulo.activo {
+    background: var(--acento-suave);
+}
+
+.permiso-modulo > .mud-checkbox {
+    flex: 1 1 auto;
+    min-width: 0;
     font-weight: 500;
 }
 
-.seccion-permisos.abierta {
-    background: var(--superficie);
-    border: 1px solid var(--borde);
+.permiso-modulo-mostrar {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.25rem;
+    align-self: stretch;
+    padding: 0 0.5rem;
+    border: 0;
+    background: transparent;
+    color: var(--texto-suave);
+    cursor: pointer;
+}
+
+.permiso-modulo-mostrar:hover {
+    color: var(--acento);
+}
+
+.permiso-modulo-mostrar:focus-visible {
+    outline: 2px solid var(--acento);
+    outline-offset: -2px;
+}
+
+.permiso-modulo-cantidad {
+    font-family: var(--tipografia-monoespaciada);
+    font-size: 0.75rem;
+}
+
+.permisos-detalle {
+    padding: 0.75rem 1rem;
+}
+
+.permisos-detalle-encabezado {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 0.5rem;
+}
+
+.permisos-detalle-encabezado h3 {
+    margin: 0;
+    font-size: 0.95rem;
+    font-weight: 500;
+}
+
+.permisos-detalle-encabezado span,
+.permisos-detalle-ayuda {
+    color: var(--texto-suave);
+    font-size: 0.8rem;
+}
+
+.permisos-detalle-ayuda {
+    margin: 0.35rem 0 0.5rem;
 }
 
 .permisos-acciones {
-    margin-left: 0.25rem;
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(10rem, 1fr));
-    gap: 0 0.5rem;
+    grid-template-columns: minmax(0, 1fr);
+    max-height: 13rem;
+    overflow-y: auto;
+}
+
+@media (max-width: 42rem) {
+    .selector-permisos-panel {
+        grid-template-columns: minmax(0, 1fr);
+    }
+
+    .permisos-modulos {
+        max-height: 12rem;
+    }
 }
 
 /* ── Tarjeta de formulario ─────────────────────────────────────────────────────

@@ -36,6 +36,9 @@ public sealed class ServicioDeSesionDeOperador(IHttpClientFactory fabrica)
 
     public bool HaySesion => Sesion is not null && _accessToken is not null;
 
+    public bool TienePermiso(string permiso)
+        => PermisosDePanel.Autoriza(Sesion?.Permisos, permiso);
+
     public string? Token => _accessToken;
 
     public bool TokenVigente => _accessToken is not null && DateTime.UtcNow < _expiraUtc;

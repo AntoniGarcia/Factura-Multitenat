@@ -3,6 +3,7 @@ using Facturacion.Server.Data.Entidades.Documentos;
 using Facturacion.Server.Infra.Bitacora;
 using Facturacion.Server.Infra.Tenencia;
 using Facturacion.Server.Modules.Documentos.Impuestos;
+using Facturacion.Server.Modules.Documentos.Pagos;
 using Facturacion.Server.Modules.Documentos.Salidas;
 using Facturacion.Shared.Comun;
 using Facturacion.Shared.Contratos;
@@ -32,6 +33,7 @@ public sealed class ServicioDeEmision(
     IServicioEmpresaEmisora empresaEmisora,
     IServicioClientes clientes,
     IServicioProductos productos,
+    IServicioFolios folios,
     IServicioDeBitacora bitacora)
 {
     /// <summary>Único tipo de comprobante de esta fase: factura de ingreso estándar.</summary>
@@ -123,10 +125,26 @@ public sealed class ServicioDeEmision(
     public async Task<Resultado<ComprobanteDto>> GuardarAsync(
         Guid id, PeticionGuardarBorrador peticion, CancellationToken ct)
     {
+        await using var transaccion = await baseDeDatos.Database.BeginTransactionAsync(ct);
+        await BloqueoDePagos.TomarAsync(baseDeDatos, contexto.EmpresaActual
+            ?? throw new InvalidOperationException("Falta empresa activa."), ct);
         var comprobante = await CargarAsync(id, ct);
 
         if (comprobante is null)
             return ErrorNegocio.NoEncontrado("comprobante-no-encontrado", "Ese comprobante no existe.");
+
+        if (comprobante.TipoDeComprobante != TipoFactura)
+            return ErrorNegocio.Conflicto("tipo-comprobante-incompatible",
+                "Este documento debe modificarse desde su formulario de pago o traslado, no desde una factura.");
+
+        if (peticion.SerieId is { } serieId)
+        {
+            var serie = await folios.ValidarSerieAsync(serieId, comprobante.TipoDeComprobante, ct);
+            if (serie.EsFallo) return serie.Error!;
+        }
+        if (comprobante.Folio is not null && peticion.SerieId != comprobante.SerieId)
+            return ErrorNegocio.Conflicto("serie-con-folio-reservado",
+                "La serie no puede cambiar porque este documento ya tiene un folio reservado.");
 
         // Igual que ApartarAsync en ServicioDeTimbrado: se edita desde borrador o desde un
         // error ya resuelto —ahí el folio sigue apartado y se reutiliza al reintentar—, nunca
@@ -187,6 +205,7 @@ public sealed class ServicioDeEmision(
 
         await baseDeDatos.SaveChangesAsync(ct);
 
+        await transaccion.CommitAsync(ct);
         return ADto(comprobante);
     }
 
@@ -197,6 +216,9 @@ public sealed class ServicioDeEmision(
     /// </summary>
     public async Task<Resultado> EliminarBorradorAsync(Guid id, CancellationToken ct)
     {
+        await using var transaccion = await baseDeDatos.Database.BeginTransactionAsync(ct);
+        await BloqueoDePagos.TomarAsync(baseDeDatos, contexto.EmpresaActual
+            ?? throw new InvalidOperationException("Falta empresa activa."), ct);
         var comprobante = await CargarAsync(id, ct);
 
         if (comprobante is null)
@@ -216,6 +238,7 @@ public sealed class ServicioDeEmision(
 
         baseDeDatos.Comprobantes.Remove(comprobante);
         await baseDeDatos.SaveChangesAsync(ct);
+        await transaccion.CommitAsync(ct);
 
         return Resultado.Exito();
     }
@@ -451,8 +474,13 @@ public sealed class ServicioDeEmision(
         comprobante.ReceptorRfc = receptor?.Rfc ?? string.Empty;
         comprobante.ReceptorNombre = receptor?.Nombre ?? string.Empty;
         comprobante.ReceptorRegimenFiscal = receptor?.RegimenFiscal ?? string.Empty;
-        comprobante.ReceptorDomicilioFiscal = receptor?.DomicilioFiscalCp ?? string.Empty;
+        // El SAT exige que el domicilio fiscal de ambos RFC genéricos sea el lugar de expedición.
+        comprobante.ReceptorDomicilioFiscal = receptor?.Rfc is "XAXX010101000" or "XEXX010101000"
+            ? comprobante.LugarExpedicion
+            : receptor?.DomicilioFiscalCp ?? string.Empty;
         comprobante.ReceptorUsoCfdi = peticion.ReceptorUsoCfdi ?? string.Empty;
+        comprobante.ReceptorResidenciaFiscal = receptor?.ResidenciaFiscal;
+        comprobante.ReceptorNumRegIdTrib = receptor?.NumRegIdTrib;
 
         // Información Global solo aplica al RFC genérico nacional (ARQUITECTURA.md §7); en
         // cualquier otro caso no se emite el nodo, así que ni se guardan los campos.

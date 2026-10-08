@@ -24,7 +24,7 @@ public static class PaquetesDeOperadorEndpoints
         grupo.MapGet("/{id:guid}", Obtener).RequireAuthorization(PoliticasDeOperador.VerPaquetes);
         grupo.MapPost("/", Crear).RequireAuthorization(PoliticasDeOperador.AdministrarPaquetes);
         grupo.MapPut("/{id:guid}", Actualizar).RequireAuthorization(PoliticasDeOperador.AdministrarPaquetes);
-        grupo.MapPost("/{id:guid}/activo", CambiarActivo).RequireAuthorization(PoliticasDeOperador.AdministrarPaquetes);
+        grupo.MapPost("/{id:guid}/activo", CambiarActivo).RequireAuthorization(PoliticasDeOperador.CambiarEstadoPaquetes);
     }
 
     private static async Task<IResult> Listar(

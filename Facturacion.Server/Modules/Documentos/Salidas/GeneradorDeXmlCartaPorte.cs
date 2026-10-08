@@ -121,6 +121,13 @@ public sealed class GeneradorDeXmlCartaPorte(GeneradorDeXmlCfdi generadorCfdi)
                 "carta-porte-datos-incompletos",
                 "Guarda de nuevo el traslado después de elegir un vehículo y operador activos antes de validar su XML.");
 
+        if (traslado.FiguraTipo != "01" || !Rfc.Validar(traslado.FiguraRfc).EsValido ||
+            traslado.FiguraNumeroLicencia is { Length: > 0 } licencia &&
+                (licencia.Length is < 6 or > 16 || licencia.Contains('|')) ||
+            traslado.FiguraNombre!.Length > 254 || traslado.FiguraNombre.Contains('|'))
+            return ErrorNegocio.Regla("figura-carta-porte-invalida",
+                "El tipo, RFC, nombre o licencia de la figura no cumple el formato requerido. Corrige el catálogo de Transporte y vuelve a guardar el borrador.");
+
         var placa = LimpiarPlaca(traslado.VehiculoPlaca!);
         if (traslado.DistanciaRecorridaKm < 0.01m || traslado.DistanciaRecorridaKm > 99999m ||
             Math.Round(traslado.DistanciaRecorridaKm, 2) != traslado.DistanciaRecorridaKm ||

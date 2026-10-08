@@ -296,11 +296,18 @@ public sealed class ServicioDeNotaria(
                 "El monto de la operación debe ser igual al subtotal más el IVA.");
 
         if (peticion.Inmuebles.Count == 0 ||
-            peticion.Inmuebles.Select(x => x.Orden).Distinct().Count() != peticion.Inmuebles.Count ||
-            peticion.Inmuebles.Any(x => !EsInmuebleValido(x)))
+            peticion.Inmuebles.Select(x => x.Orden).Distinct().Count() != peticion.Inmuebles.Count)
             return ErrorNegocio.Validacion(
                 "inmueble-notarial-invalido",
-                "Agrega al menos un inmueble con tipo SAT, calle, municipio, estado, país y código postal válidos.");
+                "Agrega al menos un inmueble con un orden distinto para cada uno.");
+
+        foreach (var inmueble in peticion.Inmuebles)
+        {
+            var error = ErrorDeInmueble(inmueble);
+            if (error is not null)
+                return ErrorNegocio.Validacion("inmueble-notarial-invalido",
+                    $"Inmueble {inmueble.Orden}: {error}");
+        }
 
         var paises = peticion.Inmuebles.Select(x => x.Pais.Trim()).Distinct().ToArray();
         if (await baseDeDatos.SatPaises.AsNoTracking().CountAsync(x => paises.Contains(x.Clave) && x.Vigente, ct) != paises.Length)
@@ -333,19 +340,22 @@ public sealed class ServicioDeNotaria(
         return true;
     }
 
-    private static bool EsInmuebleValido(InmuebleNotarialDto inmueble)
-        => inmueble.Orden > 0 &&
-           TiposDeInmueble.Contains(inmueble.TipoInmueble.Trim()) &&
-           EnRango(inmueble.Calle, 150) &&
-           EnRangoOpcional(inmueble.NumeroExterior, 55) &&
-           EnRangoOpcional(inmueble.NumeroInterior, 30) &&
-           EnRangoOpcional(inmueble.Colonia, 100) &&
-           EnRangoOpcional(inmueble.Localidad, 100) &&
-           EnRangoOpcional(inmueble.Referencia, 100) &&
-           EnRango(inmueble.Municipio, 100) &&
-           inmueble.Estado.Trim().Length == 3 &&
-           inmueble.Pais.Trim().Length == 3 &&
-           PatronCodigoPostal.IsMatch(inmueble.CodigoPostal.Trim());
+    private static string? ErrorDeInmueble(InmuebleNotarialDto inmueble)
+    {
+        if (inmueble.Orden < 1) return "el orden debe ser positivo.";
+        if (!TiposDeInmueble.Contains(inmueble.TipoInmueble.Trim())) return "selecciona un tipo de inmueble válido.";
+        if (!EnRango(inmueble.Calle, 150)) return "captura una calle de hasta 150 caracteres.";
+        if (!EnRangoOpcional(inmueble.NumeroExterior, 55)) return "el número exterior supera 55 caracteres.";
+        if (!EnRangoOpcional(inmueble.NumeroInterior, 30)) return "el número interior supera 30 caracteres.";
+        if (!EnRangoOpcional(inmueble.Colonia, 100)) return "la colonia supera 100 caracteres.";
+        if (!EnRangoOpcional(inmueble.Localidad, 100)) return "la localidad supera 100 caracteres.";
+        if (!EnRangoOpcional(inmueble.Referencia, 100)) return "la referencia supera 100 caracteres.";
+        if (!EnRango(inmueble.Municipio, 100)) return "captura un municipio o alcaldía de hasta 100 caracteres.";
+        if (inmueble.Estado.Trim().Length != 3) return "selecciona una entidad federativa del catálogo SAT.";
+        if (inmueble.Pais.Trim().Length != 3) return "selecciona un país del catálogo SAT.";
+        if (!PatronCodigoPostal.IsMatch(inmueble.CodigoPostal.Trim())) return "captura un código postal de cinco dígitos.";
+        return null;
+    }
 
     private static bool EnRango(string? valor, int maximo)
         => !string.IsNullOrWhiteSpace(valor) && valor.Trim().Length <= maximo;

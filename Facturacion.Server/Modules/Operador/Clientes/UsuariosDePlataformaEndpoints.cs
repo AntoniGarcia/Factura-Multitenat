@@ -23,10 +23,10 @@ public static class UsuariosDePlataformaEndpoints
             .RequireAuthorization(PoliticasDeOperador.Operador);
 
         grupo.MapGet("/", Listar).RequireAuthorization(PoliticasDeOperador.VerUsuarios);
-        grupo.MapDelete("/{id:guid}/empresas/{empresaId:guid}/acceso", EliminarAccesoAEmpresa).RequireAuthorization(PoliticasDeOperador.AdministrarUsuarios);
-        grupo.MapPut("/{id:guid}/contrasena", RestablecerContrasena).RequireAuthorization(PoliticasDeOperador.AdministrarUsuarios);
-        grupo.MapPut("/{id:guid}/correo", CambiarCorreo).RequireAuthorization(PoliticasDeOperador.AdministrarUsuarios);
-        grupo.MapPost("/{id:guid}/activo", CambiarActivo).RequireAuthorization(PoliticasDeOperador.AdministrarUsuarios);
+        grupo.MapDelete("/{id:guid}/empresas/{empresaId:guid}/acceso", EliminarAccesoAEmpresa).RequireAuthorization(PoliticasDeOperador.QuitarAccesoUsuarios);
+        grupo.MapPut("/{id:guid}/contrasena", RestablecerContrasena).RequireAuthorization(PoliticasDeOperador.RestablecerContrasenasUsuarios);
+        grupo.MapPut("/{id:guid}/correo", CambiarCorreo).RequireAuthorization(PoliticasDeOperador.CambiarCorreosUsuarios);
+        grupo.MapPost("/{id:guid}/activo", CambiarActivo).RequireAuthorization(PoliticasDeOperador.CambiarEstadoUsuarios);
     }
 
     private static async Task<IResult> Listar(

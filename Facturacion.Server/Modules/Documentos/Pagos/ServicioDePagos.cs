@@ -16,8 +16,9 @@ namespace Facturacion.Server.Modules.Documentos.Pagos;
 ///
 /// <para><b>El saldo se deriva, no se guarda</b></para>
 /// No hay una columna «saldo» en la factura. El saldo pendiente es el total menos lo abonado
-/// en los pagos <b>ya timbrados</b>: un borrador de pago no debe mover el saldo de nada, y uno
-/// cancelado tampoco. Guardar un saldo obligaría a mantenerlo sincronizado desde tres sitios
+/// en los pagos emitidos o en proceso: un borrador no mueve el saldo y uno cancelado tampoco.
+/// Mientras se confirma una emisión o cancelación, su importe sigue apartado.
+/// Guardar un saldo obligaría a mantenerlo sincronizado desde tres sitios
 /// distintos y a que los tres acertaran siempre.
 ///
 /// <para><b>Lo que sí se congela</b></para>
@@ -31,6 +32,7 @@ public sealed class ServicioDePagos(
     IServicioEmpresaEmisora empresaEmisora,
     IServicioClientes clientes,
     IServicioDeBitacora bitacora,
+    HusoDeEmpresa huso,
     ILogger<ServicioDePagos> registro)
 {
     /// <summary>Sin objeto de exportación: fuera del alcance del MVP (ARQUITECTURA.md §6).</summary>
@@ -41,12 +43,6 @@ public sealed class ServicioDePagos(
 
     /// <summary>Solo se puede pagar lo que se emitió con método «pago en parcialidades o diferido».</summary>
     private const string MetodoDiferido = "PPD";
-
-    /// <summary>
-    /// Formas de pago electrónicas: con ellas el SAT exige los datos bancarios (§28). El
-    /// efectivo (01) y las demás no los llevan.
-    /// </summary>
-    private static readonly string[] FormasQueExigenBanco = ["02", "03", "04", "05", "28", "29"];
 
     // ── Alta ────────────────────────────────────────────────────────────────────────────
 
@@ -141,19 +137,21 @@ public sealed class ServicioDePagos(
     }
 
     /// <summary>
-    /// Lo abonado a una factura y en cuántas parcialidades. Solo cuentan los pagos timbrados:
-    /// un borrador no debe reducir el saldo de nada, y uno cancelado dejó de existir para el SAT.
+    /// Los pagos en proceso apartan saldo; una cancelación pendiente todavía lo consume.
+    /// Las parcialidades canceladas no se reutilizan, aunque su importe ya no consuma saldo.
     /// </summary>
     private async Task<(decimal Abonado, int Parcialidades)> AbonadoAsync(Guid uuid, CancellationToken ct)
     {
         var renglones = await baseDeDatos.PagosDocumentos
             .AsNoTracking()
             .Where(d => d.IdDocumento == uuid &&
-                        d.Pago.Comprobante.Estatus == EstatusComprobante.Timbrado.ACadena())
-            .Select(d => d.ImpPagado)
+                (d.Pago.Comprobante.Estatus == "timbrando" || d.Pago.Comprobante.Estatus == "timbrado" ||
+                 d.Pago.Comprobante.Estatus == "en_cancelacion" || d.Pago.Comprobante.Estatus == "cancelado"))
+            .Select(d => new { d.ImpPagado, d.NumParcialidad, d.Pago.Comprobante.Estatus })
             .ToListAsync(ct);
 
-        return (renglones.Sum(), renglones.Count);
+        return (renglones.Where(d => d.Estatus != "cancelado").Sum(d => d.ImpPagado),
+            renglones.Count == 0 ? 0 : renglones.Max(d => d.NumParcialidad));
     }
 
     // ── Guardado ────────────────────────────────────────────────────────────────────────
@@ -161,6 +159,26 @@ public sealed class ServicioDePagos(
     public async Task<Resultado<PagoDto>> GuardarAsync(
         Guid id, PeticionGuardarPago peticion, CancellationToken ct)
     {
+        if (peticion.FechaPagoLocal is { } local)
+        {
+            var zona = await huso.ObtenerAsync(ct);
+            if (local == default || local.Kind != DateTimeKind.Unspecified ||
+                zona.IsInvalidTime(local) || zona.IsAmbiguousTime(local))
+                return ErrorNegocio.Validacion("fecha-pago-invalida",
+                    "La fecha y hora del pago no son válidas o son ambiguas en el huso de la empresa.");
+            try
+            {
+                peticion = peticion with { FechaPagoUtc = TimeZoneInfo.ConvertTimeToUtc(local, zona) };
+            }
+            catch (ArgumentException)
+            {
+                return ErrorNegocio.Validacion("fecha-pago-invalida", "La fecha del pago está fuera del rango permitido.");
+            }
+        }
+
+        await using var transaccion = await baseDeDatos.Database.BeginTransactionAsync(ct);
+        await BloqueoDePagos.TomarAsync(baseDeDatos, contexto.EmpresaActual
+            ?? throw new InvalidOperationException("Falta empresa activa."), ct);
         var comprobante = await CargarAsync(id, ct);
 
         if (comprobante is null)
@@ -171,10 +189,10 @@ public sealed class ServicioDePagos(
                 "comprobante-no-editable",
                 $"El comprobante está en '{comprobante.Estatus}' y no se puede editar desde ahí.");
 
-        if (peticion.Documentos.Count == 0)
+        if (peticion.Documentos is null || peticion.Documentos.Count == 0)
             return ErrorNegocio.Validacion("pago-sin-documentos", "Agrega al menos una factura a pagar.");
 
-        var validado = Validar(peticion);
+        var validado = await ValidarAsync(peticion, ct);
         if (validado.EsFallo) return validado.Error!;
 
         var receptor = await clientes.ObtenerParaTimbradoAsync(peticion.ClienteId, ct);
@@ -182,7 +200,7 @@ public sealed class ServicioDePagos(
         if (receptor is null)
             return ErrorNegocio.Validacion("cliente-no-encontrado", "Ese cliente no existe o está dado de baja.");
 
-        var documentos = await ResolverDocumentosAsync(peticion, ct);
+        var documentos = await ResolverDocumentosAsync(peticion, receptor.Rfc, ct);
         if (documentos.EsFallo) return documentos.Error!;
 
         // Mismo criterio que en ServicioDeEmision: sin guardado previo, el registro es un alta.
@@ -202,12 +220,39 @@ public sealed class ServicioDePagos(
         registro.LogInformation(
             "Pago {Comprobante} guardado con {Documentos} documento(s).", comprobante.Id, documentos.Valor.Count);
 
+        await transaccion.CommitAsync(ct);
         return ADto(comprobante, comprobante.Pagos.FirstOrDefault());
+    }
+
+    internal async Task<Resultado> ValidarSaldosParaEmisionAsync(Comprobante comprobante, CancellationToken ct)
+    {
+        if (comprobante.ClienteId is not { } clienteId || comprobante.Pagos.Count != 1)
+            return ErrorNegocio.Validacion("pago-incompleto", "Guarda un pago completo antes de emitirlo.");
+        var pago = comprobante.Pagos[0];
+        var peticion = new PeticionGuardarPago(clienteId, pago.FechaPagoUtc, pago.FormaDePagoP,
+            pago.MonedaP, pago.TipoCambioP, pago.Monto, pago.NumOperacion, pago.RfcEmisorCtaOrd,
+            pago.NomBancoOrdExt, pago.CtaOrdenante, pago.RfcEmisorCtaBen, pago.CtaBeneficiario,
+            [.. pago.Documentos.Select(d => new RenglonDePagoDto(d.IdDocumento, d.ImpPagado))]);
+        var actuales = await ResolverDocumentosAsync(peticion, comprobante.ReceptorRfc, ct);
+        if (actuales.EsFallo) return actuales.Error!;
+        foreach (var actual in actuales.Valor)
+        {
+            var guardado = pago.Documentos.Single(d => d.IdDocumento == actual.Factura.Uuid);
+            if (guardado.ImpSaldoAnt != actual.SaldoAnterior ||
+                guardado.NumParcialidad != actual.NumParcialidad ||
+                guardado.ImpSaldoInsoluto != actual.SaldoAnterior - guardado.ImpPagado)
+                return ErrorNegocio.Conflicto("saldo-pago-desactualizado",
+                    "Otro pago cambió el saldo o la parcialidad. Guarda de nuevo el borrador y revisa sus importes antes de emitir; no se reservó folio ni timbre.");
+        }
+        return Resultado.Exito();
     }
 
 
     public async Task<Resultado> EliminarBorradorAsync(Guid id, CancellationToken ct)
     {
+        await using var transaccion = await baseDeDatos.Database.BeginTransactionAsync(ct);
+        await BloqueoDePagos.TomarAsync(baseDeDatos, contexto.EmpresaActual
+            ?? throw new InvalidOperationException("Falta empresa activa."), ct);
         var comprobante = await CargarAsync(id, ct);
 
         if (comprobante is null)
@@ -228,51 +273,66 @@ public sealed class ServicioDePagos(
 
         baseDeDatos.Comprobantes.Remove(comprobante);
         await baseDeDatos.SaveChangesAsync(ct);
+        await transaccion.CommitAsync(ct);
 
         return Resultado.Exito();
     }
 
 
     /// <summary>
-    /// Las reglas de §27 y §28 que no dependen de la base: cuadre de la rejilla, tipo de
-    /// cambio y datos bancarios.
+    /// Valida la captura y las claves vigentes del SAT antes de resolver las facturas.
     /// </summary>
-    private static Resultado Validar(PeticionGuardarPago peticion)
+    private async Task<Resultado> ValidarAsync(PeticionGuardarPago peticion, CancellationToken ct)
     {
-        if (peticion.Monto <= 0)
-            return ErrorNegocio.Validacion("monto-invalido", "El importe del pago tiene que ser mayor que cero.");
+        const decimal maximoImporte = 999999999999.999999m;
+        if (peticion.Monto <= 0 || peticion.Monto > maximoImporte ||
+            peticion.Documentos.Any(d => d.ImpPagado <= 0 || d.ImpPagado > maximoImporte))
+            return ErrorNegocio.Validacion("monto-invalido", "Captura importes positivos de hasta doce dígitos enteros.");
 
-        // §27: la suma de la rejilla tiene que cuadrar con el importe de la cabecera. Se
-        // compara a dos decimales porque es la precisión en la que el usuario capturó.
-        var suma = Math.Round(peticion.Documentos.Sum(d => d.ImpPagado), 2, MotorDeImpuestos.ModoDeRedondeo);
-        var monto = Math.Round(peticion.Monto, 2, MotorDeImpuestos.ModoDeRedondeo);
+        if (peticion.Documentos.Count > 100)
+            return ErrorNegocio.Validacion("demasiados-documentos", "Un pago admite hasta 100 facturas.");
+
+        if (peticion.Documentos.Select(d => d.IdDocumento).Distinct().Count() != peticion.Documentos.Count)
+            return ErrorNegocio.Validacion("documento-repetido", "Una factura no puede aparecer dos veces en el mismo pago.");
+
+        if (peticion.FechaPagoUtc == default || peticion.FechaPagoUtc.Kind != DateTimeKind.Utc)
+            return ErrorNegocio.Validacion("fecha-pago-invalida", "Captura una fecha válida para el pago.");
+
+        var decimales = await baseDeDatos.SatMonedas.AsNoTracking()
+            .Where(x => x.Clave == peticion.MonedaP && x.Vigente && x.Clave != "XXX")
+            .Select(x => (int?)x.Decimales).FirstOrDefaultAsync(ct);
+        if (decimales is null)
+            return ErrorNegocio.Validacion("moneda-invalida", "Selecciona una moneda vigente del catálogo SAT; XXX no es una moneda de pago.");
+
+        if (peticion.FormaDePagoP == "99" || !await baseDeDatos.SatFormasPago.AsNoTracking()
+                .AnyAsync(x => x.Clave == peticion.FormaDePagoP && x.Vigente, ct))
+            return ErrorNegocio.Validacion("forma-pago-invalida", "Selecciona la forma en que se recibió el pago; no puede ser por definir.");
+
+        if (Math.Round(peticion.Monto, decimales.Value) != peticion.Monto ||
+            peticion.Documentos.Any(d => Math.Round(d.ImpPagado, decimales.Value) != d.ImpPagado))
+            return ErrorNegocio.Validacion("precision-pago-invalida", $"Los importes en {peticion.MonedaP} admiten {decimales.Value} decimales.");
+
+        var suma = peticion.Documentos.Sum(d => d.ImpPagado);
+        var monto = peticion.Monto;
 
         if (suma != monto)
             return ErrorNegocio.Validacion(
                 "pago-no-cuadra",
                 $"Lo repartido entre las facturas ({suma:N2}) no coincide con el importe del pago ({monto:N2}).");
 
-        if (peticion.MonedaP != "MXN" && peticion.TipoCambioP is not { } tc)
+        if (peticion.MonedaP != "MXN" && peticion.TipoCambioP is null)
             return ErrorNegocio.Validacion(
                 "tipo-de-cambio-requerido",
                 $"El pago está en {peticion.MonedaP}: hace falta el tipo de cambio.");
-        else if (peticion.MonedaP != "MXN" && peticion.TipoCambioP is { } valor && valor <= 0)
+        else if (peticion.MonedaP != "MXN" && peticion.TipoCambioP is { } valor &&
+                 (valor <= 0 || valor > maximoImporte || Math.Round(valor, 6) != valor))
             return ErrorNegocio.Validacion(
-                "tipo-de-cambio-invalido", "El tipo de cambio tiene que ser mayor que cero.");
+                "tipo-de-cambio-invalido", "El tipo de cambio debe ser positivo y tener hasta seis decimales.");
 
-        // §28: con forma de pago electrónica, los datos del banco son obligatorios.
-        if (FormasQueExigenBanco.Contains(peticion.FormaDePagoP))
-        {
-            if (string.IsNullOrWhiteSpace(peticion.CtaOrdenante))
-                return ErrorNegocio.Validacion(
-                    "cuenta-ordenante-requerida",
-                    "Con esa forma de pago el SAT exige la cuenta ordenante.");
-
-            if (string.IsNullOrWhiteSpace(peticion.CtaBeneficiario))
-                return ErrorNegocio.Validacion(
-                    "cuenta-beneficiaria-requerida",
-                    "Con esa forma de pago el SAT exige la cuenta beneficiaria.");
-        }
+        if (peticion.NumOperacion?.Length > 100 || peticion.NomBancoOrdExt?.Length > 300 ||
+            peticion.CtaOrdenante?.Length > 50 || peticion.CtaBeneficiario?.Length > 50 ||
+            peticion.RfcEmisorCtaOrd?.Length > 13 || peticion.RfcEmisorCtaBen?.Length > 13)
+            return ErrorNegocio.Validacion("datos-bancarios-demasiado-largos", "Revisa la longitud de la referencia y de los datos bancarios.");
 
         return Resultado.Exito();
     }
@@ -283,7 +343,7 @@ public sealed class ServicioDePagos(
     /// pago, y aceptar su saldo a ciegas emitiría un complemento que ya no cuadra.
     /// </summary>
     private async Task<Resultado<IReadOnlyList<DocumentoResuelto>>> ResolverDocumentosAsync(
-        PeticionGuardarPago peticion, CancellationToken ct)
+        PeticionGuardarPago peticion, string rfcReceptor, CancellationToken ct)
     {
         var resueltos = new List<DocumentoResuelto>(peticion.Documentos.Count);
 
@@ -300,6 +360,16 @@ public sealed class ServicioDePagos(
                 return ErrorNegocio.Validacion(
                     "documento-no-encontrado",
                     $"La factura del renglón {i + 1} no existe en esta empresa.");
+
+            if (factura.TipoDeComprobante != TiposDeComprobante.Ingreso || factura.Estatus != "timbrado")
+                return ErrorNegocio.Validacion("documento-no-pagable", $"El renglón {i + 1} debe ser una factura de ingreso timbrada y vigente.");
+
+            if (factura.ClienteId != peticion.ClienteId || factura.ReceptorRfc != rfcReceptor)
+                return ErrorNegocio.Validacion("documento-de-otro-cliente", $"La factura del renglón {i + 1} no corresponde al cliente seleccionado.");
+
+            // La captura aún no admite EquivalenciaDR: nunca suponer 1 entre monedas distintas.
+            if (factura.Moneda != peticion.MonedaP)
+                return ErrorNegocio.Validacion("monedas-distintas-no-admitidas", $"La factura del renglón {i + 1} está en {factura.Moneda}. Por ahora el pago debe recibirse en esa misma moneda.");
 
             if (factura.MetodoPago != MetodoDiferido)
                 return ErrorNegocio.Validacion(
@@ -440,7 +510,7 @@ public sealed class ServicioDePagos(
             if (objetoImp == ObjetosDeImpuesto.SiObjeto)
             {
                 var repartidos = CalculoDeImpuestosDePago.Repartir(
-                    resuelto.Impuestos, resuelto.Factura.Total, resuelto.ImpPagado, DecimalesDePresentacion);
+                    resuelto.Impuestos, resuelto.Factura.Total, resuelto.ImpPagado, 6);
 
                 documento.Impuestos.AddRange(repartidos.Select(i => new ImpuestoDocumentoPagado
                 {
@@ -461,13 +531,6 @@ public sealed class ServicioDePagos(
         comprobante.Pagos.Add(pago);
     }
 
-    /// <summary>
-    /// Los importes del complemento se calculan con los decimales de la moneda. Aquí se usa
-    /// dos porque las monedas del MVP los tienen; el generador vuelve a formatear con los del
-    /// catálogo al escribir el XML.
-    /// </summary>
-    private const int DecimalesDePresentacion = 2;
-
     // ── Apoyo ───────────────────────────────────────────────────────────────────────────
 
     private Task<Comprobante?> CargarAsync(Guid id, CancellationToken ct)
@@ -485,7 +548,7 @@ public sealed class ServicioDePagos(
             comprobante.ClienteId,
             comprobante.ReceptorRfc,
             comprobante.ReceptorNombre,
-            pago?.FechaPagoUtc ?? comprobante.FechaEmisionUtc,
+            DateTime.SpecifyKind(pago?.FechaPagoUtc ?? comprobante.FechaEmisionUtc, DateTimeKind.Utc),
             pago?.FormaDePagoP,
             pago?.MonedaP ?? "MXN",
             pago?.TipoCambioP,

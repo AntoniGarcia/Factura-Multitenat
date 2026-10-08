@@ -31,6 +31,12 @@ public sealed class GeneradorDeXmlComercioExterior(EsquemasSat esquemas)
     {
         if (comprobante.Exportacion != "02" || comprobante.TipoDeComprobante != "I")
             return ErrorNegocio.Regla("comercio-tipo-invalido", "Solo se genera el complemento para facturas de exportación definitiva.");
+        if (string.IsNullOrWhiteSpace(datos.ResidenciaFiscal) || datos.ResidenciaFiscal == "MEX" ||
+            string.IsNullOrWhiteSpace(datos.NumeroRegistroTributario) ||
+            comprobante.ReceptorResidenciaFiscal != datos.ResidenciaFiscal ||
+            comprobante.ReceptorNumRegIdTrib != datos.NumeroRegistroTributario)
+            return ErrorNegocio.Validacion("comercio-receptor-incompleto",
+                "El receptor extranjero necesita país y registro tributario coincidentes en el cliente y en Comercio Exterior. Revisa el cliente y vuelve a guardar la factura.");
         if (datos.ClavePedimento != "A1" || datos.TipoCambioUsd is null or <= 0 ||
             datos.TotalUsd is null or < 0 ||
             datos.CertificadoOrigen && string.IsNullOrWhiteSpace(datos.NumeroCertificadoOrigen))

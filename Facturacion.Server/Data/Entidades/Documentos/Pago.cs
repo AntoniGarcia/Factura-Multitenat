@@ -15,10 +15,8 @@ namespace Facturacion.Server.Data.Entidades.Documentos;
 /// <c>XXX</c>: el dinero del pago no se declara ahí sino aquí dentro. Ver
 /// <c>GeneradorDeXmlCfdi</c>, que arma esa rama.
 ///
-/// <para><b>Los datos bancarios no son adorno</b></para>
-/// Con las formas de pago electrónicas —transferencia, cheque, tarjeta— el SAT los exige
-/// (§28). Se guardan como los capturó el usuario; validar su forma es de quien construye la
-/// petición, no de la entidad.
+/// <para>Los datos bancarios son opcionales para transferencias, incluido SPEI.
+/// Si se capturan, sus condiciones y formato se validan antes de emitir.</para>
 /// </summary>
 public sealed class Pago : IEntidadDeEmpresa
 {

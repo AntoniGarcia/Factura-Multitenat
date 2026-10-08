@@ -5,7 +5,7 @@
 namespace Facturacion.Server.Migrations
 {
     /// <inheritdoc />
-    public partial class _20261007_A_EstadoDeInmuebleNotarial : Migration
+    public partial class _20261007_B_EstadoInmuebleNotarial : Migration
     {
         /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)

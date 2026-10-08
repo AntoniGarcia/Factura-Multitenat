@@ -58,7 +58,23 @@ public sealed class SelladoDeEmpresaInterceptor(IContextoEmpresaInterno contexto
                     if (entrada.Property(e => e.EmpresaId).IsModified)
                         throw new InvalidOperationException(
                             $"Se intentó mover '{entrada.Entity.GetType().Name}' de una empresa a otra.");
+                    VerificarEmpresaActiva();
                     break;
+
+                case EntityState.Deleted:
+                    VerificarEmpresaActiva();
+                    break;
+            }
+
+            void VerificarEmpresaActiva()
+            {
+                // Los procesos globales y el operador conservan su alcance explícito sin
+                // empresa activa. Una petición de empresa nunca puede escribir otra tenencia.
+                if (contexto.EmpresaActual is not { } activa) return;
+                var original = entrada.Property(e => e.EmpresaId).OriginalValue;
+                if (entrada.Entity.EmpresaId != activa || original != activa)
+                    throw new InvalidOperationException(
+                        $"Se intentó modificar o eliminar '{entrada.Entity.GetType().Name}' de una empresa distinta de la activa.");
             }
         }
     }

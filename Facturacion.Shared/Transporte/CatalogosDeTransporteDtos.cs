@@ -72,7 +72,7 @@ public sealed record MercanciaCartaPorteDto(
 /// <summary>Resultado de validar el XML de un traslado sin enviarlo a un PAC.</summary>
 public sealed record ValidacionXmlCartaPorteDto(string Mensaje);
 
-/// <summary>Datos persistidos de un traslado propio. Los horarios se devuelven en UTC.</summary>
+/// <summary>Datos del traslado con instantes UTC y horarios de captura calculados por el servidor.</summary>
 public sealed record TrasladoCartaPorteDto(
     Guid ComprobanteId,
     string Estatus,
@@ -87,4 +87,8 @@ public sealed record TrasladoCartaPorteDto(
     IReadOnlyList<MercanciaCartaPorteDto> Mercancias,
     Guid? ClienteDestinoId = null,
     IReadOnlyList<ComprobanteRelacionadoDto>? Relacionados = null,
-    string? Observaciones = null);
+    string? Observaciones = null)
+{
+    public DateTime FechaSalidaLocal { get; init; }
+    public DateTime FechaLlegadaLocal { get; init; }
+}

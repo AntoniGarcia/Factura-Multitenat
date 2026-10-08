@@ -25,7 +25,7 @@ public static class EsquemasDeAutenticacion
 ///    los inquilinos: el operador no tiene empresa ni bolsa.
 ///
 /// <para><b>Por qué no hay "superadmin"</b></para>
-/// El operador principal (el que crea la BD) se siembra con los trece permisos del panel.
+/// El operador principal (el que crea la BD) se siembra con todos los permisos del panel.
 /// Si algún día hace falta distinguir, se añade el permiso y no un rol.
 /// </summary>
 public static class PoliticasDeOperador
@@ -36,15 +36,27 @@ public static class PoliticasDeOperador
     /// <summary>Permisos individuales del panel — mismas claves que <see cref="PermisosDePanel"/>.</summary>
     public const string VerPaquetes = PermisosDePanel.VerPaquetes;
     public const string AdministrarPaquetes = PermisosDePanel.AdministrarPaquetes;
+    public const string CambiarEstadoPaquetes = PermisosDePanel.CambiarEstadoPaquetes;
     public const string VerCompras = PermisosDePanel.VerCompras;
     public const string AcreditarCompras = PermisosDePanel.AcreditarCompras;
+    public const string SoloAcreditarCompras = PermisosDePanel.SoloAcreditarCompras;
+    public const string DescartarCompras = PermisosDePanel.DescartarCompras;
     public const string VerClientes = PermisosDePanel.VerClientes;
     public const string AdministrarClientes = PermisosDePanel.AdministrarClientes;
     public const string AsignarTimbres = PermisosDePanel.AsignarTimbres;
+    public const string EditarContactoCuentas = PermisosDePanel.EditarContactoCuentas;
+    public const string CambiarEstadoEmpresas = PermisosDePanel.CambiarEstadoEmpresas;
+    public const string GestionarLicencias = PermisosDePanel.GestionarLicencias;
+    public const string GestionarMembresias = PermisosDePanel.GestionarMembresias;
     public const string VerUsuarios = PermisosDePanel.VerUsuarios;
     public const string AdministrarUsuarios = PermisosDePanel.AdministrarUsuarios;
+    public const string RestablecerContrasenasUsuarios = PermisosDePanel.RestablecerContrasenasUsuarios;
+    public const string CambiarCorreosUsuarios = PermisosDePanel.CambiarCorreosUsuarios;
+    public const string CambiarEstadoUsuarios = PermisosDePanel.CambiarEstadoUsuarios;
+    public const string QuitarAccesoUsuarios = PermisosDePanel.QuitarAccesoUsuarios;
     public const string VerOperadores = PermisosDePanel.VerOperadores;
     public const string AdministrarOperadores = PermisosDePanel.AdministrarOperadores;
+    public const string CambiarEstadoOperadores = PermisosDePanel.CambiarEstadoOperadores;
     public const string VerConfiguracion = PermisosDePanel.VerConfiguracion;
     public const string AdministrarConfiguracion = PermisosDePanel.AdministrarConfiguracion;
 
@@ -63,15 +75,17 @@ public static class PoliticasDeOperador
                 !contexto.User.HasClaim(c => c.Type == ClavesDeClaim.Cuenta) &&
                 !contexto.User.HasClaim(c => c.Type == ClavesDeClaim.Usuario)));
 
-        // Una política por permiso: RequireClaim("perm", "panel_ver_paquetes") etc.
+        // El permiso general anterior también autoriza sus acciones concretas. Así una
+        // cuenta de operador existente conserva su alcance al actualizar la aplicación.
         foreach (var permiso in Permisos)
         {
             constructor.AddPolicy(permiso, politica => politica
                 .AddAuthenticationSchemes(EsquemasDeAutenticacion.Operador)
                 .RequireAuthenticatedUser()
                 .RequireClaim(ClavesDeClaim.Operador)
-                .RequireClaim(ClavesDeClaim.Permiso, permiso)
                 .RequireAssertion(contexto =>
+                    PermisosDePanel.Autoriza(
+                        contexto.User.FindAll(ClavesDeClaim.Permiso).Select(c => c.Value), permiso) &&
                     !contexto.User.HasClaim(c => c.Type == ClavesDeClaim.Empresa) &&
                     !contexto.User.HasClaim(c => c.Type == ClavesDeClaim.Cuenta) &&
                     !contexto.User.HasClaim(c => c.Type == ClavesDeClaim.Usuario)));

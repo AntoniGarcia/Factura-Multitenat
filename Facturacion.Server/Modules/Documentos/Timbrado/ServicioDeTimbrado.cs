@@ -1,11 +1,14 @@
 using Facturacion.Server.Data;
 using Facturacion.Server.Data.Entidades.Documentos;
 using Facturacion.Server.Infra.Bitacora;
+using Facturacion.Server.Infra.Tenencia;
+using Facturacion.Server.Modules.Documentos.Pagos;
 using Facturacion.Server.Modules.Documentos.Pac;
 using Facturacion.Server.Modules.Documentos.Obras;
 using Facturacion.Server.Modules.Documentos.Salidas;
 using Facturacion.Shared.Comun;
 using Facturacion.Shared.Contratos;
+using Facturacion.Shared.Documentos;
 using Microsoft.EntityFrameworkCore;
 
 namespace Facturacion.Server.Modules.Documentos.Timbrado;
@@ -45,6 +48,8 @@ public sealed class ServicioDeTimbrado(
     IServicioTimbres timbres,
     CierreDeTimbrado cierre,
     IServicioDeBitacora bitacora,
+    IContextoEmpresaInterno contexto,
+    ServicioDePagos pagos,
     ILogger<ServicioDeTimbrado> registro,
     IProveedorPac? pac = null)
 {
@@ -116,6 +121,9 @@ public sealed class ServicioDeTimbrado(
     private async Task<Resultado<(Comprobante, IntentoTimbrado)>> ApartarAsync(
         Guid comprobanteId, CancellationToken ct)
     {
+        await using var transaccion = await baseDeDatos.Database.BeginTransactionAsync(ct);
+        await BloqueoDePagos.TomarAsync(baseDeDatos, contexto.EmpresaActual
+            ?? throw new InvalidOperationException("Falta empresa activa."), ct);
         var comprobante = await baseDeDatos.Comprobantes
             .Include(c => c.Conceptos).ThenInclude(x => x.Impuestos)
             .Include(c => c.Relacionados)
@@ -132,6 +140,12 @@ public sealed class ServicioDeTimbrado(
             return ErrorNegocio.Conflicto(
                 "comprobante-no-timbrable",
                 $"El comprobante está en '{comprobante.Estatus}' y no se puede timbrar desde ahí.");
+
+        if (comprobante.Folio is null && comprobante.SerieId is { } seriePorValidar)
+        {
+            var serie = await folios.ValidarSerieAsync(seriePorValidar, comprobante.TipoDeComprobante, ct);
+            if (serie.EsFallo) return serie.Error!;
+        }
 
         if (comprobante.TipoDeComprobante == TiposDeComprobante.Ingreso)
         {
@@ -150,6 +164,9 @@ public sealed class ServicioDeTimbrado(
 
         var obra = await baseDeDatos.DatosObra.AsNoTracking()
             .FirstOrDefaultAsync(x => x.ComprobanteId == comprobanteId, ct);
+        if (comprobante.Variante == VariantesDeFactura.Obra && obra is null)
+            return ErrorNegocio.Regla("obra-sin-datos",
+                "Guarda la estimación de obra antes de timbrar. No se reservó folio ni timbre.");
         if (obra is not null)
         {
             if (!await baseDeDatos.Empresas.AsNoTracking()
@@ -212,7 +229,13 @@ public sealed class ServicioDeTimbrado(
             if (validacionFactura.EsFallo) return validacionFactura.Error!;
         }
 
-        await using var transaccion = await baseDeDatos.Database.BeginTransactionAsync(ct);
+        if (comprobante.TipoDeComprobante == TiposDeComprobante.Pago)
+        {
+            var saldos = await pagos.ValidarSaldosParaEmisionAsync(comprobante, ct);
+            if (saldos.EsFallo) return saldos.Error!;
+            var validacionPago = await xml.GenerarAsync(comprobante, ct);
+            if (validacionPago.EsFallo) return validacionPago.Error!;
+        }
 
         // El folio solo se toma una vez. Si el comprobante ya trae uno de un intento fallido
         // anterior, se conserva: ARQUITECTURA.md §5 prohíbe reciclarlo, así que tampoco se pide

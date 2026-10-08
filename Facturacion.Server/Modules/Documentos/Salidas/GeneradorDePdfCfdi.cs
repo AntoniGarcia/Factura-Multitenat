@@ -24,7 +24,10 @@ public sealed record DatosDelPdf(
     DatosNotarialesDelPdf? Notaria = null,
     DatosComercioExteriorDto? ComercioExterior = null,
     decimal? RetencionCincoAlMillar = null,
-    string? LeyendaDelTimbre = null);
+    string? LeyendaDelTimbre = null)
+{
+    public TimeZoneInfo? ZonaHoraria { get; init; }
+}
 
 /// <summary>
 /// Representación impresa del CFDI. Los campos son los que fija §1.4 del documento
@@ -172,7 +175,8 @@ public sealed class GeneradorDePdfCfdi
 
         if (c.TipoDeComprobante == "P")
         {
-            columna.Item().PaddingTop(6).Element(e => ComplementoDePago(e, c.Pagos, datos.Decimales));
+            columna.Item().PaddingTop(6).Element(e => ComplementoDePago(e, c.Pagos, datos.Decimales,
+                datos.ZonaHoraria ?? throw new InvalidOperationException("Falta el huso horario del PDF de pagos.")));
         }
         else
         {
@@ -490,7 +494,7 @@ public sealed class GeneradorDePdfCfdi
     /// </summary>
     private const float AnchoDeValorDelPago = 90;
 
-    private static void ComplementoDePago(IContainer contenedor, List<Pago> pagos, int decimales)
+    private static void ComplementoDePago(IContainer contenedor, List<Pago> pagos, int decimales, TimeZoneInfo zona)
         => contenedor.Column(columna =>
         {
             foreach (var pago in pagos)
@@ -504,7 +508,8 @@ public sealed class GeneradorDePdfCfdi
                     bloque.Item().PaddingTop(3).Row(fila =>
                     {
                         fila.Spacing(16);
-                        fila.RelativeItem().Element(e => Dato(e, "Fecha de pago", pago.FechaPagoUtc.ToString("dd/MM/yyyy HH:mm:ss", CultureInfo.InvariantCulture), anchoDelValor: AnchoDeValorDelPago));
+                        var fechaLocal = TimeZoneInfo.ConvertTimeFromUtc(DateTime.SpecifyKind(pago.FechaPagoUtc, DateTimeKind.Utc), zona);
+                        fila.RelativeItem().Element(e => Dato(e, "Fecha de pago", fechaLocal.ToString("dd/MM/yyyy HH:mm:ss", CultureInfo.InvariantCulture), anchoDelValor: AnchoDeValorDelPago));
                         fila.RelativeItem().Element(e => Dato(e, "Forma de pago", pago.FormaDePagoP, anchoDelValor: AnchoDeValorDelPago));
                         fila.RelativeItem().Element(e => Dato(e, "Moneda", pago.MonedaP, anchoDelValor: AnchoDeValorDelPago));
                     });
@@ -532,15 +537,20 @@ public sealed class GeneradorDePdfCfdi
                     bloque.Item().PaddingTop(4).Element(e => DocumentosPagados(e, pago.Documentos, decimales));
                 });
             }
-            columna.Item().PaddingTop(4).Element(e => TotalesDelComplemento(e, pagos, decimales));
+            columna.Item().PaddingTop(4).Element(e => TotalesDelComplemento(e, pagos));
         });
 
-    private static void TotalesDelComplemento(IContainer contenedor, List<Pago> pagos, int decimales)
+    private static void TotalesDelComplemento(IContainer contenedor, List<Pago> pagos)
     => contenedor.Column(columna =>
     {
+        const int decimales = 2;
+        // Comparte los grupos y su precisión con el XML; los totales del complemento son MXN.
         var impuestos = pagos
-            .SelectMany(p => p.Documentos)
-            .SelectMany(d => d.Impuestos)
+            .SelectMany(p => GeneradorDeXmlPago.AgruparImpuestos(p).Select(i => i with
+            {
+                Base = i.Base * GeneradorDeXmlPago.CambioAMxn(p),
+                Importe = i.Importe * GeneradorDeXmlPago.CambioAMxn(p)
+            }))
             .ToArray();
 
         var retenciones = impuestos
@@ -558,11 +568,10 @@ public sealed class GeneradorDePdfCfdi
                 Importe: g.Sum(i => i.Importe ?? 0m)))
             .OrderBy(t => t.Etiqueta);
 
-        columna.Item().BorderTop(0.5f).PaddingTop(3).Text("TOTALES DEL COMPLEMENTO").Bold();
+        columna.Item().BorderTop(0.5f).PaddingTop(3).Text("TOTALES DEL COMPLEMENTO (MXN)").Bold();
 
         foreach (var (etiqueta, importe) in retenciones)
         {
-            if (importe <= 0) continue;
             columna.Item().Element(e => Dato(e, $"Retención {etiqueta}", Cifra(importe, decimales)));
         }
 
@@ -573,7 +582,7 @@ public sealed class GeneradorDePdfCfdi
         }
 
         columna.Item().PaddingTop(2).BorderTop(0.5f).Element(e =>
-            Dato(e, "Monto total de pagos", Cifra(pagos.Sum(p => p.Monto), decimales), negrita: true));
+            Dato(e, "Monto total de pagos (MXN)", Cifra(pagos.Sum(p => p.Monto * GeneradorDeXmlPago.CambioAMxn(p)), decimales), negrita: true));
     });
 
     private static string EtiquetaDeTraslado(string impuesto, string tipoFactor, decimal? tasaOCuota)

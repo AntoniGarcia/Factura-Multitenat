@@ -12,8 +12,8 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace Facturacion.Server.Migrations
 {
     [DbContext(typeof(AppDbContext))]
-    [Migration("20261007221313_20261007_A_EstadoDeInmuebleNotarial")]
-    partial class _20261007_A_EstadoDeInmuebleNotarial
+    [Migration("20261007215004_20261007_B_ReceptorExtranjero")]
+    partial class _20261007_B_ReceptorExtranjero
     {
         /// <inheritdoc />
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
@@ -141,8 +141,16 @@ namespace Facturacion.Server.Migrations
                         .HasMaxLength(254)
                         .HasColumnType("nvarchar(254)");
 
+                    b.Property<string>("ReceptorNumRegIdTrib")
+                        .HasMaxLength(40)
+                        .HasColumnType("nvarchar(40)");
+
                     b.Property<string>("ReceptorRegimenFiscal")
                         .IsRequired()
+                        .HasMaxLength(3)
+                        .HasColumnType("nvarchar(3)");
+
+                    b.Property<string>("ReceptorResidenciaFiscal")
                         .HasMaxLength(3)
                         .HasColumnType("nvarchar(3)");
 

@@ -21,9 +21,9 @@ public static class ComprasDeOperadorEndpoints
         grupo.MapGet("/{id:guid}/comprobante", Comprobante)
             .RequireAuthorization(PoliticasDeOperador.VerCompras);
 
-        // Acreditar y rechazar mueven dinero/saldo → permiso AcreditarCompras
-        grupo.MapPost("/{id:guid}/acreditar", Acreditar).RequireAuthorization(PoliticasDeOperador.AcreditarCompras);
-        grupo.MapPost("/{id:guid}/rechazar", Rechazar).RequireAuthorization(PoliticasDeOperador.AcreditarCompras);
+        // Cada resolución exige su acción concreta; el permiso anterior conserva ambas.
+        grupo.MapPost("/{id:guid}/acreditar", Acreditar).RequireAuthorization(PoliticasDeOperador.SoloAcreditarCompras);
+        grupo.MapPost("/{id:guid}/rechazar", Rechazar).RequireAuthorization(PoliticasDeOperador.DescartarCompras);
     }
 
     private static async Task<IResult> Listar(
