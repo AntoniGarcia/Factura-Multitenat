@@ -6,6 +6,7 @@
 @using Facturacion.Client.Servicios.Operador
 @using Facturacion.Shared.Operador
 @inject ServicioDeTableroDeOperador Tablero
+@inject ServicioDeSesionDeOperador Sesion
 
 <PageTitle>Resumen · Panel del operador</PageTitle>
 <TituloDePagina Texto="Resumen" />
@@ -44,9 +45,12 @@ else
                             </strong>
                             <span>@_datos.MontoPendiente.ToString("C2") en solicitudes pendientes</span>
                         </div>
-                        <MudButton Href="/operador/compras" Variant="Variant.Text" Size="Size.Small">
-                            Revisar pagos
-                        </MudButton>
+                        @if (Sesion.TienePermiso(PoliticasDelPanel.VerCompras))
+                        {
+                            <MudButton Href="/operador/compras" Variant="Variant.Text" Size="Size.Small">
+                                Revisar pagos
+                            </MudButton>
+                        }
                     </article>
                 }
 
@@ -63,9 +67,12 @@ else
                             </strong>
                             <span>Vencimiento dentro de los próximos 30 días</span>
                         </div>
-                        <MudButton Href="/operador/cuentas" Variant="Variant.Text" Size="Size.Small">
-                            Ver cuentas
-                        </MudButton>
+                        @if (Sesion.TienePermiso(PoliticasDelPanel.VerClientes))
+                        {
+                            <MudButton Href="/operador/cuentas" Variant="Variant.Text" Size="Size.Small">
+                                Ver cuentas
+                            </MudButton>
+                        }
                     </article>
                 }
             </div>
@@ -215,9 +222,12 @@ else
             <section class="panel" aria-labelledby="titulo-pagos">
                 <header class="panel-encabezado">
                     <h2 id="titulo-pagos" class="panel-titulo">Pagos acreditados recientemente</h2>
-                    <MudButton Href="/operador/compras" Variant="Variant.Text" Size="Size.Small">
-                        Ver todos
-                    </MudButton>
+                    @if (Sesion.TienePermiso(PoliticasDelPanel.VerCompras))
+                    {
+                        <MudButton Href="/operador/compras" Variant="Variant.Text" Size="Size.Small">
+                            Ver todos
+                        </MudButton>
+                    }
                 </header>
                 <div class="panel-cuerpo panel-cuerpo-tabla">
                     <MudSimpleTable Dense="true" Hover="true">

@@ -12,6 +12,7 @@ using Facturacion.Shared.ComercioExterior;
 using Facturacion.Server.Infra.Tenencia;
 using Facturacion.Shared.Comun;
 using Facturacion.Shared.Contratos;
+using Facturacion.Shared.Documentos;
 using Microsoft.EntityFrameworkCore;
 
 namespace Facturacion.Server.Modules.Documentos.Salidas;
@@ -63,8 +64,8 @@ public sealed class ServicioDeXmlCfdi(
         // que no puede faltarle es el pago en sí.
         if (esPago)
         {
-            if (comprobante.Pagos.Count == 0)
-                return ErrorNegocio.Regla("pago-sin-datos", "El comprobante de pago no tiene ningún pago.");
+            if (GeneradorDeXmlPago.Validar(comprobante) is { } errorPago)
+                return errorPago;
         }
         else if (comprobante.Conceptos.Count == 0)
         {
@@ -82,6 +83,9 @@ public sealed class ServicioDeXmlCfdi(
             return ErrorNegocio.Validacion(
                 "moneda-desconocida",
                 $"La moneda {monedaDeImportes} no está en el catálogo del SAT. ¿Se cargaron los catálogos?");
+
+        if (esPago && GeneradorDeXmlPago.Validar(comprobante, decimales.Value) is { } errorPrecisionPago)
+            return errorPrecisionPago;
 
         if (comprobante.TipoDeComprobante == TiposDeComprobante.Ingreso &&
             comprobante.Estatus is ("borrador" or "error" or "timbrando") &&
@@ -107,7 +111,7 @@ public sealed class ServicioDeXmlCfdi(
             fechaLocal,
             decimales.Value,
             material.NumeroSerie,
-            Convert.ToBase64String(material.CertificadoCer));
+            Convert.ToBase64String(material.CertificadoCer)) { ZonaHoraria = zonaHoraria };
 
         XDocument documento;
         if (comprobante.TipoDeComprobante == TiposDeComprobante.Traslado)
@@ -141,6 +145,10 @@ public sealed class ServicioDeXmlCfdi(
                 .FirstOrDefaultAsync(x => x.ComprobanteId == comprobante.Id, ct);
             var datosObra = await baseDeDatos.DatosObra.AsNoTracking()
                 .FirstOrDefaultAsync(x => x.ComprobanteId == comprobante.Id, ct);
+
+            if (comprobante.Variante == VariantesDeFactura.Obra && datosObra is null)
+                return ErrorNegocio.Regla("obra-sin-datos",
+                    "Guarda la estimación de obra antes de preparar el XML de la factura.");
 
             if (datosObra is not null)
             {

@@ -138,8 +138,16 @@ namespace Facturacion.Server.Migrations
                         .HasMaxLength(254)
                         .HasColumnType("nvarchar(254)");
 
+                    b.Property<string>("ReceptorNumRegIdTrib")
+                        .HasMaxLength(40)
+                        .HasColumnType("nvarchar(40)");
+
                     b.Property<string>("ReceptorRegimenFiscal")
                         .IsRequired()
+                        .HasMaxLength(3)
+                        .HasColumnType("nvarchar(3)");
+
+                    b.Property<string>("ReceptorResidenciaFiscal")
                         .HasMaxLength(3)
                         .HasColumnType("nvarchar(3)");
 
@@ -731,8 +739,8 @@ namespace Facturacion.Server.Migrations
 
                     b.Property<string>("Estado")
                         .IsRequired()
-                        .HasMaxLength(2)
-                        .HasColumnType("nvarchar(2)");
+                        .HasMaxLength(3)
+                        .HasColumnType("nvarchar(3)");
 
                     b.Property<string>("Localidad")
                         .HasMaxLength(100)

@@ -3,6 +3,7 @@ using Facturacion.Server.Data.Entidades.Plataforma;
 using Facturacion.Server.Infra.Bitacora;
 using Facturacion.Server.Infra.Tenencia;
 using Facturacion.Shared.Contratos;
+using Facturacion.Shared.Comun;
 using Microsoft.Data.SqlClient;
 using Microsoft.EntityFrameworkCore;
 
@@ -28,6 +29,16 @@ public sealed class ServicioDeFolios(
     IContextoEmpresaInterno contexto,
     IServicioDeBitacora bitacora) : IServicioFolios
 {
+    public async Task<Resultado> ValidarSerieAsync(Guid serieId, string tipoComprobante, CancellationToken ct)
+    {
+        var serie = await baseDeDatos.Series.AsNoTracking()
+            .FirstOrDefaultAsync(s => s.Id == serieId, ct);
+        if (serie is null || !serie.Activa || serie.TipoComprobante != tipoComprobante)
+            return ErrorNegocio.Validacion("serie-no-valida",
+                "Selecciona una serie activa de esta empresa que corresponda al tipo de documento.");
+        return Resultado.Exito();
+    }
+
     public async Task<FolioReservadoDto> ReservarAsync(Guid serieId, CancellationToken ct)
     {
         var reservaId = Guid.NewGuid();

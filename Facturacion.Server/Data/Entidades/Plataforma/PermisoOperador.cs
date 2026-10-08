@@ -7,7 +7,7 @@ namespace Facturacion.Server.Data.Entidades.Plataforma;
 /// compuesta evita duplicados: un operador no puede tener dos veces el mismo permiso.
 /// </para>
 /// <para>
-/// Los valores de <see cref="Permiso"/> son las trece claves del panel de
+/// Los valores de <see cref="Permiso"/> son las claves del panel de
 /// <see cref="Facturacion.Shared.Operador.PermisosDePanel"/>: <c>panel_ver_paquetes</c>,
 /// <c>panel_administrar_paquetes</c>, etc. Son los permisos del proveedor del SaaS, no los
 /// de facturación de los inquilinos.

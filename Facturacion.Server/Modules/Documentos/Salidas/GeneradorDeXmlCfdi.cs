@@ -16,7 +16,10 @@ public sealed record DatosDeEmision(
     DateTime FechaLocal,
     int Decimales,
     string NoCertificado,
-    string CertificadoBase64);
+    string CertificadoBase64)
+{
+    public TimeZoneInfo? ZonaHoraria { get; init; }
+}
 
 /// <summary>
 /// Serializa un <see cref="Comprobante"/> a XML de CFDI 4.0.
@@ -123,7 +126,9 @@ public sealed class GeneradorDeXmlCfdi
             new XAttribute("Nombre", comprobante.ReceptorNombre),
             new XAttribute("DomicilioFiscalReceptor", comprobante.ReceptorDomicilioFiscal),
             new XAttribute("RegimenFiscalReceptor", comprobante.ReceptorRegimenFiscal),
-            new XAttribute("UsoCFDI", comprobante.ReceptorUsoCfdi)));
+            new XAttribute("UsoCFDI", comprobante.ReceptorUsoCfdi),
+            Opcional("ResidenciaFiscal", comprobante.ReceptorResidenciaFiscal),
+            Opcional("NumRegIdTrib", comprobante.ReceptorNumRegIdTrib)));
 
         raiz.Add(new XElement(Cfdi + "Conceptos", conceptos.Select(c =>
         {

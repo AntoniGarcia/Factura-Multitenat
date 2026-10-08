@@ -1,6 +1,6 @@
 @page "/operador/cuentas/{CuentaId:guid}/empresas/{EmpresaId:guid}"
 @layout LayoutDeOperador
-@attribute [Authorize(Policy = PoliticasDelPanel.PoliticaDeOperador)]
+@attribute [Authorize(Policy = PoliticasDelPanel.VerClientes)]
 @using Facturacion.Client.Componentes.Comunes
 @using Facturacion.Client.Paginas.Operador.Operadores
 @using Facturacion.Client.Servicios.Operador
@@ -12,6 +12,7 @@
 @inject ServicioDeUsuariosDePlataforma Usuarios
 @inject IServicioDeConfirmacion Confirmacion
 @inject IDialogService Dialogos
+@inject ServicioDeSesionDeOperador Sesion
 
 <PageTitle>@(_ficha?.NombreFiscal ?? "Ficha de empresa") · Panel del operador</PageTitle>
 <TituloDePagina Texto="@(_ficha?.NombreFiscal ?? "Ficha de empresa")" />
@@ -53,6 +54,8 @@ else
             </div>
 
             <div class="ficha-empresa-acciones">
+                @if (Sesion.TienePermiso(PoliticasDelPanel.AsignarTimbres))
+                {
                 <MudButton Variant="Variant.Filled"
                            Color="Color.Primary"
                            StartIcon="@Icons.Material.Filled.AddCard"
@@ -60,12 +63,18 @@ else
                            OnClick="CrearPaquetePersonalizado">
                     Crear paquete
                 </MudButton>
+                }
+                @if (Sesion.TienePermiso(PoliticasDelPanel.GestionarLicencias))
+                {
                 <MudButton Variant="Variant.Outlined"
                            StartIcon="@Icons.Material.Filled.Extension"
                            Disabled="@_trabajando"
                            OnClick="ActualizarLicencias">
                     Módulos
                 </MudButton>
+                }
+                @if (Sesion.TienePermiso(PoliticasDelPanel.CambiarEstadoEmpresas))
+                {
                 <MudButton Variant="Variant.Text"
                            Color="@(_ficha.Activa ? Color.Error : Color.Primary)"
                            StartIcon="@(_ficha.Activa
@@ -75,6 +84,7 @@ else
                            OnClick="CambiarActivoEmpresa">
                     @(_ficha.Activa ? "Desactivar" : "Reactivar empresa")
                 </MudButton>
+                }
             </div>
         </div>
 
@@ -185,19 +195,29 @@ else
                             </span>
                         </MudTd>
                         <MudTd DataLabel="Acciones" Class="celda-menu-ficha">
+                            @if (PuedeGestionarUsuarios)
+                            {
                             <MudMenu Icon="@Icons.Material.Filled.MoreVert"
                                      Size="Size.Small"
                                      Disabled="@_trabajando"
                                      AnchorOrigin="Origin.BottomRight"
                                      AriaLabel="@($"Acciones para {context.Nombre}")">
+                                @if (Sesion.TienePermiso(PoliticasDelPanel.RestablecerContrasenasUsuarios))
+                                {
                                 <MudMenuItem OnClick="@(() => RestablecerContrasena(context))">
                                     <MudIcon Icon="@Icons.Material.Filled.Password" Size="Size.Small" />
                                     Restablecer contraseña
                                 </MudMenuItem>
+                                }
+                                @if (Sesion.TienePermiso(PoliticasDelPanel.CambiarCorreosUsuarios))
+                                {
                                 <MudMenuItem OnClick="@(() => CambiarCorreo(context))">
                                     <MudIcon Icon="@Icons.Material.Filled.AlternateEmail" Size="Size.Small" />
                                     Modificar correo
                                 </MudMenuItem>
+                                }
+                                @if (Sesion.TienePermiso(PoliticasDelPanel.CambiarEstadoUsuarios))
+                                {
                                 <MudMenuItem OnClick="@(() => CambiarActivo(context))">
                                     <MudIcon Icon="@(context.Activo
                                                       ? Icons.Material.Filled.PersonOff
@@ -205,12 +225,17 @@ else
                                              Size="Size.Small" />
                                     @(context.Activo ? "Dar de baja" : "Reactivar")
                                 </MudMenuItem>
+                                }
+                                @if (Sesion.TienePermiso(PoliticasDelPanel.QuitarAccesoUsuarios))
+                                {
                                 <MudMenuItem Class="opcion-menu-peligrosa"
                                              OnClick="@(() => EliminarAcceso(context))">
                                     <MudIcon Icon="@Icons.Material.Filled.LinkOff" Size="Size.Small" />
                                     Eliminar acceso
                                 </MudMenuItem>
+                                }
                             </MudMenu>
+                            }
                         </MudTd>
                     </RowTemplate>
                     <NoRecordsContent>
@@ -254,12 +279,15 @@ else
                             <h3 id="titulo-paquetes-personalizados">Paquetes personalizados</h3>
                             <span class="texto-secundario">Solo aparecen para esta empresa.</span>
                         </div>
+                        @if (Sesion.TienePermiso(PoliticasDelPanel.AsignarTimbres))
+                        {
                         <MudButton Size="Size.Small" Variant="Variant.Outlined"
                                    StartIcon="@Icons.Material.Filled.Add"
                                    Disabled="@_trabajando"
                                    OnClick="CrearPaquetePersonalizado">
                             Crear paquete
                         </MudButton>
+                        }
                     </div>
 
                     <MudTable T="PaquetePersonalizadoDto"
@@ -291,6 +319,8 @@ else
                                 </span>
                             </MudTd>
                             <MudTd DataLabel="Acciones" Class="celda-accion-ficha">
+                                @if (Sesion.TienePermiso(PoliticasDelPanel.AsignarTimbres))
+                                {
                                 <MudButton Size="Size.Small" Variant="Variant.Text" Disabled="@_trabajando"
                                            OnClick="@(() => EditarPaquetePersonalizado(context))">
                                     Editar
@@ -301,6 +331,7 @@ else
                                            OnClick="@(() => CambiarActivoPaquetePersonalizado(context))">
                                     @(context.Activo ? "Desactivar" : "Reactivar")
                                 </MudButton>
+                                }
                             </MudTd>
                         </RowTemplate>
                         <NoRecordsContent>
@@ -347,6 +378,8 @@ else
                             </MudTd>
                             <MudTd DataLabel="Acciones" Class="celda-accion-ficha">
                                 <div class="acciones-compra-ficha">
+                                    @if (Sesion.TienePermiso(PoliticasDelPanel.SoloAcreditarCompras))
+                                    {
                                     <MudButton Size="Size.Small"
                                                Variant="Variant.Filled"
                                                Color="Color.Primary"
@@ -354,6 +387,9 @@ else
                                                OnClick="@(() => Acreditar(context))">
                                         Acreditar
                                     </MudButton>
+                                    }
+                                    @if (Sesion.TienePermiso(PoliticasDelPanel.DescartarCompras))
+                                    {
                                     <MudButton Size="Size.Small"
                                                Variant="Variant.Text"
                                                Color="Color.Error"
@@ -361,6 +397,7 @@ else
                                                OnClick="@(() => Rechazar(context))">
                                         Descartar
                                     </MudButton>
+                                    }
                                 </div>
                             </MudTd>
                         </RowTemplate>
@@ -417,6 +454,8 @@ else
                                 @(context.VenceUtc?.ToLocalTime().ToString("dd/MM/yyyy") ?? "—")
                             </MudTd>
                             <MudTd DataLabel="Acciones" Class="celda-accion-ficha">
+                                @if (Sesion.TienePermiso(PoliticasDelPanel.VerCompras))
+                                {
                                 <span @onclick:stopPropagation="true">
                                     <MudButton Size="Size.Small" Variant="Variant.Text"
                                                Disabled="@(_previsualizandoCompra is not null)"
@@ -429,6 +468,7 @@ else
                                         @(_descargandoCompra == context.Id ? "Descargando…" : "Descargar PDF")
                                     </MudButton>
                                 </span>
+                                }
                             </MudTd>
                         </RowTemplate>
                         <NoRecordsContent>
@@ -465,6 +505,12 @@ else
     private string _textoCompras = string.Empty;
 
     private bool _buscandoCompras => !string.IsNullOrWhiteSpace(_textoCompras);
+
+    private bool PuedeGestionarUsuarios =>
+        Sesion.TienePermiso(PoliticasDelPanel.RestablecerContrasenasUsuarios) ||
+        Sesion.TienePermiso(PoliticasDelPanel.CambiarCorreosUsuarios) ||
+        Sesion.TienePermiso(PoliticasDelPanel.CambiarEstadoUsuarios) ||
+        Sesion.TienePermiso(PoliticasDelPanel.QuitarAccesoUsuarios);
 
     protected override async Task OnParametersSetAsync()
     {
@@ -570,7 +616,9 @@ else
     }
 
     private Task AlSeleccionarCompra(TableRowClickEventArgs<CompraDeOperadorDto> evento)
-        => evento.Item is null ? Task.CompletedTask : PrevisualizarComprobante(evento.Item);
+        => evento.Item is null || !Sesion.TienePermiso(PoliticasDelPanel.VerCompras)
+            ? Task.CompletedTask
+            : PrevisualizarComprobante(evento.Item);
 
     private async Task PrevisualizarComprobante(CompraDeOperadorDto compra)
     {

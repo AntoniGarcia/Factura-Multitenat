@@ -115,7 +115,7 @@ public sealed class ServicioDeSalidasFiscales(
 
         var contenido = generadorPdf.Generar(comprobante,
             new DatosDelPdf(fechaLocal, decimales, logo?.Contenido, Notaria: datosNotariales,
-                RetencionCincoAlMillar: retencionCincoAlMillar, LeyendaDelTimbre: leyenda));
+                RetencionCincoAlMillar: retencionCincoAlMillar, LeyendaDelTimbre: leyenda) { ZonaHoraria = zona });
 
         return new ArchivoFiscal(NombreDeArchivoFiscal.Construir(comprobante, zona, "pdf"), "application/pdf", contenido);
     }

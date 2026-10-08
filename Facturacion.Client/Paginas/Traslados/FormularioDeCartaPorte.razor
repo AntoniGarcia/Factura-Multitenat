@@ -80,7 +80,7 @@
                                 <MudSelectItem T="Guid?" Value="@figura.Id">@figura.Nombre · @figura.Rfc</MudSelectItem>
                             }
                         </MudSelect>
-                        <MudNumericField T="decimal" Label="Distancia recorrida (km)" @bind-Value="_distanciaKm" Min="0.01m" Max="99999m" Format="N2" Disabled="@(!EsEditable)" Required="true" />
+                        <MudNumericField T="decimal" Label="Distancia recorrida (km)" @bind-Value="_distanciaKm" Immediate="true" Min="0.01m" Max="99999m" Format="N2" Disabled="@(!EsEditable)" Required="true" />
                     </div>
                 </section>
 
@@ -95,7 +95,7 @@
                 </section>
                 <section class="seccion-formulario">
                     <h2>Notas del traslado</h2>
-                    <MudTextField T="string" @bind-Value="_observaciones" Label="Observaciones internas" Lines="3"
+                    <MudTextField T="string" @bind-Value="_observaciones" Label="Observaciones internas" Lines="3" Immediate="true"
                                   MaxLength="2000" Disabled="@(!EsEditable)" HelperText="Se muestran en el PDF, pero no forman parte del XML fiscal." />
                 </section>
             </MudTabPanel>
@@ -138,14 +138,14 @@
                             <div class="rejilla-formulario">
                                 <BuscadorCatalogo Catalogo="c_ClaveProdServCP" Label="Bien transportado SAT" Valor="@renglon.Producto"
                                                   ValorCambiado="v => renglon.Producto = v" Deshabilitado="@(!EsEditable)" Requerido="true" />
-                                <MudTextField T="string" Label="Descripción" @bind-Value="renglon.Descripcion" Disabled="@(!EsEditable)" Required="true" />
-                                <MudNumericField T="decimal" Label="Cantidad" Value="renglon.Cantidad" ValueChanged="valor => CambiarCantidad(renglon, valor)" Min="0.000001m" Format="N6" Disabled="@(!EsEditable)" Required="true" />
+                                <MudTextField T="string" Label="Descripción" @bind-Value="renglon.Descripcion" Immediate="true" Disabled="@(!EsEditable)" Required="true" />
+                                <MudNumericField T="decimal" Label="Cantidad" Value="renglon.Cantidad" ValueChanged="valor => CambiarCantidad(renglon, valor)" Immediate="true" Min="0.000001m" Format="N6" Disabled="@(!EsEditable)" Required="true" />
                                 <BuscadorCatalogo Catalogo="c_ClaveUnidad" Label="Unidad SAT" Valor="@renglon.Unidad"
                                                   ValorCambiado="v => renglon.Unidad = v" Deshabilitado="@(!EsEditable)" Requerido="true" />
-                                <MudTextField T="string" Label="Unidad propia (opcional)" @bind-Value="renglon.UnidadPropia" Disabled="@(!EsEditable)" MaxLength="20" />
-                                <MudTextField T="string" Label="Dimensiones largo/alto/ancho (ej. 30/40/30cm)" @bind-Value="renglon.Dimensiones" Disabled="@(!EsEditable)" MaxLength="14" />
-                                <MudNumericField T="decimal?" Label="Peso unitario (kg, opcional)" Value="renglon.PesoUnitarioKg" ValueChanged="valor => CambiarPesoUnitario(renglon, valor)" Min="0.000001m" Format="N6" Disabled="@(!EsEditable)" />
-                                <MudNumericField T="decimal" Label="Peso total (kg)" Value="renglon.PesoEnKg" ValueChanged="valor => CambiarPesoTotal(renglon, valor)" Min="0.001m" Format="N3" Disabled="@(!EsEditable)" Required="true" />
+                                <MudTextField T="string" Label="Unidad propia (opcional)" @bind-Value="renglon.UnidadPropia" Immediate="true" Disabled="@(!EsEditable)" MaxLength="20" />
+                                <MudTextField T="string" Label="Dimensiones largo/alto/ancho (ej. 30/40/30cm)" @bind-Value="renglon.Dimensiones" Immediate="true" Disabled="@(!EsEditable)" MaxLength="14" />
+                                <MudNumericField T="decimal?" Label="Peso unitario (kg, opcional)" Value="renglon.PesoUnitarioKg" ValueChanged="valor => CambiarPesoUnitario(renglon, valor)" Immediate="true" Min="0.000001m" Format="N6" Disabled="@(!EsEditable)" />
+                                <MudNumericField T="decimal" Label="Peso total (kg)" Value="renglon.PesoEnKg" ValueChanged="valor => CambiarPesoTotal(renglon, valor)" Immediate="true" Min="0.001m" Format="N3" Disabled="@(!EsEditable)" Required="true" />
                             </div>
                             @if (EsEditable && _mercancias.Count > 1)
                             {
@@ -170,8 +170,8 @@
                                     <MudSelectItem T="string" Value="@tipo.Clave">@tipo.Clave — @tipo.Descripcion</MudSelectItem>
                                 }
                             </MudSelect>
-                            <MudTextField T="string" @bind-Value="_serieRelacionado" Label="Serie" MaxLength="25" />
-                            <MudNumericField T="int?" @bind-Value="_folioRelacionado" Label="Folio" Min="1" />
+                            <MudTextField T="string" @bind-Value="_serieRelacionado" Label="Serie" Immediate="true" MaxLength="25" />
+                            <MudNumericField T="int?" @bind-Value="_folioRelacionado" Label="Folio" Immediate="true" Min="1" />
                         </div>
                         <MudButton Variant="Variant.Outlined" OnClick="AgregarRelacionadoAsync" Disabled="@(!PuedeAgregarRelacionado)">Agregar CFDI</MudButton>
                     }
@@ -235,7 +235,6 @@
     private DetalleProblema? _error;
     private bool _cargando = true, _guardando, _validandoXml, _timbrando;
     private string? _mensajeXml;
-    private string _zonaHoraria = "Central Standard Time (Mexico)";
     private string _estatus = "borrador";
     private EstadoDeIntegracionFiscalDto? _integracionFiscal;
     private Guid? _vehiculoId, _figuraId;
@@ -272,14 +271,13 @@
         _mensajeXml = null;
         _integracionFiscal = await Emision.ObtenerEstadoDeIntegracionAsync();
         var empresa = await Empresa.ObtenerAsync();
-        _zonaHoraria = empresa?.ZonaHoraria ?? _zonaHoraria;
         if (Id is null && !_precargaOrigenIntentada)
         {
             _precargaOrigenIntentada = true;
             if (empresa is not null) PrecargarOrigen(empresa);
         }
         _vehiculos = await Transporte.VehiculosAsync(true) ?? [];
-        _figuras = await Transporte.FigurasAsync(true) ?? [];
+        _figuras = (await Transporte.FigurasAsync(true) ?? []).Where(x => x.TipoFigura == "01").ToList();
 
         if (Id is { } id)
         {
@@ -303,8 +301,8 @@
         _vehiculoId = traslado.VehiculoId;
         _figuraId = traslado.FiguraTransporteId;
         _distanciaKm = traslado.DistanciaRecorridaKm;
-        var salida = ALocal(traslado.FechaSalidaUtc);
-        var llegada = ALocal(traslado.FechaLlegadaUtc);
+        var salida = traslado.FechaSalidaLocal;
+        var llegada = traslado.FechaLlegadaLocal;
         _fechaSalida = salida.Date; _horaSalida = salida.TimeOfDay;
         _fechaLlegada = llegada.Date; _horaLlegada = llegada.TimeOfDay;
         _origen = traslado.Ubicaciones.SingleOrDefault(x => x.Tipo == "Origen") ?? Vacio("Origen", 1);
@@ -548,12 +546,6 @@
         {
             _timbrando = false;
         }
-    }
-
-    private DateTime ALocal(DateTime utc)
-    {
-        try { return TimeZoneInfo.ConvertTimeFromUtc(DateTime.SpecifyKind(utc, DateTimeKind.Utc), TimeZoneInfo.FindSystemTimeZoneById(_zonaHoraria)); }
-        catch (TimeZoneNotFoundException) { return utc; }
     }
 
     private static DateTime Combinar(DateTime fecha, TimeSpan? hora) => fecha.Date.Add(hora ?? TimeSpan.Zero);

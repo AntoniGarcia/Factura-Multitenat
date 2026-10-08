@@ -1,6 +1,6 @@
 @page "/operador/compras"
 @layout LayoutDeOperador
-@attribute [Authorize(Policy = PoliticasDelPanel.PoliticaDeOperador)]
+@attribute [Authorize(Policy = PoliticasDelPanel.VerCompras)]
 @using Facturacion.Client.Componentes.Comunes
 @using Facturacion.Client.Servicios.Operador
 @using Facturacion.Client.Servicios.Plataforma
@@ -9,6 +9,7 @@
 @inject ServicioDeComprasDeOperador Compras
 @inject IServicioDeConfirmacion Confirmacion
 @inject IDialogService Dialogos
+@inject ServicioDeSesionDeOperador Sesion
 
 <PageTitle>Compras de timbres</PageTitle>
 <TituloDePagina Texto="Compras de timbres" />
@@ -81,14 +82,20 @@
         new("", c => @<div class="acciones-renglon">
                           @if (c.Estado == Estados.Pendiente)
                           {
+                              @if (Sesion.TienePermiso(PoliticasDelPanel.SoloAcreditarCompras))
+                              {
                               <MudButton Size="Size.Small" Variant="Variant.Filled" Color="Color.Primary"
                                          Disabled="@_trabajando" OnClick="@(() => Acreditar(c))">
                                   Acreditar
                               </MudButton>
+                              }
+                              @if (Sesion.TienePermiso(PoliticasDelPanel.DescartarCompras))
+                              {
                               <MudButton Size="Size.Small" Disabled="@_trabajando"
                                          OnClick="@(() => Rechazar(c))">
                                   Descartar
                               </MudButton>
+                              }
                           }
                           else if (c.Estado == Estados.Pagada)
                           {

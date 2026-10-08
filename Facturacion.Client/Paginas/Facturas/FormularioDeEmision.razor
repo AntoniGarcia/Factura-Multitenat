@@ -104,7 +104,8 @@ else
                 <BuscadorDeCliente Valor="@_cliente" ValorCambiado="AlElegirClienteAsync" Requerido="true" />
                 <MudTextField T="string" Value="@(_cliente?.Rfc)" Label="R.F.C." ReadOnly="true" Class="cifra-tabular" />
                 <MudTextField T="string" Value="@(_cliente?.Nombre)" Label="Nombre" ReadOnly="true" />
-                <MudTextField T="string" Value="@(_cliente?.DomicilioFiscalCp)" Label="Domicilio fiscal (CP)" ReadOnly="true" Class="cifra-tabular" />
+                <MudTextField T="string" Value="@(_cliente?.DomicilioFiscalCp)" Label="CP del cliente" ReadOnly="true" Class="cifra-tabular"
+                              HelperText="@(_cliente?.Rfc is "XAXX010101000" or "XEXX010101000" ? "En el CFDI se usará el CP del lugar de expedición, como exige el SAT." : null)" />
 
                 <MudSelect T="string" @bind-Value="_metodoPago" Label="Método de pago" Clearable="true">
                     @foreach (var m in Catalogos.Obtener("c_MetodoPago"))

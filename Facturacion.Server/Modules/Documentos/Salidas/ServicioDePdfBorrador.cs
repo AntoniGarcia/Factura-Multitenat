@@ -7,6 +7,7 @@ using Facturacion.Shared.Obras;
 using Facturacion.Server.Modules.Plataforma.Empresas;
 using Facturacion.Shared.ComercioExterior;
 using Facturacion.Shared.Comun;
+using Facturacion.Shared.Documentos;
 using Microsoft.EntityFrameworkCore;
 
 namespace Facturacion.Server.Modules.Documentos.Salidas;
@@ -27,6 +28,7 @@ public sealed class ServicioDePdfBorrador(
     {
         var comprobante = await baseDeDatos.Comprobantes
             .AsNoTracking()
+            .Include(c => c.Pagos).ThenInclude(p => p.Documentos).ThenInclude(d => d.Impuestos)
             .Include(c => c.Conceptos.OrderBy(x => x.Orden))
                 .ThenInclude(x => x.Impuestos)
             .FirstOrDefaultAsync(c => c.Id == comprobanteId, ct);
@@ -42,6 +44,9 @@ public sealed class ServicioDePdfBorrador(
 
         var obra = await baseDeDatos.DatosObra.AsNoTracking()
             .FirstOrDefaultAsync(x => x.ComprobanteId == comprobanteId, ct);
+        if (comprobante.Variante == VariantesDeFactura.Obra && obra is null)
+            return ErrorNegocio.Regla("obra-sin-datos",
+                "Guarda la estimación de obra antes de generar la vista previa de la factura.");
         if (obra is not null && ValidadorFiscalDeObra.Validar(comprobante, obra) is { } errorObra)
             return errorObra;
 
@@ -83,7 +88,10 @@ public sealed class ServicioDePdfBorrador(
             return ErrorNegocio.Validacion(
                 "borrador-sin-receptor", "Selecciona un cliente y guarda el borrador antes de generar el PDF.");
 
-        if (comprobante.Conceptos.Count == 0)
+        if (comprobante.TipoDeComprobante == "P" && GeneradorDeXmlPago.Validar(comprobante) is { } errorPago)
+            return errorPago;
+
+        if (comprobante.TipoDeComprobante != "P" && comprobante.Conceptos.Count == 0)
             return ErrorNegocio.Validacion(
                 "borrador-sin-conceptos", "Agrega al menos un concepto y guarda el borrador antes de generar el PDF.");
 
@@ -122,6 +130,6 @@ public sealed class ServicioDePdfBorrador(
                 Notaria: notariaPdf, ComercioExterior: comercioPdf,
                 RetencionCincoAlMillar: obra?.TipoObra == TiposDeObra.Publica
                     ? Math.Round(comprobante.SubTotal * 0.005m, 2, MidpointRounding.ToEven)
-                    : null));
+                    : null) { ZonaHoraria = zona });
     }
 }

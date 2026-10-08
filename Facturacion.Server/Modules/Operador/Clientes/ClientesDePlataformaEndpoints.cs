@@ -28,11 +28,11 @@ public static class ClientesDePlataformaEndpoints
         grupo.MapGet("/{id:guid}/empresas/{empresaId:guid}", ObtenerEmpresa).RequireAuthorization(PoliticasDeOperador.VerClientes);
 
         grupo.MapPost("/{id:guid}/empresas/{empresaId:guid}/activo", CambiarActivoEmpresa)
-            .RequireAuthorization(PoliticasDeOperador.AdministrarClientes);
+            .RequireAuthorization(PoliticasDeOperador.CambiarEstadoEmpresas);
         grupo.MapPost("/{id:guid}/empresas/{empresaId:guid}/licencias", ActualizarLicencias)
-            .RequireAuthorization(PoliticasDeOperador.AdministrarClientes);
+            .RequireAuthorization(PoliticasDeOperador.GestionarLicencias);
         grupo.MapPost("/{id:guid}/correo-contacto", CambiarCorreoDeContacto)
-            .RequireAuthorization(PoliticasDeOperador.AdministrarClientes);
+            .RequireAuthorization(PoliticasDeOperador.EditarContactoCuentas);
         grupo.MapPost("/{id:guid}/empresas/{empresaId:guid}/paquetes", CrearPaquete)
             .RequireAuthorization(PoliticasDeOperador.AsignarTimbres);
         grupo.MapPut("/{id:guid}/empresas/{empresaId:guid}/paquetes/{paqueteId:guid}", ActualizarPaquete)

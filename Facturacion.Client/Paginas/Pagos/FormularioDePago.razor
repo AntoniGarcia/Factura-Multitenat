@@ -9,6 +9,8 @@
 @inject ServicioDePagos Pagos
 @inject ServicioDeEmision Emision
 @inject ServicioDeCatalogos Catalogos
+@inject ServicioDeClientes Clientes
+@inject IDialogService Dialogos
 @inject NavigationManager Navegacion
 @implements IDisposable
 
@@ -47,34 +49,45 @@ else
                                   Class="cifra-tabular" />
 
                     <MudTextField T="string" Label="No. de operación" @bind-Value="_numOperacion"
-                                  Disabled="@(!EsEditable)"
+                                  Disabled="@(!EsEditable)" Immediate="true"
                                   HelperText="Referencia de la transferencia, cheque o autorización." />
 
-                    <CampoFecha Label="Fecha del pago" ValorUtc="_fechaPagoUtc"
-                                ValorUtcCambiado="@(v => _fechaPagoUtc = v ?? DateTime.UtcNow)"
-                                Deshabilitado="@(!EsEditable)" />
+                    <MudDatePicker Label="Fecha del pago" @bind-Date="_fechaPagoLocal"
+                                   Disabled="@(!EsEditable)" Required="true" />
+                    <MudTimePicker Label="Hora del pago" @bind-Time="_horaPagoLocal"
+                                   Disabled="@(!EsEditable)" Required="true" AmPm="false" />
+                    <MudTextField T="string" Label="Huso horario de la empresa"
+                                  Value="@_pago.ZonaHoraria" ReadOnly="true" />
 
                     <MudSelect T="string" Label="Forma de pago" @bind-Value="_formaDePago"
                                Disabled="@(!EsEditable)" Required="true">
                         @foreach (var forma in Catalogos.Obtener("c_FormaPago"))
                         {
-                            <MudSelectItem T="string" Value="@forma.Clave">@forma.Clave — @forma.Descripcion</MudSelectItem>
+                            @if (forma.Clave != "99")
+                            {
+                                <MudSelectItem T="string" Value="@forma.Clave">@forma.Clave — @forma.Descripcion</MudSelectItem>
+                            }
                         }
                     </MudSelect>
 
                     <MudSelect T="string" Label="Moneda" @bind-Value="_moneda" Disabled="@(!EsEditable)">
                         @foreach (var moneda in Catalogos.Obtener("c_Moneda"))
                         {
-                            <MudSelectItem T="string" Value="@moneda.Clave">@moneda.Clave — @moneda.Descripcion</MudSelectItem>
+                            @if (moneda.Clave != "XXX")
+                            {
+                                <MudSelectItem T="string" Value="@moneda.Clave">@moneda.Clave — @moneda.Descripcion</MudSelectItem>
+                            }
                         }
                     </MudSelect>
 
                     <MudNumericField T="decimal?" Label="Tipo de cambio" @bind-Value="_tipoCambio"
+                                     Immediate="true"
                                      Disabled="@(!EsEditable || _moneda == "MXN")"
                                      HelperText="@(_moneda == "MXN" ? "No aplica en pesos." : "Obligatorio fuera de MXN.")"
                                      Format="F6" Class="cifra-tabular" />
 
                     <MudNumericField T="decimal" Label="Importe del pago" @bind-Value="_monto"
+                                     Immediate="true"
                                      Disabled="@(!EsEditable)" Format="F2" Class="cifra-tabular"
                                      HelperText="Tiene que cuadrar con lo repartido entre las facturas." />
                 </div>
@@ -89,9 +102,9 @@ else
                         <BuscadorDeCliente Valor="_cliente" ValorCambiado="AlElegirCliente" Requerido="true" />
                     }
 
-                    <MudTextField T="string" Label="R.F.C." Value="@_pago.ReceptorRfc" ReadOnly="true"
+                    <MudTextField T="string" Label="R.F.C." Value="@(_cliente?.Rfc ?? _pago.ReceptorRfc)" ReadOnly="true"
                                   Class="cifra-tabular" />
-                    <MudTextField T="string" Label="Nombre" Value="@_pago.ReceptorNombre" ReadOnly="true" />
+                    <MudTextField T="string" Label="Nombre" Value="@(_cliente?.Nombre ?? _pago.ReceptorNombre)" ReadOnly="true" />
                 </div>
             </section>
 
@@ -105,8 +118,8 @@ else
                 @if (EsEditable)
                 {
                     <div class="rejilla-consulta-pago">
-                        <MudTextField T="string" Label="Serie" @bind-Value="_serieBusqueda" Class="cifra-tabular" />
-                        <MudNumericField T="int" Label="Folio" @bind-Value="_folioBusqueda" Class="cifra-tabular" />
+                        <MudTextField T="string" Label="Serie" @bind-Value="_serieBusqueda" Class="cifra-tabular" Immediate="true" />
+                        <MudNumericField T="int" Label="Folio" @bind-Value="_folioBusqueda" Class="cifra-tabular" Immediate="true" />
                         <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="Consultar">
                             Consultar
                         </MudButton>
@@ -121,7 +134,7 @@ else
                                 @encontrado.Moneda, parcialidad @encontrado.NumParcialidad
                             </span>
                             <MudNumericField T="decimal" Label="Importe a pagar" @bind-Value="_importeAPagar"
-                                             Format="F2" Class="cifra-tabular" />
+                                             Format="F2" Class="cifra-tabular" Immediate="true" />
                             <MudButton Variant="Variant.Filled" OnClick="Agregar">Agregar</MudButton>
                         </div>
                     }
@@ -155,7 +168,19 @@ else
                                     <td>@renglon.Moneda</td>
                                     <td class="cifra-tabular">@renglon.NumParcialidad</td>
                                     <td class="cifra-tabular">@renglon.SaldoAnterior.ToString("N2")</td>
-                                    <td class="cifra-tabular">@renglon.ImpPagado.ToString("N2")</td>
+                                    <td class="cifra-tabular">
+                                        @if (EsEditable)
+                                        {
+                                            <MudNumericField T="decimal" Value="renglon.ImpPagado"
+                                                ValueChanged="@(v => CambiarImporte(renglon, v))" Immediate="true"
+                                                Label="@($"Abono {renglon.Serie}-{renglon.Folio}")" Format="F2"
+                                                Min="0" Max="renglon.SaldoAnterior" Class="cifra-tabular" />
+                                        }
+                                        else
+                                        {
+                                            @renglon.ImpPagado.ToString("N2")
+                                        }
+                                    </td>
                                     <td class="cifra-tabular">@((renglon.SaldoAnterior - renglon.ImpPagado).ToString("N2"))</td>
                                     <td>
                                         @if (EsEditable)
@@ -186,36 +211,25 @@ else
         <MudTabPanel Text="Bancos">
             <section class="seccion-formulario">
                 <h2>Banco ordenante</h2>
-                <p class="ayuda-seccion">
-                    @if (ExigeBanco)
-                    {
-                        <text>Con la forma de pago elegida, el SAT exige las dos cuentas.</text>
-                    }
-                    else
-                    {
-                        <text>Opcionales con esta forma de pago.</text>
-                    }
-                </p>
+                <p class="ayuda-seccion">Datos opcionales. Para transferencias, incluido SPEI, no es necesario capturarlos.</p>
 
                 <div class="rejilla-formulario">
                     <MudTextField T="string" Label="R.F.C. del banco ordenante" @bind-Value="_rfcOrdenante"
-                                  Disabled="@(!EsEditable)" Class="cifra-tabular" />
+                                  Disabled="@(!EsEditable)" Class="cifra-tabular" Immediate="true" />
                     <MudTextField T="string" Label="Banco extranjero" @bind-Value="_bancoOrdenanteExtranjero"
-                                  Disabled="@(!EsEditable)"
+                                  Disabled="@(!EsEditable)" Immediate="true"
                                   HelperText="Solo si el ordenante no tiene R.F.C. mexicano." />
                     <MudTextField T="string" Label="Cuenta ordenante" @bind-Value="_ctaOrdenante"
-                                  Disabled="@(!EsEditable)" Class="cifra-tabular"
-                                  Required="@ExigeBanco" />
+                                  Disabled="@(!EsEditable)" Class="cifra-tabular" Immediate="true" />
                 </div>
 
                 <h2>Banco beneficiario</h2>
 
                 <div class="rejilla-formulario">
                     <MudTextField T="string" Label="R.F.C. del banco beneficiario" @bind-Value="_rfcBeneficiario"
-                                  Disabled="@(!EsEditable)" Class="cifra-tabular" />
+                                  Disabled="@(!EsEditable)" Class="cifra-tabular" Immediate="true" />
                     <MudTextField T="string" Label="Cuenta beneficiaria" @bind-Value="_ctaBeneficiario"
-                                  Disabled="@(!EsEditable)" Class="cifra-tabular"
-                                  Required="@ExigeBanco" />
+                                  Disabled="@(!EsEditable)" Class="cifra-tabular" Immediate="true" />
                 </div>
             </section>
         </MudTabPanel>
@@ -226,9 +240,10 @@ else
         <div class="tarjeta-formulario-acciones">
             <MudButton OnClick="@(() => Navegacion.NavigateTo("/documentos"))">Cancelar</MudButton>
             <MudButton OnClick="Guardar" Disabled="@_trabajando">Guardar borrador</MudButton>
+            <MudButton OnClick="VistaPrevia" Disabled="@_trabajando">Vista previa PDF</MudButton>
             <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="Timbrar"
                        Disabled="@(_trabajando || !PuedeTimbrar)">
-                Generar pago
+                Timbrar pago
             </MudButton>
         </div>
     }
@@ -236,9 +251,6 @@ else
 </TarjetaFormulario>
 
 @code {
-    /// <summary>Formas de pago electrónicas: con ellas §28 exige los datos bancarios.</summary>
-    private static readonly string[] FormasQueExigenBanco = ["02", "03", "04", "05", "28", "29"];
-
     [Parameter]
     public Guid? Id { get; set; }
 
@@ -252,6 +264,8 @@ else
     private Guid? _clienteId;
 
     private DateTime _fechaPagoUtc = DateTime.UtcNow;
+    private DateTime? _fechaPagoLocal;
+    private TimeSpan? _horaPagoLocal;
     private string _formaDePago = "03";
     private string _moneda = "MXN";
     private decimal? _tipoCambio;
@@ -284,8 +298,6 @@ else
 
     private bool PuedeTimbrar => _integracionFiscal?.TimbradoDisponible == true;
 
-    private bool ExigeBanco => FormasQueExigenBanco.Contains(_formaDePago);
-
     private decimal Repartido => _renglones.Sum(r => r.ImpPagado);
 
     private bool CuadraElPago => Math.Round(Repartido, 2) == Math.Round(_monto, 2);
@@ -313,7 +325,11 @@ else
             return;
         }
 
-        if (_pago.Documentos.Count > 0 || _pago.FormaDePagoP is not null) Rehidratar(_pago);
+        Rehidratar(_pago);
+        _cliente = null;
+        if (_clienteId is { } clienteId && await Clientes.ObtenerAsync(clienteId) is { } cliente)
+            _cliente = new ClienteEnListaDto(cliente.Id, cliente.ClaveInterna, cliente.Rfc,
+                cliente.Nombre, cliente.RegimenFiscal, cliente.DomicilioFiscalCp, cliente.CorreoPrincipal, cliente.Activo);
 
         _borradorSinGuardar = _pago is { Estatus: "borrador" } && _pago.ClienteId is null && _pago.Documentos.Count == 0
             ? _pago.Id
@@ -324,6 +340,8 @@ else
     {
         _clienteId = pago.ClienteId;
         _fechaPagoUtc = pago.FechaPagoUtc;
+        _fechaPagoLocal = pago.FechaPagoLocal?.Date;
+        _horaPagoLocal = pago.FechaPagoLocal?.TimeOfDay;
         _formaDePago = pago.FormaDePagoP ?? "03";
         _moneda = pago.MonedaP;
         _tipoCambio = pago.TipoCambioP;
@@ -342,8 +360,21 @@ else
 
     private void AlElegirCliente(ClienteEnListaDto? cliente)
     {
+        if (_clienteId != cliente?.Id)
+        {
+            _renglones.Clear();
+            _encontrado = null;
+            _monto = 0;
+            _aviso = "Al cambiar de cliente se retiran las facturas del pago.";
+        }
         _cliente = cliente;
         _clienteId = cliente?.Id;
+    }
+
+    private void CambiarImporte(Renglon renglon, decimal importe)
+    {
+        var indice = _renglones.IndexOf(renglon);
+        if (indice >= 0) _renglones[indice] = renglon with { ImpPagado = importe };
     }
 
     private async Task Consultar()
@@ -401,6 +432,12 @@ else
     {
         if (_pago is not { } pago) return false;
 
+        if (_fechaPagoLocal is null || _horaPagoLocal is null)
+        {
+            _aviso = "Indica la fecha y hora del pago en el huso de la empresa.";
+            return false;
+        }
+
         if (_clienteId is not { } clienteId)
         {
             _aviso = "Elige el cliente al que corresponde el pago.";
@@ -420,7 +457,10 @@ else
             _ctaOrdenante,
             _rfcBeneficiario,
             _ctaBeneficiario,
-            [.. _renglones.Select(r => new RenglonDePagoDto(r.IdDocumento, r.ImpPagado))]);
+            [.. _renglones.Select(r => new RenglonDePagoDto(r.IdDocumento, r.ImpPagado))])
+        {
+            FechaPagoLocal = DateTime.SpecifyKind(_fechaPagoLocal.Value.Date.Add(_horaPagoLocal.Value), DateTimeKind.Unspecified)
+        };
 
         var (guardado, error) = await Pagos.GuardarAsync(pago.Id, peticion);
 
@@ -430,12 +470,37 @@ else
 
         _pago = guardado;
         Rehidratar(guardado);
+        _borradorSinGuardar = null;
 
         return true;
     }
 
+    private async Task VistaPrevia()
+    {
+        if (_trabajando || _pago is null) return;
+        _trabajando = true;
+        _error = null;
+        _aviso = null;
+        try
+        {
+            if (!await GuardarInternoAsync()) return;
+            var (archivo, error) = await Emision.ObtenerVistaPreviaPdfAsync(_pago.Id);
+            _error = error;
+            if (archivo is null) return;
+            await Dialogos.ShowAsync<DialogoDeComprobanteDeCompra>("Vista previa de pago",
+                new DialogParameters<DialogoDeComprobanteDeCompra>
+                {
+                    { x => x.Archivo, archivo },
+                    { x => x.TituloVistaPrevia, "Complemento de pagos - borrador" },
+                    { x => x.AvisoFiscal, "Borrador sin validez fiscal. No contiene certificación del SAT ni consume timbres." }
+                }, new DialogOptions { MaxWidth = MaxWidth.ExtraLarge, FullWidth = true, CloseOnEscapeKey = true });
+        }
+        finally { _trabajando = false; }
+    }
+
     private async Task Guardar()
     {
+        if (_trabajando) return;
         _trabajando = true;
         _aviso = null;
 

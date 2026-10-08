@@ -1,6 +1,7 @@
 @page "/clientes/nuevo"
 @page "/clientes/{Id:guid}"
 @attribute [Authorize(Policy = Permisos.ConfigurarEmpresa)]
+@using Facturacion.Shared.Contratos
 @inject ServicioDeClientes Clientes
 @inject ServicioDeCatalogos Catalogos
 @inject NavigationManager Navegacion
@@ -85,12 +86,10 @@ else
         @if (_esGenericoExtranjero)
         {
             <div class="rejilla-campos">
-                <MudSelect T="string" @bind-Value="_residenciaFiscal" Label="País de residencia fiscal">
-                    @foreach (var p in Catalogos.Obtener("c_Pais"))
-                    {
-                        <MudSelectItem T="string" Value="@p.Clave">@p.Clave — @p.Descripcion</MudSelectItem>
-                    }
-                </MudSelect>
+                <BuscadorCatalogo Catalogo="c_Pais" Label="País de residencia fiscal"
+                                  Valor="@ResidenciaFiscalSeleccionada"
+                                  ValorCambiado="p => _residenciaFiscal = p?.Clave"
+                                  MuestraSelectorEnLista="false" Requerido="true" />
 
                 <MudTextField @bind-Value="_numRegIdTrib" Label="Registro de identidad tributaria" MaxLength="40" />
             </div>
@@ -188,6 +187,9 @@ else
 
     private bool _esGenericoNacional;
     private bool _esGenericoExtranjero;
+
+    private ClaveSatDto? ResidenciaFiscalSeleccionada => string.IsNullOrWhiteSpace(_residenciaFiscal)
+        ? null : new ClaveSatDto("c_Pais", _residenciaFiscal, _residenciaFiscal, true);
 
     protected override async Task OnParametersSetAsync()
     {
