@@ -26,10 +26,10 @@ public sealed record DatosNotarialesDelPdf(
         => new(
             datos.NumeroInstrumentoNotarial, datos.FechaInstrumentoNotarial,
             datos.MontoOperacion, datos.SubtotalOperacion, datos.IvaOperacion,
-            notario.Curp, notario.NumeroNotaria, notario.Estado, notario.Adscripcion,
+            notario.Curp, notario.NumeroNotaria, EntidadesNotariales.Nombre(notario.Estado), notario.Adscripcion,
             [.. datos.Inmuebles.OrderBy(x => x.Orden).Select(x => new InmuebleDelPdf(
                 x.TipoInmueble, x.Calle, x.NumeroExterior, x.NumeroInterior, x.Colonia,
-                x.Localidad, x.Referencia, x.Municipio, x.Estado, x.Pais, x.CodigoPostal))],
+                x.Localidad, x.Referencia, x.Municipio, EntidadesNotariales.Nombre(x.Estado), x.Pais, x.CodigoPostal))],
             [.. datos.Partes.Where(x => x.Rol == "enajenante").OrderBy(x => x.Orden)
                 .Select(DesdeParte)],
             [.. datos.Partes.Where(x => x.Rol == "adquirente").OrderBy(x => x.Orden)
@@ -56,7 +56,7 @@ public sealed record DatosNotarialesDelPdf(
             .Select(x => new InmuebleDelPdf(
                 Atributo(x, "TipoInmueble"), Atributo(x, "Calle"), Opcional(x, "NoExterior"),
                 Opcional(x, "NoInterior"), Opcional(x, "Colonia"), Opcional(x, "Localidad"),
-                Opcional(x, "Referencia"), Atributo(x, "Municipio"), Atributo(x, "Estado"),
+                Opcional(x, "Referencia"), Atributo(x, "Municipio"), EntidadesNotariales.Nombre(Atributo(x, "Estado")),
                 Atributo(x, "Pais"), Atributo(x, "CodigoPostal")))
             .ToArray();
 
@@ -68,7 +68,7 @@ public sealed record DatosNotarialesDelPdf(
             decimal.Parse(Atributo(operacion, "IVA"), CultureInfo.InvariantCulture),
             Atributo(notario, "CURP"),
             int.Parse(Atributo(notario, "NumNotaria"), CultureInfo.InvariantCulture),
-            Atributo(notario, "EntidadFederativa"), Opcional(notario, "Adscripcion"),
+            EntidadesNotariales.Nombre(Atributo(notario, "EntidadFederativa")), Opcional(notario, "Adscripcion"),
             inmuebles,
             Personas(Requerido(complemento, "DatosEnajenante"), "DatosUnEnajenante",
                 "DatosEnajenantesCopSC", "DatosEnajenanteCopSC"),

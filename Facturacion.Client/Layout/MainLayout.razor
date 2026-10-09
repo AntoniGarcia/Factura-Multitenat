@@ -4,6 +4,8 @@
 @inject EstadoDeEncabezado Encabezado
 @inject IIndicadorDeTimbres IndicadorTimbres
 @inject NavigationManager Navegacion
+@inject IDialogService Dialogos
+@using Facturacion.Client.Componentes.Catalogos
 
 @*
     El único MainLayout del sistema (ARQUITECTURA.md §8). Las páginas aportan solo el contenido
@@ -123,6 +125,83 @@
                     </ul>
                 }
             </div>
+        </nav>
+
+        @* En móvil el menú lateral no sale. Lo diario va a un toque —Inicio, Documentos y el
+           selector de Catálogos, el mismo de Inicio— y lo demás en «Más». «Más» se arma desde
+           MenuPrincipal, así que lo que se agregue al menú de escritorio aparece aquí sin tocar
+           esta barra. Si «Más» tendría una sola entrada, esa entrada va directo. *@
+        <nav class="menu-inferior" aria-label="Secciones principales">
+            <ul>
+                @foreach (var elemento in FijosDeMovil)
+                {
+                    <li>
+                        <NavLink href="@elemento.Ruta" Match="@(elemento.Ruta == "/" ? NavLinkMatch.All : NavLinkMatch.Prefix)"
+                                 title="@elemento.Etiqueta">
+                            <MudIcon Icon="@ObtenerIcono(elemento.Icono)" Size="Size.Small" />
+                            <span>@elemento.Etiqueta</span>
+                        </NavLink>
+                    </li>
+                }
+
+                @if (MenuPrincipal.Catalogos.Any(EsVisible))
+                {
+                    <li>
+                        <button type="button" class="menu-inferior-boton @(EnCatalogos ? "active" : null)"
+                                aria-haspopup="dialog" @onclick="AbrirCatalogosAsync">
+                            <MudIcon Icon="@ObtenerIcono("catalogo")" Size="Size.Small" />
+                            <span>Catálogos</span>
+                        </button>
+                    </li>
+                }
+
+                @if (SecundariosDeMovil is [var unico])
+                {
+                    <li>
+                        <NavLink href="@unico.Elemento.Ruta" Match="NavLinkMatch.Prefix" title="@unico.Elemento.Etiqueta">
+                            <MudIcon Icon="@ObtenerIcono(unico.Elemento.Icono)" Size="Size.Small" />
+                            <span>@unico.Elemento.Etiqueta</span>
+                        </NavLink>
+                    </li>
+                }
+                else if (SecundariosDeMovil.Count > 1)
+                {
+                    <li class="menu-mas-contenedor" @onkeydown="AlTeclaEnMenuMas">
+                        <button type="button" class="menu-inferior-boton @(EnSecundario ? "active" : null)"
+                                aria-expanded="@(_menuMasAbierto ? "true" : "false")" aria-controls="menu-mas"
+                                @onclick="AlternarMenuMas">
+                            <MudIcon Icon="@Icons.Material.Filled.MoreHoriz" Size="Size.Small" />
+                            <span>Más</span>
+                        </button>
+
+                        @if (_menuMasAbierto)
+                        {
+                            <div id="menu-mas" class="menu-mas-lista">
+                                @foreach (var grupo in SecundariosDeMovil.GroupBy(x => x.Grupo))
+                                {
+                                    var idGrupo = $"menu-mas-{grupo.Key?.ToLowerInvariant().Replace(' ', '-') ?? "general"}";
+
+                                    @if (grupo.Key is { } titulo)
+                                    {
+                                        <p id="@idGrupo" class="menu-mas-grupo">@titulo</p>
+                                    }
+                                    <ul aria-labelledby="@(grupo.Key is null ? null : idGrupo)">
+                                        @foreach (var (_, elemento) in grupo)
+                                        {
+                                            <li>
+                                                <NavLink href="@elemento.Ruta" Match="NavLinkMatch.Prefix" @onclick="CerrarMenuMas">
+                                                    <MudIcon Icon="@ObtenerIcono(elemento.Icono)" Size="Size.Small" />
+                                                    <span>@elemento.Etiqueta</span>
+                                                </NavLink>
+                                            </li>
+                                        }
+                                    </ul>
+                                }
+                            </div>
+                        }
+                    </li>
+                }
+            </ul>
         </nav>
 
         @* El @key es la fuga de datos entre empresas resuelta: al cambiar de empresa, Blazor
@@ -253,6 +332,7 @@
 
     private void AlCambiarDeRuta(object? sender, LocationChangedEventArgs e)
     {
+        _menuMasAbierto = false;
         AbrirSubmenuDeLaRutaActual();
         Redibujar();
     }
@@ -268,6 +348,55 @@
                                          actual.StartsWith(h.Ruta + "/", StringComparison.OrdinalIgnoreCase)))
                 _submenusAbiertos.Add(submenu.Etiqueta);
         }
+    }
+
+    // ── Barra inferior de móvil ──────────────────────────────────────────────────────────
+
+    private static readonly string[] RutasFijasDeMovil = ["/", "/documentos"];
+
+    private bool _menuMasAbierto;
+
+    private IEnumerable<ElementoDeMenu> FijosDeMovil
+        => MenuPrincipal.Elementos.Where(e => RutasFijasDeMovil.Contains(e.Ruta) && EsVisible(e));
+
+    /// <summary>
+    /// Todo lo visible que no va fijo en la barra, con el grupo bajo el que se muestra. El
+    /// submenú de Catálogos se excluye porque tiene su propio botón; cualquier otro submenú se
+    /// aplana en sus hijos, que conservan el grupo del padre.
+    /// </summary>
+    private IReadOnlyList<(string? Grupo, ElementoDeMenu Elemento)> SecundariosDeMovil
+        => [.. MenuPrincipal.Elementos
+            .Where(e => !RutasFijasDeMovil.Contains(e.Ruta) && !ReferenceEquals(e.Hijos, MenuPrincipal.Catalogos) && EsVisible(e))
+            .SelectMany(e => e.Hijos is { } hijos
+                ? hijos.Where(EsVisible).Select(h => (e.Grupo, h))
+                : [(e.Grupo, e)])];
+
+    private bool EnCatalogos => MenuPrincipal.Catalogos.Any(c => RutaActualEstaEn(c.Ruta));
+
+    private bool EnSecundario => SecundariosDeMovil.Any(x => RutaActualEstaEn(x.Elemento.Ruta));
+
+    private bool RutaActualEstaEn(string ruta)
+    {
+        var actual = "/" + Navegacion.ToBaseRelativePath(Navegacion.Uri).Split('?', '#')[0].TrimEnd('/');
+        return actual.Equals(ruta, StringComparison.OrdinalIgnoreCase) ||
+               actual.StartsWith(ruta + "/", StringComparison.OrdinalIgnoreCase);
+    }
+
+    private static readonly DialogOptions OpcionesDeSelector = new() { MaxWidth = MaxWidth.Small, FullWidth = true };
+
+    private Task AbrirCatalogosAsync()
+    {
+        _menuMasAbierto = false;
+        return Dialogos.ShowAsync<DialogoDeCatalogos>("Catálogos", OpcionesDeSelector);
+    }
+
+    private void AlternarMenuMas() => _menuMasAbierto = !_menuMasAbierto;
+
+    private void CerrarMenuMas() => _menuMasAbierto = false;
+
+    private void AlTeclaEnMenuMas(KeyboardEventArgs evento)
+    {
+        if (evento.Key == "Escape") CerrarMenuMas();
     }
 
     private void Redibujar() => InvokeAsync(StateHasChanged);

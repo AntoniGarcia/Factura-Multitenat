@@ -10,9 +10,8 @@ namespace Facturacion.Server.Modules.Plataforma.Clientes;
 /// Catálogo de clientes. Ningún endpoint recibe identificador de empresa: la empresa es la
 /// del claim y el filtro global de EF Core hace el resto (ARQUITECTURA.md §4).
 /// <para>
-/// Basta con tener sesión para consultarlos —quien factura necesita elegir cliente— y hace
-/// falta <c>configurar_empresa</c> para modificarlos, que es el permiso bajo el que vive el
-/// resto de los catálogos de la empresa.
+/// Los consulta quien emite cualquier documento —necesita elegir cliente— o quien los
+/// administra, y modificarlos pide <c>administrar_clientes</c> (AGENTS.md §11).
 /// </para>
 /// </summary>
 public static class ClientesEndpoints
@@ -21,13 +20,13 @@ public static class ClientesEndpoints
     {
         var grupo = rutas.MapGroup("/api/clientes").WithTags("Clientes");
 
-        grupo.MapGet("/", Listar).RequireAuthorization();
-        grupo.MapGet("/exportar", Exportar).RequireAuthorization();
-        grupo.MapGet("/{id:guid}", Obtener).RequireAuthorization();
+        grupo.MapGet("/", Listar).RequireAuthorization(Permisos.Politicas.LeerClientesYProductos);
+        grupo.MapGet("/exportar", Exportar).RequireAuthorization(Permisos.Politicas.LeerClientesYProductos);
+        grupo.MapGet("/{id:guid}", Obtener).RequireAuthorization(Permisos.Politicas.LeerClientesYProductos);
 
-        grupo.MapPost("/", Crear).RequireAuthorization(Permisos.ConfigurarEmpresa);
-        grupo.MapPut("/{id:guid}", Actualizar).RequireAuthorization(Permisos.ConfigurarEmpresa);
-        grupo.MapPost("/{id:guid}/activo", CambiarActivo).RequireAuthorization(Permisos.ConfigurarEmpresa);
+        grupo.MapPost("/", Crear).RequireAuthorization(Permisos.AdministrarClientes);
+        grupo.MapPut("/{id:guid}", Actualizar).RequireAuthorization(Permisos.AdministrarClientes);
+        grupo.MapPost("/{id:guid}/activo", CambiarActivo).RequireAuthorization(Permisos.AdministrarClientes);
     }
 
     private static async Task<IResult> Listar(

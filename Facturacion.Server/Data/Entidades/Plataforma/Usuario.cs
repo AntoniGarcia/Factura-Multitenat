@@ -55,5 +55,13 @@ public sealed class Usuario : IdentityUser<Guid>
     /// </summary>
     public bool CreadoPorAdministrador { get; set; }
 
+    /// <summary>
+    /// Quien registró la cuenta: uno por cuenta. Recibe en el token todos los permisos de
+    /// cualquier empresa de su cuenta, sin guardarlos uno por uno, y es el único que administra
+    /// usuarios y da de alta empresas. Nadie lo modifica desde la pantalla de usuarios
+    /// (AGENTS.md §11, 9 de octubre de 2026).
+    /// </summary>
+    public bool EsTitular { get; set; }
+
     public ICollection<UsuarioEmpresa> Empresas { get; set; } = [];
 }

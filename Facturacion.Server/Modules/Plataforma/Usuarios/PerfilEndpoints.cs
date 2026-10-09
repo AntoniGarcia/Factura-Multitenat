@@ -10,7 +10,7 @@ using Microsoft.EntityFrameworkCore;
 namespace Facturacion.Server.Modules.Plataforma.Usuarios;
 
 /// <summary>
-/// El perfil propio: nombre, contraseña y tema. Sin <c>administrar_usuarios</c> a propósito
+/// El perfil propio: nombre, contraseña y tema. Sin exigir ser titular a propósito
 /// —todo usuario edita lo suyo— y siempre a partir del id del token, nunca de uno recibido
 /// en el cuerpo (PROMPT-FASES-A §8).
 /// </summary>

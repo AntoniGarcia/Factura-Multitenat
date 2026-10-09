@@ -12,7 +12,8 @@ public sealed record UsuarioDeEmpresaDto(
     bool Activo,
     bool EsUsuarioActual,
     bool CreadoPorAdministrador,
-    IReadOnlyList<string> Permisos);
+    IReadOnlyList<string> Permisos,
+    bool EsTitular);
 
 public sealed record UsuariosDeLaEmpresaDto(
     IReadOnlyList<UsuarioDeEmpresaDto> Usuarios,

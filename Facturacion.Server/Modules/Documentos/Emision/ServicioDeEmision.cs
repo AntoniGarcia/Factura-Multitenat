@@ -52,6 +52,9 @@ public sealed class ServicioDeEmision(
         if (!VariantesDeFactura.EsValida(variante))
             return ErrorNegocio.Validacion("variante-desconocida", $"'{variante}' no es una clase de factura conocida.");
 
+        if (PermisoDeEmision.Exigir(contexto, Permisos.ParaVarianteDeFactura(variante)) is { } sinPermiso)
+            return sinPermiso;
+
         if (await ValidarLicenciaDeVarianteAsync(variante, ct) is { } sinLicencia)
             return sinLicencia;
 
@@ -132,6 +135,9 @@ public sealed class ServicioDeEmision(
 
         if (comprobante is null)
             return ErrorNegocio.NoEncontrado("comprobante-no-encontrado", "Ese comprobante no existe.");
+
+        if (PermisoDeEmision.Exigir(contexto, comprobante) is { } sinPermiso)
+            return sinPermiso;
 
         if (comprobante.TipoDeComprobante != TipoFactura)
             return ErrorNegocio.Conflicto("tipo-comprobante-incompatible",
@@ -223,6 +229,9 @@ public sealed class ServicioDeEmision(
 
         if (comprobante is null)
             return ErrorNegocio.NoEncontrado("comprobante-no-encontrado", "Ese comprobante no existe.");
+
+        if (PermisoDeEmision.Exigir(contexto, comprobante) is { } sinPermiso)
+            return sinPermiso;
 
         if (comprobante.Estatus != "borrador")
             return ErrorNegocio.Conflicto(
@@ -427,6 +436,13 @@ public sealed class ServicioDeEmision(
                 linea.NoIdentificacion?.Contains('|') == true)
                 return ErrorNegocio.Validacion("numero-identificacion-invalido",
                     $"El identificador del renglón {i + 1} debe tener hasta 100 caracteres y no contener '|'.");
+
+            // El concepto copia la unidad del producto en cada guardado: basta con corregir el
+            // producto. Detenerlo aquí evita que el error aparezca al timbrar, con el folio ya apartado.
+            if (!UnidadDeConcepto.EsValida(producto.UnidadTexto))
+                return ErrorNegocio.Validacion("unidad-de-concepto-invalida",
+                    $"El producto del renglón {i + 1} tiene la unidad «{producto.UnidadTexto}». " +
+                    $"{UnidadDeConcepto.Regla} Corrígela en el producto y vuelve a guardar.");
 
             resueltos.Add(new ConceptoResuelto(
                 Orden: i + 1,

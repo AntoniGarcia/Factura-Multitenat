@@ -74,7 +74,7 @@ builder.Services.AddSingleton<IServicioDeVersion, ServicioDeVersion>();
 builder.Services.AddSingleton<ServicioDeInstalacion>();
 builder.Services.AddSingleton<ServicioDeDescargas>();
 
-// Las mismas seis políticas que el Server, desde la misma lista: el Client las necesita para
+// Las mismas políticas que el Server, desde la misma lista: el Client las necesita para
 // enrutar y para ocultar lo que no aplica. Es comodidad visual, NO protección — el Server
 // rechaza igual la operación aunque alguien llegue a la ruta a mano (ARQUITECTURA.md §4).
 builder.Services.AddAuthorizationCore(opciones =>
@@ -83,6 +83,12 @@ builder.Services.AddAuthorizationCore(opciones =>
         opciones.AddPolicy(permiso, politica => politica
             .RequireAuthenticatedUser()
             .RequireClaim(ClavesDeClaim.Permiso, permiso));
+
+    foreach (var (nombre, claves) in Facturacion.Shared.Comun.Permisos.Politicas.Compuestas)
+        opciones.AddPolicy(nombre, politica => politica
+            .RequireAuthenticatedUser()
+            .RequireAssertion(contexto => contexto.User.HasClaim(c =>
+                c.Type == ClavesDeClaim.Permiso && claves.Contains(c.Value))));
 
     // Las del panel del proveedor, igual que el Server: ver y acciones por sección.
     // Misma advertencia que las de arriba: aquí solo sirven para enrutar y ocultar.

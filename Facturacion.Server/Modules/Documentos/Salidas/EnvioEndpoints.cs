@@ -15,7 +15,7 @@ public static class EnvioEndpoints
     {
         var grupo = rutas.MapGroup("/api/documentos")
             .WithTags("Documentos")
-            .RequireAuthorization(Permisos.Timbrar);
+            .RequireAuthorization(Permisos.EnviarCorreo);
 
         grupo.MapGet("/{id:guid}/envio", ObtenerPropuesta);
         grupo.MapPost("/{id:guid}/enviar", Enviar);

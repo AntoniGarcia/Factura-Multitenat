@@ -106,13 +106,13 @@ public sealed class ServicioDeTablero(
     };
 
     /// <summary>
-    /// Solo para quien tiene <c>configurar_empresa</c>. Es el mismo permiso que exige
+    /// Solo para quien tiene <c>mi_empresa</c>. Es el mismo permiso que exige
     /// <c>/api/empresa/certificados</c>: si el tablero devolviera la vigencia a quien no
     /// puede consultar los certificados, el permiso dejaría de significar algo.
     /// </summary>
     private async Task<AvisoCertificadoDto?> CertificadoAsync(CancellationToken ct)
     {
-        if (!contexto.Tiene(Permisos.ConfigurarEmpresa)) return null;
+        if (!contexto.Tiene(Permisos.MiEmpresa)) return null;
 
         var activo = (await csd.ListarAsync(ct)).FirstOrDefault(c => c.Activo);
 

@@ -32,8 +32,8 @@
                 <div class="rejilla-campos">
                     <MudTextField @bind-Value="_descripcion" Label="Descripción" MaxLength="1000"
                                   Lines="2" HelperText="Es lo que sale como concepto en la factura." />
-                    <MudTextField @bind-Value="_unidadTexto" Label="Unidad de medida" MaxLength="64"
-                                  HelperText="La que lee el cliente en el PDF: «Litro», «Caja con 12»." />
+                    <MudTextField @bind-Value="_unidadTexto" Label="Unidad de medida" MaxLength="@UnidadDeConcepto.LongitudMaxima"
+                                  HelperText="La que lee el cliente en el PDF, hasta 20 caracteres: «Litro», «Caja con 12»." />
                 </div>
                 </section>
 
@@ -312,8 +312,11 @@
         _claveUnidadSel = clave;
 
         // La unidad en texto se precarga con la del catálogo, pero se puede cambiar: es lo
-        // que ve el cliente y a veces conviene que diga «Caja con 12» y no «Pieza».
-        if (clave is not null && string.IsNullOrWhiteSpace(_unidadTexto))
+        // que ve el cliente y a veces conviene que diga «Caja con 12» y no «Pieza». Un nombre
+        // del catálogo que no cabe en los 20 caracteres del SAT no se precarga ni se recorta:
+        // «Gramo por centímetro» ya significa otra cosa.
+        if (clave is not null && string.IsNullOrWhiteSpace(_unidadTexto) &&
+            UnidadDeConcepto.EsValida(clave.Descripcion))
             _unidadTexto = clave.Descripcion;
     }
 

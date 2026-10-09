@@ -41,7 +41,7 @@ public sealed class GeneradorDeXmlNotaria(GeneradorDeXmlCfdi generadorCfdi)
                         Opcional("Localidad", x.Localidad),
                         Opcional("Referencia", x.Referencia),
                         new XAttribute("Municipio", x.Municipio),
-                        new XAttribute("Estado", x.Estado),
+                        new XAttribute("Estado", EntidadesNotariales.ClaveDelComplemento(x.Estado)!),
                         new XAttribute("Pais", x.Pais),
                         new XAttribute("CodigoPostal", x.CodigoPostal)))),
                 new XElement(Notarios + "DatosOperacion",
@@ -53,7 +53,7 @@ public sealed class GeneradorDeXmlNotaria(GeneradorDeXmlCfdi generadorCfdi)
                 new XElement(Notarios + "DatosNotario",
                     new XAttribute("CURP", notario!.Curp),
                     new XAttribute("NumNotaria", notario.NumeroNotaria),
-                    new XAttribute("EntidadFederativa", notario.Estado),
+                    new XAttribute("EntidadFederativa", EntidadesNotariales.ClaveDelComplemento(notario.Estado)!),
                     Opcional("Adscripcion", notario.Adscripcion)),
                 Grupo("DatosEnajenante", "DatosUnEnajenante", "DatosEnajenantesCopSC",
                     "DatosEnajenanteCopSC", datos.EnajenantesEnCopropiedad, enajenantes),
@@ -69,6 +69,12 @@ public sealed class GeneradorDeXmlNotaria(GeneradorDeXmlCfdi generadorCfdi)
             notario.NumeroNotaria is < 1 or > 999 || string.IsNullOrWhiteSpace(notario.Estado))
             return ErrorNegocio.Regla("perfil-notario-incompleto",
                 "Completa la configuración del notario antes de validar o timbrar esta factura.");
+
+        if (EntidadesNotariales.ClaveDelComplemento(notario.Estado) is null ||
+            datos.Inmuebles.Any(x => EntidadesNotariales.ClaveDelComplemento(x.Estado) is null))
+            return ErrorNegocio.Regla("entidad-notarial-sin-equivalencia",
+                "El complemento de Notarios Públicos solo admite entidades federativas de México. " +
+                "Revisa la entidad del notario y la de cada inmueble.");
 
         if (datos.Inmuebles.Count == 0 || datos.NumeroInstrumentoNotarial is < 1 or > 999999 ||
             datos.FechaInstrumentoNotarial == default || datos.MontoOperacion < 0 ||

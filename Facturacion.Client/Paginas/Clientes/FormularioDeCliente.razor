@@ -1,6 +1,6 @@
 @page "/clientes/nuevo"
 @page "/clientes/{Id:guid}"
-@attribute [Authorize(Policy = Permisos.ConfigurarEmpresa)]
+@attribute [Authorize(Policy = Permisos.AdministrarClientes)]
 @using Facturacion.Shared.Contratos
 @inject ServicioDeClientes Clientes
 @inject ServicioDeCatalogos Catalogos

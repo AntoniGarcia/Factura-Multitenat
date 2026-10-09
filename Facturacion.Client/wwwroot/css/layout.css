@@ -1,13 +1,18 @@
 /*
   El único MainLayout (ARQUITECTURA.md §8). En escritorio: barra superior fija y menú lateral
   fijo, que se oculta entero al pulsar el botón de la barra para dejarle todo el ancho a la
-  tabla. En móvil (<=768px): la barra superior se reduce y el menú lateral se convierte en
-  barra inferior de pestañas, que es como se navega con el pulgar. Ahí el ocultado no
-  aplica: el menú ya no es una columna y la barra tiene que salir completa.
+  tabla. En móvil (<=768px): la barra superior se reduce, el menú lateral desaparece y en su
+  lugar sale una barra inferior de una sola fila (.menu-inferior), que es como se navega con
+  el pulgar: lo diario a un toque y lo demás en «Más».
 */
 
 html, body {
     height: 100%;
+}
+
+/* La barra de desplazamiento toma los tonos del tema en lugar de los del sistema. */
+html {
+    scrollbar-color: var(--borde-fuerte) var(--fondo);
 }
 
 .cascaron {
@@ -472,21 +477,6 @@ html, body {
     padding-left: 1rem;
 }
 
-/* En la barra inferior de móvil el submenú se aplana: el botón desaparece y los hijos se
-   vuelven pestañas de la misma fila, abiertos o no. Un desplegable dentro de una barra que
-   se desplaza de lado no se alcanza con el pulgar. */
-@media (max-width: 768px) {
-    .menu-submenu-boton {
-        display: none;
-    }
-
-    .menu-lateral li.menu-con-submenu,
-    .menu-lateral ul.menu-submenu,
-    .menu-lateral ul.menu-submenu:not(.abierto) {
-        display: contents;
-    }
-}
-
 /* Ancla del menú flotante: sin esto, el desplegado se posicionaría contra la ventana. */
 .cuerpo {
     position: relative;
@@ -516,9 +506,9 @@ html, body {
     max-width: 60rem;
 }
 
-/* El operador tiene una navegación móvil deliberadamente corta; en escritorio se usa el
-   menú lateral agrupado. Se declara aquí para que no aparezca antes del corte responsivo. */
-.menu-inferior-operador {
+/* La barra inferior de móvil, la misma para el inquilino y para el operador. En escritorio
+   se usa el menú lateral agrupado; se declara aquí para que no aparezca antes del corte. */
+.menu-inferior {
     display: none;
 }
 
@@ -552,7 +542,7 @@ html, body {
         text-overflow: ellipsis;
     }
 
-    /* En móvil el menú es una barra de pestañas: no hay columna que encoger, así que el
+    /* En móvil el menú lateral no existe: no hay columna que encoger, así que el
        botón de colapso no tendría nada que hacer. */
     .boton-colapso {
         display: none;
@@ -564,115 +554,37 @@ html, body {
 
     .area-principal {
         padding: 1rem;
-        /* Dos veces --alto-control más margen: que el último renglón de la página no
-           quede tapado por la barra de pestañas fija. */
-        padding-bottom: calc(var(--alto-control) * 2);
+        /* La barra inferior mide una fila (3rem más su relleno y borde): con este margen el
+           último renglón de la página no queda tapado. */
+        padding-bottom: calc(4.5rem + env(safe-area-inset-bottom));
     }
 
-    /*
-      En la barra inferior los grupos se aplanan en una sola fila desplazable: el rótulo
-      estorba y apilar un <ul> por grupo haría crecer la barra hasta comerse la pantalla.
-      Nada queda inalcanzable —se desplaza—, que es lo que se perdería ocultando los grupos
-      que no son de uso diario.
-    */
-    .menu-grupo,
-    .menu-marca {
-        display: none;
-    }
-
-    /* El colapso no aplica aquí: si el usuario dejó el menú encogido en el escritorio y
-       luego angosta la ventana, la barra inferior debe salir completa igual. */
-    .cuerpo.menu-colapsado .menu-lateral {
-        width: 100%;
-    }
-
+    /* Ninguno de los dos menús laterales sale en móvil: apilar sus grupos en la barra la hacía
+       crecer a tres renglones y tapaba campos. Los reemplaza .menu-inferior. */
     .menu-lateral,
     .cuerpo.menu-colapsado .menu-lateral {
-        order: 1;
-        width: 100%;
-        position: fixed;
-        left: 0;
-        right: 0;
-        bottom: 0;
-        display: flex;
-        flex-direction: row;
-        border-right: none;
-        border-top: 1px solid var(--borde);
-        overflow-x: auto;
-        overflow-y: hidden;
-        z-index: 10;
-    }
-
-    /* El riel y su despliegue al pasar el cursor no existen aquí: en la barra inferior no hay
-       cursor que acercar, y dejar el flotante convertiría un toque en un panel encima del
-       contenido. Se anula lo que puso el bloque de escritorio. */
-    .cuerpo.menu-colapsado .menu-lateral:hover,
-    .cuerpo.menu-colapsado .menu-lateral:focus-within {
-        position: fixed;
-        width: 100%;
-        box-shadow: none;
-    }
-
-    .cuerpo.menu-colapsado .menu-lateral a span {
-        display: block;
-    }
-
-    .cuerpo.menu-colapsado .menu-lateral a {
-        justify-content: center;
-    }
-
-    .menu-pie {
-        border-top: none;
-    }
-
-    .menu-lateral ul {
-        flex-direction: row;
-        justify-content: space-around;
-        padding: 0.25rem;
-    }
-
-    .menu-lateral a,
-    .cuerpo.menu-colapsado .menu-lateral a {
-        flex-direction: column;
-        gap: 0.125rem;
-        height: auto;
-        padding: 0.375rem 0.5rem;
-        font-size: var(--etiqueta-tam);
-    }
-
-    .cascaron-cliente .menu-lateral a.active::before {
-        top: 0;
-        right: 0.5rem;
-        bottom: auto;
-        left: 0.5rem;
-        width: auto;
-        height: 3px;
-        border-radius: 0 0 3px 3px;
-    }
-
-    .cascaron-cliente .menu-lateral a:hover,
-    .cascaron-cliente .menu-lateral a.active {
-        color: var(--cliente-menu-texto);
-    }
-
-    /* El panel del operador tiene siete destinos. En lugar de obligar a desplazar la barra
-       inferior, deja cuatro tareas frecuentes y concentra la administración en «Más». */
-    .menu-lateral-operador {
         display: none;
     }
 
-    .menu-inferior-operador {
+    .menu-inferior {
         position: fixed;
         left: 0;
         right: 0;
         bottom: 0;
         z-index: 10;
         display: block;
+        padding-bottom: env(safe-area-inset-bottom);
         background: var(--superficie-menu);
         border-top: 1px solid var(--borde);
     }
 
-    .menu-inferior-operador > ul {
+    /* Mientras se escribe, el teclado del teléfono sube la barra fija justo encima del campo.
+       Se esconde con el foco en un campo de texto y vuelve al salir de él. */
+    body:has(:is(input:not([type="checkbox"], [type="radio"], [type="button"], [type="submit"]), textarea, [contenteditable="true"]):focus) .menu-inferior {
+        display: none;
+    }
+
+    .menu-inferior > ul {
         display: grid;
         grid-template-columns: repeat(auto-fit, minmax(3.5rem, 1fr));
         max-width: 34rem;
@@ -681,12 +593,12 @@ html, body {
         list-style: none;
     }
 
-    .menu-inferior-operador > ul > li {
+    .menu-inferior > ul > li {
         min-width: 0;
     }
 
-    .menu-inferior-operador a,
-    .menu-mas-boton {
+    .menu-inferior a,
+    .menu-inferior-boton {
         display: flex;
         flex-direction: column;
         align-items: center;
@@ -705,21 +617,29 @@ html, body {
         cursor: pointer;
     }
 
-    .menu-inferior-operador a:hover,
-    .menu-mas-boton:hover,
-    .menu-inferior-operador a.active,
-    .menu-mas-boton.active {
+    .menu-inferior a span,
+    .menu-inferior-boton span {
+        max-width: 100%;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+    }
+
+    .menu-inferior a:hover,
+    .menu-inferior-boton:hover,
+    .menu-inferior a.active,
+    .menu-inferior-boton.active {
         background: var(--acento-suave);
         color: var(--acento);
     }
 
-    .menu-inferior-operador a.active,
-    .menu-mas-boton.active {
+    .menu-inferior a.active,
+    .menu-inferior-boton.active {
         font-weight: var(--peso-titulo);
     }
 
-    .menu-inferior-operador a:focus-visible,
-    .menu-mas-boton:focus-visible {
+    .menu-inferior a:focus-visible,
+    .menu-inferior-boton:focus-visible {
         outline: 2px solid var(--foco);
         outline-offset: -2px;
     }
@@ -734,6 +654,8 @@ html, body {
         bottom: calc(100% + 0.375rem);
         width: max-content;
         min-width: 13rem;
+        max-height: 60vh;
+        overflow-y: auto;
         padding: 0.25rem;
         background: var(--superficie-elevada);
         border: 1px solid var(--borde);
@@ -748,6 +670,12 @@ html, body {
         margin: 0;
         padding: 0;
         list-style: none;
+    }
+
+    .menu-mas-grupo {
+        margin: 0.375rem 0.625rem 0.125rem;
+        font-size: var(--etiqueta-tam);
+        color: var(--texto-suave);
     }
 
     .menu-mas-lista a {

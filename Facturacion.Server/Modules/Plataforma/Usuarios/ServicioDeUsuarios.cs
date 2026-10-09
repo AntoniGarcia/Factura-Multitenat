@@ -40,6 +40,12 @@ namespace Facturacion.Server.Modules.Plataforma.Usuarios;
 /// en la llantera, auxiliar en la cementera"— no se crea a nadie ni se toca su contraseña:
 /// se le da acceso a la empresa nueva y ya.
 ///
+/// <para><b>El titular no se toca</b></para>
+/// Esta pantalla la abre solo el titular de la cuenta, y desde aquí nadie modifica al titular:
+/// ni su correo, ni su contraseña, ni sus permisos —que no se guardan: los lleva todos—, ni su
+/// acceso. Los permisos que se reparten son solo las casillas de <see cref="Permisos.Asignables"/>
+/// (AGENTS.md §11, 9 de octubre de 2026).
+///
 /// <para><b>El límite de usuarios</b></para>
 /// Tres accesos activos por empresa: el que la dio de alta más dos auxiliares. No hay ningún
 /// campo de "rol": el límite cuenta filas de <see cref="UsuarioEmpresa"/>, no una etiqueta.
@@ -69,10 +75,11 @@ public sealed class ServicioDeUsuarios(
                 ue.Activo && ue.Usuario.Activo,
                 ue.UsuarioId == contexto.UsuarioActual,
                 ue.Usuario.CreadoPorAdministrador,
-                ue.Permisos.Select(p => p.PermisoClave).ToList()))
+                ue.Permisos.Select(p => p.PermisoClave).ToList(),
+                ue.Usuario.EsTitular))
             .ToListAsync(ct);
 
-        return new UsuariosDeLaEmpresaDto(miembros, LimitePorEmpresa);
+        return new UsuariosDeLaEmpresaDto([.. miembros.Select(ConPermisosDeTitular)], LimitePorEmpresa);
     }
 
     public async Task<Resultado<RespuestaCrearUsuario>> CrearAsync(PeticionCrearUsuario peticion, CancellationToken ct)
@@ -156,6 +163,8 @@ public sealed class ServicioDeUsuarios(
         if (string.IsNullOrWhiteSpace(correo) || !EsCorreoValido(correo))
             return ErrorNegocio.Validacion("correo-invalido", "Escribe un correo válido.");
 
+        if (await ErrorSiEsTitularAsync(usuarioId, ct) is { } titular) return titular;
+
         var pertenece = await baseDeDatos.UsuariosEmpresas
             .AnyAsync(ue => ue.UsuarioId == usuarioId && ue.EmpresaId == contexto.EmpresaId, ct);
 
@@ -217,6 +226,8 @@ public sealed class ServicioDeUsuarios(
                 "no-a-uno-mismo",
                 "Tu propia contraseña se cambia desde tu perfil, no desde aquí.");
 
+        if (await ErrorSiEsTitularAsync(usuarioId, ct) is { } titular) return titular;
+
         var pertenece = await baseDeDatos.UsuariosEmpresas
             .AnyAsync(ue => ue.UsuarioId == usuarioId && ue.EmpresaId == contexto.EmpresaId, ct);
 
@@ -263,9 +274,11 @@ public sealed class ServicioDeUsuarios(
 
     public async Task<Resultado> ActualizarPermisosAsync(Guid usuarioId, IReadOnlyList<string> permisos, CancellationToken ct)
     {
-        var invalido = permisos.FirstOrDefault(p => !Permisos.EsValido(p));
+        var invalido = permisos.FirstOrDefault(p => !Permisos.EsAsignable(p));
         if (invalido is not null)
-            return ErrorNegocio.Validacion("permiso-invalido", $"«{invalido}» no es un permiso válido.");
+            return ErrorNegocio.Validacion("permiso-invalido", $"«{invalido}» no es un permiso que se pueda asignar.");
+
+        if (await ErrorSiEsTitularAsync(usuarioId, ct) is { } titular) return titular;
 
         var empresaId = contexto.EmpresaId;
 
@@ -313,6 +326,8 @@ public sealed class ServicioDeUsuarios(
 
         if (!activo && usuarioId == contexto.UsuarioActual)
             return ErrorNegocio.Regla("no-autodesactivar", "No puedes desactivarte a ti mismo. Pide a otro administrador que lo haga.");
+
+        if (await ErrorSiEsTitularAsync(usuarioId, ct) is { } titular) return titular;
 
         var miembro = await baseDeDatos.UsuariosEmpresas
             .Include(ue => ue.Usuario)
@@ -401,6 +416,10 @@ public sealed class ServicioDeUsuarios(
         if (usuarioExistente.CuentaId != contexto.CuentaActual)
             return ErrorNegocio.Conflicto("correo-en-uso", "Ese correo ya está en uso por otra cuenta.");
 
+        if (usuarioExistente.EsTitular)
+            return ErrorNegocio.Conflicto("titular-no-modificable",
+                "Ese correo es del titular de la cuenta: ya tiene acceso a todas sus empresas.");
+
         var existente = await baseDeDatos.UsuariosEmpresas
             .FirstOrDefaultAsync(ue => ue.UsuarioId == usuarioExistente.Id && ue.EmpresaId == empresaId, ct);
 
@@ -482,11 +501,20 @@ public sealed class ServicioDeUsuarios(
             .Select(p => p.PermisoClave)
             .ToListAsync(ct);
 
-        return new UsuarioDeEmpresaDto(
+        return ConPermisosDeTitular(new UsuarioDeEmpresaDto(
             miembro.UsuarioId, miembro.Usuario.Nombre, miembro.Usuario.Email!,
             miembro.Activo && miembro.Usuario.Activo, miembro.UsuarioId == contexto.UsuarioActual,
-            miembro.Usuario.CreadoPorAdministrador, permisos);
+            miembro.Usuario.CreadoPorAdministrador, permisos, miembro.Usuario.EsTitular));
     }
+
+    // El titular no tiene renglones de permiso: la lista los muestra todos, como el token.
+    private static UsuarioDeEmpresaDto ConPermisosDeTitular(UsuarioDeEmpresaDto usuario)
+        => usuario.EsTitular ? usuario with { Permisos = Permisos.Asignables } : usuario;
+
+    private async Task<ErrorNegocio?> ErrorSiEsTitularAsync(Guid usuarioId, CancellationToken ct)
+        => await baseDeDatos.Users.AsNoTracking().AnyAsync(u => u.Id == usuarioId && u.EsTitular, ct)
+            ? ErrorNegocio.Regla("titular-no-modificable", "Nadie puede modificar al titular de la cuenta.")
+            : null;
 
     private static ErrorNegocio? ValidarDatosBasicos(string correo, string nombre, IReadOnlyList<string> permisos)
     {
@@ -498,9 +526,9 @@ public sealed class ServicioDeUsuarios(
         if (string.IsNullOrWhiteSpace(nombre))
             errores["nombre"] = ["El nombre es obligatorio."];
 
-        var invalido = permisos.FirstOrDefault(p => !Permisos.EsValido(p));
+        var invalido = permisos.FirstOrDefault(p => !Permisos.EsAsignable(p));
         if (invalido is not null)
-            errores["permisos"] = [$"«{invalido}» no es un permiso válido."];
+            errores["permisos"] = [$"«{invalido}» no es un permiso que se pueda asignar."];
 
         return errores.Count == 0
             ? null

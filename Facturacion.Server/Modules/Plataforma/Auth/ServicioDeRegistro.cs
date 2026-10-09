@@ -309,7 +309,9 @@ public sealed class ServicioDeRegistro(
             EmailConfirmed = true,
             FechaAltaUtc = ahora,
             // Se registró él mismo, así que puede cambiar su contraseña desde su perfil.
-            CreadoPorAdministrador = false
+            CreadoPorAdministrador = false,
+            // Quien registra la cuenta es su titular (AGENTS.md §11, 9 de octubre de 2026).
+            EsTitular = true
         };
 
         baseDeDatos.Cuentas.Add(cuenta);

@@ -16,12 +16,12 @@ public static class FoliosEndpoints
         var grupo = rutas.MapGroup("/api/series").WithTags("Series y folios");
 
         // Por endpoint y no en el grupo: RequireAuthorization en el grupo se acumularía sobre
-        // TODOS sus hijos, y '/activas' terminaría exigiendo también 'configurar_empresa'.
+        // TODOS sus hijos, y '/activas' terminaría exigiendo también 'configuracion'.
         grupo.MapGet("/activas", ListarActivas).RequireAuthorization();
 
-        grupo.MapGet("/", Listar).RequireAuthorization(Permisos.ConfigurarEmpresa);
-        grupo.MapPost("/", Crear).RequireAuthorization(Permisos.ConfigurarEmpresa);
-        grupo.MapPut("/{id:guid}", Actualizar).RequireAuthorization(Permisos.ConfigurarEmpresa);
+        grupo.MapGet("/", Listar).RequireAuthorization(Permisos.Configuracion);
+        grupo.MapPost("/", Crear).RequireAuthorization(Permisos.Configuracion);
+        grupo.MapPut("/{id:guid}", Actualizar).RequireAuthorization(Permisos.Configuracion);
     }
 
     private static async Task<IResult> Listar(ServicioDeSeries series, CancellationToken ct)

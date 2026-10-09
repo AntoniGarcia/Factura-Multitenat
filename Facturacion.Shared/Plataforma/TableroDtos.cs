@@ -22,7 +22,7 @@ public sealed record AvisoCertificadoDto(
 ///
 /// <para><b>Por qué se compone en el servidor y no con cuatro llamadas del Client</b></para>
 /// Cada pieza vive detrás de un permiso distinto. Si el Client pidiera las cuatro por su
-/// cuenta, a un capturista sin <c>configurar_empresa</c> el tablero le respondería 403 en
+/// cuenta, a un capturista sin <c>mi_empresa</c> el tablero le respondería 403 en
 /// una de ellas y tendría que decidir en el navegador qué ignorar. Aquí el servidor decide
 /// qué puede ver quien pregunta, y de paso la pantalla se pinta con una sola petición, que
 /// en WebAssembly no es un detalle.
@@ -32,7 +32,7 @@ public sealed record AvisoCertificadoDto(
 /// Client no lo lleve compilado: cambiarlo no debe exigir recompilar el wasm.
 /// </param>
 /// <param name="Certificado">
-/// <c>null</c> cuando el usuario no tiene <c>configurar_empresa</c>. El endpoint de
+/// <c>null</c> cuando el usuario no tiene <c>mi_empresa</c>. El endpoint de
 /// certificados exige ese permiso, así que el tablero no enseña por la puerta de atrás lo
 /// que esa política niega por la de enfrente.
 /// </param>

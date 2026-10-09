@@ -19,7 +19,7 @@ public static class PagosEndpoints
     {
         var grupo = rutas.MapGroup("/api/pagos")
             .WithTags("Documentos")
-            .RequireAuthorization(Permisos.Timbrar);
+            .RequireAuthorization(Permisos.EmitirPago);
 
         grupo.MapPost("/borradores", CrearBorrador);
         grupo.MapGet("/{id:guid}", Obtener);
