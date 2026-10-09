@@ -31,6 +31,9 @@
 */
 
 :root {
+    /* Sin esto el navegador dibuja barras de desplazamiento y controles nativos siempre
+       claros, también en el tema oscuro. */
+    color-scheme: light;
     --superficie: #FFFFFF;
     --superficie-elevada: #FFFFFF;
     --fondo: #F7F8FA;
@@ -133,6 +136,7 @@
 
 /* Oscuro ergonómico: grises y azules profundos, jamás negro puro (ARQUITECTURA.md §8). */
 :root[data-tema="oscuro"] {
+    color-scheme: dark;
     --superficie: #182029;
     --superficie-elevada: #1F2833;
     --fondo: #12181F;
@@ -163,6 +167,7 @@
 
 /* Cálido / sepia. */
 :root[data-tema="calido"] {
+    color-scheme: light;
     --superficie: #FBF7EF;
     --superficie-elevada: #FFFDF8;
     --fondo: #F5EFE4;

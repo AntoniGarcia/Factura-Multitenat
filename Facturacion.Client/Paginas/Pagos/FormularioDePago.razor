@@ -1,6 +1,6 @@
 @page "/pagos/nuevo"
 @page "/pagos/{Id:guid}"
-@attribute [Authorize(Policy = Permisos.Timbrar)]
+@attribute [Authorize(Policy = Permisos.EmitirPago)]
 @using Facturacion.Client.Servicios.Documentos
 @using Facturacion.Client.Servicios.Plataforma
 @using Facturacion.Shared.Comun

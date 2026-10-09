@@ -22,5 +22,11 @@ public sealed class UsuarioConfiguracion : IEntityTypeConfiguration<Usuario>
             .OnDelete(DeleteBehavior.Restrict);
 
         constructor.HasIndex(u => u.CuentaId);
+
+        // Un solo titular por cuenta: la base lo garantiza aunque el código se equivoque.
+        // Con nombre propio: sin él, EF reconfiguraría el índice de arriba en lugar de crear otro.
+        constructor.HasIndex(u => u.CuentaId, "IX_AspNetUsers_CuentaId_Titular")
+            .IsUnique()
+            .HasFilter("[EsTitular] = 1");
     }
 }

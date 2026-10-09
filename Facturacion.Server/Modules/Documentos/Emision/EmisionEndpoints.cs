@@ -12,29 +12,28 @@ namespace Facturacion.Server.Modules.Documentos.Emision;
 /// sola vez— y mezclarlos habría escondido esa diferencia.
 ///
 /// <para>
-/// Requieren <c>timbrar</c> y no un permiso propio: en la lista de permisos de ARQUITECTURA.md §4
-/// no hay uno de «capturar documentos», y quien no puede timbrar tampoco tiene por qué poder
-/// dejar borradores a medio armar en el sistema.
+/// Consultar y descargar lo abre <c>ver_documentos</c> o cualquier permiso de Emitir. Crear,
+/// editar y descartar exige el permiso del tipo de documento: la política del endpoint deja pasar
+/// a quien emite alguna factura y el servicio exige la variante exacta (AGENTS.md §11).
 /// </para>
 /// </summary>
 public static class EmisionEndpoints
 {
     public static void MapEmision(this IEndpointRouteBuilder rutas)
     {
-        var grupo = rutas.MapGroup("/api/documentos")
-            .WithTags("Documentos")
-            .RequireAuthorization(Permisos.Timbrar);
+        // Por endpoint y no en el grupo: en el grupo se acumularía sobre todos sus hijos.
+        var grupo = rutas.MapGroup("/api/documentos").WithTags("Documentos");
 
-        grupo.MapPost("/borradores", CrearBorrador);
-        grupo.MapGet("", Listar);
-        grupo.MapGet("/{id:guid}", Obtener);
-        grupo.MapGet("/{id:guid}/vista-previa.pdf", VistaPreviaPdf);
-        grupo.MapGet("/{id:guid}/pdf", DescargarPdf);
-        grupo.MapGet("/{id:guid}/xml", DescargarXml);
-        grupo.MapGet("/{id:guid}/descarga", DescargarZip);
-        grupo.MapPut("/{id:guid}", Guardar);
-        grupo.MapDelete("/{id:guid}", EliminarBorrador);
-        grupo.MapGet("/relacionados/resolver", ResolverRelacionado);
+        grupo.MapPost("/borradores", CrearBorrador).RequireAuthorization(Permisos.Politicas.EmitirFacturas);
+        grupo.MapGet("", Listar).RequireAuthorization(Permisos.Politicas.Documentos);
+        grupo.MapGet("/{id:guid}", Obtener).RequireAuthorization(Permisos.Politicas.Documentos);
+        grupo.MapGet("/{id:guid}/vista-previa.pdf", VistaPreviaPdf).RequireAuthorization(Permisos.Politicas.Documentos);
+        grupo.MapGet("/{id:guid}/pdf", DescargarPdf).RequireAuthorization(Permisos.Politicas.Documentos);
+        grupo.MapGet("/{id:guid}/xml", DescargarXml).RequireAuthorization(Permisos.Politicas.Documentos);
+        grupo.MapGet("/{id:guid}/descarga", DescargarZip).RequireAuthorization(Permisos.Politicas.Documentos);
+        grupo.MapPut("/{id:guid}", Guardar).RequireAuthorization(Permisos.Politicas.EmitirFacturas);
+        grupo.MapDelete("/{id:guid}", EliminarBorrador).RequireAuthorization(Permisos.Politicas.Emitir);
+        grupo.MapGet("/relacionados/resolver", ResolverRelacionado).RequireAuthorization(Permisos.Politicas.Emitir);
     }
 
     // Cuerpo opcional: sin él se crea una factura básica, como antes de que existieran las variantes.

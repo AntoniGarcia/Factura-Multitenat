@@ -5,8 +5,8 @@ using Facturacion.Shared.Plataforma;
 namespace Facturacion.Server.Modules.Plataforma.Usuarios;
 
 /// <summary>
-/// Usuarios de la empresa activa. Todo bajo <c>administrar_usuarios</c>; el perfil propio
-/// vive aparte, en <see cref="PerfilEndpoints"/>, sin ese permiso.
+/// Usuarios de la empresa activa. Todo es solo del titular de la cuenta; el perfil propio
+/// vive aparte, en <see cref="PerfilEndpoints"/>, abierto a cualquier usuario.
 ///
 /// <para>
 /// Ya no hay grupo anónimo: el de <c>/api/invitaciones</c> existía para que alguien sin
@@ -19,7 +19,8 @@ public static class UsuariosEndpoints
     {
         var grupo = rutas.MapGroup("/api/usuarios")
             .WithTags("Usuarios")
-            .RequireAuthorization(Permisos.AdministrarUsuarios);
+            // Solo el titular de la cuenta administra usuarios (AGENTS.md §11, 9 de octubre de 2026).
+            .RequireAuthorization(Permisos.Titular);
 
         grupo.MapGet("/", Listar);
         grupo.MapPost("/", Crear);

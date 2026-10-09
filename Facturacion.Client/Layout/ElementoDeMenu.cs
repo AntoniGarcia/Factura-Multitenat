@@ -67,15 +67,16 @@ public static class MenuPrincipal
     /// </summary>
     public static IReadOnlyList<ElementoDeMenu> Catalogos { get; } =
     [
-        // Cada uno conserva su propio permiso: quien no configura la empresa ve Clientes y
-        // Productos, y Series y Transporte no le aparecen.
-        new("/clientes", "Clientes", "groups", Permiso: null,
+        // Cada uno conserva su propio permiso: Clientes y Productos los ve quien emite o quien
+        // los administra; Series, quien configura la empresa; Transporte, quien hace Carta Porte
+        // o administra vehículos y figuras.
+        new("/clientes", "Clientes", "groups", Permisos.Politicas.LeerClientesYProductos,
             Descripcion: "Receptores de tus comprobantes"),
-        new("/productos", "Productos", "inventory", Permiso: null,
+        new("/productos", "Productos", "inventory", Permisos.Politicas.LeerClientesYProductos,
             Descripcion: "Precios, claves del SAT e impuestos"),
-        new("/empresa/series", "Series y folios", "tag", Permisos.ConfigurarEmpresa,
+        new("/empresa/series", "Series y folios", "tag", Permisos.Configuracion,
             Descripcion: "Numeración de cada tipo de comprobante"),
-        new("/empresa/transporte", "Transporte", "local_shipping", Permisos.ConfigurarEmpresa,
+        new("/empresa/transporte", "Transporte", "local_shipping", Permisos.Politicas.LeerTransporte,
             Descripcion: "Vehículos y figuras de Carta Porte"),
     ];
 
@@ -87,15 +88,15 @@ public static class MenuPrincipal
         // que ya se emitió, y desde ahí se crea. Tener «Nueva factura» y «Documentos» como
         // hermanas obligaba a elegir entre dos puertas al mismo cuarto antes de saber
         // cuál de las dos se quería.
-        new("/documentos", "Documentos", "description", Permisos.Timbrar),
+        new("/documentos", "Documentos", "description", Permisos.Politicas.Documentos),
         // Aparte de Documentos porque es otro permiso y otro trabajo: dar seguimiento a lo que
         // sigue esperando la respuesta del receptor o del SAT (§30).
         //new("/catalogos", "Catálogos", "catalogo", Permiso: null),
         ElementoDeMenu.Submenu("Catálogos", "catalogo", Catalogos),
 
         // ── Mi Administración: se configura una vez y se revisa de vez en cuando ───────────────       
-        new("/empresa/nueva", "Empresas", "domain_add", Permisos.ConfigurarEmpresa, Grupos.Administracion),
-        new("/empresa/usuarios", "Usuarios", "people", Permisos.AdministrarUsuarios, Grupos.Administracion),
+        new("/empresa/nueva", "Empresas", "domain_add", Permisos.Titular, Grupos.Administracion),
+        new("/empresa/usuarios", "Usuarios", "people", Permisos.Titular, Grupos.Administracion),
 
         // ── Tienda: cuenta, gente y datos del SAT ───────────────────────────────
         new("/timbres", "Timbres", "confirmation_number", Permisos.ComprarTimbres, Grupos.Tienda),

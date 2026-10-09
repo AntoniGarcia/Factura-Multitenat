@@ -71,6 +71,17 @@ public sealed class ServicioDeTimbrado(
                 "ningún timbre ni folio.");
         }
 
+        // También antes de apartar: sin permiso para este tipo de documento no se gasta nada.
+        var clase = await baseDeDatos.Comprobantes
+            .AsNoTracking()
+            .Where(c => c.Id == comprobanteId)
+            .Select(c => new { c.TipoDeComprobante, c.Variante })
+            .FirstOrDefaultAsync(ct);
+
+        if (clase is not null &&
+            PermisoDeEmision.Exigir(contexto, PermisoDeEmision.Para(clase.TipoDeComprobante, clase.Variante)) is { } sinPermiso)
+            return sinPermiso;
+
         var apartado = await ApartarAsync(comprobanteId, ct);
 
         if (apartado.EsFallo) return apartado.Error!;

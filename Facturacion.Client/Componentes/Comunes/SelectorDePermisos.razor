@@ -1,19 +1,66 @@
 @using Facturacion.Shared.Comun
+@inject ServicioDeEmpresa Empresa
 
 @*
-    Las seis casillas de permiso, reutilizadas al dar de alta y al editar accesos. Por
-    permiso, nunca por rol (ARQUITECTURA.md §4): no hay ningún atajo de "todo" ni "administrador".
+    Los permisos de un usuario interno en la empresa activa, por sección: la lista de secciones
+    a la izquierda, cada una con su «Marcar todos», y las casillas de la elegida a la derecha.
+    Mismo acomodo que el selector del panel del operador (SelectorDePermisosDePanel). Por
+    permiso, nunca por rol (AGENTS.md §4 y §11): el «Marcar todos» es solo ayuda de captura, no
+    un permiso más.
+
+    Las facturas con complemento solo se ofrecen si la empresa tiene la licencia. Si un usuario
+    ya tenía una asignada y la licencia se retiró, se conserva sin mostrarse: quitarla aquí sin
+    que nadie la viera sería un cambio silencioso, y el servidor rechaza la emisión igual.
 *@
 
-<div class="rejilla-campos">
-    @foreach (var clave in Permisos.Todos)
-    {
-        <MudCheckBox T="bool"
-                      Value="@Value.Contains(clave)"
-                      ValueChanged="@(marcado => Cambiar(clave, marcado))"
-                      Label="@Permisos.EtiquetaCorta(clave)"
-                      Disabled="@Deshabilitado" />
-    }
+<div class="selector-permisos-panel">
+    <div class="permisos-modulos" role="group" aria-label="Secciones de permisos">
+        @foreach (var seccion in Permisos.Secciones)
+        {
+            var visibles = Visibles(seccion);
+            var activa = SeccionActiva.Titulo == seccion.Titulo;
+            var marcados = visibles.Count(Value.Contains);
+
+            <div class="permiso-modulo @(activa ? "activo" : null)">
+                <MudCheckBox T="bool?"
+                             TriState="true"
+                             Value="@(marcados == 0 ? false : marcados == visibles.Count ? true : null)"
+                             ValueChanged="@(_ => MarcarSeccion(seccion, marcar: marcados < visibles.Count))"
+                             Label="@seccion.Titulo"
+                             Disabled="@Deshabilitado" />
+                <button type="button"
+                        class="permiso-modulo-mostrar"
+                        aria-label="@($"Mostrar permisos de {seccion.Titulo}")"
+                        aria-pressed="@activa"
+                        @onclick="@(() => _seccionActiva = seccion.Titulo)">
+                    <span class="permiso-modulo-cantidad">@marcados</span>
+                    <MudIcon Icon="@Icons.Material.Filled.ChevronRight" Size="Size.Small" />
+                </button>
+            </div>
+        }
+    </div>
+
+    <section class="permisos-detalle" aria-labelledby="permisos-detalle-titulo">
+        <div class="permisos-detalle-encabezado">
+            <h3 id="permisos-detalle-titulo">@SeccionActiva.Titulo</h3>
+            <span>@Visibles(SeccionActiva).Count(Value.Contains) de @Visibles(SeccionActiva).Count</span>
+        </div>
+        @if (Ayuda(SeccionActiva) is { } ayuda)
+        {
+            <p class="permisos-detalle-ayuda">@ayuda</p>
+        }
+        <div class="permisos-acciones" role="group" aria-label="@($"Permisos de {SeccionActiva.Titulo}")">
+            @foreach (var clave in Visibles(SeccionActiva))
+            {
+                <MudCheckBox T="bool"
+                             @key="clave"
+                             Value="@Value.Contains(clave)"
+                             ValueChanged="@(marcado => Cambiar(clave, marcado))"
+                             Label="@Permisos.EtiquetaCorta(clave)"
+                             Disabled="@Deshabilitado" />
+            }
+        </div>
+    </section>
 </div>
 
 @code {
@@ -26,11 +73,52 @@
     [Parameter]
     public bool Deshabilitado { get; set; }
 
+    private string _seccionActiva = Permisos.Secciones[0].Titulo;
+    private LicenciasDto? _licencias;
+
+    private SeccionDePermisos SeccionActiva =>
+        Permisos.Secciones.FirstOrDefault(s => s.Titulo == _seccionActiva) ?? Permisos.Secciones[0];
+
+    protected override async Task OnInitializedAsync()
+        => _licencias = (await Empresa.ObtenerAsync())?.Licencias;
+
+    private IReadOnlyList<string> Visibles(SeccionDePermisos seccion)
+        => [.. seccion.Claves.Where(TieneLicencia)];
+
+    private bool TieneLicencia(string clave) => clave switch
+    {
+        Permisos.EmitirNotaria => _licencias?.Notarios == true,
+        Permisos.EmitirComercioExterior => _licencias?.Comercio == true,
+        Permisos.EmitirObra => _licencias?.Obras == true,
+        _ => true
+    };
+
+    private static string? Ayuda(SeccionDePermisos seccion) => seccion.Titulo switch
+    {
+        "Documentos" => "Solo consulta. Quien tiene cualquier permiso de Emitir también ve el listado y descarga.",
+        "Emitir" => "Las facturas con complemento aparecen solo si la empresa tiene contratado el módulo.",
+        "Catálogos" => "Alta, edición y baja. Consultarlos ya viene con cualquier permiso de Emitir.",
+        _ => null
+    };
+
     private Task Cambiar(string clave, bool marcado)
     {
         List<string> nuevo = marcado
             ? Value.Contains(clave) ? Value : [.. Value, clave]
             : [.. Value.Where(p => p != clave)];
+
+        return ValueChanged.InvokeAsync(nuevo);
+    }
+
+    /// <summary>Marca o desmarca solo las casillas que se ven: las de una licencia retirada no se tocan.</summary>
+    private Task MarcarSeccion(SeccionDePermisos seccion, bool marcar)
+    {
+        _seccionActiva = seccion.Titulo;
+        var visibles = Visibles(seccion);
+
+        List<string> nuevo = marcar
+            ? [.. Value.Union(visibles)]
+            : [.. Value.Where(p => !visibles.Contains(p))];
 
         return ValueChanged.InvokeAsync(nuevo);
     }

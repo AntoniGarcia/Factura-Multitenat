@@ -44,7 +44,7 @@
     private string _texto = string.Empty;
     private bool? _activos = true;
 
-    // Comodidad visual: sin configurar_empresa el servidor rechaza altas, ediciones y bajas, así
+    // Comodidad visual: sin administrar_productos el servidor rechaza altas, ediciones y bajas, así
     // que ni se ofrecen. La protección real es la política del endpoint.
     private bool _puedeEditar;
 
@@ -52,7 +52,7 @@
 
     protected override void OnInitialized()
     {
-        _puedeEditar = Sesion.TienePermiso(Permisos.ConfigurarEmpresa);
+        _puedeEditar = Sesion.TienePermiso(Permisos.AdministrarProductos);
         _columnas = _puedeEditar ? [.. Columnas, Acciones] : Columnas;
     }
 

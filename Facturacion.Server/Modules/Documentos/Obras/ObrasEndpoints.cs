@@ -10,7 +10,7 @@ public static class ObrasEndpoints
     {
         var grupo = rutas.MapGroup("/api/obras/comprobantes")
             .WithTags("Constructoras")
-            .RequireAuthorization(Permisos.Timbrar);
+            .RequireAuthorization(Permisos.EmitirObra);
         grupo.MapGet("/{comprobanteId:guid}", Obtener);
         grupo.MapPut("/{comprobanteId:guid}", Guardar);
         grupo.MapGet("/{comprobanteId:guid}/conciliacion-fiscal", ConciliacionFiscal);

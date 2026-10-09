@@ -8,8 +8,9 @@ namespace Facturacion.Server.Modules.Plataforma.Empresas;
 /// <summary>
 /// Empresa emisora, su configuración, su logo y sus certificados.
 /// <para>
-/// Las mutaciones exigen <c>configurar_empresa</c>; la lectura de los datos de la empresa
-/// activa también la necesitan quienes emiten documentos. Ningún endpoint recibe un identificador
+/// Los datos fiscales y los certificados exigen <c>mi_empresa</c>; la configuración, el correo
+/// y el logo, <c>configuracion</c>; la lectura de los datos de la empresa activa también la
+/// necesitan quienes emiten documentos. Ningún endpoint recibe un identificador
 /// de empresa: la empresa es la del claim (ARQUITECTURA.md §4).
 /// </para>
 /// </summary>
@@ -23,34 +24,34 @@ public static class EmpresasEndpoints
         var grupo = rutas.MapGroup("/api/empresa").WithTags("Empresa");
 
         grupo.MapGet("/", Obtener).RequireAuthorization();
-        grupo.MapPut("/", Guardar).RequireAuthorization(Permisos.ConfigurarEmpresa);
+        grupo.MapPut("/", Guardar).RequireAuthorization(Permisos.MiEmpresa);
 
-        // Solo exige sesión: quien acaba de registrarse no tiene permisos porque no
-        // tiene empresa, y es justo la primera la que viene a crear. El servicio
-        // decide quién puede (ver ServicioDeEmpresa.CrearAsync).
+        // Solo exige sesión: quien acaba de registrarse todavía no tiene empresa activa, y
+        // es justo la primera la que viene a crear. El servicio exige que sea el titular
+        // (ver ServicioDeEmpresa.CrearAsync).
         grupo.MapPost("/", Crear).RequireAuthorization();
 
-        grupo.MapGet("/configuracion", ObtenerConfiguracion).RequireAuthorization(Permisos.ConfigurarEmpresa);
-        grupo.MapPut("/configuracion", GuardarConfiguracion).RequireAuthorization(Permisos.ConfigurarEmpresa);
+        grupo.MapGet("/configuracion", ObtenerConfiguracion).RequireAuthorization(Permisos.Configuracion);
+        grupo.MapPut("/configuracion", GuardarConfiguracion).RequireAuthorization(Permisos.Configuracion);
 
-        grupo.MapGet("/correo", ObtenerCorreo).RequireAuthorization(Permisos.ConfigurarEmpresa);
-        grupo.MapPut("/correo", GuardarCorreo).RequireAuthorization(Permisos.ConfigurarEmpresa);
+        grupo.MapGet("/correo", ObtenerCorreo).RequireAuthorization(Permisos.Configuracion);
+        grupo.MapPut("/correo", GuardarCorreo).RequireAuthorization(Permisos.Configuracion);
 
         // Lectura del logo: basta con tener sesión en la empresa. El endpoint no recibe
         // empresa ni ruta —las saca del claim—, así que no hay forma de pedir el de otra.
         grupo.MapGet("/logo", ObtenerLogo).RequireAuthorization();
 
         grupo.MapPost("/logo", SubirLogo)
-            .RequireAuthorization(Permisos.ConfigurarEmpresa)
+            .RequireAuthorization(Permisos.Configuracion)
             .DisableAntiforgery()
             .WithMetadata(new RequestSizeLimitAttribute(TopeDeSubida));
 
-        grupo.MapDelete("/logo", QuitarLogo).RequireAuthorization(Permisos.ConfigurarEmpresa);
+        grupo.MapDelete("/logo", QuitarLogo).RequireAuthorization(Permisos.Configuracion);
 
-        grupo.MapGet("/certificados", ListarCertificados).RequireAuthorization(Permisos.ConfigurarEmpresa);
+        grupo.MapGet("/certificados", ListarCertificados).RequireAuthorization(Permisos.MiEmpresa);
 
         grupo.MapPost("/certificados", CargarCertificado)
-            .RequireAuthorization(Permisos.ConfigurarEmpresa)
+            .RequireAuthorization(Permisos.MiEmpresa)
             .DisableAntiforgery()
             .WithMetadata(new RequestSizeLimitAttribute(TopeDeSubida));
     }

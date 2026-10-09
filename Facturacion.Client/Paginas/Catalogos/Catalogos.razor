@@ -33,11 +33,11 @@
                                        Activos="_activosClientes"
                                        ActivosCambiado="AlFiltrarActivosClientes"
                                        TextoNuevo="Nuevo cliente"
-                                       OnNuevo="@(_puedeEditar ? EventCallback.Factory.Create(this, AbrirNuevoClienteAsync) : default)"
+                                       OnNuevo="@(_puedeEditarClientes ? EventCallback.Factory.Create(this, AbrirNuevoClienteAsync) : default)"
                                        OnExportar="ExportarClientes"
                                        TextoSecundario="Importar CSV"
                                        IconoSecundario="@Icons.Material.Filled.UploadFile"
-                                       OnSecundario="@(_puedeEditar ? EventCallback.Factory.Create(this, () => Navegacion.NavigateTo("/clientes/importar")) : default)" />
+                                       OnSecundario="@(_puedeEditarClientes ? EventCallback.Factory.Create(this, () => Navegacion.NavigateTo("/clientes/importar")) : default)" />
 
             <div class="catalogo-tabla">
                 <TablaDatos T="ClienteEnListaDto"
@@ -63,11 +63,11 @@
                                        Activos="_activosProductos"
                                        ActivosCambiado="AlFiltrarActivosProductos"
                                        TextoNuevo="Nuevo producto"
-                                       OnNuevo="@(_puedeEditar ? EventCallback.Factory.Create(this, AbrirNuevoProductoAsync) : default)"
+                                       OnNuevo="@(_puedeEditarProductos ? EventCallback.Factory.Create(this, AbrirNuevoProductoAsync) : default)"
                                        OnExportar="ExportarProductos"
                                        TextoSecundario="Importar CSV"
                                        IconoSecundario="@Icons.Material.Filled.UploadFile"
-                                       OnSecundario="@(_puedeEditar ? EventCallback.Factory.Create(this, () => Navegacion.NavigateTo("/productos/importar")) : default)" />
+                                       OnSecundario="@(_puedeEditarProductos ? EventCallback.Factory.Create(this, () => Navegacion.NavigateTo("/productos/importar")) : default)" />
 
             <div class="catalogo-tabla">
                 <TablaDatos T="ProductoEnListaDto"
@@ -117,13 +117,15 @@
     private IReadOnlyList<ColumnaDeTabla<ProductoEnListaDto>> _columnasProductos = [];
     private IReadOnlyList<ColumnaDeTabla<ClienteEnListaDto>> _columnasClientes = [];
 
-    // Comodidad visual: sin configurar_empresa el servidor rechaza altas, ediciones y bajas, así
+    // Comodidad visual: sin el permiso de cada catálogo el servidor rechaza altas, ediciones y bajas, así
     // que ni se ofrecen. La protección real es la política del endpoint.
-    private bool _puedeEditar;
+    private bool _puedeEditarClientes;
+    private bool _puedeEditarProductos;
 
     protected override void OnInitialized()
     {
-        _puedeEditar = Sesion.TienePermiso(Permisos.ConfigurarEmpresa);
+        _puedeEditarClientes = Sesion.TienePermiso(Permisos.AdministrarClientes);
+        _puedeEditarProductos = Sesion.TienePermiso(Permisos.AdministrarProductos);
 
         _columnasProductos =
         [
@@ -173,11 +175,8 @@
                               </MudButton>
                           </div>);
 
-        if (_puedeEditar)
-        {
-            _columnasProductos = [.. _columnasProductos, accionesProducto];
-            _columnasClientes = [.. _columnasClientes, accionesCliente];
-        }
+        if (_puedeEditarProductos) _columnasProductos = [.. _columnasProductos, accionesProducto];
+        if (_puedeEditarClientes) _columnasClientes = [.. _columnasClientes, accionesCliente];
     }
 
     private async Task<ResultadoDePagina<ProductoEnListaDto>> CargarProductosAsync(

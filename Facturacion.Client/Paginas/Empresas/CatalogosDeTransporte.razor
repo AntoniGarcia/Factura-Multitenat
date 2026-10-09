@@ -1,19 +1,26 @@
 @page "/empresa/transporte"
-@attribute [Authorize(Policy = Permisos.ConfigurarEmpresa)]
+@attribute [Authorize(Policy = Permisos.Politicas.LeerTransporte)]
 @using Facturacion.Shared.Contratos
 @using Facturacion.Shared.Transporte
 @inject ServicioDeTransporte Transporte
 @inject IBusquedaDeCatalogo Busqueda
+@inject ServicioDeSesion Sesion
 
 <PageTitle>Transporte</PageTitle>
 <TituloDePagina Texto="Transporte" />
 <PanelErrores Problema="_error" />
 
+@* La consulta la abre quien hace Carta Porte o administra el catálogo; alta, edición y baja,
+   solo administrar_vehiculos y administrar_figuras. Ocultarlas es comodidad: el servidor las
+   rechaza igual (AGENTS.md §11). *@
 <TarjetaFormulario Ancha="true" RutaVolver="/">
     <MudTabs>
         <MudTabPanel Text="Vehículos">
             <p class="seccion-ayuda">Vehículos disponibles para los traslados con Carta Porte.</p>
-            <MudButton Variant="Variant.Filled" OnClick="NuevoVehiculo">Nuevo vehículo</MudButton>
+            @if (_administraVehiculos)
+            {
+                <MudButton Variant="Variant.Filled" OnClick="NuevoVehiculo">Nuevo vehículo</MudButton>
+            }
             <MudSelect T="bool?" Value="_filtroVehiculos" ValueChanged="FiltrarVehiculos" Label="Estado" Class="mt-2">
                 <MudSelectItem T="bool?" Value="@((bool?)true)">Activos</MudSelectItem><MudSelectItem T="bool?" Value="@((bool?)false)">Inactivos</MudSelectItem><MudSelectItem T="bool?" Value="@((bool?)null)">Todos</MudSelectItem>
             </MudSelect>
@@ -40,12 +47,15 @@
             }
             <MudTable Items="_vehiculos" Dense="true">
                 <HeaderContent><MudTh>Clave</MudTh><MudTh>Vehículo</MudTh><MudTh>Placa</MudTh><MudTh>Permiso</MudTh><MudTh></MudTh></HeaderContent>
-                <RowTemplate><MudTd DataLabel="Clave">@context.Clave</MudTd><MudTd DataLabel="Vehículo">@context.Descripcion</MudTd><MudTd DataLabel="Placa">@context.Placa</MudTd><MudTd DataLabel="Permiso">@context.TipoPermiso</MudTd><MudTd><MudButton Size="Size.Small" OnClick="@(() => EditarVehiculo(context))">Editar</MudButton><MudButton Size="Size.Small" OnClick="@(() => CambiarVehiculo(context))">@(context.Activo ? "Desactivar" : "Reactivar")</MudButton></MudTd></RowTemplate>
+                <RowTemplate><MudTd DataLabel="Clave">@context.Clave</MudTd><MudTd DataLabel="Vehículo">@context.Descripcion</MudTd><MudTd DataLabel="Placa">@context.Placa</MudTd><MudTd DataLabel="Permiso">@context.TipoPermiso</MudTd><MudTd>@if (_administraVehiculos) { <MudButton Size="Size.Small" OnClick="@(() => EditarVehiculo(context))">Editar</MudButton><MudButton Size="Size.Small" OnClick="@(() => CambiarVehiculo(context))">@(context.Activo ? "Desactivar" : "Reactivar")</MudButton> }</MudTd></RowTemplate>
             </MudTable>
         </MudTabPanel>
         <MudTabPanel Text="Figuras de transporte">
             <p class="seccion-ayuda">Operadores y demás figuras que se asociarán a cada traslado.</p>
-            <MudButton Variant="Variant.Filled" OnClick="NuevoFigura">Nueva figura</MudButton>
+            @if (_administraFiguras)
+            {
+                <MudButton Variant="Variant.Filled" OnClick="NuevoFigura">Nueva figura</MudButton>
+            }
             <MudSelect T="bool?" Value="_filtroFiguras" ValueChanged="FiltrarFiguras" Label="Estado" Class="mt-2">
                 <MudSelectItem T="bool?" Value="@((bool?)true)">Activos</MudSelectItem><MudSelectItem T="bool?" Value="@((bool?)false)">Inactivos</MudSelectItem><MudSelectItem T="bool?" Value="@((bool?)null)">Todos</MudSelectItem>
             </MudSelect>
@@ -71,13 +81,16 @@
             }
             <MudTable Items="_figuras" Dense="true">
                 <HeaderContent><MudTh>Clave</MudTh><MudTh>Nombre</MudTh><MudTh>Tipo</MudTh><MudTh>RFC</MudTh><MudTh></MudTh></HeaderContent>
-                <RowTemplate><MudTd>@context.Clave</MudTd><MudTd>@context.Nombre</MudTd><MudTd>@context.TipoFigura</MudTd><MudTd class="cifra-tabular">@context.Rfc</MudTd><MudTd><MudButton Size="Size.Small" OnClick="@(() => EditarFigura(context))">Editar</MudButton><MudButton Size="Size.Small" OnClick="@(() => CambiarFigura(context))">@(context.Activo ? "Desactivar" : "Reactivar")</MudButton></MudTd></RowTemplate>
+                <RowTemplate><MudTd>@context.Clave</MudTd><MudTd>@context.Nombre</MudTd><MudTd>@context.TipoFigura</MudTd><MudTd class="cifra-tabular">@context.Rfc</MudTd><MudTd>@if (_administraFiguras) { <MudButton Size="Size.Small" OnClick="@(() => EditarFigura(context))">Editar</MudButton><MudButton Size="Size.Small" OnClick="@(() => CambiarFigura(context))">@(context.Activo ? "Desactivar" : "Reactivar")</MudButton> }</MudTd></RowTemplate>
             </MudTable>
         </MudTabPanel>
     </MudTabs>
 </TarjetaFormulario>
 
 @code {
+    private bool _administraVehiculos => Sesion.TienePermiso(Permisos.AdministrarVehiculos);
+    private bool _administraFiguras => Sesion.TienePermiso(Permisos.AdministrarFiguras);
+
     private DetalleProblema? _error; private List<VehiculoDto> _vehiculos = []; private List<FiguraTransporteDto> _figuras = []; private List<ClaveSatDto> _municipiosDisponibles = []; private bool? _filtroVehiculos = true, _filtroFiguras = true;
     private bool _editandoVehiculo, _editandoFigura; private Guid? _vehiculoId, _figuraId; private ClaveSatDto? _configuracion, _permiso, _tipoFigura, _estado, _municipio, _codigoPostal;
     private string _vClave="", _vDescripcion="", _vPlaca="", _vAseguradora="", _vPoliza="", _vNumeroPermiso=""; private int _vAnio=DateTime.Today.Year; private decimal _vPeso;

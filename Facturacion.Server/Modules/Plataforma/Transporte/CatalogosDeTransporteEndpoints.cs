@@ -16,17 +16,17 @@ public static class CatalogosDeTransporteEndpoints
 
         grupo.MapGet("/vehiculos", async (AppDbContext db, bool? activos, CancellationToken ct) =>
             await db.Vehiculos.AsNoTracking().Where(x => activos == null || x.Activo == activos)
-                .OrderBy(x => x.Descripcion).Select(x => ADto(x)).ToListAsync(ct)).RequireAuthorization();
+                .OrderBy(x => x.Descripcion).Select(x => ADto(x)).ToListAsync(ct)).RequireAuthorization(Permisos.Politicas.LeerTransporte);
         grupo.MapGet("/figuras", async (AppDbContext db, bool? activos, CancellationToken ct) =>
             await db.FigurasTransporte.AsNoTracking().Where(x => activos == null || x.Activo == activos)
-                .OrderBy(x => x.Nombre).Select(x => ADto(x)).ToListAsync(ct)).RequireAuthorization();
+                .OrderBy(x => x.Nombre).Select(x => ADto(x)).ToListAsync(ct)).RequireAuthorization(Permisos.Politicas.LeerTransporte);
 
-        grupo.MapPost("/vehiculos", CrearVehiculo).RequireAuthorization(Permisos.ConfigurarEmpresa);
-        grupo.MapPut("/vehiculos/{id:guid}", ActualizarVehiculo).RequireAuthorization(Permisos.ConfigurarEmpresa);
-        grupo.MapPost("/vehiculos/{id:guid}/activo", CambiarVehiculoActivo).RequireAuthorization(Permisos.ConfigurarEmpresa);
-        grupo.MapPost("/figuras", CrearFigura).RequireAuthorization(Permisos.ConfigurarEmpresa);
-        grupo.MapPut("/figuras/{id:guid}", ActualizarFigura).RequireAuthorization(Permisos.ConfigurarEmpresa);
-        grupo.MapPost("/figuras/{id:guid}/activo", CambiarFiguraActiva).RequireAuthorization(Permisos.ConfigurarEmpresa);
+        grupo.MapPost("/vehiculos", CrearVehiculo).RequireAuthorization(Permisos.AdministrarVehiculos);
+        grupo.MapPut("/vehiculos/{id:guid}", ActualizarVehiculo).RequireAuthorization(Permisos.AdministrarVehiculos);
+        grupo.MapPost("/vehiculos/{id:guid}/activo", CambiarVehiculoActivo).RequireAuthorization(Permisos.AdministrarVehiculos);
+        grupo.MapPost("/figuras", CrearFigura).RequireAuthorization(Permisos.AdministrarFiguras);
+        grupo.MapPut("/figuras/{id:guid}", ActualizarFigura).RequireAuthorization(Permisos.AdministrarFiguras);
+        grupo.MapPost("/figuras/{id:guid}/activo", CambiarFiguraActiva).RequireAuthorization(Permisos.AdministrarFiguras);
     }
 
     private static async Task<IResult> CrearVehiculo(PeticionGuardarVehiculo p, AppDbContext db, HttpContext http, CancellationToken ct)

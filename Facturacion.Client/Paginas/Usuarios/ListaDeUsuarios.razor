@@ -1,5 +1,5 @@
 @page "/empresa/usuarios"
-@attribute [Authorize(Policy = Permisos.AdministrarUsuarios)]
+@attribute [Authorize(Policy = Permisos.Titular)]
 @using Facturacion.Client.Componentes.Comunes
 @using Facturacion.Client.Componentes.Usuarios
 @using Facturacion.Client.Servicios.Plataforma
@@ -66,18 +66,26 @@ else
                         @* Se marca de quién administra la contraseña: en una empresa con tres
                            accesos, saber cuál de ellos depende del administrador cambia a quién
                            se le pide ayuda cuando alguien no puede entrar. *@
-                        @if (usuario.CreadoPorAdministrador)
+                        @if (usuario.EsTitular)
+                        {
+                            <span class="indicador-estado indicador-estado-timbrada">Titular</span>
+                        }
+                        else if (usuario.CreadoPorAdministrador)
                         {
                             <span class="indicador-estado indicador-estado-borrador">Alta interna</span>
                         }
                     </td>
-                    <td>@Etiquetas(usuario.Permisos)</td>
+                    <td>@(usuario.EsTitular ? "Todos" : Etiquetas(usuario.Permisos))</td>
                     <td>
                         <span class="indicador-estado indicador-estado-@(usuario.Activo ? "timbrada" : "borrador")">
                             @(usuario.Activo ? "Activo" : "Inactivo")
                         </span>
                     </td>
                     <td>
+                        @* Al titular nadie lo modifica (AGENTS.md §11): sin acciones en su renglón. El
+                           servidor lo rechaza igual. *@
+                        @if (!usuario.EsTitular)
+                        {
                         <div class="acciones-renglon">
                             <MudButton Size="Size.Small" Disabled="@_dialogoAbierto"
                                        OnClick="@(() => EditarPermisos(usuario))">Permisos</MudButton>
@@ -97,6 +105,7 @@ else
                                 </MudButton>
                             }
                         </div>
+                        }
                     </td>
                 </tr>
             }

@@ -10,7 +10,7 @@ namespace Facturacion.Server.Data.Entidades.Plataforma;
 /// </para>
 /// <para>
 /// Es una entidad aparte de <see cref="Empresa"/> y no unas columnas más, porque la
-/// configuración la toca el permiso <c>configurar_empresa</c> con frecuencia mientras que
+/// configuración la toca el permiso <c>configuracion</c> con frecuencia mientras que
 /// los datos fiscales casi nunca cambian; separarlas deja la bitácora legible.
 /// </para>
 /// </summary>

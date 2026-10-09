@@ -1,5 +1,5 @@
 @page "/documentos"
-@attribute [Authorize(Policy = Permisos.Timbrar)]
+@attribute [Authorize(Policy = Permisos.Politicas.Documentos)]
 @using Facturacion.Client.Componentes.Documentos
 @using Facturacion.Client.Servicios.Documentos
 @using Facturacion.Shared.Comun
@@ -10,6 +10,7 @@
 @inject ServicioDeDescargas Descargas
 @inject NavigationManager Navegacion
 @inject IDialogService Dialogos
+@inject ServicioDeSesion Sesion
 @inject IServicioDeConfirmacion Confirmacion
 
 <PageTitle>Documentos</PageTitle>
@@ -22,13 +23,15 @@
     <div class="aviso-documentos" role="status">@_aviso</div>
 }
 
-<div class="documentos-cabecera-acciones">
-    <MudButton Variant="Variant.Filled" Color="Color.Primary"
-               StartIcon="@Icons.Material.Filled.Add"
-               OnClick="AbrirNuevoComprobanteAsync">
-        Nuevo comprobante
-    </MudButton>
-</div>
+<SiTienePermiso Permiso="@Permisos.Politicas.Emitir">
+    <div class="documentos-cabecera-acciones">
+        <MudButton Variant="Variant.Filled" Color="Color.Primary"
+                   StartIcon="@Icons.Material.Filled.Add"
+                   OnClick="AbrirNuevoComprobanteAsync">
+            Nuevo comprobante
+        </MudButton>
+    </div>
+</SiTienePermiso>
 
 <section class="documentos-filtros" aria-label="Filtros de documentos">
 <div class="filtros-documentos">
@@ -228,7 +231,8 @@
                     </MudButton>
                 }
 
-                @if (_detalleSeleccionado is { } detalleEnviable && EsEnviable(detalleEnviable))
+                @if (_detalleSeleccionado is { } detalleEnviable && EsEnviable(detalleEnviable) &&
+                     Sesion.TienePermiso(Permisos.EnviarCorreo))
                 {
                     <MudButton Variant="Variant.Text"
                                StartIcon="@Icons.Material.Filled.Email"

@@ -8,8 +8,8 @@ using Microsoft.AspNetCore.Mvc;
 namespace Facturacion.Server.Modules.Plataforma.Productos;
 
 /// <summary>
-/// Catálogo de productos y servicios. Consultarlo basta con tener sesión —quien factura
-/// necesita elegir producto—; modificarlo pide <c>configurar_empresa</c>.
+/// Catálogo de productos y servicios. Lo consulta quien emite —necesita elegir producto— o
+/// quien administra el catálogo; modificarlo pide <c>administrar_productos</c>.
 /// </summary>
 public static class ProductosEndpoints
 {
@@ -20,24 +20,24 @@ public static class ProductosEndpoints
     {
         var grupo = rutas.MapGroup("/api/productos").WithTags("Productos");
 
-        grupo.MapGet("/", Listar).RequireAuthorization();
-        grupo.MapGet("/exportar", Exportar).RequireAuthorization();
-        grupo.MapGet("/plantilla-csv", PlantillaCsv).RequireAuthorization();
-        grupo.MapGet("/{id:guid}", Obtener).RequireAuthorization();
+        grupo.MapGet("/", Listar).RequireAuthorization(Permisos.Politicas.LeerClientesYProductos);
+        grupo.MapGet("/exportar", Exportar).RequireAuthorization(Permisos.Politicas.LeerClientesYProductos);
+        grupo.MapGet("/plantilla-csv", PlantillaCsv).RequireAuthorization(Permisos.AdministrarProductos);
+        grupo.MapGet("/{id:guid}", Obtener).RequireAuthorization(Permisos.Politicas.LeerClientesYProductos);
 
-        grupo.MapPost("/", Crear).RequireAuthorization(Permisos.ConfigurarEmpresa);
-        grupo.MapPut("/{id:guid}", Actualizar).RequireAuthorization(Permisos.ConfigurarEmpresa);
-        grupo.MapPost("/{id:guid}/activo", CambiarActivo).RequireAuthorization(Permisos.ConfigurarEmpresa);
+        grupo.MapPost("/", Crear).RequireAuthorization(Permisos.AdministrarProductos);
+        grupo.MapPut("/{id:guid}", Actualizar).RequireAuthorization(Permisos.AdministrarProductos);
+        grupo.MapPost("/{id:guid}/activo", CambiarActivo).RequireAuthorization(Permisos.AdministrarProductos);
 
         // Analizar y confirmar van separados a propósito: el primero no toca la base, y es
         // lo que permite enseñar la vista previa antes de que el usuario se comprometa.
         grupo.MapPost("/importar/analizar", AnalizarCsv)
-            .RequireAuthorization(Permisos.ConfigurarEmpresa)
+            .RequireAuthorization(Permisos.AdministrarProductos)
             .DisableAntiforgery()
             .WithMetadata(new RequestSizeLimitAttribute(TopeDeSubida));
 
         grupo.MapPost("/importar/confirmar", ConfirmarImportacion)
-            .RequireAuthorization(Permisos.ConfigurarEmpresa);
+            .RequireAuthorization(Permisos.AdministrarProductos);
     }
 
     private static async Task<IResult> Listar(
