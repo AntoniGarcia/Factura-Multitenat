@@ -3,7 +3,7 @@ using System.Net.Mail;
 
 namespace Facturacion.Server.Infra.Correo;
 
-/// <summary>Envío real por SMTP, con la cuenta propia del SaaS (ARQUITECTURA.md §6).</summary>
+/// <summary>Envío real por SMTP, con la cuenta propia del SaaS.</summary>
 public sealed class ServicioDeCorreoSmtp(
     IProveedorDeConfiguracionDelSistema configuracion,
     ILogger<ServicioDeCorreoSmtp> registro) : IServicioDeCorreo
@@ -11,6 +11,8 @@ public sealed class ServicioDeCorreoSmtp(
     public async Task EnviarAsync(MensajeDeCorreo mensaje, CancellationToken ct)
     {
         var config = (await configuracion.ObtenerAsync(ct)).Correo;
+        if (string.IsNullOrWhiteSpace(config.Servidor) || string.IsNullOrWhiteSpace(config.RemitenteCorreo))
+            throw new SmtpException("El correo del sistema aún no está configurado. Un operador debe completar su servidor y remitente antes de enviar.");
 
         using var cliente = new SmtpClient(config.Servidor, config.Puerto)
         {

@@ -86,7 +86,11 @@ migraciones.
 
 ## 5. Catálogos del SAT
 
-**Este paso no es opcional si vas a tocar clientes, productos o emisión.** Sin catálogos, la
+La carga inicial ya es automática al iniciar el servidor con los libros incluidos.
+Los comandos de esta sección quedan como alternativa de mantenimiento y actualización.
+La primera entrada muestra el avance hasta preparar los catálogos faltantes.
+
+**Los catálogos son obligatorios para clientes, productos y emisión.** Sin catálogos, la
 validación fiscal rechaza todo: las claves de producto, las de unidad, los regímenes, los
 usos de CFDI y las tasas de impuesto se comprueban contra estas tablas.
 

@@ -15,7 +15,7 @@ namespace Facturacion.Server.Modules.Plataforma.Catalogos;
 /// Cada hoja del archivo del SAT trae el encabezado en una fila distinta —algunas empiezan
 /// con una fila en blanco, otras no— así que <see cref="FilaDeEncabezado"/> lo busca por
 /// texto en vez de asumir una posición. Se comprobó inspeccionando el archivo real, hoja por
-/// hoja, antes de escribir esto (ARQUITECTURA.md §9: no dar por hecho el formato).
+/// hoja, antes de escribir esto.
 /// <para><b>Por qué las claves numéricas se reconstruyen con ceros</b></para>
 /// El archivo del SAT no escribe todas las claves como texto: la mayoría de
 /// <c>c_ClaveProdServ</c> son celdas numéricas (Excel les quita los ceros a la izquierda que
@@ -26,7 +26,7 @@ namespace Facturacion.Server.Modules.Plataforma.Catalogos;
 /// <para><b>Por qué nada se borra</b></para>
 /// Una clave que ya no aparece en el archivo nuevo no se elimina: se marca
 /// <c>Vigente = false</c> con la fecha de hoy, porque un comprobante viejo tiene que poder
-/// seguir mostrando la descripción de una clave que el SAT retiró (ARQUITECTURA.md §7).
+/// seguir mostrando la descripción de una clave que el SAT retiró.
 /// </summary>
 public sealed class ImportadorCatalogosSat(AppDbContext db)
 {
@@ -34,7 +34,8 @@ public sealed class ImportadorCatalogosSat(AppDbContext db)
     /// Nombre de un catálogo para recargar solo ese, o <c>null</c> para los veintiuno.
     /// </param>
     public async Task<IReadOnlyList<string>> ImportarAsync(
-        string rutaArchivo, CancellationToken ct, string? soloEsteCatalogo = null)
+        string rutaArchivo, CancellationToken ct, string? soloEsteCatalogo = null,
+        IReadOnlySet<string>? pendientes = null, Action<string, bool>? avance = null)
     {
         using var flujo = File.OpenRead(rutaArchivo);
         using var libro = WorkbookFactory.Create(flujo);
@@ -84,29 +85,20 @@ public sealed class ImportadorCatalogosSat(AppDbContext db)
         var resumen = new List<string>();
 
         foreach (var catalogo in seleccionados)
+        {
+            if (pendientes is not null && !pendientes.Contains(catalogo.Nombre)) continue;
+            avance?.Invoke(catalogo.Nombre, false);
             resumen.Add(await catalogo.Importar());
+            avance?.Invoke(catalogo.Nombre, true);
+            if (pendientes is not null) db.ChangeTracker.Clear();
+        }
 
         return resumen;
     }
 
     // ── Los ocho catálogos "clave + descripción + vigencia" ─────────────────────────────
 
-    /// <summary>
-    /// <paramref name="columnaInicio"/>/<paramref name="columnaFin"/> son configurables
-    /// porque no todos están en la columna 2/3: <c>c_FormaPago</c> intercala once columnas
-    /// de validación bancaria (ajenas a esta fase; ver §27–§29 del complemento de pagos)
-    /// antes de llegar a la vigencia, y <c>c_Pais</c> sencillamente no trae vigencia por
-    /// renglón —se comprobó inspeccionando las dos hojas completas, no solo las primeras
-    /// columnas—, así que sus llamadas pasan índices fuera de rango a propósito:
-    /// <see cref="Fecha"/> devuelve <c>null</c> ante una celda que no es fecha, así que el
-    /// catálogo simplemente queda siempre vigente en vez de fallar.
-    ///
-    /// <para><b><paramref name="digitosClave"/>: los ceros a la izquierda no son cosméticos</b></para>
-    /// Excel guarda «01» como el número 1, así que leer la celda tal cual produce «1». Para
-    /// <c>c_FormaPago</c> y <c>c_TipoRelacion</c> eso es un error fiscal, no de presentación:
-    /// el SAT exige <c>FormaPago="01"</c> y rechaza <c>FormaPago="1"</c>. Se descubrió en la
-    /// fase 5, al ser lo primero que de verdad usó esas claves.
-    /// </summary>
+    /// <summary>Las columnas de vigencia varían entre hojas. digitosClave recupera los ceros iniciales que Excel guarda como números.</summary>
     private async Task<string> ImportarSimpleAsync<TEntidad>(
         IWorkbook libro, string hoja, DbSet<TEntidad> tabla, CancellationToken ct,
         int columnaInicio = 2, int columnaFin = 3, int digitosClave = 0)
@@ -518,13 +510,7 @@ public sealed class ImportadorCatalogosSat(AppDbContext db)
             var traslado = SiNo(fila, 5);
             var retencion = SiNo(fila, 6);
 
-            // La clave lleva TODAS las columnas que distinguen un renglón de otro.
-            //
-            // Con solo impuesto+factor+valor máximo, el «IVA Tasa 0.16 de traslado» y el
-            // «IVA Tasa rango 0–0.16 de retención» producían la misma clave y el segundo
-            // sobrescribía al primero: se perdía el IVA 16 % trasladado, que es el impuesto
-            // más común del país. Se descubrió en la fase 6, al ser lo primero que consultó
-            // este catálogo.
+            // La clave incluye todas las columnas que distinguen tasas de traslado y retención, para evitar sobrescribir registros distintos.
             var clave = string.Join('|',
                 impuesto, factor, rangoOFijo,
                 valorMinimo?.ToString(CultureInfo.InvariantCulture) ?? "-",
@@ -744,7 +730,7 @@ public sealed class ImportadorCatalogosSat(AppDbContext db)
     /// <summary>
     /// Compara lo leído del archivo contra lo que ya hay en la base: da de alta lo nuevo,
     /// actualiza lo que cambió, y deja lo que ya no aparece exactamente como estaba salvo
-    /// por <paramref name="retirar"/> (ARQUITECTURA.md §7: una clave retirada no se borra).
+    /// por <paramref name="retirar"/>.
     /// </summary>
     private async Task<int> SincronizarAsync<TClave, TEntidad>(
         DbSet<TEntidad> tabla,
@@ -844,18 +830,7 @@ public sealed class ImportadorCatalogosSat(AppDbContext db)
         return (Texto(valores, 1) ?? "?", Texto(valores, 2) ?? "?", Fecha(valores, 3));
     }
 
-    /// <summary>
-    /// Tipo real de la celda. Una celda de fórmula no guarda un tipo propio sino el del
-    /// resultado que Excel dejó cacheado, y hay que preguntarlo aparte.
-    ///
-    /// <para><b>Por qué esto existe</b></para>
-    /// El archivo del SAT tiene celdas con fórmulas donde uno esperaría números: la tasa de
-    /// IEPS del 25 % está escrita como <c>=25/100</c>. Comparar <c>CellType</c> contra
-    /// <c>Numeric</c> a secas descartaba ese renglón <b>en silencio</b>, y el catálogo
-    /// quedaba incompleto sin que nada fallara. Se descubrió en la fase 6, contando los
-    /// renglones importados contra los de la hoja.
-    /// </para>
-    /// </summary>
+    /// <summary>Lee el tipo del resultado cacheado de las fórmulas de Excel para no omitir tasas numéricas.</summary>
     private static CellType TipoReal(ICell celda)
         => celda.CellType == CellType.Formula ? celda.CachedFormulaResultType : celda.CellType;
 

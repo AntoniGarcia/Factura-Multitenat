@@ -23,13 +23,7 @@ public static class CargaDeCatalogosComercioExteriorCli
         db.Database.SetCommandTimeout(TimeSpan.FromMinutes(5));
         try
         {
-            var total = catalogo switch
-            {
-                "c_INCOTERM" => await ImportarAsync(db, db.SatIncoterms, catalogo, ruta),
-                "c_UnidadAduana" => await ImportarAsync(db, db.SatUnidadesAduana, catalogo, ruta),
-                "c_FraccionArancelaria" => await ImportarAsync(db, db.SatFraccionesArancelarias, catalogo, ruta),
-                _ => throw new InvalidOperationException("Catálogo no reconocido. Usa c_INCOTERM, c_UnidadAduana o c_FraccionArancelaria.")
-            };
+            var total = await ImportarCatalogoAsync(db, catalogo, ruta, CancellationToken.None);
             Console.WriteLine($"{catalogo}: {total} claves vigentes.");
         }
         catch (Exception ex)
@@ -39,7 +33,16 @@ public static class CargaDeCatalogosComercioExteriorCli
         }
     }
 
-    private static async Task<int> ImportarAsync<T>(AppDbContext db, DbSet<T> tabla, string catalogo, string ruta)
+    public static Task<int> ImportarCatalogoAsync(AppDbContext db, string catalogo, string ruta, CancellationToken ct)
+        => catalogo switch
+        {
+            "c_INCOTERM" => ImportarAsync(db, db.SatIncoterms, catalogo, ruta, ct),
+            "c_UnidadAduana" => ImportarAsync(db, db.SatUnidadesAduana, catalogo, ruta, ct),
+            "c_FraccionArancelaria" => ImportarAsync(db, db.SatFraccionesArancelarias, catalogo, ruta, ct),
+            _ => throw new InvalidOperationException("Catálogo de Comercio Exterior no reconocido.")
+        };
+
+    private static async Task<int> ImportarAsync<T>(AppDbContext db, DbSet<T> tabla, string catalogo, string ruta, CancellationToken ct)
         where T : class, ISatCatalogoSimple, new()
     {
         using var flujo = File.OpenRead(ruta);
@@ -88,8 +91,8 @@ public static class CargaDeCatalogosComercioExteriorCli
         }
         if (entradas.Count == 0) throw new InvalidOperationException("El archivo no contiene claves.");
 
-        var existentes = await tabla.ToDictionaryAsync(x => x.Clave, StringComparer.OrdinalIgnoreCase);
-        await using var transaccion = await db.Database.BeginTransactionAsync();
+        var existentes = await tabla.ToDictionaryAsync(x => x.Clave, StringComparer.OrdinalIgnoreCase, ct);
+        await using var transaccion = await db.Database.BeginTransactionAsync(ct);
         foreach (var (clave, nuevo) in entradas)
         {
             if (!existentes.TryGetValue(clave, out var anterior))
@@ -105,7 +108,7 @@ public static class CargaDeCatalogosComercioExteriorCli
         foreach (var (clave, anterior) in existentes)
             if (!entradas.ContainsKey(clave)) anterior.Vigente = false;
 
-        var version = await db.CatalogoVersiones.FindAsync(catalogo);
+        var version = await db.CatalogoVersiones.FindAsync([catalogo], ct);
         if (version is null)
         {
             version = new CatalogoVersion
@@ -120,8 +123,8 @@ public static class CargaDeCatalogosComercioExteriorCli
         version.RevisionCatalogo = "archivo SAT";
         version.FechaCargaUtc = DateTime.UtcNow;
         version.RenglonesVigentes = entradas.Values.Count(x => x.Vigente);
-        await db.SaveChangesAsync();
-        await transaccion.CommitAsync();
+        await db.SaveChangesAsync(ct);
+        await transaccion.CommitAsync(ct);
         return version.RenglonesVigentes;
     }
 

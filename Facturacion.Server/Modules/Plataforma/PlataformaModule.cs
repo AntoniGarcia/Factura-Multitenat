@@ -23,15 +23,13 @@ using Microsoft.IdentityModel.Tokens;
 
 namespace Facturacion.Server.Modules.Plataforma;
 
-/// <summary>
-/// Punto de entrada de la mitad A. Todo registro de servicios y todo endpoint de plataforma
-/// se declara aquí dentro, nunca en <c>Program.cs</c> (REPARTO-EQUIPO.md §5).
-/// </summary>
+/// <summary>Registra los servicios y endpoints de plataforma.</summary>
 public static class PlataformaModule
 {
     public static IServiceCollection AddPlataforma(
         this IServiceCollection servicios, IConfiguration configuracion)
     {
+        servicios.AgregarPreparacionDeCatalogos();
         var jwt = LeerOpcionesDeJwt(configuracion);
 
         servicios.AddOptions<OpcionesDeJwt>()
@@ -41,7 +39,7 @@ public static class PlataformaModule
 
         // AddIdentityCore y no AddIdentity: no queremos SignInManager, que arrastra esquemas
         // de autenticación por cookie. Identity se usa solo como almacén de usuarios, motor
-        // de hash y bloqueo por intentos; la emisión de tokens es propia (ARQUITECTURA.md §4).
+        // de hash y bloqueo por intentos; la emisión de tokens es propia.
         servicios
             .AddIdentityCore<Usuario>(opciones =>
             {
@@ -105,10 +103,7 @@ public static class PlataformaModule
         // reserva sin resolver congela un timbre pagado para siempre.
         servicios.AddHostedService<BarridoDeReservasDeTimbre>();
 
-        // Las implementaciones que la mitad B consume por contrato (REPARTO-EQUIPO.md §5).
-        // Son seis; la séptima, IResumenDocumentos, va en sentido contrario: la escribe la
-        // mitad B y la consume el tablero. VerificacionDeContratos comprueba al arrancar que
-        // esta lista siga completa.
+        // Implementaciones de los contratos de plataforma. El arranque verifica que estén registradas.
         servicios.AddScoped<IServicioEmpresaEmisora, ServicioEmpresaEmisora>();
         servicios.AddScoped<IProveedorCsdParaTimbrado, ProveedorCsdParaTimbrado>();
         servicios.AddScoped<IServicioFolios, ServicioDeFolios>();

@@ -6,7 +6,7 @@ using Microsoft.Net.Http.Headers;
 namespace Facturacion.Server.Infra.Seguridad;
 
 /// <summary>
-/// Cabeceras de seguridad en todas las respuestas (ARQUITECTURA.md §4).
+/// Cabeceras de seguridad en todas las respuestas.
 ///
 /// <para><b>Por qué mira el cuerpo del HTML</b></para>
 /// La CSP tiene que autorizar por hash el <c>importmap</c> en línea que el SDK de Blazor
@@ -93,7 +93,10 @@ public sealed class CabecerasDeSeguridad(RequestDelegate siguiente)
             await siguiente(contexto);
 
             if (EsHtml(contexto.Response))
-                _politicaDelHtml = PoliticaDeContenido.ParaHtml(TextoPlano(amortiguador, contexto.Response));
+            {
+                var politica = PoliticaDeContenido.ParaHtml(TextoPlano(amortiguador, contexto.Response));
+                if (politica != PoliticaDeContenido.Base) _politicaDelHtml = politica;
+            }
 
             contexto.Response.Headers.ContentSecurityPolicy = _politicaDelHtml ?? PoliticaDeContenido.Base;
         }
