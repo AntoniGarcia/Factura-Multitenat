@@ -8,21 +8,7 @@ using Microsoft.EntityFrameworkCore;
 
 namespace Facturacion.Server.Data;
 
-/// <summary>
-/// Contexto único de la aplicación. Es uno de los cuatro archivos compartidos entre las dos
-/// mitades (REPARTO-EQUIPO.md §5), así que aquí solo van los <c>DbSet</c> y las dos líneas
-/// que aplican configuraciones y convenciones.
-/// <para>
-/// <b>Nunca Fluent API en este archivo.</b> Cada entidad lleva su
-/// <c>IEntityTypeConfiguration</c> en <c>Data/Configurations/</c>. Así un conflicto de Git
-/// entre las dos mitades se reduce a líneas contiguas de <c>DbSet</c>.
-/// </para>
-/// <para>
-/// Deriva de <see cref="IdentityUserContext{TUser, TKey}"/> y no de <c>IdentityDbContext</c>:
-/// esa otra clase base trae las tablas de roles, y ARQUITECTURA.md §4 prohíbe autorizar por rol.
-/// Al no existir como tablas, la prohibición la impone el esquema y no la buena voluntad.
-/// </para>
-/// </summary>
+/// <summary>Contexto de datos e identidad sin tablas de roles. Las configuraciones de entidades se mantienen en Data/Configurations.</summary>
 public sealed class AppDbContext(DbContextOptions<AppDbContext> opciones, IContextoEmpresaInterno contexto)
     : IdentityUserContext<Usuario, Guid>(opciones)
 {
@@ -33,7 +19,7 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> opciones, IConte
     /// </summary>
     public Guid? EmpresaActual { get; } = contexto.EmpresaActual;
 
-    // ── DbSet de la mitad A — plataforma, identidad y catálogos ─────────────────────────
+    // Plataforma, identidad y catálogos.
     public DbSet<Cuenta> Cuentas => Set<Cuenta>();
     public DbSet<Empresa> Empresas => Set<Empresa>();
     public DbSet<UsuarioEmpresa> UsuariosEmpresas => Set<UsuarioEmpresa>();
@@ -72,7 +58,7 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> opciones, IConte
     public DbSet<DatosObra> DatosObra => Set<DatosObra>();
     public DbSet<DatosComercioExterior> DatosComercioExterior => Set<DatosComercioExterior>();
 
-    // ── Catálogos del SAT — sin EmpresaId, fuera del filtro de empresa (ARQUITECTURA.md §5) ───
+    // ── Catálogos del SAT — sin EmpresaId, fuera del filtro de empresa ───
     public DbSet<CatalogoVersion> CatalogoVersiones => Set<CatalogoVersion>();
     public DbSet<SatFormaPago> SatFormasPago => Set<SatFormaPago>();
     public DbSet<SatExportacion> SatExportaciones => Set<SatExportacion>();
@@ -103,7 +89,7 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> opciones, IConte
     public DbSet<SatUnidadAduana> SatUnidadesAduana => Set<SatUnidadAduana>();
     public DbSet<SatFraccionArancelaria> SatFraccionesArancelarias => Set<SatFraccionArancelaria>();
 
-    // ── DbSet de la mitad B — documentos, timbrado y salidas ────────────────────────────
+    // Documentos, timbrado y salidas.
     public DbSet<Comprobante> Comprobantes => Set<Comprobante>();
     public DbSet<Concepto> Conceptos => Set<Concepto>();
     public DbSet<ImpuestoConcepto> ConceptosImpuestos => Set<ImpuestoConcepto>();

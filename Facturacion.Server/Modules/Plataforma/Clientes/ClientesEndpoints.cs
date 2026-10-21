@@ -8,10 +8,10 @@ namespace Facturacion.Server.Modules.Plataforma.Clientes;
 
 /// <summary>
 /// Catálogo de clientes. Ningún endpoint recibe identificador de empresa: la empresa es la
-/// del claim y el filtro global de EF Core hace el resto (ARQUITECTURA.md §4).
+/// del claim y el filtro global de EF Core hace el resto.
 /// <para>
 /// Los consulta quien emite cualquier documento —necesita elegir cliente— o quien los
-/// administra, y modificarlos pide <c>administrar_clientes</c> (AGENTS.md §11).
+/// administra, y modificarlos pide <c>administrar_clientes</c>.
 /// </para>
 /// </summary>
 public static class ClientesEndpoints

@@ -10,25 +10,7 @@ using Microsoft.EntityFrameworkCore;
 
 namespace Facturacion.Server.Infra.Idempotencia;
 
-/// <summary>
-/// Hace cumplir el <c>Idempotency-Key</c> de ARQUITECTURA.md §4 en las operaciones que cobran.
-///
-/// <para><b>La clave se reclama ANTES de ejecutar</b></para>
-/// El orden es lo único que hace que esto funcione. Si se ejecutara primero y se guardara
-/// después, dos peticiones simultáneas con la misma clave entrarían las dos, cobrarían las
-/// dos, y solo al guardar descubriríamos el duplicado —cuando ya cobramos dos veces—. Aquí
-/// el renglón se inserta primero, con la respuesta todavía vacía: el índice único sobre
-/// (empresa, clave) hace que solo una petición gane. La que pierde no ejecuta nada.
-///
-/// <para><b>Cuatro desenlaces para el que repite</b></para>
-/// <list type="bullet">
-///   <item>Misma clave, mismo cuerpo, misma ruta, ya terminada → su respuesta y su código, tal cual.</item>
-///   <item>La original sigue en curso → 409, porque todavía no hay respuesta que copiar.</item>
-///   <item>Misma clave, cuerpo distinto → 422. Devolverle la respuesta de la otra petición
-///   sería peor que fallar: creería que se cobró lo que pidió.</item>
-///   <item>Misma clave, otra ruta → 422, por lo mismo.</item>
-/// </list>
-/// </summary>
+/// <summary>Registra la clave antes de ejecutar para evitar operaciones duplicadas. Reutiliza respuestas terminadas; devuelve 409 si siguen en curso y 422 si cambian la ruta o el cuerpo.</summary>
 public sealed class FiltroDeIdempotencia(
     AppDbContext baseDeDatos,
     IContextoEmpresaInterno empresa,
@@ -39,7 +21,7 @@ public sealed class FiltroDeIdempotencia(
     /// <summary>Tope de la columna en <c>ClaveIdempotenciaConfiguracion</c>.</summary>
     private const int LargoMaximoClave = 128;
 
-    /// <summary>Ventana de ARQUITECTURA.md §4. La purga por horas borra lo que la rebasa.</summary>
+    /// <summary>Conserva las respuestas durante 24 horas.</summary>
     private static readonly TimeSpan Ventana = TimeSpan.FromHours(24);
 
     /// <summary>Estado que marca «reclamada pero todavía sin respuesta».</summary>

@@ -8,7 +8,7 @@ namespace Facturacion.Client.Servicios.Plataforma;
 /// La sesión del navegador.
 ///
 /// <para><b>El access token vive solo en memoria</b></para>
-/// Nunca en <c>localStorage</c> ni en <c>sessionStorage</c> (ARQUITECTURA.md §4). Al recargar la
+/// Nunca en <c>localStorage</c> ni en <c>sessionStorage</c>. Al recargar la
 /// página se pierde, y eso es correcto: se recupera con la cookie de refresh, que el
 /// JavaScript de la página no puede leer.
 ///

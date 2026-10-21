@@ -4,16 +4,7 @@ using Facturacion.Shared.Plataforma;
 
 namespace Facturacion.Client.Servicios.Plataforma;
 
-/// <summary>
-/// Llama a <c>/api/timbres</c>. La empresa nunca viaja: va en el token.
-///
-/// <para><b>El precio no se manda, se muestra</b></para>
-/// <see cref="ComprarAsync"/> envía únicamente el identificador del paquete. Los precios que
-/// esta clase trae son para pintarlos en pantalla; el que se cobra lo vuelve a leer el
-/// servidor de su propio catálogo. Este código corre en el navegador y es legible y
-/// modificable, así que nada de lo que salga de aquí puede decidir cuánto se cobra
-/// (ARQUITECTURA.md §3 y §4).
-/// </summary>
+/// <summary>Consulta timbres de la empresa del token. Al comprar envía solo el paquete; el servidor determina el precio.</summary>
 public sealed class ServicioDeTimbres(
     IHttpClientFactory fabrica,
     ServicioDeDescargas descargas) : IIndicadorDeTimbres
@@ -86,7 +77,7 @@ public sealed class ServicioDeTimbres(
     /// <param name="claveIdempotencia">
     /// La genera la pantalla una sola vez por intención de compra y la reutiliza en cada
     /// reintento. Es lo que convierte un doble clic, o un reintento del navegador tras una
-    /// red intermitente, en una sola compra (ARQUITECTURA.md §4).
+    /// red intermitente, en una sola compra.
     /// </param>
     public async Task<(CompraDto? Exito, DetalleProblema? Error)> ComprarAsync(
         Guid paqueteId, string claveIdempotencia, CancellationToken ct = default)

@@ -4,17 +4,7 @@ using Microsoft.EntityFrameworkCore.Metadata.Builders;
 
 namespace Facturacion.Server.Data.Configurations.Plataforma.Catalogos;
 
-/// <summary>
-/// El índice de texto completo sobre <c>Descripcion</c> se crea con SQL crudo en la
-/// migración: es uno de los dos catálogos que pide ARQUITECTURA.md §7 para la búsqueda de código
-/// postal por nombre de municipio.
-/// <para>
-/// Sin llave foránea hacia <see cref="SatCodigoPostal"/> ni hacia <see cref="SatEstado"/>:
-/// son catálogos independientes que solo comparten claves de texto, y forzar la relación
-/// obligaría a cargar los cuatro catálogos en un orden exacto para que una fila con datos
-/// incompletos del propio SAT no tumbe la importación completa.
-/// </para>
-/// </summary>
+/// <summary>El índice de texto completo se crea en la migración. No usa llaves foráneas entre catálogos SAT para permitir cargas independientes.</summary>
 public sealed class SatMunicipioConfiguracion : IEntityTypeConfiguration<SatMunicipio>
 {
     public void Configure(EntityTypeBuilder<SatMunicipio> constructor)

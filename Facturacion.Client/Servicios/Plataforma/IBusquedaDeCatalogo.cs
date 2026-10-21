@@ -10,7 +10,7 @@ public interface IBusquedaDeCatalogo
     Task<IReadOnlyList<ClaveSatDto>> OpcionesAsync(string catalogo, CancellationToken ct);
 }
 
-/// <summary>Llama a <c>GET /api/catalogos/{catalogo}/buscar</c> (ARQUITECTURA.md §7).</summary>
+/// <summary>Llama a <c>GET /api/catalogos/{catalogo}/buscar</c>.</summary>
 public sealed class BusquedaDeCatalogo(IHttpClientFactory fabrica) : IBusquedaDeCatalogo
 {
     private readonly Dictionary<string, IReadOnlyList<ClaveSatDto>> _opciones = new(StringComparer.Ordinal);

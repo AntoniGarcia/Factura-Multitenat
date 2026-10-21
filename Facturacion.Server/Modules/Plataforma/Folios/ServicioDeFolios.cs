@@ -18,7 +18,7 @@ namespace Facturacion.Server.Modules.Plataforma.Folios;
 /// un comprobante por RFC + serie + folio, así que un folio repetido es un comprobante
 /// rechazado —o peor, dos comprobantes válidos indistinguibles—. La reserva vive en el
 /// procedimiento <c>dbo.ReservarFolio</c>, que hace la lectura y el aumento en un solo
-/// <c>UPDATE ... WITH (UPDLOCK)</c> dentro de una transacción corta (ARQUITECTURA.md §5).
+/// <c>UPDATE... WITH (UPDLOCK)</c> dentro de una transacción corta.
 ///
 /// <para><b>La empresa no viaja desde el cliente</b></para>
 /// Se le pasa al procedimiento desde el claim del token, y el procedimiento la exige en su
@@ -92,18 +92,12 @@ public sealed class ServicioDeFolios(
         await baseDeDatos.SaveChangesAsync(ct);
     }
 
-    /// <summary>
-    /// Marca la reserva como abandonada. <b>El folio no vuelve a la serie</b>: ARQUITECTURA.md §5
-    /// exige que un folio tomado quede apartado aunque el timbrado falle, para que dos
-    /// comprobantes distintos nunca puedan llevar el mismo número. Lo que deja este método
-    /// es el registro que justifica el hueco.
-    /// </summary>
+    /// <summary>Abandona la reserva sin devolver el folio a la serie, para conservar su trazabilidad.</summary>
     public async Task LiberarSiNoUsadoAsync(Guid reservaId, CancellationToken ct)
     {
         var reserva = await CargarReservaAsync(reservaId, ct);
 
-        // Confirmar y luego abandonar sería un error de la mitad B, pero abandonar dos veces
-        // puede pasar en un reintento: no vale la pena tratarlo como falla.
+        // Abandonar una reserva ya abandonada es válido en un reintento; una confirmada no puede abandonarse.
         if (reserva.Estado != EstadosDeReservaFolio.Reservado) return;
 
         reserva.Estado = EstadosDeReservaFolio.Abandonado;

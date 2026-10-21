@@ -10,16 +10,7 @@ using Microsoft.Extensions.Logging.Abstractions;
 
 namespace Facturacion.Pruebas;
 
-/// <summary>
-/// La tercera prueba obligatoria de la fase 7: dos POST de compra con la misma
-/// <c>Idempotency-Key</c> producen una sola compra y la misma respuesta.
-///
-/// <para><b>Se prueba el filtro, no un doble del filtro</b></para>
-/// Corre <see cref="FiltroDeIdempotencia"/> de verdad contra SQL Server de verdad, porque lo
-/// que sostiene la garantía es el índice único de la base: es él quien decide cuál de dos
-/// peticiones simultáneas gana. Un doble en memoria probaría la parte fácil —el camino sin
-/// concurrencia— y se saltaría exactamente lo que puede fallar.
-/// </summary>
+/// <summary>Comprueba en SQL Server que solicitudes con la misma clave de idempotencia generen una sola compra y la misma respuesta.</summary>
 public sealed class IdempotenciaDeCompraPruebas : IAsyncLifetime
 {
     private const string Conexion =
@@ -150,7 +141,7 @@ public sealed class IdempotenciaDeCompraPruebas : IAsyncLifetime
         Assert.Contains("idempotency-key-reutilizada", segunda.Cuerpo);
     }
 
-    /// <summary>Sin el encabezado no se ejecuta nada: ARQUITECTURA.md §4 lo hace obligatorio.</summary>
+    /// <summary>Rechaza la operación cuando falta el encabezado de idempotencia.</summary>
     [Fact]
     public async Task Sin_el_encabezado_la_peticion_se_rechaza()
     {

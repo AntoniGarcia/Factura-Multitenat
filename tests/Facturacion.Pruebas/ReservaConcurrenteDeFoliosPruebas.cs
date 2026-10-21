@@ -8,24 +8,7 @@ using Microsoft.EntityFrameworkCore;
 
 namespace Facturacion.Pruebas;
 
-/// <summary>
-/// La prueba obligatoria de la fase 4 (PROMPT-FASES-A.md): cincuenta hilos reservando folio
-/// de la misma serie a la vez no producen ningún duplicado ni ningún hueco.
-///
-/// <para><b>Por qué contra SQL Server de verdad</b></para>
-/// Lo que se está probando <b>es</b> el bloqueo de renglón del procedimiento almacenado. Un
-/// proveedor en memoria no tiene <c>UPDLOCK</c>, no tiene transacciones reales y no tiene
-/// contención: pasaría siempre, incluso con la implementación ingenua que este código existe
-/// para evitar. Una prueba que no puede fallar no prueba nada.
-///
-/// <para><b>Qué cubre y qué no</b></para>
-/// Cubre la concurrencia dentro de un proceso, que es donde vive el riesgo real: varias
-/// peticiones HTTP atendidas a la vez por el mismo servidor. <b>No</b> cubre varias
-/// instancias del servidor contra la misma base, pero no hace falta: el bloqueo lo impone la
-/// base, no la aplicación, así que el resultado es el mismo venga de donde venga la conexión.
-/// Tampoco cubre reintentos por interbloqueo, que aquí no aparecen porque todos los hilos
-/// toman el mismo único renglón y en el mismo orden.
-/// </summary>
+/// <summary>Comprueba en SQL Server la reserva simultánea de folios sin duplicados. No prueba varias instancias del servidor ni reintentos por interbloqueo.</summary>
 public sealed class ReservaConcurrenteDeFoliosPruebas : IAsyncLifetime
 {
     private const string Conexion =
@@ -176,7 +159,7 @@ public sealed class ReservaConcurrenteDeFoliosPruebas : IAsyncLifetime
 
     /// <summary>
     /// Un folio abandonado <b>no</b> vuelve a la serie: el siguiente comprobante toma el
-    /// número siguiente y el hueco queda justificado en la bitácora (ARQUITECTURA.md §5).
+    /// número siguiente y el hueco queda justificado en la bitácora.
     /// </summary>
     [Fact]
     public async Task Un_folio_abandonado_no_se_recicla()

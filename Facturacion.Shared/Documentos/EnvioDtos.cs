@@ -14,10 +14,7 @@ public static class ReglasDeEnvio
     public const int LongitudMaximaMensaje = 4000;
 }
 
-/// <summary>
-/// Lo que el diálogo de envío necesita para abrir ya lleno: el panel «Parámetros de envío CFD»
-/// de §1.3 del documento funcional, más el historial para reenviar.
-/// </summary>
+/// <summary>Datos iniciales e historial del diálogo de envío de correo.</summary>
 /// <param name="Destinatarios">El correo principal del cliente, si tiene.</param>
 /// <param name="CorreoDeLaEmpresa">
 /// Destino de la copia oculta («Enviar a cuenta única» del sistema anterior). Nulo si la

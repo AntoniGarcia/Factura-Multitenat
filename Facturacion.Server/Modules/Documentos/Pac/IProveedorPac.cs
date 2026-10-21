@@ -49,7 +49,7 @@ public enum ResultadoDeCancelacion
     ErrorDeComunicacion
 }
 
-/// <summary>Lo que dice el SAT de un comprobante ya emitido (§30 del documento funcional).</summary>
+/// <summary>Estado de un comprobante consultado ante el SAT.</summary>
 /// <param name="EstadoCfdi">«Vigente», «Cancelado» o «No Encontrado», tal como lo nombra el SAT.</param>
 /// <param name="EsCancelable">
 /// «Cancelable sin aceptación», «Cancelable con aceptación» o «No cancelable». Es lo que
@@ -113,15 +113,7 @@ public interface IProveedorPac
     /// <param name="xml">El mismo XML sellado que se envió en el intento original.</param>
     Task<RespuestaDePac> ConsultarAsync(string xml, string claveIdempotencia, CancellationToken ct);
 
-    /// <summary>
-    /// Pide al SAT la cancelación de un comprobante ya timbrado.
-    ///
-    /// <para>
-    /// Va firmada con el CSD del emisor: el SAT no acepta que un tercero cancele por él. Por eso
-    /// recibe el certificado en claro, y por eso el material nunca se registra ni se serializa
-    /// (ARQUITECTURA.md §4).
-    /// </para>
-    /// </summary>
+    /// <summary>Solicita la cancelación con el CSD del emisor. El material descifrado no se registra ni se serializa.</summary>
     /// <param name="datos">
     /// Ya validados por quien llama: el UUID sustituto es obligatorio con el motivo <c>01</c> y
     /// va nulo en los demás.

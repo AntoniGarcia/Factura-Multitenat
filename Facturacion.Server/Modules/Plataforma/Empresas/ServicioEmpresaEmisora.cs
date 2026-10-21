@@ -5,16 +5,7 @@ using Microsoft.EntityFrameworkCore;
 
 namespace Facturacion.Server.Modules.Plataforma.Empresas;
 
-/// <summary>
-/// Implementación de <see cref="IServicioEmpresaEmisora"/> del contrato congelado
-/// (REPARTO-EQUIPO.md §5): lo que la mitad B necesita del emisor para timbrar y para el PDF.
-/// <para>
-/// Deliberadamente <b>no</b> expone el CSD. Esa es la razón de que el contrato lo haya
-/// separado en <see cref="IProveedorCsdParaTimbrado"/>: mientras la llave privada viviera en
-/// la misma interfaz que el RFC, cualquier código que necesitara un dato inocente obtenía de
-/// paso el material del sello.
-/// </para>
-/// </summary>
+/// <summary>Entrega los datos del emisor para XML y PDF sin exponer el CSD. El material de firma utiliza una interfaz separada.</summary>
 public sealed class ServicioEmpresaEmisora(
     AppDbContext baseDeDatos,
     IContextoEmpresaInterno contexto,
@@ -38,7 +29,7 @@ public sealed class ServicioEmpresaEmisora(
             empresa.CodigoPostalExpedicion,
             empresa.ZonaHoraria,
             // Es el Reply-To de los correos del CFDI: la respuesta del cliente va a la empresa,
-            // no al buzón del SaaS (ARQUITECTURA.md §6).
+            // no al buzón del SaaS.
             empresa.CorreoContacto);
     }
 

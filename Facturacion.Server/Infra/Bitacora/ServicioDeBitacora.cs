@@ -6,11 +6,7 @@ using Facturacion.Server.Infra.Tenencia;
 
 namespace Facturacion.Server.Infra.Bitacora;
 
-/// <summary>
-/// Escribe la bitácora. Toda operación que cambie datos fiscales o de facturación, y todo
-/// evento de identidad, deja aquí quién, en qué empresa, cuándo y con qué valores
-/// (ARQUITECTURA.md §5).
-/// </summary>
+/// <summary>Registra usuario, empresa, fecha y valores modificados en operaciones fiscales, de facturación e identidad.</summary>
 public interface IServicioDeBitacora
 {
     /// <summary>

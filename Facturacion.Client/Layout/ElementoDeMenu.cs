@@ -43,7 +43,7 @@ public sealed record ElementoDeMenu(
 /// <para>
 /// Los grupos son <b>encabezados</b>. Los submenús existen, pero de un solo nivel: un árbol de
 /// desplegables dentro de desplegables es lo que peor sobrevive al paso a barra inferior en
-/// móvil (ARQUITECTURA.md §8). En móvil el submenú se aplana y sus hijos quedan en la barra.
+/// móvil. En móvil el submenú se aplana y sus hijos quedan en la barra.
 /// </para>
 ///
 /// <para>

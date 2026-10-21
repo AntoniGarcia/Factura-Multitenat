@@ -3,11 +3,7 @@ using Microsoft.EntityFrameworkCore;
 
 namespace Facturacion.Server.Infra.Idempotencia;
 
-/// <summary>
-/// Borra cada hora las claves de idempotencia vencidas. Sin esto, la tabla que guarda la
-/// respuesta de cada cobro crece para siempre y la ventana de 24 horas de ARQUITECTURA.md §4 se
-/// vuelve permanente.
-/// </summary>
+/// <summary>Elimina cada hora las claves de idempotencia vencidas.</summary>
 public sealed class PurgaDeClavesIdempotencia(
     IServiceScopeFactory fabricaDeAmbitos,
     ILogger<PurgaDeClavesIdempotencia> registro) : BackgroundService

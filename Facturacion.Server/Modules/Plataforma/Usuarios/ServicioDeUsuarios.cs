@@ -11,45 +11,7 @@ using Microsoft.Extensions.Options;
 
 namespace Facturacion.Server.Modules.Plataforma.Usuarios;
 
-/// <summary>
-/// Usuarios de la empresa activa: alta, permisos, correo y baja lógica.
-///
-/// <para><b>Alta directa, no invitación</b></para>
-/// El administrador teclea la contraseña y se la comunica al usuario por fuera del sistema.
-/// Sustituyó a la invitación por correo, que se eliminó por completo.
-///
-/// <para>
-/// Tiene dos consecuencias que se decidieron a sabiendas y conviene no descubrir de golpe
-/// dentro de seis meses:
-/// </para>
-/// <list type="number">
-///   <item>
-///     El administrador conoce la contraseña, así que la bitácora ya no distingue con
-///     certeza al usuario de quien le creó la cuenta. Por eso el alta queda registrada:
-///     es lo único que permite reconstruir quién pudo haber actuado como quién.
-///   </item>
-///   <item>
-///     Nadie comprueba que el correo sea de quien dice. Aceptar una invitación era esa
-///     prueba. Mientras el correo no sirva para recuperar contraseñas, el riesgo se queda
-///     en que un usuario no reciba lo que se le mande.
-///   </item>
-/// </list>
-///
-/// <para><b>Los dos caminos del alta</b></para>
-/// Cuando el correo ya es de un usuario <b>de la misma cuenta</b> —el caso de "administrador
-/// en la llantera, auxiliar en la cementera"— no se crea a nadie ni se toca su contraseña:
-/// se le da acceso a la empresa nueva y ya.
-///
-/// <para><b>El titular no se toca</b></para>
-/// Esta pantalla la abre solo el titular de la cuenta, y desde aquí nadie modifica al titular:
-/// ni su correo, ni su contraseña, ni sus permisos —que no se guardan: los lleva todos—, ni su
-/// acceso. Los permisos que se reparten son solo las casillas de <see cref="Permisos.Asignables"/>
-/// (AGENTS.md §11, 9 de octubre de 2026).
-///
-/// <para><b>El límite de usuarios</b></para>
-/// Tres accesos activos por empresa: el que la dio de alta más dos auxiliares. No hay ningún
-/// campo de "rol": el límite cuenta filas de <see cref="UsuarioEmpresa"/>, no una etiqueta.
-/// </summary>
+/// <summary>Administra accesos de la empresa. El titular crea usuarios o vincula usuarios de la misma cuenta sin cambiar sus contraseñas. El alta directa no verifica el correo y el creador conoce la contraseña inicial; queda registrada en bitácora. El titular no se modifica desde esta pantalla.</summary>
 public sealed class ServicioDeUsuarios(
     AppDbContext baseDeDatos,
     UserManager<Usuario> usuarios,

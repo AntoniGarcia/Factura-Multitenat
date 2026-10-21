@@ -2,11 +2,11 @@ namespace Facturacion.Server.Data.Entidades.Plataforma;
 
 /// <summary>
 /// Producto o servicio del catálogo de la empresa. Es la plantilla de un concepto del CFDI:
-/// al facturar se copian estos datos al comprobante y ahí se congelan (ARQUITECTURA.md §5).
+/// al facturar se copian estos datos al comprobante y ahí se congelan.
 ///
 /// <para><b>Dos claves del SAT y una unidad en texto</b></para>
 /// <see cref="ClaveProdServ"/> y <see cref="ClaveUnidad"/> son del catálogo y viajan al XML;
-/// nunca se escriben a mano (ARQUITECTURA.md §7). <see cref="UnidadTexto"/> es lo que el receptor
+/// nunca se escriben a mano. <see cref="UnidadTexto"/> es lo que el receptor
 /// lee en el PDF —«Litro», «Caja con 12»— y no tiene que coincidir con la clave.
 /// </summary>
 public sealed class Producto : IEntidadDeEmpresa
@@ -31,10 +31,10 @@ public sealed class Producto : IEntidadDeEmpresa
 
     public required string Descripcion { get; set; }
 
-    /// <summary>Precio de venta. Seis decimales de cálculo, dos de presentación (ARQUITECTURA.md §5).</summary>
+    /// <summary>Precio de venta. Seis decimales de cálculo, dos de presentación.</summary>
     public decimal ValorUnitario { get; set; }
 
-    /// <summary>Peso en kilogramos. Informativo; lo pide §5 del documento funcional.</summary>
+    /// <summary>Peso informativo en kilogramos.</summary>
     public decimal? PesoKg { get; set; }
 
     /// <summary>Clave de <c>c_ObjetoImp</c>. Decide si el concepto lleva desglose de impuestos.</summary>
@@ -49,39 +49,12 @@ public sealed class Producto : IEntidadDeEmpresa
     public DateTime? FechaModificacionUtc { get; set; }
 }
 
-/// <summary>
-/// Un impuesto configurado en un producto.
-///
-/// <para><b>Por qué no es «IVA 16 / IVA 0 / exento»</b></para>
-/// El sistema viejo (§6 del documento funcional) usaba tres botones excluyentes. Eso no
-/// alcanza para CFDI 4.0: un concepto puede llevar traslado de IVA y además retención de IVA
-/// y de ISR a la vez, y el IEPS tiene tasas y hasta cuotas fijas. Se modelan las tres
-/// columnas del SAT —impuesto, tipo de factor y tasa o cuota— y la interfaz ofrece los tres
-/// casos comunes como atajos. Que la captura sea simple no obliga a que el modelo sea pobre.
-/// </para>
-/// </summary>
+/// <summary>Impuesto del producto con tipo de factor y tasa o cuota. Permite combinar traslados y retenciones; los atajos de la interfaz solo facilitan la captura.</summary>
 public sealed class ProductoImpuesto : IEntidadDeEmpresa
 {
     public Guid Id { get; set; }
 
-    /// <summary>
-    /// Redundante con la del producto padre, y a propósito.
-    ///
-    /// <para>
-    /// Sin ella esta tabla quedaba fuera del filtro global —lo advertía EF en cada arranque—
-    /// y <c>AppDbContext.ProductosImpuestos</c> devolvía renglones de todas las empresas a
-    /// quien lo consultara directo. Las lecturas de la mitad A entran por
-    /// <c>Include(p =&gt; p.Impuestos)</c> desde <c>Productos</c>, que sí filtra, así que no
-    /// hubo fuga; pero la puerta estaba abierta y la mitad B lee impuestos de producto para
-    /// calcular comprobantes.
-    /// </para>
-    ///
-    /// <para>
-    /// Con la columna, el filtro global y el sellado del interceptor la cubren solos, como a
-    /// cualquier otra tabla de empresa (ARQUITECTURA.md §5). Se detectó en la verificación
-    /// posterior a la fase 9; ver <c>docs/REPASO-SEGURIDAD.md</c>.
-    /// </para>
-    /// </summary>
+    /// <summary>Permite aplicar el filtro global y validar la empresa también al consultar impuestos sin cargar el producto.</summary>
     public Guid EmpresaId { get; set; }
 
     public Guid ProductoId { get; set; }

@@ -1,8 +1,7 @@
 namespace Facturacion.Shared.Comun;
 
 /// <summary>
-/// Los permisos del sistema. La autorización es por permiso, nunca por rol (ARQUITECTURA.md §4,
-/// con el cambio de §11 del 9 de octubre de 2026: permisos por sección y titular de la cuenta).
+/// Los permisos del sistema. La autorización es por permiso, nunca por rol.
 /// </summary>
 public enum Permiso
 {

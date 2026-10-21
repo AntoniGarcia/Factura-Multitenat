@@ -95,14 +95,7 @@ public sealed class ServicioDeComprasDeOperador(
         return new PaginaDeComprasDeOperador(elementos, total);
     }
 
-    /// <summary>
-    /// Acredita el pago: los timbres entran a la bolsa de la empresa que compró.
-    /// <para>
-    /// Recibe el identificador de la <b>compra</b>, nunca el de una empresa. La empresa se
-    /// deduce en el servidor a partir de la compra, así que la regla de ARQUITECTURA.md §4
-    /// —el cliente no manda identificadores de empresa— sigue intacta.
-    /// </para>
-    /// </summary>
+    /// <summary>Acredita timbres a la empresa de la compra. El servidor obtiene esa empresa a partir de la compra, no de un parámetro del cliente.</summary>
     public async Task<Resultado<CompraDto>> AcreditarAsync(Guid compraId, CancellationToken ct)
         => await compras.AcreditarAsync(compraId, ct);
 

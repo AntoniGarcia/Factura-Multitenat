@@ -5,7 +5,7 @@ namespace Facturacion.Server.Data.Entidades.Plataforma;
 /// <summary>
 /// Usuario del sistema. Deriva de <see cref="IdentityUser{TKey}"/> con <see cref="Guid"/>
 /// como clave: ASP.NET Core Identity se usa solo como almacén, como motor de hash y como
-/// bloqueo por intentos. La emisión de tokens es propia (ARQUITECTURA.md §4).
+/// bloqueo por intentos. La emisión de tokens es propia.
 /// <para>
 /// Pertenece a una cuenta y accede a una o varias de sus empresas a través de
 /// <see cref="UsuarioEmpresa"/>. No lleva <c>EmpresaId</c>: el mismo usuario puede ser
@@ -20,7 +20,7 @@ public sealed class Usuario : IdentityUser<Guid>
 
     public Cuenta Cuenta { get; set; } = null!;
 
-    /// <summary>Baja lógica. Desactivar invalida todas sus familias de refresh token (fase 8).</summary>
+    /// <summary>Desactivar el usuario revoca sus familias de refresh token.</summary>
     public bool Activo { get; set; } = true;
 
     /// <summary>
@@ -31,11 +31,7 @@ public sealed class Usuario : IdentityUser<Guid>
 
     public DateTime FechaAltaUtc { get; set; }
 
-    /// <summary>
-    /// Tema elegido, o <c>null</c> si nunca lo cambió y usa el claro por omisión. Vive aquí y
-    /// no en el navegador: el contador que cambia de máquina tiene que encontrar su tema
-    /// (ARQUITECTURA.md §8, PROMPT-FASES-A §2).
-    /// </summary>
+    /// <summary>Tema guardado en el perfil; nulo utiliza el tema claro.</summary>
     public string? TemaPreferido { get; set; }
 
     /// <summary>
@@ -55,12 +51,7 @@ public sealed class Usuario : IdentityUser<Guid>
     /// </summary>
     public bool CreadoPorAdministrador { get; set; }
 
-    /// <summary>
-    /// Quien registró la cuenta: uno por cuenta. Recibe en el token todos los permisos de
-    /// cualquier empresa de su cuenta, sin guardarlos uno por uno, y es el único que administra
-    /// usuarios y da de alta empresas. Nadie lo modifica desde la pantalla de usuarios
-    /// (AGENTS.md §11, 9 de octubre de 2026).
-    /// </summary>
+    /// <summary>Titular de la cuenta. Administra empresas y usuarios y recibe los permisos de sus empresas sin asignarlos individualmente.</summary>
     public bool EsTitular { get; set; }
 
     public ICollection<UsuarioEmpresa> Empresas { get; set; } = [];

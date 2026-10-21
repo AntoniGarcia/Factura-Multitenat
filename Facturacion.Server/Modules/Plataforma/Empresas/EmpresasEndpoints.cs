@@ -11,7 +11,7 @@ namespace Facturacion.Server.Modules.Plataforma.Empresas;
 /// Los datos fiscales y los certificados exigen <c>mi_empresa</c>; la configuración, el correo
 /// y el logo, <c>configuracion</c>; la lectura de los datos de la empresa activa también la
 /// necesitan quienes emiten documentos. Ningún endpoint recibe un identificador
-/// de empresa: la empresa es la del claim (ARQUITECTURA.md §4).
+/// de empresa: la empresa es la del claim.
 /// </para>
 /// </summary>
 public static class EmpresasEndpoints

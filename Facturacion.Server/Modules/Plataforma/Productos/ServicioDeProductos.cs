@@ -8,11 +8,7 @@ using Microsoft.EntityFrameworkCore;
 
 namespace Facturacion.Server.Modules.Plataforma.Productos;
 
-/// <summary>
-/// Catálogo de productos de la empresa activa. Implementa
-/// <see cref="IServicioProductos"/> del contrato congelado, que es lo que la mitad B consume
-/// para armar un concepto.
-/// </summary>
+/// <summary>Administra productos de la empresa activa y proporciona sus datos para los conceptos.</summary>
 public sealed class ServicioDeProductos(
     AppDbContext baseDeDatos,
     ValidadorDeProducto validador,

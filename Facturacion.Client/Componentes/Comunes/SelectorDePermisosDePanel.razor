@@ -1,16 +1,6 @@
 @using Facturacion.Shared.Operador
 
-@*
-    Los permisos del panel, por sección y con jerarquía. La lista de módulos queda a la
-    izquierda y las acciones del módulo elegido se muestran a la derecha.
-    Los permisos generales anteriores cubren todas las acciones de su sección; los
-    permisos concretos permiten asignar solo una operación.
-
-    La jerarquía no es solo visual: una acción no puede quedar marcada sin su sección, y lo que
-    arma este selector ya sale coherente. Si alguien llegara a pegar una petición con una acción
-    sin su sección, el servidor la rechaza igual (no es comodidad visual, es la defensa de fondo).
-*@
-
+@* Muestra módulos a la izquierda y sus acciones a la derecha. Cada acción requiere su sección; el servidor también valida esa relación. *@
 <div class="selector-permisos-panel">
     <div class="permisos-modulos" role="group" aria-label="Módulos del panel">
         @foreach (var seccion in PermisosDePanel.Secciones)
@@ -33,6 +23,7 @@
                         @Value.Count(p => seccion.Acciones.Any(a => a.Clave == p))
                     </span>
                     <MudIcon Icon="@Icons.Material.Filled.ChevronRight" Size="Size.Small" />
+
                 </button>
             </div>
         }
@@ -78,8 +69,7 @@
         _seccionActivaClave = seccion.Ver.Clave;
 
     /// <summary>
-    /// Desmarcar «ver» quita también las acciones de esa sección: ninguna puede quedar
-    /// asignada sin acceso al módulo.
+    /// Desmarcar «ver» quita también las acciones de esa sección: ninguna puede queda asignada sin acceso al módulo.
     /// </summary>
     private async Task CambiarVer(SeccionDePermisosDePanel seccion, bool marcado)
     {

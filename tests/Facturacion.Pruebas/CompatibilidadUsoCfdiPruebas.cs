@@ -6,18 +6,7 @@ using Microsoft.EntityFrameworkCore;
 
 namespace Facturacion.Pruebas;
 
-/// <summary>
-/// La prueba obligatoria de la fase 3 (PROMPT-FASES-A.md): que
-/// <see cref="ServicioCatalogosSat.EsUsoCfdiCompatibleAsync"/> acierte en al menos seis
-/// combinaciones de régimen y uso, incluyendo 616 + S01 del público en general
-/// (ARQUITECTURA.md §7).
-/// <para>
-/// Los datos que siembra son reales, tomados del archivo del SAT cargado en desarrollo
-/// —no inventados—: <c>c_UsoCFDI</c> trae su propia matriz de compatibilidad en la columna
-/// "Régimen Fiscal Receptor", y esta prueba comprueba que <see cref="ServicioCatalogosSat"/>
-/// la interpreta bien, no que la matriz en sí sea correcta.
-/// </para>
-/// </summary>
+/// <summary>Comprueba la matriz SAT de compatibilidad entre régimen y uso, incluido público en general con 616 y S01.</summary>
 public sealed class CompatibilidadUsoCfdiPruebas : IAsyncLifetime
 {
     private const string Conexion =
@@ -63,7 +52,7 @@ public sealed class CompatibilidadUsoCfdiPruebas : IAsyncLifetime
     }
 
     [Theory]
-    // El caso exigido por ARQUITECTURA.md §7: público en general.
+    // Caso de público en general.
     [InlineData("S01", "616", false, true)]
     [InlineData("G01", "601", true, true)]
     [InlineData("D01", "605", false, true)]

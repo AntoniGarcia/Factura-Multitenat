@@ -4,7 +4,7 @@ namespace Facturacion.Client.Servicios.Plataforma;
 
 /// <summary>
 /// El botón de instalar la PWA, solo visible cuando el navegador dice que se puede
-/// (PROMPT-FASES-A.md fase 2). Nunca hay un botón "Instalar" que falle al hacer clic: si el
+///. Nunca hay un botón "Instalar" que falle al hacer clic: si el
 /// navegador no ofreció el evento —Safari de escritorio, por ejemplo, no lo soporta—,
 /// <see cref="PuedeInstalarse"/> se queda en falso y el botón no se dibuja.
 /// </summary>

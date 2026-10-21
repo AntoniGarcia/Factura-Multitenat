@@ -59,7 +59,7 @@ public sealed class SolicitudCancelacion : IEntidadDeEmpresa
 }
 
 /// <summary>
-/// Los cuatro motivos del SAT. Fuera del MVP no hay más (ARQUITECTURA.md §6).
+/// Los cuatro motivos del SAT. Fuera del MVP no hay más.
 /// </summary>
 public static class MotivosDeCancelacion
 {

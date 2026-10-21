@@ -94,12 +94,7 @@ else
                     <td class="cifra-tabular">@certificado.NumeroSerie</td>
                     <td class="cifra-tabular">@certificado.VigenciaDesdeUtc.ToLocalTime().ToString("dd/MM/yyyy")</td>
                     <td class="cifra-tabular">@certificado.VigenciaHastaUtc.ToLocalTime().ToString("dd/MM/yyyy")</td>
-                    @*
-                        Píldora con las clases de IndicadorEstado pero sin usar ese componente:
-                        el suyo es el estatus de un comprobante y un certificado no lo es.
-                        Reutilizar el estilo está bien; forzar el significado del componente
-                        que va a usar la mitad B, no.
-                    *@
+@* Reutiliza el estilo de estado sin tratar el certificado como un comprobante. *@
                     <td>
                         <span class="indicador-estado indicador-estado-@(certificado.Activo ? "timbrada" : "borrador")">
                             @(certificado.Activo ? "Activo" : "Reemplazado")

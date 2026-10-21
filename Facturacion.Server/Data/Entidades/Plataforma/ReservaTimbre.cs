@@ -17,11 +17,7 @@ public sealed class ReservaTimbre : IEntidadDeEmpresa
 
     public Guid EmpresaId { get; set; }
 
-    /// <summary>
-    /// Comprobante para el que se apartó. Sin llave foránea a propósito: la tabla de
-    /// comprobantes es de la mitad B y esta mitad no la conoce ni puede depender de su
-    /// esquema (REPARTO-EQUIPO.md §3).
-    /// </summary>
+    /// <summary>Identificador del comprobante asociado, sin relación de navegación entre módulos.</summary>
     public Guid ComprobanteId { get; set; }
 
     /// <summary>Uno de <see cref="EstadosDeReservaTimbre"/>.</summary>

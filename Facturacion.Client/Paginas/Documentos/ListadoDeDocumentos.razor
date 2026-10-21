@@ -297,7 +297,7 @@
     private string? _tipoComprobante;
     private Periodo _periodo = Periodo.EsteAnio;
 
-    // El rango que pide §1.1 del documento funcional: del inicio del año en curso a hoy.
+    // Periodo inicial: desde el inicio del año en curso hasta hoy.
     private DateTime? _desdeUtc = InicioDelAnio();
     private DateTime? _hastaUtc = DateTime.UtcNow;
 
@@ -471,7 +471,7 @@
     }
 
     /// <summary>
-    /// Un borrador todavía no tiene folio y no debe aparentar tenerlo (ARQUITECTURA.md §5): el folio
+    /// Un borrador todavía no tiene folio y no debe aparentar tenerlo: el folio
     /// se asigna al timbrar.
     /// </summary>
     private static string Folio(ComprobanteEnListaDto documento)

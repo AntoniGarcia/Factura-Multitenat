@@ -48,17 +48,7 @@ public sealed class ClienteConfiguracion : IEntityTypeConfiguration<Cliente>
             .IsUnique()
             .HasDatabaseName("IX_Clientes_ClaveInternaPorEmpresa");
 
-        // ARQUITECTURA.md §5: el RFC es único POR EMPRESA —dos empresas pueden facturarle al mismo
-        // cliente— y los dos genéricos quedan fuera del índice porque, por definición, se
-        // repiten: todo el público en general comparte XAXX010101000.
-        //
-        // El filtro no incluye Activo a propósito: dar de baja a un cliente no libera su RFC.
-        // Aquí nada se borra, así que lo correcto es reactivar el registro que ya existe, no
-        // crear un segundo cliente con el mismo RFC y perder el historial repartido en dos.
-        //
-        // Se escribe con dos <> unidos por AND y no con NOT IN: SQL Server solo admite
-        // comparaciones simples en el WHERE de un índice filtrado, y NOT IN falla con
-        // «Incorrect syntax near 'NOT'». Se descubrió aplicando la migración, no leyéndola.
+        // El RFC es único por empresa, salvo los genéricos. Desactivar un cliente no libera su RFC: debe reactivarse el registro existente. El índice filtrado usa comparaciones simples compatibles con SQL Server.
         constructor.HasIndex(c => new { c.EmpresaId, c.Rfc })
             .IsUnique()
             .HasFilter($"[Rfc] <> '{Rfc.GenericoNacional}' AND [Rfc] <> '{Rfc.GenericoExtranjero}'")

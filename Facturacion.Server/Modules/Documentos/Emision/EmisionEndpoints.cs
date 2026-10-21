@@ -14,7 +14,7 @@ namespace Facturacion.Server.Modules.Documentos.Emision;
 /// <para>
 /// Consultar y descargar lo abre <c>ver_documentos</c> o cualquier permiso de Emitir. Crear,
 /// editar y descartar exige el permiso del tipo de documento: la política del endpoint deja pasar
-/// a quien emite alguna factura y el servicio exige la variante exacta (AGENTS.md §11).
+/// a quien emite alguna factura y el servicio exige la variante exacta.
 /// </para>
 /// </summary>
 public static class EmisionEndpoints
@@ -159,12 +159,7 @@ public static class EmisionEndpoints
             desdeUtc, hastaUtc, paginaEfectiva, tamanoEfectivo, orden, descendente, ct));
     }
 
-    /// <summary>
-    /// El estatus viaja como la cadena de ARQUITECTURA.md §5 —la misma que guarda la columna—, no
-    /// como el nombre del miembro del enum. El enlace automático de minimal APIs resuelve los
-    /// enums por nombre de miembro y distinguiendo mayúsculas, así que <c>en_cancelacion</c>
-    /// nunca enlazaría y <c>timbrado</c> tampoco: devolvía 400 antes de llegar al método.
-    /// </summary>
+    /// <summary>Interpreta el estatus con el valor usado en la base y en JSON, como en_cancelacion, no con el nombre del enum.</summary>
     private static bool TryEstatus(string? valor, out EstatusComprobante? estatus)
     {
         estatus = null;

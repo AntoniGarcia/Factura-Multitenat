@@ -6,18 +6,7 @@ using Facturacion.Server.Modules.Documentos.Salidas;
 
 namespace Facturacion.Pruebas;
 
-/// <summary>
-/// Generación del XML de CFDI 4.0 (fase B3), sin base de datos ni archivos: el generador es
-/// puro y se le entrega un comprobante ya armado.
-///
-/// <para><b>Lo que de verdad se está probando</b></para>
-/// El riesgo que se identificó al cerrar B1: el motor de impuestos trabaja a seis decimales
-/// y el XML lleva los de la moneda. Si cada cifra se redondeara por separado al escribirla,
-/// la identidad <c>Total = SubTotal − Descuento + traslados − retenciones</c> se rompería
-/// —<c>redondear(a) + redondear(b) ≠ redondear(a+b)</c>— y el PAC la valida sobre lo que
-/// dice el XML, no sobre lo que el sistema calculó por dentro.
-/// </para>
-/// </summary>
+/// <summary>Comprueba la generación del XML y la consistencia de totales al pasar de seis decimales a los de la moneda.</summary>
 public sealed class GeneracionDeXmlCfdiPruebas
 {
     private static readonly XNamespace Cfdi = "http://www.sat.gob.mx/cfd/4";
@@ -253,7 +242,7 @@ public sealed class GeneracionDeXmlCfdiPruebas
 
     /// <summary>
     /// El generador no consulta cliente ni empresa: todo sale del comprobante. Es lo que
-    /// hace que reimprimir una factura de hace dos años dé el mismo XML (ARQUITECTURA.md §5).
+    /// hace que reimprimir una factura de hace dos años dé el mismo XML.
     /// </summary>
     [Fact]
     public void Los_datos_fiscales_salen_del_comprobante_y_no_de_los_catalogos()

@@ -41,7 +41,7 @@ public sealed record DatosDelPdf(
 ///
 /// <para><b>Todo sale del comprobante</b></para>
 /// Ni una consulta al cliente ni al catálogo de productos: los datos están congelados dentro
-/// (ARQUITECTURA.md §5). Reimprimir una factura de hace dos años tiene que dar el mismo papel.
+///. Reimprimir una factura de hace dos años tiene que dar el mismo papel.
 /// </summary>
 public sealed class GeneradorDePdfCfdi
 {

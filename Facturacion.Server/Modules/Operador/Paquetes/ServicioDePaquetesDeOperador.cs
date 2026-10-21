@@ -16,7 +16,7 @@ namespace Facturacion.Server.Modules.Operador.Paquetes;
 /// <para><b>Cambiar un precio no reescribe la historia</b></para>
 /// <c>CompraTimbres</c> copia nombre, cantidad y precios en el momento de comprar, así que
 /// subir una tarifa no altera lo que ya se cobró. Por lo mismo, un paquete se retira de la
-/// venta desactivándolo y nunca borrándolo (ARQUITECTURA.md §5).
+/// venta desactivándolo y nunca borrándolo.
 /// </summary>
 public sealed class ServicioDePaquetesDeOperador(
     AppDbContext baseDeDatos,

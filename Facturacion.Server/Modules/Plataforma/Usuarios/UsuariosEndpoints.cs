@@ -19,7 +19,7 @@ public static class UsuariosEndpoints
     {
         var grupo = rutas.MapGroup("/api/usuarios")
             .WithTags("Usuarios")
-            // Solo el titular de la cuenta administra usuarios (AGENTS.md §11, 9 de octubre de 2026).
+            // Solo el titular de la cuenta administra usuarios.
             .RequireAuthorization(Permisos.Titular);
 
         grupo.MapGet("/", Listar);

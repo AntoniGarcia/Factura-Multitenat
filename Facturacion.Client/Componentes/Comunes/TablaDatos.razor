@@ -1,22 +1,7 @@
 @typeparam T
 @using MudBlazor
 
-@*
-    Columnas configurables, orden y paginación en servidor, filas de 40px (fijado en
-    mudblazor-tema.css), estado vacío, estado de carga, y en móvil se transforma en tarjetas
-    apiladas —eso último con el Breakpoint de MudTable, no con CSS propio: es exactamente
-    lo que ese parámetro hace—. Documentado aquí porque también lo va a usar la mitad B
-    (REPARTO-EQUIPO.md §4).
-
-    CargarPagina es el único punto de contacto con el servidor: quien use el componente
-    decide qué endpoint llamar, TablaDatos solo pide "dame la página N ordenada así".
-
-    Height es opcional: sin él, la tabla crece con su contenido como hasta ahora (el
-    comportamiento de siempre para el resto de páginas). Con una altura fijada, MudTable
-    activa scroll interno en el cuerpo y deja el encabezado y el pie de paginación
-    (PagerContent) fijos — así una lista larga no empuja los botones de página fuera de
-    la vista.
-*@
+@* Tabla con carga, orden y paginación en servidor. En móvil usa tarjetas; Height fija el área de desplazamiento. *@
 
 <MudTable T="T"
           ServerData="CargarAsync"

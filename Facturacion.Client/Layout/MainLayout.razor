@@ -8,7 +8,7 @@
 @using Facturacion.Client.Componentes.Catalogos
 
 @*
-    El único MainLayout del sistema (ARQUITECTURA.md §8). Las páginas aportan solo el contenido
+    El único MainLayout del sistema. Las páginas aportan solo el contenido
     del área principal: nunca su propio encabezado, su propia barra ni su propio esqueleto.
 *@
 
@@ -56,8 +56,8 @@
 
     <div class="cuerpo @(_menuColapsado ? "menu-colapsado" : null)">
         <nav id="menu-lateral" class="menu-lateral" aria-label="Secciones del sistema">
-            @* A nombre de quién se está facturando ahora mismo. El selector de empresa NO
-               vive aquí —está en la barra superior y en ningún otro lugar (ARQUITECTURA.md §8)—:
+@* A nombre de quién se está facturando ahora mismo. El selector de empresa NO
+               vive aquí —está en la barra superior y en ningún otro lugar —:
                esto solo lo recuerda, que en multiempresa es la diferencia entre timbrar
                con la llantera o con la cementera sin darse cuenta. *@
             @if (EmpresaActiva is { } empresa)

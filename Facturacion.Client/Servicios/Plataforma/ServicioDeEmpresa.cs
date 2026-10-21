@@ -6,7 +6,7 @@ namespace Facturacion.Client.Servicios.Plataforma;
 
 /// <summary>
 /// Llama a los endpoints de <c>/api/empresa</c> y <c>/api/series</c>. Ninguno recibe
-/// identificador de empresa: la empresa es la del token (ARQUITECTURA.md §4).
+/// identificador de empresa: la empresa es la del token.
 /// </summary>
 public sealed class ServicioDeEmpresa(IHttpClientFactory fabrica)
 {
@@ -84,7 +84,7 @@ public sealed class ServicioDeEmpresa(IHttpClientFactory fabrica)
 
     /// <summary>
     /// El logo se pide con el token y no con un <c>&lt;img src&gt;</c> directo: el token vive solo
-    /// en memoria, así que el navegador no lo mandaría (ARQUITECTURA.md §4). Nulo si no hay.
+    /// en memoria, así que el navegador no lo mandaría. Nulo si no hay.
     /// </summary>
     public async Task<(byte[] Contenido, string TipoMime)?> ObtenerLogoAsync(CancellationToken ct = default)
     {

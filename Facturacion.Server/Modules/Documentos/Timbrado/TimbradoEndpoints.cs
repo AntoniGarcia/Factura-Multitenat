@@ -6,22 +6,7 @@ using Facturacion.Shared.Documentos;
 
 namespace Facturacion.Server.Modules.Documentos.Timbrado;
 
-/// <summary>
-/// Timbrar es la operación con más consecuencias del sistema: gasta un timbre, consume un
-/// folio que ya no se recicla y produce un documento fiscal ante el SAT.
-///
-/// <para><b>Por qué exige <c>Idempotency-Key</c></b></para>
-/// Es lo que pide ARQUITECTURA.md §4 para todo <c>POST</c> que cobre o timbre, y aquí protege del
-/// error más caro y más fácil de cometer: un doble clic en «Generar factura», o el reintento
-/// automático del navegador cuando la respuesta tarda. Sin la clave, el segundo envío entra
-/// como una petición nueva y el comprobante se timbra dos veces.
-///
-/// <para>
-/// Ojo con las dos claves, que no son la misma: la del encabezado protege <b>esta petición
-/// HTTP</b> y la maneja <see cref="FiltroDeIdempotencia"/>; la del intento —la que viaja al
-/// PAC— la genera el propio <see cref="ServicioDeTimbrado"/> y protege <b>el envío al PAC</b>.
-/// </para>
-/// </summary>
+/// <summary>El encabezado Idempotency-Key evita peticiones duplicadas. La clave enviada al PAC es independiente y la genera el servicio de timbrado.</summary>
 public static class TimbradoEndpoints
 {
     public static void MapTimbrado(this IEndpointRouteBuilder rutas)

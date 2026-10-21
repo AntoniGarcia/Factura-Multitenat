@@ -5,14 +5,7 @@ using Facturacion.Shared.Documentos;
 
 namespace Facturacion.Server.Modules.Documentos.Pagos;
 
-/// <summary>
-/// Complemento de pagos (§27 y §28 del documento funcional).
-///
-/// <para>
-/// El timbrado no vive aquí: un CFDI de pago se timbra por <c>POST /api/documentos/{id}/timbrar</c>
-/// como cualquier otro, porque es un comprobante más. Estos endpoints solo lo arman.
-/// </para>
-/// </summary>
+/// <summary>Construye el complemento de pagos. El timbrado se realiza mediante el endpoint común de documentos.</summary>
 public static class PagosEndpoints
 {
     public static void MapPagos(this IEndpointRouteBuilder rutas)

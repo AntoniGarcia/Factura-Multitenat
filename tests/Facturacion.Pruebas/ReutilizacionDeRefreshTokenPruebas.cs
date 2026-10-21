@@ -9,19 +9,7 @@ using Microsoft.Extensions.Logging.Abstractions;
 
 namespace Facturacion.Pruebas;
 
-/// <summary>
-/// La prueba obligatoria de la fase 1, y no es negociable.
-///
-/// <para>
-/// Un refresh token consumido que vuelve a llegar significa que dos partes tienen la misma
-/// cookie: la legítima y quien la copió. Como no hay forma de distinguirlas, se invalida la
-/// familia completa y las dos quedan fuera.
-/// </para>
-/// <para>
-/// Se prueba contra SQL Server porque lo que hay que comprobar es que la invalidación
-/// <b>quedó persistida</b>: si solo ocurriera en memoria, el ladrón seguiría dentro.
-/// </para>
-/// </summary>
+/// <summary>Comprueba que reutilizar un refresh token consumido invalide y persista la revocación de toda su familia.</summary>
 public sealed class ReutilizacionDeRefreshTokenPruebas : IAsyncLifetime
 {
     private const string Conexion =

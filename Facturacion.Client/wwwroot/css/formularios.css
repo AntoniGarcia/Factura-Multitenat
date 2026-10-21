@@ -1,5 +1,5 @@
 /*
-  Formularios de captura densos (ARQUITECTURA.md §8): sin adornos, muchos campos a la vista, y
+  Formularios de captura densos: sin adornos, muchos campos a la vista, y
   siempre sobre variables semánticas — ningún color literal.
 */
 
@@ -629,7 +629,7 @@
     color: var(--texto-suave);
 }
 
-/* Licencias de fase 2: visibles pero explícitamente reservadas. */
+/* Licencias reservadas para módulos no habilitados. */
 .aviso-reservado {
     background: var(--superficie-elevada);
     border: 1px dashed var(--borde-fuerte);

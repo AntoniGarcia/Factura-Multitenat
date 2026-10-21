@@ -10,11 +10,11 @@ namespace Facturacion.Shared.Comun;
 /// atrapa el error real del capturista —una letra cambiada, dos dígitos volteados—, porque
 /// un RFC mal tecleado casi nunca cae en un dígito verificador correcto. Sin esta
 /// comprobación, el error se descubre hasta que el PAC rechaza el comprobante, cuando ya se
-/// apartó un folio (ARQUITECTURA.md §5).
+/// apartó un folio.
 ///
 /// <para><b>Vive en Shared para que Client y Server no puedan discrepar</b></para>
 /// El <c>Client</c> la usa para avisarle al capturista mientras escribe; la que cuenta es la
-/// del servidor, que se ejecuta siempre (ARQUITECTURA.md §3). Tener dos implementaciones sería
+/// del servidor, que se ejecuta siempre. Tener dos implementaciones sería
 /// tener dos verdades.
 /// </summary>
 public static class Rfc
@@ -86,14 +86,7 @@ public static class Rfc
         return new ValidacionRfc(true, null);
     }
 
-    /// <summary>
-    /// Calcula el dígito verificador de un RFC. Recibe el RFC completo y usa solo lo que va
-    /// antes del último carácter, que es justamente el dígito a comprobar.
-    /// <para>
-    /// Es público porque la prueba obligatoria de la fase 5 lo ejercita directamente, y
-    /// porque poder preguntar «cuál debería ser» ayuda a explicar el error.
-    /// </para>
-    /// </summary>
+    /// <summary>Calcula el dígito verificador usando el RFC sin su último carácter.</summary>
     public static char DigitoVerificador(string rfc)
     {
         // Un RFC de persona moral se rellena a trece con un espacio a la izquierda: la

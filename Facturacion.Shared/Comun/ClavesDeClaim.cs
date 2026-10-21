@@ -1,9 +1,6 @@
 namespace Facturacion.Shared.Comun;
 
-/// <summary>
-/// Nombres de los claims del access token. Se dejan cortos porque el token viaja en cada
-/// petición. Los emite la fase 1 y los lee <c>IContextoEmpresa</c>, de los dos lados.
-/// </summary>
+/// <summary>Nombres de claims compartidos por la emisión y lectura del token.</summary>
 public static class ClavesDeClaim
 {
     /// <summary>Id del usuario autenticado.</summary>

@@ -6,17 +6,7 @@ using Microsoft.EntityFrameworkCore;
 
 namespace Facturacion.Server.Modules.Plataforma.Clientes;
 
-/// <summary>
-/// Las reglas de CFDI 4.0 que rompen timbrados, todas en un solo lugar (ARQUITECTURA.md §7).
-/// Se ejecutan <b>siempre en el servidor</b>: el <c>Client</c> valida lo mismo para dar
-/// respuesta inmediata, pero esa validación viaja al navegador y es legible y modificable
-/// (ARQUITECTURA.md §3).
-///
-/// <para><b>Por qué los mensajes están escritos así</b></para>
-/// Los lee un contador, no un programador. «El régimen 605 no admite el uso G03» no le dice
-/// qué hacer; «Sueldos y Salarios no puede recibir facturas de gastos en general» sí. El
-/// código de error va aparte, para soporte.
-/// </summary>
+/// <summary>Valida CFDI 4.0 en el servidor y devuelve mensajes comprensibles con códigos de error para soporte.</summary>
 public sealed class ValidadorDeCliente(AppDbContext baseDeDatos, IServicioCatalogosSat catalogos)
 {
     public async Task<ErrorNegocio?> ValidarAsync(
@@ -95,7 +85,7 @@ public sealed class ValidadorDeCliente(AppDbContext baseDeDatos, IServicioCatalo
     }
 
     /// <summary>
-    /// Reglas fijas de los dos genéricos (ARQUITECTURA.md §7). Para el nacional el SAT no admite
+    /// Reglas fijas de los dos genéricos. Para el nacional el SAT no admite
     /// variaciones: nombre, régimen y uso son exactamente esos tres valores.
     /// </summary>
     private static ErrorNegocio? ValidarGenerico(

@@ -1,21 +1,4 @@
-/*
-  Hace que MudBlazor lea las variables semánticas en vez de traer su propia paleta.
-
-  MudBlazor no expone un mecanismo para pasarle "usa estos hexadecimales" desde C# sin
-  escribirlos ahí como literales, que es justo lo que ARQUITECTURA.md §8 prohíbe. Lo que sí hace
-  —se comprobó leyendo su hoja de estilos compilada, no de memoria— es construir cada
-  componente sobre sus propias variables CSS (--mud-palette-primary, --mud-palette-surface,
-  etc.). Así que en vez de configurar un MudTheme en C# con colores, se sobreescriben esas
-  variables para que apunten a las nuestras. Nunca hay un color literal: solo var() de un
-  lado y var() del otro.
-
-  Esto también evita pelear dos sistemas de tema a la vez: MudBlazor trae su propio
-  interruptor claro/oscuro (la clase .mud-theme-dark), pero como todo aquí ya lee de
-  variables ligadas al atributo data-tema, ese interruptor de MudBlazor no se usa nunca.
-
-  Import: después de variables.css y antes de app.css, para que las reglas de aquí puedan
-  referenciar var(--acento) etc. y app.css pueda, si hace falta, ajustar algo encima.
-*/
+/* Conecta la paleta de MudBlazor con las variables del tema. Cargar después de variables.css y antes de app.css. */
 
 :root {
     /* ── Alturas de apilamiento ──────────────────────────────────────────────────
@@ -50,8 +33,7 @@
     --mud-palette-primary-darken: var(--acento);
     --mud-palette-primary-lighten: var(--acento-suave);
 
-    /* Sin colores "secundario" ni "terciario" propios: ARQUITECTURA.md §8 no define una segunda
-       marca, así que reutilizan el acento en vez de inventar un color que nadie pidió. */
+/* Los colores secundario y terciario reutilizan el acento del tema. */
     --mud-palette-secondary: var(--acento);
     --mud-palette-secondary-rgb: var(--acento-rgb);
     --mud-palette-secondary-text: var(--texto-inverso);
@@ -112,7 +94,7 @@
 }
 
 /* Filas de tabla a 40px y controles a 36px en todo, también dentro de MudBlazor
-   (ARQUITECTURA.md §8). Se fija aquí y no por componente para que nadie tenga que acordarse. */
+. Se fija aquí y no por componente para que nadie tenga que acordarse. */
 .mud-table-cell,
 .mud-table-row {
     height: var(--alto-fila-tabla);

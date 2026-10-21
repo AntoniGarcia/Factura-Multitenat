@@ -21,7 +21,7 @@ public interface IServicioDeCorreoDeEmpresa
     /// <summary>
     /// Envía con el SMTP propio de la empresa activa si lo tiene habilitado; si no, con el del
     /// SaaS. Cuando el servidor de la empresa falla lanza <see cref="FalloDeCorreoDeEmpresa"/>:
-    /// no se reenvía por el del SaaS (AGENTS.md §11).
+    /// no se reenvía por el del SaaS.
     /// </summary>
     Task EnviarAsync(MensajeDeCorreo mensaje, CancellationToken ct);
 

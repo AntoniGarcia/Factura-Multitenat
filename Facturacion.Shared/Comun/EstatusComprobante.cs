@@ -2,11 +2,7 @@ using System.Text.Json.Serialization;
 
 namespace Facturacion.Shared.Comun;
 
-/// <summary>
-/// Estatus de un comprobante. Son exactamente estos seis y ninguno más (ARQUITECTURA.md §5).
-/// Vive en <c>Comun/</c>, carpeta de la mitad A, pero lo consume la mitad B en todo momento:
-/// modificar este enum es en la práctica un cambio de contrato y exige acuerdo de los dos.
-/// </summary>
+/// <summary>Estados compartidos de los comprobantes. Sus valores forman parte del contrato entre cliente, servidor y base de datos.</summary>
 [JsonConverter(typeof(JsonStringEnumConverter<EstatusComprobante>))]
 public enum EstatusComprobante
 {
@@ -29,10 +25,7 @@ public enum EstatusComprobante
     EnCancelacion
 }
 
-/// <summary>
-/// Conversión a la cadena exacta de ARQUITECTURA.md §5, para lo que no pasa por JSON:
-/// columnas de la base, filtros de consulta y bitácora.
-/// </summary>
+/// <summary>Convierte los estados a los valores usados en consultas, almacenamiento y bitácora.</summary>
 public static class EstatusComprobanteExtensiones
 {
     private static readonly Dictionary<EstatusComprobante, string> ACadenas = new()

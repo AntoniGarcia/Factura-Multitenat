@@ -253,12 +253,7 @@
     private decimal? _nuevaTasa;
     private bool _nuevoEsRetencion;
 
-    /// <summary>
-    /// Los tres casos que cubren casi todo, como el grupo de radios del sistema viejo (§6
-    /// del documento funcional). Son atajos sobre el modelo completo, no un modelo aparte:
-    /// cada uno escribe las tres columnas del SAT y se ve en la tabla de abajo.
-    /// El 8 % es la tasa de la franja fronteriza.
-    /// </summary>
+    /// <summary>Atajos de IVA que completan impuesto, factor y tasa sin sustituir la configuración detallada.</summary>
     private static readonly (string Etiqueta, string Factor, decimal? Tasa)[] Atajos =
     [
         ("IVA 16 %", "Tasa", 0.16m),

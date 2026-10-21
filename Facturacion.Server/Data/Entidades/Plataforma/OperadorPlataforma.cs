@@ -1,26 +1,6 @@
 namespace Facturacion.Server.Data.Entidades.Plataforma;
 
-/// <summary>
-/// Quien opera el SaaS: administra los paquetes que se venden, acredita los pagos y consulta
-/// a las cuentas contratantes. No es un usuario de ninguna empresa.
-///
-/// <para><b>Por qué una tabla aparte y no un <see cref="Usuario"/> con una bandera</b></para>
-/// Un <see cref="Usuario"/> exige <c>CuentaId</c>: pertenece a una cuenta contratante. El
-/// operador no pertenece a ninguna —es el dueño del sistema, no un inquilino— así que la
-/// bandera obligaría a inventarle una cuenta ficticia y a recordar excluirla de todos los
-/// listados de clientes. Con dos tablas, un operador no puede aparecer como cliente ni un
-/// cliente ganar poderes de operador: lo impide el esquema y no la vigilancia.
-///
-/// <para><b>Por qué no deriva de IdentityUser</b></para>
-/// Arrastraría <c>AspNetUsers</c>, donde <c>CuentaId</c> es obligatorio, y con él las tablas
-/// que ARQUITECTURA.md §4 mantiene fuera del esquema. La contraseña se cifra con el mismo
-/// PBKDF2 de Identity a través de <c>IPasswordHasher</c>, que se puede usar suelto.
-///
-/// <para>
-/// No implementa <c>IEntidadDeEmpresa</c>: queda fuera del filtro global y del interceptor de
-/// sellado, igual que <see cref="Cuenta"/> y <see cref="Empresa"/>.
-/// </para>
-/// </summary>
+/// <summary>Operador de la plataforma, independiente de las cuentas y empresas emisoras.</summary>
 public sealed class OperadorPlataforma
 {
     public Guid Id { get; set; }
@@ -41,14 +21,14 @@ public sealed class OperadorPlataforma
 
     /// <summary>
     /// Un operador desactivado no entra, pero sus registros de bitácora siguen apuntando a él:
-    /// nada se borra (ARQUITECTURA.md §5), y menos quien acreditó un pago.
+    /// nada se borra, y menos quien acreditó un pago.
     /// </summary>
     public bool Activo { get; set; } = true;
 
     /// <summary>
     /// Dueño del SaaS (el que creó la BD). No se puede desactivar ni eliminar desde el panel
     /// para evitar que cualquier sesión, incluyendo la suya, deje la plataforma sin administrador.
-    /// Se marca el primer operador creado por consola.
+    /// Se marca en el alta inicial del asistente o en el primer alta por consola.
     /// </summary>
     public bool EsPrincipal { get; set; }
 

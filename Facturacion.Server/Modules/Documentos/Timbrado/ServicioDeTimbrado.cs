@@ -19,20 +19,20 @@ namespace Facturacion.Server.Modules.Documentos.Timbrado;
 /// <para><b>Por qué tres y no uno</b></para>
 /// El PAC puede tardar treinta segundos. Una transacción de base de datos abierta ese tiempo
 /// bloquea renglones y tumba el sistema entero bajo carga, así que la llamada al PAC ocurre
-/// <b>fuera de toda transacción</b> (ARQUITECTURA.md §5). Eso obliga a partir la operación:
+/// <b>fuera de toda transacción</b>. Eso obliga a partir la operación:
 ///
 /// <list type="number">
-///   <item><description>
-///     <b>Apartar</b> — transacción corta: se toma folio y timbre, el comprobante pasa a
-///     <c>timbrando</c> y se abre un intento con su clave de idempotencia.
-///   </description></item>
-///   <item><description>
-///     <b>Enviar</b> — sin transacción: se arma el XML, se sella y se manda al PAC, con
-///     reintentos de espera creciente.
-///   </description></item>
-///   <item><description>
-///     <b>Resolver</b> — transacción corta: se confirma o se revierte.
-///   </description></item>
+/// <item><description>
+/// <b>Apartar</b> — transacción corta: se toma folio y timbre, el comprobante pasa a
+/// <c>timbrando</c> y se abre un intento con su clave de idempotencia.
+/// </description></item>
+/// <item><description>
+/// <b>Enviar</b> — sin transacción: se arma el XML, se sella y se manda al PAC, con
+/// reintentos de espera creciente.
+/// </description></item>
+/// <item><description>
+/// <b>Resolver</b> — transacción corta: se confirma o se revierte.
+/// </description></item>
 /// </list>
 ///
 /// <para><b>El estado que no se resuelve es el importante</b></para>
@@ -248,9 +248,7 @@ public sealed class ServicioDeTimbrado(
             if (validacionPago.EsFallo) return validacionPago.Error!;
         }
 
-        // El folio solo se toma una vez. Si el comprobante ya trae uno de un intento fallido
-        // anterior, se conserva: ARQUITECTURA.md §5 prohíbe reciclarlo, así que tampoco se pide
-        // otro — se reintenta con el mismo.
+        // Un reintento conserva el folio del intento anterior; no reserva otro.
         FolioReservadoDto? folio = null;
 
         if (comprobante.Folio is null && comprobante.SerieId is { } serieId)

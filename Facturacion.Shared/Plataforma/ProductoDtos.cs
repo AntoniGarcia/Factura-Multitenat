@@ -24,7 +24,7 @@ public sealed record ImpuestoDeProductoDto(
     decimal? TasaOCuota,
     bool EsRetencion);
 
-/// <summary>Renglón de la lista, con lo que pide §5 del documento funcional.</summary>
+/// <summary>Datos del producto para el listado.</summary>
 public sealed record ProductoEnListaDto(
     Guid Id,
     int CodigoInterno,

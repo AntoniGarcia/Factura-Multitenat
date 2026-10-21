@@ -2,14 +2,7 @@
 @using Facturacion.Shared.Documentos
 @inject ServicioDeEnvios Envios
 
-@*
-    El panel «Parámetros de envío CFD» de §1.3 del documento funcional: para, asunto, mensaje,
-    casilla del XML y la lista de adjuntos. La copia a la cuenta de la empresa es el
-    «Enviar a cuenta única» del sistema anterior, convertido en casilla.
-
-    El diálogo envía por su cuenta en vez de devolver la petición: si el correo falla, el
-    usuario tiene que ver el error sin perder lo que escribió.
-*@
+@* Permite editar destinatarios, asunto y adjuntos. Si el envío falla, conserva los datos capturados. *@
 
 <MudDialog>
     <DialogContent>

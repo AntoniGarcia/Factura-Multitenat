@@ -8,15 +8,6 @@
 
 <section class="emision-seccion">
     <h2 class="seccion-titulo">Estimación de obra</h2>
-    <p class="seccion-ayuda">
-        Guarda primero los conceptos. El importe de trabajos se obtiene de su subtotal;
-        captura las tasas según el contrato. Este cálculo comercial no modifica el total fiscal de la factura.
-    </p>
-    <div class="aviso-documentos" role="status">
-        La vista fiscal admite obra privada sin ajustes y obra pública con únicamente
-        el 5 al millar al 0.50 %. En ambos casos deben coincidir los importes del CFDI.
-        Otras amortizaciones o deducciones permanecen como borrador.
-    </div>
     @if (_conciliacion is { } conciliacion)
     {
         <div class="aviso-documentos" role="status">
@@ -41,10 +32,8 @@
                          Min="0" Max="100" Format="N2" Class="cifra-tabular" />
     </div>
     <p class="seccion-ayuda">
-        Una amortización puede corresponder a un anticipo fiscal o a una parcialidad,
-        según el contrato y el comprobante previo. Las retenciones y devoluciones
-        contractuales tampoco se convierten automáticamente en impuestos del CFDI.
-        Puedes conservar estos importes en la estimación interna mientras se define su tratamiento.
+        La armotizacion corresponde a un anticipo fiscal o parcialidad se conserva estos importes mientras se define
+        su tratamiento
     </p>
     <p class="seccion-ayuda">
         Al guardar una estimación sin ajustes de base y con IVA uniforme, el importe de IVA
@@ -65,7 +54,7 @@
     <h2 class="seccion-titulo">Deducciones del pago</h2>
     <p class="seccion-ayuda">
         Cada porcentaje se aplica al importe original de los trabajos. Las tasas inician en cero:
-        captura solo las deducciones que correspondan al contrato. Este cálculo no modifica el CFDI.
+        captura solo las deducciones que correspondan al contrato.
     </p>
     @if (_tipoObra == TiposDeObra.Privada)
     {

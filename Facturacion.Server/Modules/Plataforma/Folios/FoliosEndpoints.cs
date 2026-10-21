@@ -4,11 +4,7 @@ using Facturacion.Shared.Plataforma;
 
 namespace Facturacion.Server.Modules.Plataforma.Folios;
 
-/// <summary>
-/// Administración de series. <b>No hay endpoint para reservar folio</b>: la reserva la hace
-/// la mitad B por <see cref="Facturacion.Shared.Contratos.IServicioFolios"/> dentro del
-/// timbrado, y exponerla por HTTP permitiría quemar la numeración de una empresa desde fuera.
-/// </summary>
+/// <summary>Administra series sin exponer una reserva de folios por HTTP. El servicio de timbrado realiza la reserva internamente.</summary>
 public static class FoliosEndpoints
 {
     public static void MapFolios(this IEndpointRouteBuilder rutas)

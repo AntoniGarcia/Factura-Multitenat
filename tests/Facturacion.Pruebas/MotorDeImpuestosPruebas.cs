@@ -2,24 +2,7 @@ using Facturacion.Server.Modules.Documentos.Impuestos;
 
 namespace Facturacion.Pruebas;
 
-/// <summary>
-/// El motor de impuestos de la fase B1. Es la pieza más cara de equivocar del sistema: un
-/// error aquí no rompe una pantalla, emite comprobantes con importes mal calculados que el
-/// SAT ya selló y que no se pueden corregir, solo cancelar y rehacer.
-///
-/// <para><b>Los dos casos que justifican todo lo demás</b></para>
-/// <list type="number">
-///   <item><description>
-///     <c>Suma_por_concepto_difiere_del_impuesto_sobre_el_total</c> — la causa número uno de
-///     rechazo del PAC. Si alguien «simplifica» el motor aplicando la tasa al subtotal, esa
-///     prueba falla y explica por qué.
-///   </description></item>
-///   <item><description>
-///     <c>Exento_no_lleva_importe_y_tasa_cero_si</c> — exento y tasa cero producen XML
-///     distintos. Confundirlos es rechazo en el timbrado, no un detalle de presentación.
-///   </description></item>
-/// </list>
-/// </summary>
+/// <summary>Comprueba el cálculo por concepto y la diferencia entre exento y tasa cero.</summary>
 public sealed class MotorDeImpuestosPruebas
 {
     // ── Constructores cortos, para que cada prueba se lea como su caso y no como andamiaje ──

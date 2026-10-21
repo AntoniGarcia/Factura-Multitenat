@@ -28,7 +28,7 @@ public sealed class Pago : IEntidadDeEmpresa
 
     public Comprobante Comprobante { get; set; } = null!;
 
-    /// <summary>Momento del pago. En UTC como todo lo demás (ARQUITECTURA.md §5).</summary>
+    /// <summary>Momento del pago. En UTC como todo lo demás.</summary>
     public DateTime FechaPagoUtc { get; set; }
 
     /// <summary>Clave de <c>c_FormaPago</c>. Aquí <b>sí</b> es obligatoria, a diferencia de la raíz.</summary>
@@ -71,7 +71,7 @@ public sealed class Pago : IEntidadDeEmpresa
 /// <para><b>Todo son copias, incluido el saldo</b></para>
 /// <see cref="ImpSaldoAnt"/> e <see cref="ImpSaldoInsoluto"/> se congelan al timbrar el pago.
 /// Recalcularlos después daría otro número —porque entretanto pudo haber más pagos— y ya no
-/// coincidiría con lo que el SAT tiene sellado (ARQUITECTURA.md §5).
+/// coincidiría con lo que el SAT tiene sellado.
 /// </summary>
 public sealed class DocumentoPagado : IEntidadDeEmpresa
 {

@@ -76,11 +76,7 @@ public sealed class CierreDeTimbrado(
             "Comprobante {Comprobante} timbrado con UUID {Uuid}.", comprobante.Id, respuesta.Uuid);
     }
 
-    /// <summary>
-    /// Cierra mal. Devuelve el timbre —no se gastó— pero <b>no</b> recicla el folio:
-    /// ARQUITECTURA.md §5 lo prohíbe. El hueco en la numeración queda explicado por la reserva
-    /// abandonada, que es justo para lo que sirve.
-    /// </summary>
+    /// <summary>Devuelve el timbre al fallar y conserva el folio apartado para no reutilizarlo.</summary>
     public async Task RevertirAsync(
         Comprobante comprobante, IntentoTimbrado intento, string? codigo, string? mensaje, CancellationToken ct)
     {
@@ -117,7 +113,7 @@ public sealed class CierreDeTimbrado(
     }
 
     /// <summary>
-    /// Guarda el CFDI timbrado en el almacén cifrado, fuera de <c>wwwroot</c> (ARQUITECTURA.md §4).
+    /// Guarda el CFDI timbrado en el almacén cifrado, fuera de <c>wwwroot</c>.
     /// Es el archivo que el usuario descarga y el que vale ante el SAT.
     ///
     /// <para>

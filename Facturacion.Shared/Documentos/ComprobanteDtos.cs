@@ -2,12 +2,7 @@ using Facturacion.Shared.Comun;
 
 namespace Facturacion.Shared.Documentos;
 
-/// <summary>
-/// Un comprobante para el formulario de emisión: cabecera, conceptos, relacionados e
-/// información global. Sirve tanto para un borrador como para uno ya timbrado —en ese caso
-/// llega de solo lectura— porque es la misma entidad la que pasa por los dos estados
-/// (ARQUITECTURA.md §5, inmutabilidad: se congela, no se duplica en otra forma).
-/// </summary>
+/// <summary>Datos del formulario de emisión. Los comprobantes timbrados se muestran en modo de solo lectura.</summary>
 /// <param name="SerieId">
 /// La serie elegida, que no es lo mismo que <paramref name="Serie"/>: el prefijo se copia al
 /// timbrar y hasta entonces va nulo, así que sin este identificador el formulario no tiene de
@@ -129,10 +124,7 @@ public sealed record RespuestaDeTimbradoDto(
 /// <param name="Simulado">El PAC es el de desarrollo: sus timbres no tienen validez fiscal.</param>
 public sealed record EstadoDeIntegracionFiscalDto(bool TimbradoDisponible, bool Simulado = false);
 
-/// <summary>
-/// Un renglón del listado de documentos (§1.2 del documento funcional). El folio va nulo
-/// mientras el comprobante no se timbre: no se muestra antes (ARQUITECTURA.md §5).
-/// </summary>
+/// <summary>Resumen del documento; no muestra el folio antes del timbrado.</summary>
 public sealed record ComprobanteEnListaDto(
     Guid Id,
     string? Serie,
@@ -181,7 +173,7 @@ public sealed record ResultadoDeCancelacionDto(
     DateTime? ResueltaUtc,
     string? Mensaje);
 
-/// <summary>Lo que contesta el SAT sobre un comprobante (§30 del documento funcional).</summary>
+/// <summary>Respuesta del SAT sobre el estado del comprobante.</summary>
 public sealed record EstatusSatDto(
     Guid ComprobanteId,
     Guid Uuid,

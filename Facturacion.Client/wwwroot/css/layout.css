@@ -1,5 +1,5 @@
 /*
-  El único MainLayout (ARQUITECTURA.md §8). En escritorio: barra superior fija y menú lateral
+  El único MainLayout. En escritorio: barra superior fija y menú lateral
   fijo, que se oculta entero al pulsar el botón de la barra para dejarle todo el ancho a la
   tabla. En móvil (<=768px): la barra superior se reduce, el menú lateral desaparece y en su
   lugar sale una barra inferior de una sola fila (.menu-inferior), que es como se navega con
@@ -176,7 +176,7 @@ html {
 }
 
 /* Bloque de marca: iniciales, nombre y RFC de la empresa activa. No sustituye al selector
-   de empresa —ese vive en la barra superior y en ningún otro lugar (ARQUITECTURA.md §8)—: solo
+   de empresa —ese vive en la barra superior y en ningún otro lugar —: solo
    recuerda sin ambigüedad a nombre de quién se está facturando ahora mismo. */
 .menu-marca {
     display: flex;

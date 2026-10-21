@@ -12,7 +12,7 @@ namespace Facturacion.Server.Modules.Plataforma.Auth;
 public sealed record RefreshEmitido(string EnClaro, RefreshToken Registro);
 
 /// <summary>
-/// Rotación de refresh tokens con detección de reutilización (ARQUITECTURA.md §4).
+/// Rotación de refresh tokens con detección de reutilización.
 ///
 /// <para><b>Cómo funciona</b></para>
 /// Cada sesión es una familia. Cada canje invalida el token usado y emite otro de la misma
@@ -127,12 +127,7 @@ public sealed class ServicioDeRefreshTokens(
         return vivos.Count;
     }
 
-    /// <summary>
-    /// Revoca <b>todas</b> las familias vivas de un usuario, sin importar en qué empresa las
-    /// abrió. Es lo que exige la fase 8 al desactivarlo: "de inmediato" para el refresh, con
-    /// el access token ya emitido siguiendo vivo hasta sus quince minutos porque es sin estado
-    /// y no hay forma de revocarlo antes.
-    /// </summary>
+    /// <summary>Revoca todas las familias del usuario. Los tokens de acceso ya emitidos conservan su vigencia hasta expirar.</summary>
     public async Task<int> InvalidarTodasLasFamiliasDelUsuarioAsync(Guid usuarioId, string motivo, CancellationToken ct)
     {
         var familias = await baseDeDatos.RefreshTokens

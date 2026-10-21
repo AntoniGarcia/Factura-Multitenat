@@ -12,23 +12,14 @@ using Facturacion.Shared.Contratos;
 
 namespace Facturacion.Server.Modules.Documentos;
 
-/// <summary>
-/// Punto de entrada de la mitad B: emisión, impuestos, timbrado, PAC, XML, PDF, correo,
-/// cancelación y complemento de pagos.
-/// <para>
-/// Todo registro y todo endpoint de documentos se declara aquí dentro, nunca en
-/// <c>Program.cs</c> (REPARTO-EQUIPO.md §5).
-/// </para>
-/// </summary>
+/// <summary>Registra los servicios y endpoints de emisión, impuestos, timbrado, salidas, cancelación y pagos.</summary>
 public static class DocumentosModule
 {
     public static IServiceCollection AddDocumentos(
         this IServiceCollection servicios, IConfiguration configuracion, IHostEnvironment entorno)
     {
 
-        // Implementación real, no un doble: lee comprobantes de verdad. Es el único contrato
-        // que va de B hacia A —lo consume el tablero— y hasta la fase B0 no existía, así que
-        // la verificación de arranque lo reportaba como ausente en cada arranque.
+        // El tablero obtiene sus cifras desde el resumen real de comprobantes.
 
         servicios.AddScoped<IResumenDocumentos, ResumenDocumentos>();
 

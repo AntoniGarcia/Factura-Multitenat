@@ -11,21 +11,8 @@ using Microsoft.EntityFrameworkCore;
 namespace Facturacion.Server.Modules.Documentos.Salidas;
 
 /// <summary>
-/// Envío de un CFDI timbrado por correo (B6, §1.3 del documento funcional).
-///
-/// <para><b>Quién envía</b></para>
-/// El SMTP propio de la empresa si lo tiene habilitado; si no, el del SaaS. En los dos casos
-/// <c>Reply-To</c> va al correo de la empresa emisora (AGENTS.md §6 y §11). Si el servidor de
-/// la empresa falla, el envío falla: no se reintenta por el del SaaS.
-///
-/// <para><b>Qué se adjunta</b></para>
-/// Los mismos archivos que la descarga, generados por <see cref="ServicioDeSalidasFiscales"/>:
-/// el XML tal como lo selló el PAC y el PDF que sale de él. Así lo que recibe el cliente y lo
-/// que descarga el contador no pueden diferir ni en el nombre del archivo.
-///
-/// <para><b>Sin transacción alrededor del SMTP</b></para>
-/// El servidor de correo puede tardar; el registro del envío se guarda después, en su propia
-/// escritura corta (ARQUITECTURA.md §5).
+/// Envía el XML y PDF disponibles para descarga. Usa el SMTP de la empresa si está habilitado y no lo sustituye si falla.
+/// Reply-To apunta a la empresa emisora. El historial se guarda después del envío, fuera de la llamada SMTP.
 /// </summary>
 public sealed class ServicioDeEnvioDeComprobantes(
     AppDbContext baseDeDatos,
@@ -37,7 +24,7 @@ public sealed class ServicioDeEnvioDeComprobantes(
     HusoDeEmpresa huso,
     ILogger<ServicioDeEnvioDeComprobantes> registro)
 {
-    /// <summary>El del sistema anterior; se le agrega el folio para que se distinga en la bandeja.</summary>
+    /// <summary>Asunto base al que se agrega el folio del comprobante.</summary>
     private const string AsuntoPredeterminado = "Documento CFDI";
 
     private const int EnviosEnHistorial = 20;

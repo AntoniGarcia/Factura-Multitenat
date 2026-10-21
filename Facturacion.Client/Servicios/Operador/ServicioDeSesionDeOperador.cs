@@ -7,7 +7,7 @@ namespace Facturacion.Client.Servicios.Operador;
 /// <summary>
 /// La sesión del panel de operador en este navegador. Mismas reglas que la del inquilino: el
 /// access token vive solo en memoria y se recupera con la cookie de refresh, que el
-/// JavaScript de la página no puede leer (ARQUITECTURA.md §4).
+/// JavaScript de la página no puede leer.
 ///
 /// <para><b>Un solo refresco en vuelo</b></para>
 /// Igual de imprescindible que en el otro lado: dos refrescos simultáneos harían que el

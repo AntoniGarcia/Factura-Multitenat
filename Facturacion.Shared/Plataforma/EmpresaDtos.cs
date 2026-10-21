@@ -48,7 +48,7 @@ public sealed record LicenciasDto(
 
 /// <summary>
 /// Lo que el <c>Client</c> manda al guardar. No trae <c>Id</c>: la empresa es la del claim
-/// del token, nunca un identificador que llegue del navegador (ARQUITECTURA.md §4).
+/// del token, nunca un identificador que llegue del navegador.
 /// </summary>
 public sealed record PeticionGuardarEmpresa(
     string NombreFiscal,
@@ -70,11 +70,7 @@ public sealed record PeticionGuardarEmpresa(
     LicenciasDto Licencias,
     DomicilioSatDto? OrigenCartaPorte = null);
 
-/// <summary>
-/// Respuesta al guardar: la empresa ya guardada y qué se le cambió al nombre para cumplir
-/// con CFDI 4.0, para poder explicárselo al usuario en vez de corregirlo a escondidas
-/// (ARQUITECTURA.md §7).
-/// </summary>
+/// <summary>Empresa guardada y detalle de la normalización de su nombre.</summary>
 public sealed record RespuestaGuardarEmpresa(
     EmpresaDto Empresa,
     NombreFiscalNormalizado Nombre);
@@ -92,7 +88,7 @@ public sealed record ConfiguracionEmpresaDto(
 
 /// <summary>
 /// Servidor SMTP propio de la empresa tal como sale del servidor: sin la contraseña, solo si
-/// hay una guardada (AGENTS.md §11).
+/// hay una guardada.
 /// </summary>
 public sealed record CorreoDeEmpresaDto(
     bool Habilitado,
@@ -134,7 +130,7 @@ public static class PuertosSmtp
 /// <summary>
 /// Certificado de sello digital, en la única forma en la que puede salir del servidor:
 /// metadatos. Ni el <c>.cer</c>, ni el <c>.key</c>, ni la contraseña vuelven nunca al
-/// <c>Client</c> (ARQUITECTURA.md §4).
+/// <c>Client</c>.
 /// </summary>
 /// <param name="DiasParaCaducar">Negativo si ya caducó.</param>
 /// <param name="PorCaducar">Verdadero si entra en la ventana de aviso configurada.</param>
@@ -148,11 +144,10 @@ public sealed record CertificadoCsdDto(
     int DiasParaCaducar,
     bool PorCaducar);
 
-/// <summary>Una serie de folios de la empresa.</summary>
+/// <summary>Serie de folios de la empresa.</summary>
 /// <param name="FolioActual">
 /// Último folio entregado. Se muestra en la administración de series —el contador necesita
 /// saber por dónde va— pero <b>no</b> se le enseña al capturista antes de timbrar
-/// (ARQUITECTURA.md §5).
 /// </param>
 public sealed record SerieDto(
     Guid Id,
@@ -162,11 +157,7 @@ public sealed record SerieDto(
     string TipoComprobante,
     bool Activa);
 
-/// <summary>
-/// Una serie tal como la ve quien va a emitir, no quien la administra: sin
-/// <see cref="SerieDto.FolioActual"/>, que revela cuánto ha facturado la empresa y que
-/// ARQUITECTURA.md §5 reserva para la administración.
-/// </summary>
+/// <summary>Serie disponible para emitir, sin exponer el folio actual reservado a la administración.</summary>
 public sealed record SerieParaEmisionDto(
     Guid Id,
     string Prefijo,
