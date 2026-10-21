@@ -1,102 +1,40 @@
 # Entrega para revisión en Windows / IIS
 
-## Contenido del paquete
+La guía vigente de instalación se mantiene junto a los archivos de entrega:
+[LEEME-IIS.md](../herramientas/entrega-iis/LEEME-IIS.md).
 
-- `sitio/`: publicación conjunta del servidor y el cliente. Su contenido completo se
-  instala en la raíz de la aplicación IIS, prevista como `/cfdiAdmon` en FTP.
-- `base-datos/`: script SQL e instrucciones. Entregar al administrador; no subir
-  dentro del sitio ni en `wwwroot`.
-- `insumos-sat/`: catálogos, esquemas y XSLT disponibles localmente. Ubicarlos fuera
-  del directorio público, configurar `EsquemasSat__Ruta` y ejecutar los importadores.
+La entrega con instalador se genera en `entregas/Facturacion-Revision-IIS-Instalador-20261021.zip`.
+Contiene `sitio/`, el script de estructura en `base-datos/`, una guía de permisos
+SQL y la comprobación de archivos `VERIFICAR.ps1`. No incluye configuración privada.
+Incluye `INSTALAR.cmd`, `INSTALAR.ps1`, `PREPARAR-IIS.ps1` y `EMPEZAR-AQUI.md`.
+Con el sitio IIS ya creado y su carpeta vacia, ejecutar INSTALAR.cmd como administrador,
+seleccionar el sitio y confirmar: copia la publicacion y prepara rutas y permisos.
+El paquete debe extraerse fuera de cualquier sitio publico. No copiar los archivos al
+destino antes de usar el instalador. Rechaza destinos ocupados y grupos compartidos;
+no actualiza ni migra instalaciones. No cambia SQL, certificados, enlaces ni firewall.
+La base y su usuario ya deben estar preparados; sus datos se capturan en el wizard.
 
-No incluye empresas, documentos, certificados, claves ni configuración local.
-Los archivos publicados contienen todos los cambios actuales del árbol de trabajo,
-incluidos los aún no confirmados en Git. Este paquete no es una copia de producción.
+El sitio se publica como raíz de IIS con Hosting Bundle de .NET 10 y un grupo de
+64 bits sin código administrado, perfil cargado y modelo `outofprocess`. El
+`web.config` de revisión usa Staging, PAC deshabilitado y arranque automático.
+El administrador debe ajustar AllowedHosts, HTTPS y la ruta privada absoluta fuera
+del sitio antes de arrancar. No se utiliza INICIAR.cmd ni se necesitan SDK o Visual Studio.
 
-## Condiciones de instalación
+El asistente prueba y guarda SQL cifrado y permite crear al primer operador.
+Desde el 21 de octubre, la entrega de revisión omite la clave al abrir el asistente
+desde el propio servidor con localhost/loopback y la opción explícita
+`Instalacion__PermitirSinClaveLocal=true`. El acceso remoto conserva la clave;
+Production no permite esta excepción. No se elimina el cifrado ni las llaves internas.
+El esquema se instala por separado; los catálogos faltantes se cargan automáticamente.
+El SMTP del sistema se configura después desde el operador antes de probar correos.
+No copiar llaves ni secretos desde la PC de desarrollo al servidor.
 
-1. IIS con Hosting Bundle de .NET 10, aplicación como sitio raíz, grupo de aplicaciones
-   sin código administrado y arquitectura compatible con las dependencias nativas.
-   La publicación es dependiente del framework, no un ejecutable autónomo.
-2. HTTPS válido. El acceso por FTP no configura IIS, HTTPS ni SQL Server.
-3. Base vacía de SQL Server con Full-Text Search; ejecutar el script completo en SSMS.
-4. Configurar las variables indicadas debajo y dar permisos de escritura al grupo
-   de aplicaciones sobre las dos rutas persistentes.
-5. Cargar los catálogos. Reiniciar la aplicación y comprobar `/api/version`, acceso,
-   autocompletados, guardado de borradores y PDF. Verificar Brotli en la respuesta HTTP.
+La prueba local y su alcance están en
+[PRUEBA-IIS-LOCAL.md](PRUEBA-IIS-LOCAL.md).
+Luis confirmó acceso, conservación al reciclar IIS y la secuencia de
+catálogos/borrador/PDF. La entrega aún debe probarse en el servidor de destino;
+no es una certificación fiscal ni incluye PAC o pasarela de pagos.
 
-No hay asistente web de instalación ni ejecución automática del SQL al arrancar.
-El instalador mencionado por el encargado no ha sido identificado. Esta entrega
-usa la configuración existente y no modifica el funcionamiento de la aplicación.
-
-## Configuración en IIS
-
-Asignar variables al proceso de la aplicación, por ejemplo en la sección
-`environmentVariables` de `aspNetCore` del `web.config` generado. El administrador
-debe introducir los valores reales en el servidor y conservarlos al actualizar.
-No guardar secretos en Git, en `wwwroot`, en capturas ni en documentación.
-
-Variables necesarias:
-
-- `ASPNETCORE_ENVIRONMENT`: `Staging`.
-- `Pac__Modo`: `Deshabilitado`. Sin PAC no se simula una emisión fiscal.
-- `AllowedHosts`: dominio exacto del sitio.
-- `ConnectionStrings__BaseDeDatos`: conexión real a SQL Server con cifrado y
-  validación de certificado según la configuración del administrador.
-- `Jwt__Emisor` y `Jwt__Audiencia`: identificadores consistentes del despliegue.
-- `Jwt__ClaveDeFirma`: secreto aleatorio de al menos 32 caracteres.
-- `Almacen__Raiz`: ruta absoluta persistente para archivos, fuera del sitio público.
-- `Almacen__RutaLlavero`: ruta absoluta persistente para el llavero, fuera del sitio público.
-- `Almacen__LlaveMaestraPfx`: certificado nuevo en base64 generado en el servidor.
-- `Correo__Servidor`, `Correo__RemitenteCorreo`: SMTP real del sistema.
-- `Correo__Puerto`, `Correo__Usuario`, `Correo__Contrasena`, `Correo__UsarTls`:
-  configuración real del proveedor de correo.
-- `EsquemasSat__Ruta`: ruta absoluta de los insumos SAT.
-
-No activar `Development` para eludir requisitos y no transferir
-`appsettings.Development.json` ni las claves de la instalación local.
-
-## Comandos desde el servidor
-
-Ejecutar en la carpeta de la publicación con las variables anteriores configuradas
-también en la consola. Los valores de IIS no pasan automáticamente a esa consola.
-
-Generar la clave maestra antes de arrancar; guardar su salida por un medio privado
-y usarla en `Almacen__LlaveMaestraPfx`. No regenerarla con cada actualización:
-
-```powershell
-dotnet .\Facturacion.Server.dll --generar-llave-maestra
-```
-
-Tras ejecutar SQL, cargar los libros existentes usando sus rutas reales:
-
-```powershell
-dotnet .\Facturacion.Server.dll --cargar-catalogos C:\FacturacionDatos\SAT\catCFDI_V_4_20260806.xls
-dotnet .\Facturacion.Server.dll --cargar-catalogos-carta-porte C:\FacturacionDatos\SAT\CatalogosCartaPorte31.xls
-dotnet .\Facturacion.Server.dll --cargar-catalogo-comercio c_INCOTERM C:\FacturacionDatos\SAT\c_INCOTERM20.xls
-dotnet .\Facturacion.Server.dll --cargar-catalogo-comercio c_UnidadAduana C:\FacturacionDatos\SAT\c_UnidadAduana20.xls
-dotnet .\Facturacion.Server.dll --cargar-catalogo-comercio c_FraccionArancelaria C:\FacturacionDatos\SAT\c_FraccionArancelaria_20240513.xls
-```
-
-Las rutas son ejemplos: deben corresponder al almacenamiento real del servidor.
-Estos libros son los disponibles en la máquina de desarrollo; no se ha comprobado
-en esta fase si el SAT publicó versiones posteriores.
-
-Crear el primer operador con el correo real elegido por el responsable:
-
-```powershell
-dotnet .\Facturacion.Server.dll --crear-operador CORREO_REAL "Administrador"
-```
-
-El comando imprime una contraseña generada una vez. Entregarla privadamente.
-El cliente puede registrarse por la interfaz; su verificación requiere correo funcional.
-No crear usuarios mediante INSERT de contraseñas ni habilitar el sembrado local.
-
-## Demostración de respaldo
-
-Si el servidor no está configurado, mostrar la instalación local existente en
-`https://localhost:7123`. No se garantiza el despliegue solo con transferir archivos.
-La revisión no cubre PAC ni pasarela de pagos y no es certificación fiscal.
-
-El FTP observado no soporta TLS. No transferir credenciales o claves por ese canal;
-pedir al administrador un medio privado para configurarlas directamente en el servidor.
+El FTP es solo el medio de transferencia: únicamente el contenido de `sitio/`
+va a la raíz física acordada, nunca los scripts SQL o esta documentación.
+No transferir credenciales por FTP sin cifrado.
