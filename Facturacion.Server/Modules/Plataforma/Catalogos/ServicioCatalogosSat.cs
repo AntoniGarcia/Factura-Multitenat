@@ -150,6 +150,16 @@ public sealed class ServicioCatalogosSat(AppDbContext db) : IServicioCatalogosSa
 
     private async Task<IReadOnlyList<ClaveSatDto>> BuscarClaveProdServAsync(string texto, int tope, CancellationToken ct)
     {
+        if (texto.All(char.IsDigit))
+        {
+            return await db.SatClavesProdServ.AsNoTracking()
+                .Where(x => x.Vigente && x.Clave.StartsWith(texto))
+                .OrderBy(x => x.Clave)
+                .Take(tope)
+                .Select(x => new ClaveSatDto("c_ClaveProdServ", x.Clave, x.Descripcion, x.Vigente))
+                .ToListAsync(ct);
+        }
+
         var patron = PatronDeBusquedaDeTexto(texto);
 
         return await db.SatClavesProdServ.AsNoTracking()

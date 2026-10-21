@@ -1,6 +1,6 @@
 @using Facturacion.Client.Componentes.Facturas
 
-<div class="rejilla-campos">
+<div class="notaria-rejilla notaria-rejilla-dos">
     <MudSelect T="bool" Value="@EsCopropiedad" ValueChanged="CambiarModalidad" Label="¿Copropiedad o sociedad conyugal?" Disabled="@(!Editable)">
         <MudSelectItem T="bool" Value="false">No, una sola persona</MudSelectItem>
         <MudSelectItem T="bool" Value="true">Sí, varias personas</MudSelectItem>
@@ -11,17 +11,21 @@
 {
     var indice = i;
     var parte = Partes[indice];
-    <article class="concepto-editor">
-        <div class="concepto-editor-identidad"><span class="concepto-editor-numero">@(indice + 1)</span><strong>@Titulo @(indice + 1)</strong></div>
+    <article class="notaria-tarjeta" @key="parte">
+        <div class="notaria-tarjeta-cabecera">
+        <h3 class="notaria-tarjeta-titulo"><span class="notaria-numero" aria-hidden="true">@(indice + 1)</span>Participante @(indice + 1)</h3>
         @if (EsCopropiedad)
         {
             <MudIconButton Icon="@Icons.Material.Filled.Delete" Size="Size.Small" title="Quitar" aria-label="Quitar"
                            Disabled="@(!Editable || Partes.Count == 1)" OnClick="@(() => Partes.RemoveAt(indice))" />
         }
-        <div class="rejilla-campos">
+        </div>
+        <div class="notaria-rejilla">
             <MudTextField @bind-Value="parte.Nombre" Label="Nombre o razón social" MaxLength="254" Required="true" Disabled="@(!Editable)" />
             <MudTextField @bind-Value="parte.ApellidoPaterno" Label="Apellido paterno" MaxLength="200" Required="@(!EsCopropiedad && RequiereApellidoYCurpSiIndividual)" Disabled="@(!Editable)" />
             <MudTextField @bind-Value="parte.ApellidoMaterno" Label="Apellido materno" MaxLength="200" Disabled="@(!Editable)" />
+        </div>
+        <div class="notaria-rejilla">
             <MudTextField @bind-Value="parte.Rfc" Label="RFC" MaxLength="13" Required="true" Class="cifra-tabular" Disabled="@(!Editable)" />
             <MudTextField @bind-Value="parte.Curp" Label="CURP" MaxLength="18" Required="@(!EsCopropiedad && RequiereApellidoYCurpSiIndividual)" Class="cifra-tabular" Disabled="@(!Editable)" />
             @if (EsCopropiedad)

@@ -11,7 +11,7 @@
     dispara su OnValidSubmit.
 *@
 
-<div class="tarjeta-formulario @(Ancha ? "tarjeta-formulario-ancha" : null)">
+<div class="tarjeta-formulario @(Ancha ? "tarjeta-formulario-ancha" : null) @Class">
     @if (!string.IsNullOrWhiteSpace(RutaVolver))
     {
         <a href="@RutaVolver" class="tarjeta-formulario-volver" title="Volver">
@@ -34,6 +34,9 @@
     /// </summary>
     [Parameter]
     public bool Ancha { get; set; }
+
+    [Parameter]
+    public string? Class { get; set; }
 
     [Parameter]
     public RenderFragment? ChildContent { get; set; }

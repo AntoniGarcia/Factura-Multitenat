@@ -9,7 +9,7 @@
 <PageTitle>@(EsNuevo ? "Nuevo cliente" : "Editar cliente")</PageTitle>
 <TituloDePagina Texto="@(EsNuevo ? "Nuevo cliente" : $"Cliente {_claveInterna}")" />
 
-<TarjetaFormulario RutaVolver="/clientes">
+<TarjetaFormulario RutaVolver="/clientes" Class="tarjeta-formulario-catalogo">
 <PanelErrores Problema="_error" />
 
 @if (_cargando)
@@ -20,16 +20,17 @@ else
 {
     <EditForm Model="this" OnValidSubmit="Guardar">
         <div class="formulario-catalogo-secciones">
-        <section class="formulario-catalogo-seccion formulario-catalogo-seccion-principal">
-        <h2 class="seccion-titulo">Datos fiscales</h2>
+        <section class="formulario-catalogo-seccion formulario-catalogo-seccion-principal" aria-labelledby="cliente-datos-fiscales">
+        <h2 class="seccion-titulo" id="cliente-datos-fiscales">Datos fiscales</h2>
         <p class="seccion-ayuda">
-            Tienen que coincidir <strong>exactamente</strong> con la Constancia de Situación Fiscal
-            del cliente. Es lo que más rechazos del SAT provoca.
+            Captura estos datos como aparecen en la Constancia de Situación Fiscal.
         </p>
 
-        <div class="rejilla-campos">
+        <div class="catalogo-rejilla">
+            <div class="catalogo-campo-corto">
             <CampoRfc Valor="@_rfc" ValorCambiado="AlCambiarRfc" Requerido="true" />
-
+            </div>
+            <div class="catalogo-campo-amplio">
             <MudTextField @bind-Value="_nombre"
                           @bind-Value:after="ActualizarVistaPrevia"
                           Label="Nombre o razón social"
@@ -37,6 +38,7 @@ else
                           MaxLength="254"
                           Disabled="@_esGenericoNacional"
                           HelperText="Sin régimen de capital, como en la constancia." />
+            </div>
         </div>
 
         @if (_vistaPrevia.HuboCambios && !_esGenericoNacional)
@@ -62,7 +64,8 @@ else
             </div>
         }
 
-        <div class="rejilla-campos">
+        <div class="catalogo-rejilla">
+            <div class="catalogo-campo-amplio">
             @*
                 Se listan todos los regímenes, no solo los del tipo de persona: el catálogo
                 precargado no trae las banderas de física/moral —ClaveSatDto está congelado y
@@ -75,12 +78,14 @@ else
                     <MudSelectItem T="string" Value="@r.Clave">@r.Clave — @r.Descripcion</MudSelectItem>
                 }
             </MudSelect>
-
+            </div>
+            <div class="catalogo-campo-corto">
             <MudTextField @bind-Value="_domicilioFiscalCp"
-                          Label="Código postal del domicilio fiscal"
+                          Label="CP fiscal"
                           Class="cifra-tabular"
                           MaxLength="5"
-                          HelperText="El de la constancia, no el de entrega. Va al CFDI." />
+                          HelperText="El de la constancia, no el de entrega." />
+            </div>
         </div>
 
         @if (_esGenericoExtranjero)
@@ -96,11 +101,11 @@ else
         }
         </section>
 
-        <section class="formulario-catalogo-seccion">
+        <section class="formulario-catalogo-seccion formulario-catalogo-seccion-ancha">
         <h2 class="seccion-titulo">Preferencias de facturación</h2>
-        <p class="seccion-ayuda">Precargan el formulario al facturar. Quien emite puede cambiarlas.</p>
+        <p class="seccion-ayuda">Opcionales. Se precargan al facturar y pueden cambiarse en cada documento.</p>
 
-        <div class="rejilla-campos">
+        <div class="catalogo-rejilla catalogo-rejilla-tres">
             <MudSelect T="string" @bind-Value="_usoCfdi" Label="Uso de CFDI" Clearable="true" Disabled="@_esGenericoNacional">
                 @foreach (var u in Catalogos.Obtener("c_UsoCFDI"))
                 {
@@ -124,19 +129,23 @@ else
         </div>
         </section>
 
-        <section class="formulario-catalogo-seccion">
+        <section class="formulario-catalogo-seccion formulario-catalogo-seccion-ancha">
         <h2 class="seccion-titulo">Contacto</h2>
 
-        <div class="rejilla-campos">
+        <div class="catalogo-rejilla catalogo-rejilla-dos">
             <MudTextField @bind-Value="_correo" Label="Correo electrónico" MaxLength="254"
-                          HelperText="A donde se manda el comprobante." />
+                          HelperText="Para enviar sus comprobantes." />
             <MudTextField @bind-Value="_telefono" Label="Teléfono" MaxLength="32" />
         </div>
         </section>
 
-        <section class="formulario-catalogo-seccion formulario-catalogo-seccion-ancha">
-        <h2 class="seccion-titulo">Domicilio de entrega</h2>
-        <p class="seccion-ayuda">Sale en el PDF, no en el XML. Puedes dejarlo en blanco.</p>
+        <details class="catalogo-opcional formulario-catalogo-seccion-ancha" open="@TieneDomicilioEntrega">
+        <summary>
+            <span>Domicilio de entrega</span>
+            <span class="catalogo-opcional-etiqueta">@(TieneDomicilioEntrega ? "Capturado" : "Opcional")</span>
+        </summary>
+        <div class="catalogo-opcional-contenido">
+        <p class="seccion-ayuda">Se muestra en el PDF. No sustituye el domicilio fiscal.</p>
 
         <div class="rejilla-campos">
             <MudTextField @bind-Value="_calle" Label="Calle" MaxLength="128" />
@@ -150,13 +159,15 @@ else
             <MudTextField @bind-Value="_codigoPostal" Label="Código postal" Class="cifra-tabular" MaxLength="5" />
             <MudTextField @bind-Value="_referencia" Label="Referencia" MaxLength="256" />
         </div>
-        </section>
+        </div>
+        </details>
         </div>
 
         <div class="tarjeta-formulario-acciones">
+            <span class="catalogo-acciones-ayuda">Los datos fiscales se validan al guardar.</span>
             <MudButton Variant="Variant.Text" OnClick="@(() => Navegacion.NavigateTo("/clientes"))">Cancelar</MudButton>
             <MudButton ButtonType="ButtonType.Submit" Variant="Variant.Filled" Color="Color.Primary" Disabled="_guardando">
-                @(_guardando ? "Guardando…" : "Guardar")
+                @(_guardando ? "Guardando…" : "Guardar cliente")
             </MudButton>
         </div>
     </EditForm>
@@ -168,6 +179,12 @@ else
     public Guid? Id { get; set; }
 
     private bool EsNuevo => Id is null;
+
+    private bool TieneDomicilioEntrega => new[]
+    {
+        _calle, _numeroExterior, _numeroInterior, _colonia, _localidad,
+        _municipio, _estado, _pais, _codigoPostal, _referencia
+    }.Any(valor => !string.IsNullOrWhiteSpace(valor));
 
     private DetalleProblema? _error;
     private bool _cargando = true;
