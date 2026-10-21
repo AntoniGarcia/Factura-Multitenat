@@ -17,12 +17,15 @@
         <MudIcon Icon="@Icons.Material.Filled.Person" Size="Size.Small" />
         Mi perfil
     </MudMenuItem>
-    @if (Sesion.TienePermiso(Permisos.ConfigurarEmpresa))
+    @if (Sesion.TienePermiso(Permisos.MiEmpresa))
     {
         <MudMenuItem OnClick="@(() => Navegacion.NavigateTo("/empresa"))">
             <MudIcon Icon="@Icons.Material.Filled.Business" Size="Size.Small" />
             Mi empresa
         </MudMenuItem>
+    }
+    @if (Sesion.TienePermiso(Permisos.Configuracion))
+    {
         <MudMenuItem OnClick="@(() => Navegacion.NavigateTo("/configuracion"))">
             <MudIcon Icon="@Icons.Material.Filled.Settings" Size="Size.Small" />
             Configuración

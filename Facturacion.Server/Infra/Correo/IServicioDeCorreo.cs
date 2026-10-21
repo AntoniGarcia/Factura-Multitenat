@@ -9,7 +9,7 @@ public sealed record AdjuntoDeCorreo(string NombreArchivo, byte[] Contenido, str
 
 /// <param name="ResponderA">
 /// Es del CFDI: el aviso de una factura responde al correo de la empresa emisora
-/// (ARQUITECTURA.md §6), no al buzón del SaaS. El registro no lo usa.
+///, no al buzón del SaaS. El registro no lo usa.
 /// </param>
 /// <param name="NombreRemitente">
 /// Nombre que acompaña a la dirección del sistema en vez del suyo. Lo pone la empresa para sus

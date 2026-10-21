@@ -3,52 +3,7 @@ using Microsoft.EntityFrameworkCore;
 
 namespace Facturacion.Server.Data;
 
-/// <summary>
-/// Aplica el aislamiento por empresa a todo el modelo, de una vez. Vive fuera de
-/// <see cref="AppDbContext"/> para no meter Fluent API en el archivo compartido.
-///
-/// <para><b>Qué queda cubierto</b></para>
-/// Toda entidad que implemente <see cref="IEntidadDeEmpresa"/> o
-/// <see cref="IEntidadDeEmpresaOpcional"/>. Nadie tiene que acordarse de filtrar: basta
-/// implementar la interfaz al declarar la entidad.
-///
-/// <para><b>Qué queda fuera, y por qué</b></para>
-/// <list type="bullet">
-///   <item><description>
-///     <b>Tablas de Identity</b> — un usuario existe antes de elegir empresa y puede
-///     pertenecer a varias. Se acotan por cuenta y por el usuario del token.
-///   </description></item>
-///   <item><description>
-///     <b><c>Cuenta</c> y <c>Empresa</c></b> — filtrar las empresas por la empresa activa
-///     haría imposible listar las empresas del usuario, que es lo que necesita el selector
-///     de la barra superior. Se acotan siempre por cuenta.
-///   </description></item>
-///   <item><description>
-///     <b><c>UsuarioEmpresa</c> y <c>UsuarioEmpresaPermiso</c></b> — llevan
-///     <c>EmpresaId</c>, pero son el cableado de la tenencia, no datos de una empresa.
-///     Armar el token exige leerlos a través de todas las empresas del usuario.
-///   </description></item>
-///   <item><description>
-///     <b><c>RefreshToken</c></b> — la sesión sobrevive al cambio de empresa activa: ese
-///     cambio emite un access token nuevo pero no toca la cookie.
-///   </description></item>
-///   <item><description>
-///     <b><c>Permiso</c></b> — catálogo fijo de seis valores, igual para todos.
-///   </description></item>
-///   <item><description>
-///     <b>Catálogos del SAT</b> (fase 3) — son del SAT, no de ninguna empresa.
-///   </description></item>
-/// </list>
-///
-/// <para><b>Falla cerrado</b></para>
-/// Sin empresa activa el parámetro va nulo y la comparación en SQL Server queda en
-/// desconocido, así que no se devuelve ningún renglón. Es la dirección correcta de fallo:
-/// ante un error de configuración se ve de menos, nunca de más.
-///
-/// <para><b>Lo que este filtro no hace</b></para>
-/// No protege escrituras: un <c>Add</c> con la empresa equivocada entraría igual. De eso se
-/// encarga <c>SelladoDeEmpresaInterceptor</c>.
-/// </summary>
+/// <summary>Filtra las lecturas de entidades con empresa obligatoria u opcional. Identidad, pertenencias, cuenta y catálogos comunes se controlan por separado. Sin empresa activa no devuelve datos de empresa; las escrituras las valida SelladoDeEmpresaInterceptor.</summary>
 public static class FiltroDeEmpresa
 {
     public static void AplicarFiltroDeEmpresa(this ModelBuilder constructor, AppDbContext contexto)

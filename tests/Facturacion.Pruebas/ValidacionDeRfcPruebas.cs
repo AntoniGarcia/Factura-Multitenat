@@ -2,21 +2,7 @@ using Facturacion.Shared.Comun;
 
 namespace Facturacion.Pruebas;
 
-/// <summary>
-/// La prueba obligatoria de la fase 5 (ARQUITECTURA.md §6 y PROMPT-FASES-A.md): validación de RFC
-/// y dígito verificador.
-///
-/// <para><b>De dónde salen los RFC «válidos»</b></para>
-/// Dos son <b>reales y públicos</b>, y sirven de ancla independiente del algoritmo:
-/// <list type="bullet">
-///   <item><description><c>EKU9003173C9</c> — Escuela Kemper Urgate, el contribuyente de pruebas oficial del SAT (persona moral).</description></item>
-///   <item><description><c>CACX7605101P8</c> — persona física de uso común en pruebas de CFDI.</description></item>
-/// </list>
-/// Los otros dos se construyeron calculando su dígito con el algoritmo <b>después</b> de que
-/// los dos anteriores confirmaran que el algoritmo es correcto. El orden importa: si todos
-/// los casos salieran del propio algoritmo, la prueba sería circular y pasaría aunque la
-/// fórmula estuviera mal.
-/// </summary>
+/// <summary>Valida formato y dígito del RFC con casos independientes, incluidos EKU9003173C9 y CACX7605101P8, además de casos calculados.</summary>
 public sealed class ValidacionDeRfcPruebas
 {
     [Theory]

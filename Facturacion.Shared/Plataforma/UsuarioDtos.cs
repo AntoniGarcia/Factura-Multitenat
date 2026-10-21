@@ -12,7 +12,8 @@ public sealed record UsuarioDeEmpresaDto(
     bool Activo,
     bool EsUsuarioActual,
     bool CreadoPorAdministrador,
-    IReadOnlyList<string> Permisos);
+    IReadOnlyList<string> Permisos,
+    bool EsTitular);
 
 public sealed record UsuariosDeLaEmpresaDto(
     IReadOnlyList<UsuarioDeEmpresaDto> Usuarios,
@@ -24,7 +25,7 @@ public sealed record UsuariosDeLaEmpresaDto(
 ///
 /// <para>
 /// La contraseña la valida ASP.NET Core Identity con sus reglas de longitud y composición
-/// (ARQUITECTURA.md §4). El servidor no la devuelve nunca, ni siquiera al que la acaba de escribir.
+///. El servidor no la devuelve nunca, ni siquiera al que la acaba de escribir.
 /// </para>
 /// </summary>
 public sealed record PeticionCrearUsuario(
@@ -57,7 +58,7 @@ public sealed record PeticionCambiarActivoUsuario(bool Activo);
 /// <param name="PuedeCambiarContrasena">
 /// Falso para el usuario que creó un administrador: su contraseña la administra él. La
 /// pantalla de perfil esconde el formulario, y el servidor lo rechaza igual — esconder un
-/// botón no es proteger (ARQUITECTURA.md §4).
+/// botón no es proteger.
 /// </param>
 public sealed record PerfilDto(string Nombre, string Correo, string Tema, bool PuedeCambiarContrasena);
 

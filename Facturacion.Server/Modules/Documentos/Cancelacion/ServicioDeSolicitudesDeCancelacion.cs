@@ -17,7 +17,7 @@ namespace Facturacion.Server.Modules.Documentos.Cancelacion;
 /// cancelado o por rechazado algo, en vez de dos que se separen con el tiempo.
 ///
 /// <para><b>Una llamada al SAT por comprobante, sin transacción</b></para>
-/// Cada consulta guarda en su propia escritura corta (ARQUITECTURA.md §5), y hay un tope por
+/// Cada consulta guarda en su propia escritura corta, y hay un tope por
 /// petición: con el SAT lento, cincuenta consultas seguidas dejarían al usuario viendo una
 /// pantalla congelada por minutos. Lo que no entra se revisa en la siguiente pasada, empezando
 /// por lo que lleva más tiempo sin consultarse.

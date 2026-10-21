@@ -1,5 +1,5 @@
 /*
-  Formularios de captura densos (ARQUITECTURA.md §8): sin adornos, muchos campos a la vista, y
+  Formularios de captura densos: sin adornos, muchos campos a la vista, y
   siempre sobre variables semánticas — ningún color literal.
 */
 
@@ -84,6 +84,295 @@
     .formulario-catalogo-seccion {
         padding-right: 0.75rem;
         padding-left: 0.75rem;
+    }
+}
+
+/* Marco compartido por los formularios de catálogo. */
+.tarjeta-formulario.tarjeta-formulario-catalogo {
+    max-width: 68rem;
+    box-shadow: none;
+}
+
+.area-principal h1:has(+ .tarjeta-formulario.tarjeta-formulario-catalogo:not(.tarjeta-formulario-ancha)) {
+    max-width: 68rem;
+}
+
+.tarjeta-formulario-catalogo .formulario-catalogo-secciones {
+    gap: 1rem;
+}
+
+.catalogo-rejilla {
+    display: grid;
+    grid-template-columns: repeat(6, minmax(0, 1fr));
+    gap: 0.75rem 1rem;
+    margin-bottom: 0.5rem;
+    align-items: start;
+}
+
+.catalogo-rejilla > * {
+    min-width: 0;
+}
+
+.catalogo-campo-corto {
+    grid-column: span 2;
+}
+
+.catalogo-campo-amplio {
+    grid-column: span 4;
+}
+
+.catalogo-rejilla-dos > * {
+    grid-column: span 3;
+}
+
+.catalogo-rejilla-tres > * {
+    grid-column: span 2;
+}
+
+.catalogo-opcional {
+    min-width: 0;
+    border: 1px solid var(--borde);
+    border-radius: var(--radio);
+    background: var(--superficie-elevada);
+}
+
+.catalogo-opcional > summary {
+    padding: 0.875rem 1rem;
+    color: var(--texto);
+    cursor: pointer;
+    font-size: 0.9375rem;
+    font-weight: 500;
+    overflow-wrap: anywhere;
+}
+
+.catalogo-opcional > summary::marker {
+    color: var(--texto-suave);
+}
+
+.catalogo-opcional > summary:focus-visible {
+    outline: 2px solid var(--acento);
+    outline-offset: 2px;
+    border-radius: var(--radio);
+}
+
+.catalogo-opcional[open] > summary {
+    border-bottom: 1px solid var(--borde);
+}
+
+.catalogo-opcional-etiqueta {
+    margin-left: 0.5rem;
+    color: var(--texto-suave);
+    font-size: 0.75rem;
+    font-weight: 400;
+}
+
+.catalogo-opcional-contenido {
+    padding: 0.875rem 1rem;
+}
+
+.catalogo-impuesto-adicional {
+    margin-top: 1rem;
+    background: var(--superficie);
+}
+
+.tarjeta-formulario-catalogo .tarjeta-formulario-acciones {
+    position: sticky;
+    bottom: 0;
+    z-index: 4;
+    padding: 0.875rem 0;
+    background: var(--superficie);
+    flex-wrap: wrap;
+}
+
+.catalogo-acciones-ayuda {
+    flex: 1 1 14rem;
+    color: var(--texto-suave);
+    font-size: 0.8125rem;
+}
+
+.series-rejilla {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) minmax(0, 2fr) auto;
+    gap: 0.75rem 1rem;
+    align-items: start;
+}
+
+.series-rejilla > * {
+    min-width: 0;
+}
+
+.series-formulario .tarjeta-formulario-acciones {
+    position: static;
+    margin-bottom: 0;
+    padding-bottom: 0;
+}
+
+.series-listado {
+    max-width: 68rem;
+    margin: 1rem auto 0;
+    padding: 1rem;
+    background: var(--superficie);
+    border: 1px solid var(--borde);
+    border-radius: var(--radio);
+}
+
+.series-listado > .seccion-titulo {
+    margin-top: 0;
+    border-bottom: 0;
+}
+
+.transporte-catalogo .mud-tabs-panels,
+.empresa-formulario .mud-tabs-panels {
+    padding-top: 1rem;
+}
+
+.empresa-campos-contacto {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    gap: 0.75rem;
+}
+
+.empresa-formulario .tarjeta-formulario-acciones {
+    margin-bottom: 0;
+}
+
+.transporte-herramientas {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 0.75rem 1rem;
+    margin-bottom: 1rem;
+}
+
+.transporte-herramientas .transporte-filtro {
+    flex: 0 1 12rem;
+    min-width: 0;
+    width: 100%;
+    max-width: 12rem;
+    margin-top: 0;
+}
+
+.transporte-titulo {
+    margin-top: 0;
+    margin-bottom: 0.75rem;
+    border-bottom: 0;
+}
+
+.transporte-campos {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    gap: 0.75rem;
+}
+
+.transporte-catalogo .tarjeta-formulario-acciones {
+    margin-top: 1rem;
+}
+
+@media (max-width: 48rem) {
+    .transporte-herramientas .transporte-filtro {
+        flex-basis: 100%;
+        max-width: none;
+    }
+
+    .series-rejilla {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .series-rejilla > :nth-child(3) {
+        grid-column: 1 / -1;
+    }
+
+    .catalogo-rejilla {
+        grid-template-columns: minmax(0, 1fr);
+    }
+
+    .catalogo-rejilla > * {
+        grid-column: auto;
+    }
+
+    .tarjeta-formulario.tarjeta-formulario-catalogo {
+        padding: 1rem;
+    }
+
+    .catalogo-acciones-ayuda {
+        flex-basis: 100%;
+    }
+}
+
+/* Los inmuebles y participantes no comparten la rejilla de conceptos. */
+.notaria-rejilla {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 0.75rem 1rem;
+    margin-bottom: 0.875rem;
+}
+
+.notaria-rejilla-dos {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.notaria-rejilla > * {
+    min-width: 0;
+}
+
+.notaria-tarjeta {
+    min-width: 0;
+    margin-bottom: 1rem;
+    padding: 0.875rem 1rem;
+    border: 1px solid var(--borde);
+    border-radius: var(--radio);
+    background: var(--superficie-elevada);
+}
+
+.notaria-encabezado,
+.notaria-tarjeta-cabecera {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 0.5rem 1rem;
+    margin-bottom: 0.75rem;
+}
+
+.notaria-tarjeta-titulo {
+    display: flex;
+    align-items: center;
+    gap: 0.625rem;
+    margin: 0;
+    font-size: 0.9375rem;
+    font-weight: 500;
+    color: var(--texto);
+}
+
+.notaria-numero {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 1.75rem;
+    height: 1.75rem;
+    border-radius: var(--radio);
+    background: var(--acento-suave);
+    color: var(--acento);
+    font-family: var(--tipografia-monoespaciada);
+}
+
+.notaria-formulario .tarjeta-formulario-acciones {
+    flex-wrap: wrap;
+}
+
+.notaria-tarjeta > .notaria-rejilla:last-child {
+    margin-bottom: 0;
+}
+
+@media (max-width: 48rem) {
+    .notaria-rejilla,
+    .notaria-rejilla-dos {
+        grid-template-columns: minmax(0, 1fr);
+    }
+
+    .notaria-tarjeta {
+        padding: 0.75rem;
     }
 }
 
@@ -629,7 +918,7 @@
     color: var(--texto-suave);
 }
 
-/* Licencias de fase 2: visibles pero explícitamente reservadas. */
+/* Licencias reservadas para módulos no habilitados. */
 .aviso-reservado {
     background: var(--superficie-elevada);
     border: 1px dashed var(--borde-fuerte);

@@ -9,15 +9,7 @@ using Microsoft.EntityFrameworkCore;
 
 namespace Facturacion.Server.Modules.Plataforma.Empresas;
 
-/// <summary>
-/// Carga y consulta de certificados de sello digital. Es la parte más delicada de la mitad A:
-/// aquí entra al sistema el material con el que se firman comprobantes fiscales.
-/// <para>
-/// Nada de lo que entra aquí vuelve a salir hacia el <c>Client</c>: la pantalla solo ve
-/// número de serie y vigencia. El material descifrado únicamente lo entrega
-/// <see cref="ProveedorCsdParaTimbrado"/>, y con bitácora.
-/// </para>
-/// </summary>
+/// <summary>Carga el CSD y devuelve al cliente solo sus metadatos. El material descifrado se obtiene mediante el proveedor de timbrado y deja bitácora.</summary>
 public sealed class ServicioDeCsd(
     AppDbContext baseDeDatos,
     IAlmacenDeArchivos almacen,
@@ -75,7 +67,7 @@ public sealed class ServicioDeCsd(
         if (anterior is not null)
         {
             // Se conserva inactivo: los comprobantes timbrados con él llevan su número de
-            // serie dentro y tiene que poder explicarse de dónde salió (ARQUITECTURA.md §5).
+            // serie dentro y tiene que poder explicarse de dónde salió.
             anterior.Activo = false;
 
             bitacora.Registrar(

@@ -17,7 +17,7 @@ public sealed record TokenEmitido(string Token, DateTime ExpiraUtc);
 /// <para>
 /// La empresa activa va <b>dentro del token</b> y no como parámetro de las peticiones: es
 /// lo que impide que el Client pida datos de una empresa a la que no tiene acceso con solo
-/// cambiar un número (ARQUITECTURA.md §4).
+/// cambiar un número.
 /// </para>
 /// </summary>
 public sealed class ServicioDeTokens(IOptions<OpcionesDeJwt> opciones)
@@ -93,7 +93,7 @@ public sealed class ServicioDeTokens(IOptions<OpcionesDeJwt> opciones)
         };
 
         // Permisos del operador: misma clave que los inquilinos, así las políticas
-        // RequireClaim(ClavesDeClaim.Permiso, "configurar_empresa") funcionan igual.
+        // RequireClaim(ClavesDeClaim.Permiso, ...) funcionan igual.
         var permisos = operador.Permisos.Select(p => p.Permiso).ToList();
         claims.AddRange(permisos.Select(p => new Claim(ClavesDeClaim.Permiso, p)));
 

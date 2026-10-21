@@ -3,15 +3,7 @@ using Facturacion.Server.Modules.Documentos.Salidas;
 
 namespace Facturacion.Pruebas;
 
-/// <summary>
-/// Representación impresa del CFDI (fase B5): la expresión del código QR y el PDF.
-///
-/// <para><b>De dónde sale el caso de la expresión</b></para>
-/// El ejemplo que ancla estas pruebas es el que publican las implementaciones de referencia
-/// de la comunidad mexicana (<c>phpcfdi/cfdi-expresiones</c>, <c>nodecfdi</c>,
-/// <c>CfdiUtils</c>), no uno inventado con mi propio código. El orden importa: si el caso
-/// saliera de la misma función que se prueba, pasaría aunque el formato estuviera mal.
-/// </summary>
+/// <summary>Comprueba la expresión del QR y el PDF con casos de referencia externos al generador.</summary>
 public sealed class RepresentacionImpresaPruebas
 {
     static RepresentacionImpresaPruebas()

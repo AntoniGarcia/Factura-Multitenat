@@ -7,20 +7,7 @@ using Microsoft.EntityFrameworkCore;
 
 namespace Facturacion.Server.Modules.Operador.Auth;
 
-/// <summary>
-/// Alta de operadores del SaaS desde la consola.
-///
-/// <para><b>Por qué consola y no una pantalla</b></para>
-/// Un operador puede acreditar pagos, o sea crear saldo de la nada. Quien decide que exista
-/// otro es el dueño del sistema, y su credencial para hacerlo es tener acceso al servidor:
-/// exactamente quien debe tenerla. Una pantalla de alta —aunque estuviera dentro del panel—
-/// convertiría el robo de una sesión de operador en el robo permanente de la plataforma.
-///
-/// <para>
-/// La contraseña se genera aquí y se imprime una sola vez. No se guarda en claro ni se envía
-/// por correo; quien la recibe la cambia en cuanto entre.
-/// </para>
-/// </summary>
+/// <summary>Gestión de operadores desde la consola del servidor.</summary>
 public static class OperadoresCli
 {
     public static async Task<int> CrearAsync(IServiceProvider servicios, string correo, string nombre)

@@ -1,52 +1,54 @@
 @page "/empresa/series"
-@attribute [Authorize(Policy = Permisos.ConfigurarEmpresa)]
+@attribute [Authorize(Policy = Permisos.Configuracion)]
 @inject ServicioDeEmpresa Empresas
 @inject ServicioDeCatalogos Catalogos
 
 <PageTitle>Series de folios</PageTitle>
 <TituloDePagina Texto="Series de folios" />
 
+<TarjetaFormulario Class="tarjeta-formulario-catalogo series-formulario">
 <PanelErrores Problema="_error" />
 
-<p class="seccion-ayuda">
-    Cada serie lleva su propia numeración consecutiva. El folio se aparta al timbrar, no antes;
-    si un timbrado falla, ese número queda apartado y no se reutiliza.
-</p>
+<section class="formulario-catalogo-seccion" aria-labelledby="serie-datos">
+<h2 id="serie-datos" class="seccion-titulo">@(_editando is null ? "Nueva serie" : $"Editar serie {_editando.Prefijo}")</h2>
+<p class="seccion-ayuda">Define la numeración para cada tipo de comprobante.</p>
 
-<h2 class="seccion-titulo">@(_editando is null ? "Nueva serie" : $"Editar serie {_editando.Prefijo}")</h2>
-
-<div class="rejilla-campos">
+<div class="series-rejilla">
     <MudTextField @bind-Value="_prefijo" Label="Prefijo" MaxLength="25" Class="cifra-tabular"
-                  HelperText="Solo letras y números." />
+                  Disabled="_guardando" HelperText="Solo letras y números." />
 
     <MudNumericField @bind-Value="_folioInicial" Label="Folio inicial" Min="1" Class="cifra-tabular"
-                     Disabled="@(_editando is not null && _editando.FolioActual >= _editando.FolioInicial)"
+                     Disabled="@(_guardando || (_editando is not null && _editando.FolioActual >= _editando.FolioInicial))"
                      HelperText="@(_editando is not null && _editando.FolioActual >= _editando.FolioInicial
-                                   ? "No se puede cambiar: la serie ya entregó folios."
-                                   : "Desde qué número empieza a contar.")" />
+                                   ? "La serie ya entregó folios; no se puede cambiar."
+                                   : "Número con el que comenzará la serie.")" />
 
-    <MudSelect T="string" @bind-Value="_tipoComprobante" Label="Tipo de comprobante">
+    <MudSelect T="string" @bind-Value="_tipoComprobante" Label="Tipo de comprobante" Disabled="_guardando">
         @foreach (var tipo in Catalogos.Obtener("c_TipoDeComprobante"))
         {
             <MudSelectItem T="string" Value="@tipo.Clave">@tipo.Clave — @tipo.Descripcion</MudSelectItem>
         }
     </MudSelect>
 
-    <MudCheckBox @bind-Value="_activa" Label="Activa" />
+    <MudCheckBox @bind-Value="_activa" Label="Serie activa" Disabled="_guardando" />
 </div>
+</section>
 
-<div class="acciones-formulario">
+<div class="tarjeta-formulario-acciones">
+    <span class="catalogo-acciones-ayuda">Los folios se reservan al timbrar y no se reutilizan.</span>
+    @if (_editando is not null)
+    {
+        <MudButton Variant="Variant.Text" OnClick="Limpiar" Disabled="_guardando">Cancelar edición</MudButton>
+    }
     <MudButton Variant="Variant.Filled" OnClick="Guardar" Disabled="_guardando">
         @(_guardando ? "Guardando…" : _editando is null ? "Crear serie" : "Guardar cambios")
     </MudButton>
-
-    @if (_editando is not null)
-    {
-        <MudButton Variant="Variant.Text" OnClick="Limpiar">Cancelar</MudButton>
-    }
 </div>
+</TarjetaFormulario>
 
-<h2 class="seccion-titulo">Series de esta empresa</h2>
+<section class="series-listado" aria-labelledby="series-registradas">
+<h2 id="series-registradas" class="seccion-titulo">Series registradas</h2>
+<p class="seccion-ayuda">Las series inactivas conservan su historial.</p>
 
 @if (_series.Count == 0)
 {
@@ -54,40 +56,35 @@
 }
 else
 {
-    <MudSimpleTable Dense="true" Hover="true">
-        <thead>
-            <tr>
-                <th>Prefijo</th>
-                <th>Tipo</th>
-                <th class="cifra-tabular">Folio inicial</th>
-                <th class="cifra-tabular">Último entregado</th>
-                <th>Estado</th>
-                <th></th>
-            </tr>
-        </thead>
-        <tbody>
-            @foreach (var serie in _series)
-            {
-                <tr>
-                    <td class="cifra-tabular">@serie.Prefijo</td>
-                    <td>@serie.TipoComprobante</td>
-                    <td class="cifra-tabular">@serie.FolioInicial</td>
-                    <td class="cifra-tabular">
+    <MudTable T="SerieDto" Items="_series" Dense="true" Hover="true" Elevation="0" Breakpoint="Breakpoint.Sm">
+        <HeaderContent>
+            <MudTh>Prefijo</MudTh>
+            <MudTh>Tipo</MudTh>
+            <MudTh>Folio inicial</MudTh>
+            <MudTh>Último entregado</MudTh>
+            <MudTh>Estado</MudTh>
+            <MudTh>Acciones</MudTh>
+        </HeaderContent>
+        <RowTemplate Context="serie">
+                    <MudTd DataLabel="Prefijo" Class="cifra-tabular">@serie.Prefijo</MudTd>
+                    <MudTd DataLabel="Tipo">@serie.TipoComprobante — @DescripcionTipo(serie.TipoComprobante)</MudTd>
+                    <MudTd DataLabel="Folio inicial" Class="cifra-tabular">@serie.FolioInicial</MudTd>
+                    <MudTd DataLabel="Último entregado" Class="cifra-tabular">
                         @(serie.FolioActual < serie.FolioInicial ? "—" : serie.FolioActual.ToString())
-                    </td>
-                    <td>
+                    </MudTd>
+                    <MudTd DataLabel="Estado">
                         <span class="indicador-estado indicador-estado-@(serie.Activa ? "timbrada" : "borrador")">
                             @(serie.Activa ? "Activa" : "Inactiva")
                         </span>
-                    </td>
-                    <td>
-                        <MudButton Size="Size.Small" OnClick="() => Editar(serie)">Editar</MudButton>
-                    </td>
-                </tr>
-            }
-        </tbody>
-    </MudSimpleTable>
+                    </MudTd>
+                    <MudTd DataLabel="Acciones">
+                        <MudButton Size="Size.Small" OnClick="() => Editar(serie)" Disabled="_guardando"
+                                   aria-label="@($"Editar serie {serie.Prefijo}")">Editar</MudButton>
+                    </MudTd>
+        </RowTemplate>
+    </MudTable>
 }
+</section>
 
 @code {
     private IReadOnlyList<SerieDto> _series = [];
@@ -99,6 +96,9 @@ else
     private int _folioInicial = 1;
     private string _tipoComprobante = "I";
     private bool _activa = true;
+
+    private string DescripcionTipo(string clave)
+        => Catalogos.Obtener("c_TipoDeComprobante").FirstOrDefault(tipo => tipo.Clave == clave)?.Descripcion ?? clave;
 
     protected override async Task OnInitializedAsync() => await RecargarAsync();
 

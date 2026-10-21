@@ -14,23 +14,7 @@ public interface ISatCatalogoSimple
     bool Vigente { get; set; }
 }
 
-/// <summary>
-/// Los catálogos del SAT cuya única información, además de la clave y la descripción, es su
-/// vigencia. Cada uno es su propia tabla —ARQUITECTURA.md §7 pide justo eso, no una tabla
-/// clave-valor genérica— pero como no tienen columnas propias que los distingan, viven
-/// juntos en un solo archivo en vez de repetir la misma forma ocho veces.
-/// <para>
-/// Si el SAT le agrega una columna propia a alguno de estos catálogos, ese catálogo sale de
-/// aquí a su propio archivo: en cuanto deja de ser "solo clave y descripción" deja de encajar
-/// en este grupo.
-/// </para>
-/// <para>
-/// Sin <c>required</c> en <see cref="ISatCatalogoSimple.Clave"/>/<c>Descripcion</c>: el
-/// importador las construye con <c>new TEntidad()</c> genérico, y el compilador no puede
-/// verificar miembros requeridos a través de un parámetro de tipo. El único código que crea
-/// estas entidades es el importador, que siempre las llena por completo.
-/// </para>
-/// </summary>
+/// <summary>Catálogos con clave, descripción y vigencia, cada uno en su tabla. No usan required porque el importador los crea con new TEntidad() y después asigna sus datos.</summary>
 public sealed class SatFormaPago : ISatCatalogoSimple
 {
     public string Clave { get; set; } = "";

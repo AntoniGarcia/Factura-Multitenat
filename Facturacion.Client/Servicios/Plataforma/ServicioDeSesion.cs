@@ -8,7 +8,7 @@ namespace Facturacion.Client.Servicios.Plataforma;
 /// La sesión del navegador.
 ///
 /// <para><b>El access token vive solo en memoria</b></para>
-/// Nunca en <c>localStorage</c> ni en <c>sessionStorage</c> (ARQUITECTURA.md §4). Al recargar la
+/// Nunca en <c>localStorage</c> ni en <c>sessionStorage</c>. Al recargar la
 /// página se pierde, y eso es correcto: se recupera con la cookie de refresh, que el
 /// JavaScript de la página no puede leer.
 ///
@@ -46,7 +46,15 @@ public sealed class ServicioDeSesion(IHttpClientFactory fabrica)
 
     public bool TokenVigente => _accessToken is not null && DateTime.UtcNow < _expiraUtc;
 
-    public bool TienePermiso(string permiso) => Sesion?.Permisos.Contains(permiso) ?? false;
+    /// <summary>
+    /// Acepta una clave de permiso o el nombre de una política compuesta de
+    /// <see cref="Permisos.Politicas"/>, que se cumple con cualquiera de sus permisos.
+    /// </summary>
+    public bool TienePermiso(string permiso)
+        => Sesion is { } sesion &&
+           (Permisos.Politicas.Compuestas.TryGetValue(permiso, out var claves)
+               ? claves.Any(sesion.Permisos.Contains)
+               : sesion.Permisos.Contains(permiso));
 
     /// <summary>Devuelve el problema si algo falló, o <c>null</c> si la sesión quedó abierta.</summary>
     public async Task<DetalleProblema?> IniciarSesionAsync(PeticionInicioSesion peticion)

@@ -11,21 +11,7 @@ using Microsoft.EntityFrameworkCore;
 
 namespace Facturacion.Server.Modules.Documentos.Pagos;
 
-/// <summary>
-/// Complemento de pagos 2.0 (B9, §27 y §28 del documento funcional).
-///
-/// <para><b>El saldo se deriva, no se guarda</b></para>
-/// No hay una columna «saldo» en la factura. El saldo pendiente es el total menos lo abonado
-/// en los pagos emitidos o en proceso: un borrador no mueve el saldo y uno cancelado tampoco.
-/// Mientras se confirma una emisión o cancelación, su importe sigue apartado.
-/// Guardar un saldo obligaría a mantenerlo sincronizado desde tres sitios
-/// distintos y a que los tres acertaran siempre.
-///
-/// <para><b>Lo que sí se congela</b></para>
-/// Dentro del <c>DocumentoPagado</c>, el saldo anterior, lo pagado y el insoluto se guardan tal
-/// como estaban al emitir: eso es lo que el SAT selló y no puede cambiar aunque después entren
-/// más pagos (ARQUITECTURA.md §5).
-/// </summary>
+/// <summary>Complemento de pagos 2.0. Calcula el saldo a partir de pagos emitidos o en proceso, no de borradores ni cancelados. Conserva los saldos y la parcialidad usados al aplicar el pago.</summary>
 public sealed class ServicioDePagos(
     AppDbContext baseDeDatos,
     IContextoEmpresaInterno contexto,
@@ -35,7 +21,7 @@ public sealed class ServicioDePagos(
     HusoDeEmpresa huso,
     ILogger<ServicioDePagos> registro)
 {
-    /// <summary>Sin objeto de exportación: fuera del alcance del MVP (ARQUITECTURA.md §6).</summary>
+    /// <summary>Sin objeto de exportación: fuera del alcance del MVP.</summary>
     private const string SinExportacion = "01";
 
     /// <summary>La raíz de un CFDI de pago va sin moneda; el dinero vive en el complemento.</summary>

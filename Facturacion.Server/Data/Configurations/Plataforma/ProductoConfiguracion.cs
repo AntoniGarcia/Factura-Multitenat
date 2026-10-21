@@ -23,11 +23,7 @@ public sealed class ProductoConfiguracion : IEntityTypeConfiguration<Producto>
             .HasForeignKey(p => p.EmpresaId)
             .OnDelete(DeleteBehavior.Restrict);
 
-        // Los impuestos son parte del producto, no una entidad con vida propia: al reemplazar
-        // la configuración fiscal se borran los renglones viejos y se escriben los nuevos.
-        // Es la única excepción razonable a «nada se borra» de ARQUITECTURA.md §5: no son datos
-        // históricos —el histórico vive congelado dentro del comprobante— sino la
-        // configuración actual del producto.
+        // Al cambiar la configuración fiscal se reemplazan los impuestos del producto. Los comprobantes conservan su copia histórica.
         constructor.HasMany(p => p.Impuestos)
             .WithOne(i => i.Producto)
             .HasForeignKey(i => i.ProductoId)

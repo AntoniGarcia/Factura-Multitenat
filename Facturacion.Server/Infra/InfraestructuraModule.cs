@@ -18,7 +18,7 @@ namespace Facturacion.Server.Infra;
 
 /// <summary>
 /// Todo lo transversal: tenencia, base de datos, errores, cabeceras y versión.
-/// <c>Program.cs</c> solo llama a estos tres métodos (REPARTO-EQUIPO.md §5).
+/// <c>Program.cs</c> solo llama a estos tres métodos.
 /// </summary>
 public static class InfraestructuraModule
 {
@@ -34,8 +34,7 @@ public static class InfraestructuraModule
             opciones.ForwardLimit = 1;
         });
 
-        // Una sola instancia por petición sirve a las dos interfaces: la de la mitad B
-        // (congelada) y la extendida que usa la mitad A.
+        // Las dos interfaces comparten el contexto de empresa de la misma petición.
         servicios.AddScoped<IContextoEmpresaInterno, ContextoEmpresaHttp>();
         servicios.AddScoped<IContextoEmpresa>(sp => sp.GetRequiredService<IContextoEmpresaInterno>());
 
@@ -71,9 +70,7 @@ public static class InfraestructuraModule
 
     public static WebApplication UsePipelineDeInfraestructura(this WebApplication aplicacion)
     {
-        // Tiene que correr antes de HTTPS, autenticación y límites por IP. Por omisión solo
-        // se confía en proxies de loopback; Azure Linux habilita su proxy administrado con
-        // ASPNETCORE_FORWARDEDHEADERS_ENABLED=true, documentado en DESPLIEGUE.md.
+        // Procesa las cabeceras del proxy antes de HTTPS, autenticación y límites por IP. Solo deben confiarse proxies conocidos.
         aplicacion.UseForwardedHeaders();
 
         // El más externo: nada de lo que venga después puede escapar sin convertirse en
@@ -131,7 +128,7 @@ public static class InfraestructuraModule
 
     /// <summary>
     /// Data Protection con el llavero persistido fuera del repositorio y protegido por el
-    /// certificado de <c>Almacen:LlaveMaestraPfx</c> (ARQUITECTURA.md §4).
+    /// certificado de <c>Almacen:LlaveMaestraPfx</c>.
     /// <para>
     /// Sin esto, el llavero por omisión de ASP.NET Core queda en claro y atado a la máquina:
     /// al reiniciar en otro contenedor, los CSD ya cargados dejarían de poder descifrarse.
@@ -207,10 +204,9 @@ public static class InfraestructuraModule
     }
 
     /// <summary>
-    /// El remitente es del SaaS, nunca del cliente (ARQUITECTURA.md §6). Sin <c>Correo:Servidor</c>
-    /// fuera de <c>Development</c> no se arranca, igual que sin clave de firma del JWT: una
-    /// invitación o un aviso de factura que nunca sale es un defecto que hay que ver el día
-    /// del despliegue, no el día que un usuario se queja de no recibir nada.
+    /// El remitente es del SaaS, nunca del cliente. Sin <c>Correo:Servidor</c>
+    /// Production exige un servidor configurado. Staging permite posponer explícitamente
+    /// su configuración; el servicio real rechaza los envíos mientras esté incompleto.
     /// </summary>
     private static IServiceCollection AgregarCorreo(
         this IServiceCollection servicios, IConfiguration configuracion, IHostEnvironment entorno)
@@ -228,17 +224,15 @@ public static class InfraestructuraModule
         var servidorConfigurado = !string.IsNullOrWhiteSpace(
             configuracion[$"{OpcionesDeCorreo.Seccion}:{nameof(OpcionesDeCorreo.Servidor)}"]);
 
-        if (!servidorConfigurado && !entorno.IsDevelopment())
+        var permitirPosterior = configuracion.GetValue<bool>("Correo:PermitirConfiguracionPosterior");
+        if (permitirPosterior && !entorno.IsStaging())
+            throw new InvalidOperationException("'Correo:PermitirConfiguracionPosterior' solo se permite en Staging.");
+        if (!servidorConfigurado && !entorno.IsDevelopment() && !permitirPosterior)
             throw new InvalidOperationException(
                 "Falta 'Correo:Servidor'. Se configura en variables de entorno; nunca en el repositorio.");
 
-        // En Development siempre se registra Smtp: el operador puede configurar el servidor
-        // desde la UI en cualquier momento. Si el servidor está vacío, SmtpClient fallará al
-        // enviar, que es el comportamiento esperado (se registra en bitácora y se ignora).
-        if (servidorConfigurado || entorno.IsDevelopment())
-            servicios.AddScoped<IServicioDeCorreo, ServicioDeCorreoSmtp>();
-        else
-            servicios.AddScoped<IServicioDeCorreo, ServicioDeCorreoConsola>();
+        // La configuración guardada por el operador se consulta en cada envío.
+        servicios.AddScoped<IServicioDeCorreo, ServicioDeCorreoSmtp>();
 
         // Los comprobantes salen por aquí: con el SMTP de la empresa si lo tiene, o con el anterior.
         servicios.AddSingleton<IProtectorDeContrasenaSmtp, ProtectorDeContrasenaSmtp>();

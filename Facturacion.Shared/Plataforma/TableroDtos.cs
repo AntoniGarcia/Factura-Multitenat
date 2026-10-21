@@ -17,43 +17,13 @@ public sealed record AvisoCertificadoDto(
     int DiasParaCaducar,
     bool PorCaducar);
 
-/// <summary>
-/// El tablero ya compuesto por el servidor.
-///
-/// <para><b>Por qué se compone en el servidor y no con cuatro llamadas del Client</b></para>
-/// Cada pieza vive detrás de un permiso distinto. Si el Client pidiera las cuatro por su
-/// cuenta, a un capturista sin <c>configurar_empresa</c> el tablero le respondería 403 en
-/// una de ellas y tendría que decidir en el navegador qué ignorar. Aquí el servidor decide
-/// qué puede ver quien pregunta, y de paso la pantalla se pinta con una sola petición, que
-/// en WebAssembly no es un detalle.
-/// </summary>
-/// <param name="UmbralAvisoTimbres">
-/// A partir de cuántos timbres restantes se avisa. Viaja desde el servidor para que el
-/// Client no lo lleve compilado: cambiarlo no debe exigir recompilar el wasm.
-/// </param>
-/// <param name="Certificado">
-/// <c>null</c> cuando el usuario no tiene <c>configurar_empresa</c>. El endpoint de
-/// certificados exige ese permiso, así que el tablero no enseña por la puerta de atrás lo
-/// que esa política niega por la de enfrente.
-/// </param>
-/// <param name="Membresia">
-/// <c>null</c> si la cuenta no tiene ninguna membresía registrada.
-/// </param>
-/// <param name="MembresiaEnAviso">
-/// Si hay que avisar del vencimiento. Lo decide el servidor con su propio plazo, en vez de
-/// que el Client repita el número: ya está duplicado entre <c>ServicioDeCompras</c> y la
-/// pantalla de la bolsa, y una tercera copia acabaría avisando en un plazo distinto que las
-/// otras dos.
-/// </param>
-/// <param name="Documentos">
-/// Comprobantes del mes en curso. <c>null</c> si la mitad B todavía no tiene registrada su
-/// implementación de <c>IResumenDocumentos</c>: entonces el recuadro no se pinta, en vez de
-/// enseñar ceros que se leerían como «este mes no facturaste».
-/// </param>
-/// <param name="SerieMensual">
-/// Comprobantes timbrados e importe de los ultimos meses, para las graficas. Vacia cuando la
-/// mitad B todavia no registro su implementacion, igual que <c>Documentos</c>.
-/// </param>
+/// <summary>Datos del tablero filtrados por el servidor según los permisos del usuario.</summary>
+/// <param name="UmbralAvisoTimbres">Saldo a partir del cual se muestra el aviso.</param>
+/// <param name="Certificado">Nulo si el usuario no tiene permiso para consultar los datos de empresa.</param>
+/// <param name="Membresia">Nula si la cuenta no tiene una membresía registrada.</param>
+/// <param name="MembresiaEnAviso">Aviso de vencimiento calculado por el servidor.</param>
+/// <param name="Documentos">Resumen del mes; nulo si el servicio de resumen no está disponible.</param>
+/// <param name="SerieMensual">Importes y comprobantes de los últimos meses; vacía si el servicio no está disponible.</param>
 public sealed record TableroDto(
     SaldoTimbresDto Timbres,
     int UmbralAvisoTimbres,

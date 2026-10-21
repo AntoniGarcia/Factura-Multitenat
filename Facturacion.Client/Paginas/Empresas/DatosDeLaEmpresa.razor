@@ -1,5 +1,5 @@
 @page "/empresa"
-@attribute [Authorize(Policy = Permisos.ConfigurarEmpresa)]
+@attribute [Authorize(Policy = Permisos.MiEmpresa)]
 @implements IDisposable
 @using Facturacion.Client.Componentes.Empresas
 @using Facturacion.Shared.Contratos
@@ -13,6 +13,7 @@
 
 @* «/empresa/certificados» abre esta misma página en la pestaña de certificados: era la ruta de
    la página que tenían antes, y la siguen usando los avisos de Inicio y del panel de actividad. *@
+<TarjetaFormulario Class="tarjeta-formulario-catalogo empresa-formulario">
 <MudTabs @bind-ActivePanelIndex="_pestana">
     <MudTabPanel Text="Datos de la empresa" Icon="@Icons.Material.Filled.Business">
         <PanelErrores Problema="_error" />
@@ -24,23 +25,26 @@
         else
         {
             <EditForm Model="_empresa" OnValidSubmit="Guardar" class="formulario-empresa">
-                <h2 class="seccion-titulo">Datos fiscales</h2>
+                <div class="formulario-catalogo-secciones">
+                <section class="formulario-catalogo-seccion formulario-catalogo-seccion-ancha" aria-labelledby="empresa-datos-fiscales">
+                <h2 id="empresa-datos-fiscales" class="seccion-titulo">Datos fiscales</h2>
                 <p class="seccion-ayuda">
-                    Estos son los que viajan al CFDI. Deben coincidir con tu Constancia de Situación Fiscal.
+                    Deben coincidir con la Constancia de Situación Fiscal.
                 </p>
 
-                <div class="rejilla-campos">
+                <div class="catalogo-rejilla">
                     <MudTextField Value="@_empresa.Rfc"
                                   Label="RFC"
                                   ReadOnly="true"
-                                  Class="cifra-tabular"
-                                  HelperText="No se puede cambiar: los certificados y los comprobantes ya emitidos están atados a este RFC." />
+                                  Class="cifra-tabular catalogo-campo-corto"
+                                  HelperText="No editable; identifica a esta empresa." />
 
                     @* :after es lo que dispara la vista previa mientras se escribe; sin él, el valor
                        se enlaza pero nada recalcula la normalización. *@
                     <MudTextField @bind-Value="_nombre"
                                   @bind-Value:after="ActualizarVistaPrevia"
                                   Label="Nombre o razón social"
+                                  Class="catalogo-campo-amplio"
                                   Immediate="true"
                                   MaxLength="254"
                                   HelperText="Sin régimen de capital, como en la constancia." />
@@ -59,7 +63,7 @@
                     </div>
                 }
 
-                <div class="rejilla-campos">
+                <div class="catalogo-rejilla catalogo-rejilla-tres">
                     <MudSelect T="string" @bind-Value="_regimenFiscal" Label="Régimen fiscal">
                         @foreach (var regimen in Catalogos.Obtener("c_RegimenFiscal"))
                         {
@@ -68,20 +72,23 @@
                     </MudSelect>
 
                     <MudTextField @bind-Value="_cpExpedicion"
-                                  Label="Código postal del lugar de expedición"
+                                  Label="CP de expedición"
                                   Class="cifra-tabular"
                                   MaxLength="5"
-                                  HelperText="Va en el CFDI como lugar de expedición." />
+                                  HelperText="Lugar de expedición del CFDI." />
 
                     <MudTextField @bind-Value="_zonaHoraria"
-                                  Label="Huso horario del lugar de expedición"
-                                  HelperText="Con esto se sella el comprobante con la hora local correcta." />
+                                  Label="Huso horario"
+                                  HelperText="Determina la hora local de emisión." />
                 </div>
+                </section>
 
-                <h2 class="seccion-titulo">Domicilio</h2>
-                <p class="seccion-ayuda">Sale en el PDF, no en el XML. Puedes dejarlo en blanco.</p>
+                <details class="catalogo-opcional formulario-catalogo-seccion-ancha" open="@TieneDomicilio">
+                <summary>Domicilio para el PDF <span class="catalogo-opcional-etiqueta">Opcional</span></summary>
+                <div class="catalogo-opcional-contenido">
+                <p class="seccion-ayuda">No sustituye el lugar de expedición del CFDI.</p>
 
-                <div class="rejilla-campos">
+                <div class="catalogo-rejilla catalogo-rejilla-tres">
                     <MudTextField @bind-Value="_calle" Label="Calle" MaxLength="128" />
                     <MudTextField @bind-Value="_numeroExterior" Label="Número exterior" MaxLength="32" />
                     <MudTextField @bind-Value="_numeroInterior" Label="Número interior" MaxLength="32" />
@@ -93,29 +100,31 @@
                     <MudTextField @bind-Value="_codigoPostal" Label="Código postal" Class="cifra-tabular" MaxLength="5" />
                     <MudTextField @bind-Value="_referencia" Label="Referencia" MaxLength="256" />
                 </div>
+                </div>
+                </details>
 
-                <h2 class="seccion-titulo">Origen predeterminado de Carta Porte</h2>
-                <p class="seccion-ayuda">Usa el lugar desde donde suelen salir las mercancías. Es independiente del domicilio general y puedes cambiarlo en cada traslado.</p>
+                <section class="formulario-catalogo-seccion formulario-catalogo-seccion-ancha" aria-labelledby="empresa-origen-carta-porte">
+                <h2 id="empresa-origen-carta-porte" class="seccion-titulo">Origen de Carta Porte</h2>
+                <p class="seccion-ayuda">Origen predeterminado para nuevos traslados. Puede cambiarse en cada documento.</p>
                 <MudCheckBox T="bool" @bind-Value="_configurarOrigenCartaPorte" Label="Configurar origen para nuevos traslados" />
                 @if (_configurarOrigenCartaPorte)
                 {
                     <EditorDomicilioCartaPorte Valor="_origenCartaPorte" ValorCambiado="v => _origenCartaPorte = v" />
                 }
+                </section>
 
-                <h2 class="seccion-titulo">Contacto</h2>
+                <section class="formulario-catalogo-seccion" aria-labelledby="empresa-contacto">
+                <h2 id="empresa-contacto" class="seccion-titulo">Contacto</h2>
 
-                <div class="rejilla-campos">
+                <div class="empresa-campos-contacto">
                     <MudTextField @bind-Value="_telefono" Label="Teléfono" MaxLength="32" />
                     <MudTextField @bind-Value="_correoContacto" Label="Correo electrónico" MaxLength="254" />
                 </div>
+                </section>
 
-                <h2 class="seccion-titulo">Licencias</h2>
-                <div class="aviso-reservado" role="note">
-                    <p>
-                        Las licencias las asigna el operador del sistema según el servicio contratado.
-                        No se pueden cambiar desde la empresa.
-                    </p>
-                </div>
+                <section class="formulario-catalogo-seccion" aria-labelledby="empresa-licencias">
+                <h2 id="empresa-licencias" class="seccion-titulo">Licencias</h2>
+                <p class="seccion-ayuda">Las administra el operador según el servicio contratado.</p>
 
                 <div class="rejilla-campos">
                     <MudCheckBox Value="_empresa.Licencias.Notarios" Label="Notarios" Disabled="true" />
@@ -128,19 +137,21 @@
                 {
                     <MudButton Variant="Variant.Outlined" StartIcon="@Icons.Material.Filled.AccountBalance"
                                OnClick="AbrirNotariaAsync">
-                        Configurar Notaría
+                        Configurar notaría
                     </MudButton>
                 }
+                </section>
+                </div>
 
-                <div class="acciones-formulario">
-                    <MudButton ButtonType="ButtonType.Submit" Variant="Variant.Filled" Disabled="_guardando">
-                        @(_guardando ? "Guardando…" : "Guardar")
-                    </MudButton>
-
+                <div class="tarjeta-formulario-acciones">
+                    <span class="catalogo-acciones-ayuda">Los cambios aplican a los nuevos comprobantes.</span>
                     @if (_guardado)
                     {
                         <span class="mensaje-exito" role="status">Datos guardados.</span>
                     }
+                    <MudButton ButtonType="ButtonType.Submit" Variant="Variant.Filled" Color="Color.Primary" Disabled="_guardando">
+                        @(_guardando ? "Guardando…" : "Guardar datos de empresa")
+                    </MudButton>
                 </div>
             </EditForm>
         }
@@ -150,6 +161,7 @@
         <CertificadosDeSello />
     </MudTabPanel>
 </MudTabs>
+</TarjetaFormulario>
 
 @code {
     private const int PestanaCertificados = 1;
@@ -159,6 +171,12 @@
     private DetalleProblema? _error;
     private bool _guardando;
     private bool _guardado;
+
+    private bool TieneDomicilio => new[]
+    {
+        _calle, _numeroExterior, _numeroInterior, _colonia, _localidad,
+        _municipio, _estado, _pais, _codigoPostal, _referencia
+    }.Any(valor => !string.IsNullOrWhiteSpace(valor));
 
     private string _nombre = string.Empty;
     private string _regimenFiscal = string.Empty;
@@ -171,7 +189,7 @@
 
     /// <summary>
     /// La misma normalización que aplica el servidor, corriendo mientras el usuario escribe.
-    /// Es comodidad, no validación: la que cuenta es la del servidor (ARQUITECTURA.md §3).
+    /// Es comodidad, no validación: la que cuenta es la del servidor.
     /// </summary>
     private NombreFiscalNormalizado _vistaPrevia = NombreFiscal.Normalizar(string.Empty);
 

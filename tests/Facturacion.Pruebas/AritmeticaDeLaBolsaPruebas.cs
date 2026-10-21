@@ -11,22 +11,7 @@ using Microsoft.EntityFrameworkCore;
 
 namespace Facturacion.Pruebas;
 
-/// <summary>
-/// Las pruebas obligatorias de la fase 7 (PROMPT-FASES-A.md): aritmética de la bolsa y
-/// concurrencia al reservar el último timbre.
-///
-/// <para><b>Por qué contra SQL Server de verdad</b></para>
-/// Igual que en folios, lo que se prueba <b>es</b> el bloqueo de renglón del procedimiento
-/// almacenado. Un proveedor en memoria no tiene <c>UPDLOCK</c> ni contención real: pasaría
-/// aunque el saldo se descontara con la implementación ingenua que este código existe para
-/// evitar.
-///
-/// <para><b>La invariante que se comprueba en cada paso</b></para>
-/// <c>SUM(DeltaDisponible) = Bolsa.Disponibles</c> y <c>SUM(DeltaReservado) =
-/// Bolsa.Reservados</c>. Es lo que sostiene que el saldo sea la suma de los movimientos y no
-/// un número que alguien edita: si un procedimiento moviera el contador sin dejar movimiento
-/// —o al revés— esta comprobación lo caza.
-/// </summary>
+/// <summary>Comprueba saldo, movimientos y reserva concurrente del último timbre en SQL Server. La suma de movimientos debe coincidir con los saldos disponible y reservado.</summary>
 public sealed class AritmeticaDeLaBolsaPruebas : IAsyncLifetime
 {
     private const string Conexion =
@@ -94,12 +79,7 @@ public sealed class AritmeticaDeLaBolsaPruebas : IAsyncLifetime
         await db.Database.EnsureDeletedAsync();
     }
 
-    /// <summary>
-    /// La secuencia que pide el prompt: compra, reserva, confirmación, reserva, devolución.
-    /// Se comprueba el saldo <b>y</b> la invariante contable después de cada paso, no solo al
-    /// final: un error que se compensara a sí mismo pasaría desapercibido mirando solo el
-    /// total.
-    /// </summary>
+    /// <summary>Comprueba el saldo y la relación entre compras, reservas, confirmaciones y devoluciones después de cada paso.</summary>
     [Fact]
     public async Task Compra_reserva_confirma_reserva_devuelve_deja_el_saldo_correcto()
     {
@@ -254,9 +234,7 @@ public sealed class AritmeticaDeLaBolsaPruebas : IAsyncLifetime
 
         for (var ronda = 0; ronda < Rondas; ronda++)
         {
-            // Exactamente un timbre disponible al empezar cada ronda: el escenario del prompt.
-            // Se reajusta en cada vuelta porque el timbre que gana el ganador se queda en
-            // reservado y no vuelve solo.
+            // Cada ronda comienza con un timbre disponible; la reserva ganadora se mantiene apartada.
             await DejarDisponiblesEnUno();
 
             // Pistoletazo por la misma razón que en la prueba de folios: sin él el primero

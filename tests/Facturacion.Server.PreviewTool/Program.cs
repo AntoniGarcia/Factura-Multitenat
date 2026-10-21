@@ -78,13 +78,13 @@ if (args.Length == 2 && args[0] == "preparar-cuenta-qa")
     db.UsuariosEmpresas.Add(new UsuarioEmpresa { UsuarioId = usuario.Id, EmpresaId = empresa.Id, FechaAltaUtc = ahora });
     db.UsuariosEmpresasPermisos.Add(new UsuarioEmpresaPermiso
     {
-        UsuarioId = usuario.Id, EmpresaId = empresa.Id, PermisoClave = Facturacion.Shared.Comun.Permisos.Timbrar,
+        UsuarioId = usuario.Id, EmpresaId = empresa.Id, PermisoClave = Facturacion.Shared.Comun.Permisos.EmitirFactura,
         OtorgadoUtc = ahora
     });
     var contextoQa = new ContextoEmpresaFijo(empresa.Id, cuenta.Id, usuario.Id);
     new ServicioDeBitacora(db, contextoQa, ContextoDeOperadorFijo.SinOperador, new HttpContextAccessor())
         .Registrar("PreparacionQA", cuenta.Id.ToString(), "cuenta-qa-creada",
-            despues: new { cuenta.Nombre, Empresa = empresa.NombreFiscal, Correo = correoQa, Permiso = "timbrar", SinContrasena = true });
+            despues: new { cuenta.Nombre, Empresa = empresa.NombreFiscal, Correo = correoQa, Permiso = Facturacion.Shared.Comun.Permisos.EmitirFactura, SinContrasena = true });
     await db.SaveChangesAsync();
     await transaccion.CommitAsync();
     Console.WriteLine($"Cuenta y empresa QA creadas. Usuario: {correoQa}. Permiso único: timbrar.");

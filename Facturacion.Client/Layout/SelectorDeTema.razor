@@ -1,10 +1,7 @@
 @implements IDisposable
 @inject ServicioDeTema Tema
 
-@*
-    Los tres temas de ARQUITECTURA.md §8. El cambio se aplica de inmediato —Tema.CambiarAsync ya
-    escribe el atributo data-tema antes de llamar al servidor— y se guarda en el perfil.
-*@
+@* Aplica el tema de inmediato y guarda la preferencia en el perfil. *@
 
 <MudMenu Icon="@IconoDe(Tema.Actual)" Size="Size.Small" AnchorOrigin="Origin.BottomLeft" AriaLabel="Elegir tema">
     @foreach (var (clave, etiqueta) in Opciones)

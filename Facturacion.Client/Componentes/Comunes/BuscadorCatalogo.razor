@@ -4,7 +4,7 @@
 
 @*
     Autocompletado contra el servidor: mínimo 3 caracteres, debounce 300 ms, "clave —
-    descripción", navegable con flechas, Enter confirma, Esc limpia (ARQUITECTURA.md §7). Todo
+    descripción", navegable con flechas, Enter confirma, Esc limpia. Todo
     eso ya lo hace MudAutocomplete de fábrica, incluido cancelar la búsqueda anterior al
     escribir de nuevo.
 *@
@@ -44,7 +44,7 @@
 </MudTooltip>
 
 @code {
-    /// <summary>Nombre del catálogo, por ejemplo <c>c_RegimenFiscal</c> (ARQUITECTURA.md §7).</summary>
+    /// <summary>Nombre del catálogo, por ejemplo <c>c_RegimenFiscal</c>.</summary>
     [Parameter, EditorRequired]
     public string Catalogo { get; set; } = default!;
 

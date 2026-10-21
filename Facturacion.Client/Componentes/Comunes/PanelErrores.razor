@@ -1,11 +1,7 @@
 @using Facturacion.Shared.Comun
 @inject IJSRuntime Js
 
-@*
-    Pinta un Problem Details. El traceId se muestra siempre, con botón de copiar: es lo que
-    el usuario le dicta —o le pega— a soporte para que soporte encuentre el error en el log
-    (ARQUITECTURA.md §4).
-*@
+@* Muestra el error y permite copiar el traceId para localizarlo en soporte. *@
 
 @if (Problema is not null)
 {

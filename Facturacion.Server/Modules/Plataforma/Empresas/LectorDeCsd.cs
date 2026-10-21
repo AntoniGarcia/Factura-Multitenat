@@ -5,21 +5,7 @@ using Facturacion.Shared.Comun;
 
 namespace Facturacion.Server.Modules.Plataforma.Empresas;
 
-/// <summary>
-/// Lee y valida un certificado de sello digital del SAT. Todo ocurre <b>en el servidor</b>:
-/// aceptar un CSD que no corresponde al contribuyente produce comprobantes que el PAC
-/// rechaza, y el <c>Client</c> no puede validar nada de esto de forma confiable
-/// (ARQUITECTURA.md §3).
-///
-/// <para><b>Qué se comprueba y por qué</b></para>
-/// <list type="bullet">
-///   <item><description>Que el <c>.cer</c> sea un certificado X.509 legible.</description></item>
-///   <item><description>Que sea un CSD y no la e.firma (FIEL) — ver <see cref="EsCertificadoDeSello"/>.</description></item>
-///   <item><description>Que el RFC del certificado sea el de la empresa: sellar con el CSD de otro contribuyente es lo que el SAT rechaza más rápido.</description></item>
-///   <item><description>Que esté vigente.</description></item>
-///   <item><description>Que la contraseña abra la llave y que la llave sea <b>la de este certificado</b>: un par mal casado se descubre hasta el primer timbrado, cuando ya hay un folio apartado.</description></item>
-/// </list>
-/// </summary>
+/// <summary>Valida en el servidor el formato del CSD, RFC, vigencia y correspondencia con la llave privada.</summary>
 public static class LectorDeCsd
 {
     public static Resultado<CsdLeido> Leer(byte[] cer, byte[] key, string contrasena, string rfcEmpresa)
@@ -54,7 +40,7 @@ public static class LectorDeCsd
                     "No se puede sellar con el certificado de otro contribuyente.");
 
             // Las fechas del certificado vienen en hora local del proceso; la base guarda
-            // todo en UTC (ARQUITECTURA.md §5).
+            // todo en UTC.
             var desde = certificado.NotBefore.ToUniversalTime();
             var hasta = certificado.NotAfter.ToUniversalTime();
             var ahora = DateTime.UtcNow;
@@ -83,19 +69,7 @@ public static class LectorDeCsd
         }
     }
 
-    /// <summary>
-    /// Distingue el CSD de la e.firma por el uso de llave declarado en el certificado: la
-    /// e.firma se emite además para cifrar (<c>KeyEncipherment</c>/<c>DataEncipherment</c>)
-    /// porque sirve para autenticarse ante el SAT, mientras que el CSD se emite solo para
-    /// firmar.
-    /// <para>
-    /// <b>Es una heurística, no una regla publicada por el SAT.</b> Es la que usan las
-    /// bibliotecas de CFDI y ataja el error real —subir la FIEL creyendo que es el CSD— pero
-    /// no la he podido comprobar contra un certificado real del SAT; ver el reporte de cierre
-    /// de la fase 4. Si un certificado no declara uso de llave, se acepta: no vamos a
-    /// bloquear un CSD legítimo por una comprobación que no es normativa.
-    /// </para>
-    /// </summary>
+    /// <summary>Distingue CSD y e.firma mediante el uso de llave. Es una heurística no confirmada con certificados reales del SAT; acepta certificados sin esa extensión.</summary>
     private static bool EsCertificadoDeSello(X509Certificate2 certificado)
     {
         var usos = certificado.Extensions.OfType<X509KeyUsageExtension>().FirstOrDefault();

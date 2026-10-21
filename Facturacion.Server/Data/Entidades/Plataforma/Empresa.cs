@@ -43,7 +43,7 @@ public sealed class Empresa
 
     public DateTime FechaAltaUtc { get; set; }
 
-    // ── Domicilio (§4 del documento funcional) — informativo, sale en el PDF ────────────
+    // Domicilio informativo utilizado en el PDF.
     public string? Calle { get; set; }
 
     public string? NumeroExterior { get; set; }

@@ -1,14 +1,6 @@
 namespace Facturacion.Server.Data.Entidades.Plataforma;
 
-/// <summary>
-/// Una oferta de timbres. Si <see cref="EmpresaId"/> es nulo pertenece al catálogo general;
-/// si tiene valor es una oferta exclusiva de esa empresa.
-///
-/// <para><b>El precio vive aquí y solo aquí</b></para>
-/// ARQUITECTURA.md §4 lo dice sin margen: los precios los devuelve el servidor y el cliente solo
-/// manda el id del paquete. Un precio que viaja desde el navegador es un precio que el
-/// usuario puede editar. Nada en la petición de compra puede influir en lo que se cobra.
-/// </summary>
+/// <summary>Oferta general si EmpresaId es nulo; exclusiva de una empresa si tiene valor. El servidor obtiene el precio a partir del identificador del paquete.</summary>
 public sealed class Paquete
 {
     public Guid Id { get; set; }

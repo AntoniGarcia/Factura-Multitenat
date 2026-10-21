@@ -2,10 +2,7 @@ using System.ComponentModel.DataAnnotations;
 
 namespace Facturacion.Server.Infra.Almacen;
 
-/// <summary>
-/// Dónde viven los archivos de las empresas y con qué se protege el llavero que los cifra
-/// (ARQUITECTURA.md §4).
-/// </summary>
+/// <summary>Ubicación de los archivos y protección del llavero de cifrado.</summary>
 public sealed class OpcionesDeAlmacen
 {
     public const string Seccion = "Almacen";
@@ -24,19 +21,7 @@ public sealed class OpcionesDeAlmacen
     /// </summary>
     public string RutaLlavero { get; init; } = "almacenamiento/llavero";
 
-    /// <summary>
-    /// Certificado que protege el llavero, como PFX en base 64 y sin contraseña.
-    /// <para>
-    /// Es la clave maestra de ARQUITECTURA.md §4: sin ella, el llavero queda en claro y quien se
-    /// lleve la carpeta se lleva también la capacidad de descifrar los CSD. Se genera con
-    /// <c>dotnet run -- --generar-llave-maestra</c> y se guarda en configuración o en una
-    /// variable de entorno; <b>nunca en el repositorio</b>.
-    /// </para>
-    /// <para>
-    /// No lleva contraseña a propósito: ponerle una y guardarla en el mismo archivo de
-    /// configuración no protegería de nada, solo daría la impresión de hacerlo.
-    /// </para>
-    /// </summary>
+    /// <summary>Certificado PFX en base 64 que protege el llavero. Se genera con --generar-llave-maestra y se guarda fuera del repositorio. No incluye contraseña porque se almacena junto a la configuración protegida.</summary>
     [Required]
     public string LlaveMaestraPfx { get; init; } = string.Empty;
 }

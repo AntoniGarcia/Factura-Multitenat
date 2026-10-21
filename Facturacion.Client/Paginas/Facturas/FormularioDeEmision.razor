@@ -1,6 +1,6 @@
 @page "/facturas/nueva"
 @page "/facturas/{Id:guid}"
-@attribute [Authorize(Policy = Permisos.Timbrar)]
+@attribute [Authorize(Policy = Permisos.Politicas.EmitirFacturas)]
 @using Facturacion.Client.Servicios.Documentos
 @using Facturacion.Client.Servicios.Plataforma
 @using Facturacion.Client.Componentes.Facturas

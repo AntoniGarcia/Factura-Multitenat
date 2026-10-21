@@ -68,7 +68,7 @@
             </div>
         </nav>
 
-        <nav class="menu-inferior-operador" aria-label="Secciones principales del panel">
+        <nav class="menu-inferior" aria-label="Secciones principales del panel">
             <ul>
                 @foreach (var elemento in ElementosPrincipalesDeMovil)
                 {
@@ -82,10 +82,10 @@
                     </li>
                 }
 
-c                @if (ElementosSecundariosDeMovil.Count > 0)
+                @if (ElementosSecundariosDeMovil.Count > 0)
                 {
                     <li class="menu-mas-contenedor" @onkeydown="AlTeclaEnMenuMas">
-                        <button type="button" class="menu-mas-boton @ClaseActivaDeMenuMas"
+                        <button type="button" class="menu-inferior-boton @ClaseActivaDeMenuMas"
                                 aria-expanded="@_menuMasAbierto" aria-controls="menu-mas-operador"
                                 @onclick="AlternarMenuMas">
                             <MudIcon Icon="@Icons.Material.Filled.MoreHoriz" Size="Size.Small" />

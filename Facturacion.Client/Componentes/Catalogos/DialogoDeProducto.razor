@@ -32,8 +32,8 @@
                 <div class="rejilla-campos">
                     <MudTextField @bind-Value="_descripcion" Label="Descripción" MaxLength="1000"
                                   Lines="2" HelperText="Es lo que sale como concepto en la factura." />
-                    <MudTextField @bind-Value="_unidadTexto" Label="Unidad de medida" MaxLength="64"
-                                  HelperText="La que lee el cliente en el PDF: «Litro», «Caja con 12»." />
+                    <MudTextField @bind-Value="_unidadTexto" Label="Unidad de medida" MaxLength="@UnidadDeConcepto.LongitudMaxima"
+                                  HelperText="La que lee el cliente en el PDF, hasta 20 caracteres: «Litro», «Caja con 12»." />
                 </div>
                 </section>
 
@@ -253,12 +253,7 @@
     private decimal? _nuevaTasa;
     private bool _nuevoEsRetencion;
 
-    /// <summary>
-    /// Los tres casos que cubren casi todo, como el grupo de radios del sistema viejo (§6
-    /// del documento funcional). Son atajos sobre el modelo completo, no un modelo aparte:
-    /// cada uno escribe las tres columnas del SAT y se ve en la tabla de abajo.
-    /// El 8 % es la tasa de la franja fronteriza.
-    /// </summary>
+    /// <summary>Atajos de IVA que completan impuesto, factor y tasa sin sustituir la configuración detallada.</summary>
     private static readonly (string Etiqueta, string Factor, decimal? Tasa)[] Atajos =
     [
         ("IVA 16 %", "Tasa", 0.16m),
@@ -312,8 +307,11 @@
         _claveUnidadSel = clave;
 
         // La unidad en texto se precarga con la del catálogo, pero se puede cambiar: es lo
-        // que ve el cliente y a veces conviene que diga «Caja con 12» y no «Pieza».
-        if (clave is not null && string.IsNullOrWhiteSpace(_unidadTexto))
+        // que ve el cliente y a veces conviene que diga «Caja con 12» y no «Pieza». Un nombre
+        // del catálogo que no cabe en los 20 caracteres del SAT no se precarga ni se recorta:
+        // «Gramo por centímetro» ya significa otra cosa.
+        if (clave is not null && string.IsNullOrWhiteSpace(_unidadTexto) &&
+            UnidadDeConcepto.EsValida(clave.Descripcion))
             _unidadTexto = clave.Descripcion;
     }
 

@@ -9,14 +9,7 @@ using Facturacion.Shared.Plataforma;
 
 namespace Facturacion.Server.Modules.Plataforma.Tablero;
 
-/// <summary>
-/// Arma el tablero de inicio.
-///
-/// <para><b>El conteo de comprobantes es opcional a propósito</b></para>
-/// Lo aporta <c>IResumenDocumentos</c>, el único contrato que va de la mitad B hacia la A.
-/// Se resuelve como <c>IResumenDocumentos?</c> para que una configuración parcial no
-/// pinte cifras inventadas. En la aplicación completa el contrato está registrado.
-/// </summary>
+/// <summary>Compone el tablero con los datos autorizados. Si falta el servicio de resumen, no muestra cifras de documentos inventadas.</summary>
 public sealed class ServicioDeTablero(
     ServicioDeCompras compras,
     ServicioDeCsd csd,
@@ -54,10 +47,7 @@ public sealed class ServicioDeTablero(
             await DocumentosAsync(ct), await SerieAsync(ct));
     }
 
-    /// <summary>
-    /// Los ultimos seis meses de facturacion. Vacia si la mitad B no esta registrada, igual
-    /// que el resumen del mes: mejor no pintar la grafica que pintarla plana en cero.
-    /// </summary>
+    /// <summary>Facturación de los últimos seis meses; vacía si el servicio de resumen no está registrado.</summary>
     private async Task<IReadOnlyList<PuntoDeFacturacionDto>> SerieAsync(CancellationToken ct)
     {
         if (documentos is null) return [];
@@ -106,13 +96,13 @@ public sealed class ServicioDeTablero(
     };
 
     /// <summary>
-    /// Solo para quien tiene <c>configurar_empresa</c>. Es el mismo permiso que exige
+    /// Solo para quien tiene <c>mi_empresa</c>. Es el mismo permiso que exige
     /// <c>/api/empresa/certificados</c>: si el tablero devolviera la vigencia a quien no
     /// puede consultar los certificados, el permiso dejaría de significar algo.
     /// </summary>
     private async Task<AvisoCertificadoDto?> CertificadoAsync(CancellationToken ct)
     {
-        if (!contexto.Tiene(Permisos.ConfigurarEmpresa)) return null;
+        if (!contexto.Tiene(Permisos.MiEmpresa)) return null;
 
         var activo = (await csd.ListarAsync(ct)).FirstOrDefault(c => c.Activo);
 

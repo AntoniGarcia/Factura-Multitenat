@@ -278,12 +278,16 @@ public sealed class ServicioDeAutenticacion(
             ? preferida
             : empresas.Count == 1 ? empresas[0].Id : null;
 
-        var permisos = activa is { } empresa
-            ? await baseDeDatos.UsuariosEmpresasPermisos
-                .Where(p => p.UsuarioId == usuario.Id && p.EmpresaId == empresa)
-                .Select(p => p.PermisoClave)
-                .ToListAsync(ct)
-            : [];
+        // El titular no tiene renglones de permiso: lleva todos en cualquier empresa de su cuenta,
+        // también en la que acaba de dar de alta.
+        IReadOnlyList<string> permisos = activa is not { } empresa
+            ? []
+            : usuario.EsTitular
+                ? Permisos.Todos
+                : await baseDeDatos.UsuariosEmpresasPermisos
+                    .Where(p => p.UsuarioId == usuario.Id && p.EmpresaId == empresa)
+                    .Select(p => p.PermisoClave)
+                    .ToListAsync(ct);
 
         return new SesionDto(
             usuario.Id,

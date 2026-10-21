@@ -1,6 +1,7 @@
 using Facturacion.Server.Infra;
 using Facturacion.Server.Infra.Almacen;
 using Facturacion.Server.Infra.Integracion;
+using Facturacion.Server.Infra.Instalacion;
 using Facturacion.Server.Infra.Registro;
 using Facturacion.Server.Modules.Documentos;
 using Facturacion.Server.Modules.Operador;
@@ -10,101 +11,111 @@ using Facturacion.Server.Modules.Plataforma.Auth;
 using Facturacion.Server.Modules.Plataforma.Catalogos;
 using Facturacion.Server.Modules.Plataforma.Timbres;
 
-// Este archivo no crece. Todo registro nuevo va dentro del *Module.cs que corresponda
-// (REPARTO-EQUIPO.md §5): es uno de los cuatro archivos donde escriben las dos mitades.
-
-// Antes de construir nada: solo imprime un certificado nuevo y termina. No necesita base de
-// datos ni configuración, que es justo lo que hace falta cuando todavía no hay clave maestra.
 if (args is ["--generar-llave-maestra"])
 {
     GeneracionDeLlaveMaestraCli.Ejecutar();
     return;
 }
 
-var constructor = WebApplication.CreateBuilder(args);
-
-constructor.AgregarRegistro();
-
-constructor.Services.AddInfraestructura(constructor.Configuration, constructor.Environment);
-constructor.Services.AddPlataforma(constructor.Configuration);
-constructor.Services.AddOperador();
-constructor.Services.AddDocumentos(constructor.Configuration, constructor.Environment);
-
-var aplicacion = constructor.Build();
-
-// Comando de carga de catálogos del SAT (ARQUITECTURA.md §7): no levanta el servidor, solo usa el
-// contenedor de dependencias ya armado para llegar a la base. La lógica vive en
-// CargaDeCatalogosCli, no aquí.
-// Con un tercer argumento se recarga solo ese catálogo; sin él, los veintiuno.
-if (args is ["--cargar-catalogos", var rutaCatalogos, ..])
+while (true)
 {
-    await CargaDeCatalogosCli.EjecutarAsync(
-        aplicacion, rutaCatalogos, args.Length > 2 ? args[2] : null);
+    var constructor = WebApplication.CreateBuilder(args);
+    // En Staging local también se resuelven los estáticos del Client referenciado.
+    if (constructor.Environment.IsStaging()) constructor.WebHost.UseStaticWebAssets();
+
+    constructor.AgregarRegistro();
+
+    await ArranqueDeRevision.PrepararAlArrancarAsync(constructor, CancellationToken.None);
+    var instalacion = InstalacionModule.Preparar(constructor);
+    if (constructor.Configuration.GetValue<bool>("Instalacion:PrepararRevision"))
+    {
+        var preparada = await ArranqueDeRevision.PrepararAsync(constructor, instalacion.Archivo.Directorio, CancellationToken.None);
+        Console.WriteLine(preparada
+            ? "Arranque de revisión guardado y protegido. Reinicia con Staging y el mismo directorio de instalación. PAC deshabilitado; correo pendiente de configurar."
+            : "El arranque de revisión ya existe. No se reemplazaron sus claves ni su almacenamiento.");
+        return;
+    }
+    if (!args.Any(a => a.StartsWith("--cargar-", StringComparison.Ordinal)
+        || a is "--compras-pendientes" or "--acreditar-compra" or "--crear-operador" or "--cambiar-contrasena"))
+        instalacion = await InstalacionModule.ComprobarOperadorAsync(constructor, instalacion);
+    if (instalacion.MostrarAsistente)
+    {
+        if (args.Any(a => a is "--cargar-catalogos" or "--cargar-catalogos-carta-porte"
+            or "--cargar-catalogo-comercio" or "--compras-pendientes" or "--acreditar-compra"
+            or "--crear-operador" or "--cambiar-contrasena"))
+            throw new InvalidOperationException("Completa la conexión desde el asistente antes de ejecutar comandos del sistema.");
+
+        if (await constructor.EjecutarAsistenteAsync(instalacion)) continue;
+        return;
+    }
+
+    constructor.Services.AddInfraestructura(constructor.Configuration, constructor.Environment);
+    constructor.Services.AddPlataforma(constructor.Configuration);
+    constructor.Services.AddOperador();
+    constructor.Services.AddDocumentos(constructor.Configuration, constructor.Environment);
+
+    var aplicacion = constructor.Build();
+
+    if (args is ["--cargar-catalogos", var rutaCatalogos, ..])
+    {
+        await CargaDeCatalogosCli.EjecutarAsync(
+            aplicacion, rutaCatalogos, args.Length > 2 ? args[2] : null);
+        return;
+    }
+
+    if (args is ["--cargar-catalogos-carta-porte", var rutaCatalogosCartaPorte, ..])
+    {
+        await CargaDeCatalogosCartaPorteCli.EjecutarAsync(
+            aplicacion, rutaCatalogosCartaPorte, args.Length > 2 ? args[2] : null);
+        return;
+    }
+
+    if (args is ["--cargar-catalogo-comercio", var catalogoComercio, var rutaCatalogoComercio])
+    {
+        await CargaDeCatalogosComercioExteriorCli.EjecutarAsync(aplicacion, catalogoComercio, rutaCatalogoComercio);
+        return;
+    }
+
+    if (args is ["--compras-pendientes"])
+    {
+        Environment.ExitCode = await AcreditacionDeCompraCli.ListarPendientes(aplicacion.Services);
+        return;
+    }
+
+    if (args is ["--acreditar-compra", var compraId])
+    {
+        Environment.ExitCode = await AcreditacionDeCompraCli.Acreditar(aplicacion.Services, compraId);
+        return;
+    }
+
+    if (args is ["--crear-operador", var correoOperador, var nombreOperador])
+    {
+        Environment.ExitCode = await OperadoresCli.CrearAsync(aplicacion.Services, correoOperador, nombreOperador);
+        return;
+    }
+
+    if (args is ["--cambiar-contrasena", var correoOperadorCon, var contrasenaOperador])
+    {
+        Environment.ExitCode = await OperadoresCli.CambiarContrasenaAsync(
+            aplicacion.Services, correoOperadorCon, contrasenaOperador);
+        return;
+    }
+
+    aplicacion.VerificarContratos();
+
+    aplicacion.UsePipelineDeInfraestructura();
+    aplicacion.UsePreparacionDeCatalogos();
+
+    aplicacion.MapInfraestructura();
+    aplicacion.MapPlataforma();
+    aplicacion.MapOperador();
+    aplicacion.MapDocumentos();
+
+    // El fallback de Blazor se registra después de todos los endpoints.
+    aplicacion.MapFallbackToFile("index.html");
+
+    await SembradoDeDesarrollo.SembrarAsync(aplicacion);
+
+    aplicacion.Run();
     return;
 }
-
-if (args is ["--cargar-catalogos-carta-porte", var rutaCatalogosCartaPorte, ..])
-{
-    await CargaDeCatalogosCartaPorteCli.EjecutarAsync(
-        aplicacion, rutaCatalogosCartaPorte, args.Length > 2 ? args[2] : null);
-    return;
-}
-
-if (args is ["--cargar-catalogo-comercio", var catalogoComercio, var rutaCatalogoComercio])
-{
-    await CargaDeCatalogosComercioExteriorCli.EjecutarAsync(aplicacion, catalogoComercio, rutaCatalogoComercio);
-    return;
-}
-
-// Alternativa de consola para acreditar compras. El panel del operador ofrece la misma
-// operación con su propia identidad y autorización; un inquilino no puede acreditarse saldo.
-if (args is ["--compras-pendientes"])
-{
-    Environment.ExitCode = await AcreditacionDeCompraCli.ListarPendientes(aplicacion.Services);
-    return;
-}
-
-if (args is ["--acreditar-compra", var compraId])
-{
-    Environment.ExitCode = await AcreditacionDeCompraCli.Acreditar(aplicacion.Services, compraId);
-    return;
-}
-
-// Alta de un operador del SaaS. Va por consola y no por pantalla porque un operador puede
-// acreditar pagos: quien decide que exista otro es el dueño del servidor. Ver OperadoresCli.
-if (args is ["--crear-operador", var correoOperador, var nombreOperador])
-{
-    Environment.ExitCode = await OperadoresCli.CrearAsync(aplicacion.Services, correoOperador, nombreOperador);
-    return;
-}
-
-// Restablecimiento de la contraseña de un operador. Va por consola por la misma razón que el
-// alta (ver OperadoresCli): quien puede hacerlo es el dueño del servidor.
-if (args is ["--cambiar-contrasena", var correoOperadorCon, var contrasenaOperador])
-{
-    Environment.ExitCode = await OperadoresCli.CambiarContrasenaAsync(
-        aplicacion.Services, correoOperadorCon, contrasenaOperador);
-    return;
-}
-
-// Antes de atender peticiones, se rechazan dobles de prueba fuera de Development.
-aplicacion.VerificarContratos();
-
-aplicacion.UsePipelineDeInfraestructura();
-
-aplicacion.MapInfraestructura();
-aplicacion.MapPlataforma();
-aplicacion.MapOperador();
-aplicacion.MapDocumentos();
-
-// Siempre al final: todo lo que no sea un endpoint de la API lo atiende el WebAssembly.
-// WithStaticAssets() existe pero está atado a RazorComponentsEndpointConventionBuilder
-// (MapRazorComponents), no a MapFallbackToFile: no aplica a este hosting clásico de WASM.
-// index.html no forma parte del manifiesto de MapStaticAssets() —se comprobó: cero rutas
-// ".html" en él—, así que sigue sirviéndose como archivo físico; ver el Target
-// CorregirMarcadoresDeIndexHtml en Facturacion.Server.csproj para el porqué hace falta.
-aplicacion.MapFallbackToFile("index.html");
-
-await SembradoDeDesarrollo.SembrarAsync(aplicacion);
-
-aplicacion.Run();

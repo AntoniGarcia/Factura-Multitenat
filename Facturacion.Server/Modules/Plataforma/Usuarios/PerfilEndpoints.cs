@@ -9,11 +9,7 @@ using Microsoft.EntityFrameworkCore;
 
 namespace Facturacion.Server.Modules.Plataforma.Usuarios;
 
-/// <summary>
-/// El perfil propio: nombre, contraseña y tema. Sin <c>administrar_usuarios</c> a propósito
-/// —todo usuario edita lo suyo— y siempre a partir del id del token, nunca de uno recibido
-/// en el cuerpo (PROMPT-FASES-A §8).
-/// </summary>
+/// <summary>Permite editar el perfil propio usando el identificador del token, no uno enviado en el cuerpo.</summary>
 public static class PerfilEndpoints
 {
     public static void MapPerfil(this IEndpointRouteBuilder rutas)
@@ -94,7 +90,7 @@ public static class PerfilEndpoints
         if (usuario is null) return Results.NotFound();
 
         // Se rechaza aquí y no solo escondiendo el formulario: ocultar un botón no es
-        // proteger (ARQUITECTURA.md §4). Sin esta comprobación, un POST a mano bastaría para que
+        // proteger. Sin esta comprobación, un POST a mano bastaría para que
         // el usuario se sacara de encima al administrador que le administra el acceso.
         if (usuario.CreadoPorAdministrador)
             return Results.ValidationProblem(

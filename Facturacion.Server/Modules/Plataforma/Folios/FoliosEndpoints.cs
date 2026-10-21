@@ -4,11 +4,7 @@ using Facturacion.Shared.Plataforma;
 
 namespace Facturacion.Server.Modules.Plataforma.Folios;
 
-/// <summary>
-/// Administración de series. <b>No hay endpoint para reservar folio</b>: la reserva la hace
-/// la mitad B por <see cref="Facturacion.Shared.Contratos.IServicioFolios"/> dentro del
-/// timbrado, y exponerla por HTTP permitiría quemar la numeración de una empresa desde fuera.
-/// </summary>
+/// <summary>Administra series sin exponer una reserva de folios por HTTP. El servicio de timbrado realiza la reserva internamente.</summary>
 public static class FoliosEndpoints
 {
     public static void MapFolios(this IEndpointRouteBuilder rutas)
@@ -16,12 +12,12 @@ public static class FoliosEndpoints
         var grupo = rutas.MapGroup("/api/series").WithTags("Series y folios");
 
         // Por endpoint y no en el grupo: RequireAuthorization en el grupo se acumularía sobre
-        // TODOS sus hijos, y '/activas' terminaría exigiendo también 'configurar_empresa'.
+        // TODOS sus hijos, y '/activas' terminaría exigiendo también 'configuracion'.
         grupo.MapGet("/activas", ListarActivas).RequireAuthorization();
 
-        grupo.MapGet("/", Listar).RequireAuthorization(Permisos.ConfigurarEmpresa);
-        grupo.MapPost("/", Crear).RequireAuthorization(Permisos.ConfigurarEmpresa);
-        grupo.MapPut("/{id:guid}", Actualizar).RequireAuthorization(Permisos.ConfigurarEmpresa);
+        grupo.MapGet("/", Listar).RequireAuthorization(Permisos.Configuracion);
+        grupo.MapPost("/", Crear).RequireAuthorization(Permisos.Configuracion);
+        grupo.MapPut("/{id:guid}", Actualizar).RequireAuthorization(Permisos.Configuracion);
     }
 
     private static async Task<IResult> Listar(ServicioDeSeries series, CancellationToken ct)

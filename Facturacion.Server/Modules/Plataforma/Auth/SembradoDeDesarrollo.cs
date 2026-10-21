@@ -67,7 +67,10 @@ public static class SembradoDeDesarrollo
             UserName = correo,
             Email = correo,
             EmailConfirmed = true,
-            FechaAltaUtc = ahora
+            FechaAltaUtc = ahora,
+            // Como en el registro: quien abre la cuenta es su titular y lleva todos los permisos
+            // sin guardarlos.
+            EsTitular = true
         };
 
         var alta = await usuarios.CreateAsync(usuario, contrasena);
@@ -88,15 +91,6 @@ public static class SembradoDeDesarrollo
                 EmpresaId = empresa.Id,
                 FechaAltaUtc = ahora
             });
-
-            baseDeDatos.UsuariosEmpresasPermisos.AddRange(Permisos.Todos.Select(permiso =>
-                new UsuarioEmpresaPermiso
-                {
-                    UsuarioId = usuario.Id,
-                    EmpresaId = empresa.Id,
-                    PermisoClave = permiso,
-                    OtorgadoUtc = ahora
-                }));
         }
 
         await baseDeDatos.SaveChangesAsync();

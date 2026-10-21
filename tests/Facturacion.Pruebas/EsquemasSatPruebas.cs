@@ -30,16 +30,7 @@ public sealed class HechoConEsquemasSatAttribute : FactAttribute
     }
 }
 
-/// <summary>
-/// Comprueba que el XML que produce la fase B3 cumple de verdad el estándar: se valida
-/// contra el <c>cfdv40.xsd</c> oficial y se le calcula la cadena original con el
-/// <c>cadenaoriginal_4_0.xslt</c> oficial, no con una reimplementación.
-///
-/// <para>
-/// Es la única prueba del proyecto que depende de archivos externos, y por eso existe el
-/// atributo de arriba. Sin ella, la fase B3 se estaría creyendo su propio serializador.
-/// </para>
-/// </summary>
+/// <summary>Valida el XML y la cadena original con los XSD y XSLT oficiales. Requiere los archivos SAT indicados por el atributo de la prueba.</summary>
 public sealed class EsquemasSatPruebas
 {
     internal static readonly string Raiz = Path.Combine(

@@ -1,26 +1,6 @@
 namespace Facturacion.Server.Data.Entidades.Documentos;
 
-/// <summary>
-/// Un CFDI: borrador, timbrado, cancelado o fallido. Es la entidad central de la mitad B.
-///
-/// <para><b>Por qué casi todo aquí es una copia y no una llave foránea</b></para>
-/// Los datos fiscales del emisor y del receptor viven <b>dentro</b> del comprobante, no
-/// apuntados por relación (ARQUITECTURA.md §5). Al timbrar se congelan: si el cliente cambia de
-/// domicilio en 2028, la factura de 2026 tiene que seguir diciendo lo que decía cuando el
-/// SAT la selló. Una llave foránea haría justo lo contrario — reflejar el dato de hoy — y
-/// convertiría cada reporte histórico en una mentira distinta cada vez que se consulta.
-///
-/// <para>
-/// <see cref="ClienteId"/> y el <c>ProductoId</c> de cada concepto se conservan solo para
-/// trazabilidad —«¿qué facturas salieron de este cliente?»— y por eso son identificadores
-/// sueltos, sin relación ni navegación. Nada de la emisión los lee para obtener datos.
-/// </para>
-///
-/// <para><b>Folio</b></para>
-/// Nulo hasta que se reserva, y no se enseña antes de timbrar (ARQUITECTURA.md §5). Si el
-/// timbrado falla después de tomarlo, el comprobante queda en <c>error</c> con su folio
-/// apartado: no se recicla.
-/// </summary>
+/// <summary>Conserva los datos fiscales usados al emitir para que los cambios en los catálogos no alteren el historial. Los identificadores permiten rastrear el origen. El folio reservado no se recicla si falla el timbrado.</summary>
 public sealed class Comprobante : IEntidadDeEmpresa
 {
     public Guid Id { get; set; }
@@ -98,7 +78,7 @@ public sealed class Comprobante : IEntidadDeEmpresa
 
     public required string ReceptorRfc { get; set; }
 
-    /// <summary>Ya normalizado: mayúsculas, sin acentos y sin régimen de capital (ARQUITECTURA.md §7).</summary>
+    /// <summary>Ya normalizado: mayúsculas, sin acentos y sin régimen de capital.</summary>
     public required string ReceptorNombre { get; set; }
 
     public required string ReceptorRegimenFiscal { get; set; }
@@ -161,7 +141,7 @@ public sealed class Comprobante : IEntidadDeEmpresa
 
     /// <summary>
     /// Ruta del XML timbrado dentro del almacén cifrado. Nunca en <c>wwwroot</c>: se sirve
-    /// por endpoint autorizado que valida la empresa (ARQUITECTURA.md §4).
+    /// por endpoint autorizado que valida la empresa.
     /// </summary>
     public string? RutaXml { get; set; }
 

@@ -6,21 +6,7 @@ using Microsoft.EntityFrameworkCore;
 
 namespace Facturacion.Server.Modules.Documentos;
 
-/// <summary>
-/// Lo único que la mitad A consume de la mitad B: las cifras del tablero.
-///
-/// <para><b>Qué huso usan las fechas del contrato</b></para>
-/// <see cref="IResumenDocumentos.ObtenerAsync"/> recibe <c>DateOnly</c>, que no lleva huso,
-/// y los comprobantes se guardan en UTC. Se interpretan como <b>fechas de calendario en el
-/// huso del lugar de expedición de la empresa</b> (ARQUITECTURA.md §5): «agosto» es el agosto del
-/// contador, no el de UTC. El contrato no lo dice; se decidió aquí y quedó anotado como algo
-/// que le faltaba. Los dos extremos se incluyen.
-///
-/// <para><b>Por qué no filtra por empresa</b></para>
-/// No hace falta: <c>Comprobante</c> implementa <c>IEntidadDeEmpresa</c>, así que el filtro
-/// global ya lo acota a la empresa activa. Repetir la condición aquí sería duplicar la regla
-/// en un sitio donde nadie la mantendría (ARQUITECTURA.md §5).
-/// </summary>
+/// <summary>Resumen de la empresa activa para el tablero. Interpreta las fechas en el huso de expedición e incluye ambos extremos del periodo; EF aplica el filtro de empresa.</summary>
 public sealed class ResumenDocumentos(AppDbContext baseDeDatos, HusoDeEmpresa huso)
     : IResumenDocumentos
 {

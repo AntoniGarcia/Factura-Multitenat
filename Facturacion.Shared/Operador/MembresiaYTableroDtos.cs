@@ -12,15 +12,7 @@ public sealed record MembresiaDeOperadorDto(
     string Estado,
     DateTime CreadaUtc);
 
-/// <summary>
-/// Alta o renovación de la suscripción de una cuenta.
-/// <para>
-/// Aquí el identificador de cuenta <b>sí</b> viaja en el cuerpo, y es legítimo: el operador no
-/// tiene tenencia que deducir del token —no pertenece a ninguna cuenta— así que su aislamiento
-/// es la política del panel, no un claim de empresa. No es una excepción a ARQUITECTURA.md §4,
-/// que habla de que el inquilino no mande la empresa sobre la que actúa.
-/// </para>
-/// </summary>
+/// <summary>Alta o renovación de membresía. El operador identifica la cuenta y el servidor autoriza la operación con los permisos del panel.</summary>
 public sealed record PeticionRegistrarMembresia(
     Guid CuentaId,
     DateTime InicioUtc,

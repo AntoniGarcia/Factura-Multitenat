@@ -1,0 +1,18 @@
+-- Ejecutar como administrador en SSMS, despues de instalar el esquema.
+-- Cambiar CAMBIAR_BASE y CAMBIAR_USUARIO por la base y el usuario ya creados.
+-- El login de Windows o SQL y su usuario se crean primero por separado.
+-- No ejecutar con la cuenta de la aplicacion ni contra otra base.
+USE [CAMBIAR_BASE];
+SET NOCOUNT ON;
+SET XACT_ABORT ON;
+IF USER_ID(N'CAMBIAR_USUARIO') IS NULL
+    THROW 51000, 'Primero crea y mapea el usuario de la aplicacion.', 1;
+BEGIN TRANSACTION;
+GRANT CONNECT TO [CAMBIAR_USUARIO];
+GRANT SELECT, INSERT, UPDATE, DELETE ON SCHEMA::dbo TO [CAMBIAR_USUARIO];
+GRANT EXECUTE ON OBJECT::dbo.ReservarFolio TO [CAMBIAR_USUARIO];
+GRANT EXECUTE ON OBJECT::dbo.ReservarTimbre TO [CAMBIAR_USUARIO];
+GRANT EXECUTE ON OBJECT::dbo.ConfirmarTimbre TO [CAMBIAR_USUARIO];
+GRANT EXECUTE ON OBJECT::dbo.DevolverTimbre TO [CAMBIAR_USUARIO];
+GRANT EXECUTE ON OBJECT::dbo.AcreditarCompra TO [CAMBIAR_USUARIO];
+COMMIT;

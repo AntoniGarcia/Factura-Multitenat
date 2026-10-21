@@ -1,83 +1,134 @@
 @page "/empresa/transporte"
-@attribute [Authorize(Policy = Permisos.ConfigurarEmpresa)]
+@attribute [Authorize(Policy = Permisos.Politicas.LeerTransporte)]
 @using Facturacion.Shared.Contratos
 @using Facturacion.Shared.Transporte
 @inject ServicioDeTransporte Transporte
 @inject IBusquedaDeCatalogo Busqueda
+@inject ServicioDeSesion Sesion
 
 <PageTitle>Transporte</PageTitle>
 <TituloDePagina Texto="Transporte" />
 <PanelErrores Problema="_error" />
 
-<TarjetaFormulario Ancha="true" RutaVolver="/">
+@* La consulta la abre quien hace Carta Porte o administra el catálogo; alta, edición y baja,
+   solo administrar_vehiculos y administrar_figuras. Ocultarlas es comodidad: el servidor las
+   rechaza igual. *@
+<TarjetaFormulario Ancha="true" RutaVolver="/" Class="tarjeta-formulario-catalogo transporte-catalogo">
     <MudTabs>
         <MudTabPanel Text="Vehículos">
             <p class="seccion-ayuda">Vehículos disponibles para los traslados con Carta Porte.</p>
-            <MudButton Variant="Variant.Filled" OnClick="NuevoVehiculo">Nuevo vehículo</MudButton>
-            <MudSelect T="bool?" Value="_filtroVehiculos" ValueChanged="FiltrarVehiculos" Label="Estado" Class="mt-2">
+            <div class="transporte-herramientas">
+            @if (_administraVehiculos)
+            {
+                <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="NuevoVehiculo">Nuevo vehículo</MudButton>
+            }
+            <div class="transporte-filtro">
+            <MudSelect T="bool?" Value="_filtroVehiculos" ValueChanged="FiltrarVehiculos" Label="Estatus">
                 <MudSelectItem T="bool?" Value="@((bool?)true)">Activos</MudSelectItem><MudSelectItem T="bool?" Value="@((bool?)false)">Inactivos</MudSelectItem><MudSelectItem T="bool?" Value="@((bool?)null)">Todos</MudSelectItem>
             </MudSelect>
+            </div>
+            </div>
             @if (_editandoVehiculo)
             {
                 <EditForm Model="this" OnValidSubmit="GuardarVehiculo">
-                    <section class="formulario-catalogo-seccion">
-                        <h2 class="seccion-titulo">@(_vehiculoId is null ? "Nuevo vehículo" : "Editar vehículo")</h2>
-                        <div class="rejilla-campos">
-                            <MudTextField @bind-Value="_vClave" Label="Clave" Required="true" />
+                    <h2 class="seccion-titulo transporte-titulo">@(_vehiculoId is null ? "Nuevo vehículo" : "Editar vehículo")</h2>
+                    <div class="formulario-catalogo-secciones">
+                    <section class="formulario-catalogo-seccion formulario-catalogo-seccion-ancha" aria-labelledby="vehiculo-identificacion">
+                        <h3 id="vehiculo-identificacion" class="seccion-titulo">Identificación del vehículo</h3>
+                        <div class="catalogo-rejilla catalogo-rejilla-tres">
+                            <MudTextField @bind-Value="_vClave" Label="Clave interna" Required="true" Class="cifra-tabular" />
                             <MudTextField @bind-Value="_vDescripcion" Label="Descripción" Required="true" />
-                            <BuscadorCatalogo Catalogo="c_ConfigAutotransporte" Label="Configuración SAT" Valor="@_configuracion" ValorCambiado="x => _configuracion = x" MostrarOpciones="true" MuestraSelectorEnLista="false" Requerido="true" />
                             <MudTextField @bind-Value="_vPlaca" Label="Placa" Required="true" />
                             <MudNumericField T="int" @bind-Value="_vAnio" Label="Año modelo" Min="1900" Max="2100" />
-                            <BuscadorCatalogo Catalogo="c_TipoPermiso" Label="Tipo de permiso SAT" Valor="@_permiso" ValorCambiado="x => _permiso = x" MostrarOpciones="true" MuestraSelectorEnLista="false" Requerido="true" />
-                            <MudTextField @bind-Value="_vNumeroPermiso" Label="Número de permiso" Required="true" />
-                            <MudTextField @bind-Value="_vAseguradora" Label="Aseguradora" Required="true" />
-                            <MudTextField @bind-Value="_vPoliza" Label="Póliza" Required="true" />
                             <MudNumericField T="decimal" @bind-Value="_vPeso" Label="Peso bruto vehicular (t)" Min="0.01m" Format="N2" />
+                            <BuscadorCatalogo Catalogo="c_ConfigAutotransporte" Label="Configuración SAT" Valor="@_configuracion" ValorCambiado="x => _configuracion = x" MostrarOpciones="true" MuestraSelectorEnLista="false" Requerido="true" />
                         </div>
                     </section>
+                    <section class="formulario-catalogo-seccion" aria-labelledby="vehiculo-permiso">
+                        <h3 id="vehiculo-permiso" class="seccion-titulo">Permiso de transporte</h3>
+                        <div class="transporte-campos">
+                            <BuscadorCatalogo Catalogo="c_TipoPermiso" Label="Tipo de permiso SAT" Valor="@_permiso" ValorCambiado="x => _permiso = x" MostrarOpciones="true" MuestraSelectorEnLista="false" Requerido="true" />
+                            <MudTextField @bind-Value="_vNumeroPermiso" Label="Número de permiso" Required="true" />
+                        </div>
+                    </section>
+                    <section class="formulario-catalogo-seccion" aria-labelledby="vehiculo-seguro">
+                        <h3 id="vehiculo-seguro" class="seccion-titulo">Seguro</h3>
+                        <div class="transporte-campos">
+                            <MudTextField @bind-Value="_vAseguradora" Label="Aseguradora" Required="true" />
+                            <MudTextField @bind-Value="_vPoliza" Label="Póliza" Required="true" />
+                        </div>
+                    </section>
+                    </div>
                     <div class="tarjeta-formulario-acciones"><MudButton OnClick="CancelarVehiculo">Cancelar</MudButton><MudButton ButtonType="ButtonType.Submit" Variant="Variant.Filled">Guardar vehículo</MudButton></div>
                 </EditForm>
             }
-            <MudTable Items="_vehiculos" Dense="true">
-                <HeaderContent><MudTh>Clave</MudTh><MudTh>Vehículo</MudTh><MudTh>Placa</MudTh><MudTh>Permiso</MudTh><MudTh></MudTh></HeaderContent>
-                <RowTemplate><MudTd DataLabel="Clave">@context.Clave</MudTd><MudTd DataLabel="Vehículo">@context.Descripcion</MudTd><MudTd DataLabel="Placa">@context.Placa</MudTd><MudTd DataLabel="Permiso">@context.TipoPermiso</MudTd><MudTd><MudButton Size="Size.Small" OnClick="@(() => EditarVehiculo(context))">Editar</MudButton><MudButton Size="Size.Small" OnClick="@(() => CambiarVehiculo(context))">@(context.Activo ? "Desactivar" : "Reactivar")</MudButton></MudTd></RowTemplate>
+            <MudTable Items="_vehiculos" Dense="true" Elevation="0" Breakpoint="Breakpoint.Sm">
+                <HeaderContent><MudTh>Clave</MudTh><MudTh>Vehículo</MudTh><MudTh>Placa</MudTh><MudTh>Permiso</MudTh><MudTh>Acciones</MudTh></HeaderContent>
+                <RowTemplate><MudTd DataLabel="Clave">@context.Clave</MudTd><MudTd DataLabel="Vehículo">@context.Descripcion</MudTd><MudTd DataLabel="Placa">@context.Placa</MudTd><MudTd DataLabel="Permiso">@context.TipoPermiso</MudTd><MudTd DataLabel="Acciones">@if (_administraVehiculos) { <MudButton Size="Size.Small" OnClick="@(() => EditarVehiculo(context))">Editar</MudButton><MudButton Size="Size.Small" OnClick="@(() => CambiarVehiculo(context))">@(context.Activo ? "Desactivar" : "Reactivar")</MudButton> }</MudTd></RowTemplate>
+                <NoRecordsContent><p class="tabla-datos-estado">No hay vehículos con este estatus.</p></NoRecordsContent>
             </MudTable>
         </MudTabPanel>
         <MudTabPanel Text="Figuras de transporte">
             <p class="seccion-ayuda">Operadores y demás figuras que se asociarán a cada traslado.</p>
-            <MudButton Variant="Variant.Filled" OnClick="NuevoFigura">Nueva figura</MudButton>
-            <MudSelect T="bool?" Value="_filtroFiguras" ValueChanged="FiltrarFiguras" Label="Estado" Class="mt-2">
+            <div class="transporte-herramientas">
+            @if (_administraFiguras)
+            {
+                <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="NuevoFigura">Nueva figura</MudButton>
+            }
+            <div class="transporte-filtro">
+            <MudSelect T="bool?" Value="_filtroFiguras" ValueChanged="FiltrarFiguras" Label="Estatus">
                 <MudSelectItem T="bool?" Value="@((bool?)true)">Activos</MudSelectItem><MudSelectItem T="bool?" Value="@((bool?)false)">Inactivos</MudSelectItem><MudSelectItem T="bool?" Value="@((bool?)null)">Todos</MudSelectItem>
             </MudSelect>
+            </div>
+            </div>
             @if (_editandoFigura)
             {
                 <EditForm Model="this" OnValidSubmit="GuardarFigura">
-                    <section class="formulario-catalogo-seccion"><h2 class="seccion-titulo">@(_figuraId is null ? "Nueva figura" : "Editar figura")</h2>
-                        <div class="rejilla-campos">
-                            <MudTextField @bind-Value="_fClave" Label="Clave" Required="true" />
+                    <h2 class="seccion-titulo transporte-titulo">@(_figuraId is null ? "Nueva figura" : "Editar figura")</h2>
+                    <div class="formulario-catalogo-secciones">
+                    <section class="formulario-catalogo-seccion formulario-catalogo-seccion-ancha" aria-labelledby="figura-identificacion">
+                        <h3 id="figura-identificacion" class="seccion-titulo">Datos de la figura</h3>
+                        <div class="catalogo-rejilla catalogo-rejilla-tres">
+                            <MudTextField @bind-Value="_fClave" Label="Clave interna" Required="true" Class="cifra-tabular" />
                             <BuscadorCatalogo Catalogo="c_FiguraTransporte" Label="Tipo de figura SAT" Valor="@_tipoFigura" ValorCambiado="x => _tipoFigura = x" MostrarOpciones="true" MuestraSelectorEnLista="false" Requerido="true" />
                             <CampoRfc Valor="@_fRfc" ValorCambiado="x => _fRfc = x" Requerido="true" />
-                            <MudTextField @bind-Value="_fNombre" Label="Nombre" Required="true" />
-                            <MudTextField @bind-Value="_fLicencia" Label="Número de licencia" />
+                        </div>
+                        <div class="catalogo-rejilla">
+                            <MudTextField @bind-Value="_fNombre" Label="Nombre" Required="true" Class="catalogo-campo-amplio" />
+                            <MudTextField @bind-Value="_fLicencia" Label="Número de licencia" Class="catalogo-campo-corto" />
+                        </div>
+                    </section>
+                    <section class="formulario-catalogo-seccion formulario-catalogo-seccion-ancha" aria-labelledby="figura-domicilio">
+                        <h3 id="figura-domicilio" class="seccion-titulo">Domicilio</h3>
+                        <p class="seccion-ayuda">El código postal permite identificar el estado y municipio.</p>
+                        <div class="catalogo-rejilla catalogo-rejilla-tres">
                             <MudTextField @bind-Value="_fCalle" Label="Calle" Required="true" />
                             <MudTextField @bind-Value="_fExterior" Label="Número exterior" Required="true" />
                             <MudTextField @bind-Value="_fInterior" Label="Número interior" />
+                        </div>
+                        <div class="catalogo-rejilla catalogo-rejilla-tres">
                             <BuscadorCatalogo @key="_estado?.Clave" Catalogo="c_Estado" Label="Estado" Valor="@_estado" ValorCambiado="x => AlCambiarEstadoAsync(x)" MostrarOpciones="true" MuestraSelectorEnLista="false" Contexto="@ResumenDomicilio" Requerido="true" />
                             <BuscadorCatalogo @key="_municipio?.Clave" Catalogo="c_Municipio" Label="Municipio" Valor="@_municipio" ValorCambiado="AlCambiarMunicipioAsync" BusquedaPersonalizada="BuscarMunicipiosAsync" MostrarOpciones="true" MuestraSelectorEnLista="false" Contexto="@ResumenDomicilio" Deshabilitado="@(_estado is null)" Requerido="true" />
                             <BuscadorCatalogo @key="_codigoPostal?.Clave" Catalogo="c_CodigoPostal" Label="Código postal" Valor="@_codigoPostal" ValorCambiado="AlCambiarCodigoPostalAsync" TextoCambiado="AlEscribirCodigoPostalAsync" BusquedaPersonalizada="BuscarCodigosPostalesAsync" MostrarSoloClave="true" MuestraSelectorEnLista="false" Contexto="@ResumenDomicilio" Requerido="true" />
-                        </div></section>
+                        </div>
+                    </section>
+                    </div>
                     <div class="tarjeta-formulario-acciones"><MudButton OnClick="CancelarFigura">Cancelar</MudButton><MudButton ButtonType="ButtonType.Submit" Variant="Variant.Filled">Guardar figura</MudButton></div>
                 </EditForm>
             }
-            <MudTable Items="_figuras" Dense="true">
-                <HeaderContent><MudTh>Clave</MudTh><MudTh>Nombre</MudTh><MudTh>Tipo</MudTh><MudTh>RFC</MudTh><MudTh></MudTh></HeaderContent>
-                <RowTemplate><MudTd>@context.Clave</MudTd><MudTd>@context.Nombre</MudTd><MudTd>@context.TipoFigura</MudTd><MudTd class="cifra-tabular">@context.Rfc</MudTd><MudTd><MudButton Size="Size.Small" OnClick="@(() => EditarFigura(context))">Editar</MudButton><MudButton Size="Size.Small" OnClick="@(() => CambiarFigura(context))">@(context.Activo ? "Desactivar" : "Reactivar")</MudButton></MudTd></RowTemplate>
+            <MudTable Items="_figuras" Dense="true" Elevation="0" Breakpoint="Breakpoint.Sm">
+                <HeaderContent><MudTh>Clave</MudTh><MudTh>Nombre</MudTh><MudTh>Tipo</MudTh><MudTh>RFC</MudTh><MudTh>Acciones</MudTh></HeaderContent>
+                <RowTemplate><MudTd DataLabel="Clave">@context.Clave</MudTd><MudTd DataLabel="Nombre">@context.Nombre</MudTd><MudTd DataLabel="Tipo">@context.TipoFigura</MudTd><MudTd DataLabel="RFC" Class="cifra-tabular">@context.Rfc</MudTd><MudTd DataLabel="Acciones">@if (_administraFiguras) { <MudButton Size="Size.Small" OnClick="@(() => EditarFigura(context))">Editar</MudButton><MudButton Size="Size.Small" OnClick="@(() => CambiarFigura(context))">@(context.Activo ? "Desactivar" : "Reactivar")</MudButton> }</MudTd></RowTemplate>
+                <NoRecordsContent><p class="tabla-datos-estado">No hay figuras con este estatus.</p></NoRecordsContent>
             </MudTable>
         </MudTabPanel>
     </MudTabs>
 </TarjetaFormulario>
 
 @code {
+    private bool _administraVehiculos => Sesion.TienePermiso(Permisos.AdministrarVehiculos);
+    private bool _administraFiguras => Sesion.TienePermiso(Permisos.AdministrarFiguras);
+
     private DetalleProblema? _error; private List<VehiculoDto> _vehiculos = []; private List<FiguraTransporteDto> _figuras = []; private List<ClaveSatDto> _municipiosDisponibles = []; private bool? _filtroVehiculos = true, _filtroFiguras = true;
     private bool _editandoVehiculo, _editandoFigura; private Guid? _vehiculoId, _figuraId; private ClaveSatDto? _configuracion, _permiso, _tipoFigura, _estado, _municipio, _codigoPostal;
     private string _vClave="", _vDescripcion="", _vPlaca="", _vAseguradora="", _vPoliza="", _vNumeroPermiso=""; private int _vAnio=DateTime.Today.Year; private decimal _vPeso;

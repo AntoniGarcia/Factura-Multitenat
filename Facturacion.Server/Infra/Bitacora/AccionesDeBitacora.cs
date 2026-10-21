@@ -19,7 +19,7 @@ public static class AccionesDeBitacora
     /// </summary>
     public const string ReutilizacionDeToken = "reutilizacion_de_token";
 
-    // ── Empresa, certificados y folios (fase 4) ────────────────────────────────────────
+    // Empresa, certificados y folios.
     public const string EmpresaActualizada = "empresa_actualizada";
     public const string ConfiguracionActualizada = "configuracion_actualizada";
     public const string CorreoDeEmpresaActualizado = "correo_de_empresa_actualizado";
@@ -35,7 +35,7 @@ public static class AccionesDeBitacora
 
     /// <summary>
     /// Entrega de la llave privada al módulo de timbrado. Se registra <b>cada</b> llamada:
-    /// es el único rastro de quién pidió el material del sello y cuándo (ARQUITECTURA.md §4).
+    /// es el único rastro de quién pidió el material del sello y cuándo.
     /// </summary>
     public const string CsdEntregadoParaTimbrar = "csd_entregado_para_timbrar";
 
@@ -46,25 +46,23 @@ public static class AccionesDeBitacora
 
     /// <summary>
     /// Folio apartado que no llegó a usarse. Es lo que justifica un hueco en la numeración
-    /// ante una revisión; el folio no se recicla (ARQUITECTURA.md §5).
+    /// ante una revisión; el folio no se recicla.
     /// </summary>
     public const string FolioAbandonado = "folio_abandonado";
 
-    // ── Clientes (fase 5) ──────────────────────────────────────────────────────────────
+    // Clientes.
     public const string ClienteCreado = "cliente_creado";
     public const string ClienteActualizado = "cliente_actualizado";
     public const string ClienteDesactivado = "cliente_desactivado";
     public const string ClienteReactivado = "cliente_reactivado";
 
-    // ── Productos (fase 6) ─────────────────────────────────────────────────────────────
+    // Productos.
     public const string ProductoCreado = "producto_creado";
     public const string ProductoActualizado = "producto_actualizado";
     public const string ProductoDesactivado = "producto_desactivado";
     public const string ProductoReactivado = "producto_reactivado";
 
-    // ── Timbres (fase 7) ───────────────────────────────────────────────────────────────
-    // Todo lo que toca dinero deja registro, incluida la reserva: es la única forma de
-    // explicar después por qué el saldo bajó sin que se emitiera ningún comprobante.
+    // Registra movimientos y reservas para explicar los cambios en el saldo de timbres.
     public const string CompraSolicitada = "compra_solicitada";
     public const string CompraAcreditada = "compra_acreditada";
     public const string TimbreReservado = "timbre_reservado";

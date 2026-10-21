@@ -9,22 +9,7 @@ using Microsoft.EntityFrameworkCore;
 
 namespace Facturacion.Server.Modules.Plataforma.Timbres;
 
-/// <summary>
-/// Implementación de <see cref="IServicioTimbres"/> del contrato congelado.
-///
-/// <para><b>Por qué las tres operaciones son procedimientos y no código C#</b></para>
-/// Es el mismo razonamiento que la reserva de folios. Leer el saldo, comprobar que alcanza y
-/// descontarlo desde la aplicación deja una ventana entre la comprobación y el descuento en
-/// la que otra petición hace lo mismo: las dos leen «queda uno», las dos creen que ganaron, y
-/// el saldo termina en −1. Dentro del procedimiento la comprobación viaja en el <c>WHERE</c>
-/// del <c>UPDATE</c>, así que comprobar y descontar son la misma operación y la ventana no
-/// existe.
-///
-/// <para><b>Ninguna llamada HTTP dentro de estas transacciones</b></para>
-/// ARQUITECTURA.md §5. La transacción que aparta el timbre abre y cierra dentro del procedimiento,
-/// antes de que nadie hable con el PAC. Quien timbra reserva, cuelga el teléfono con la base
-/// de datos, y solo entonces sale a la red.
-/// </summary>
+/// <summary>Reserva y devuelve timbres mediante procedimientos con operaciones atómicas sobre el saldo. La transacción termina antes de llamar al PAC.</summary>
 public sealed class ServicioDeTimbres(
     AppDbContext baseDeDatos,
     IContextoEmpresaInterno contexto,

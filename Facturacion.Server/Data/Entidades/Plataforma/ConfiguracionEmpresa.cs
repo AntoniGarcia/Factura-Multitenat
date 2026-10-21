@@ -1,19 +1,6 @@
 namespace Facturacion.Server.Data.Entidades.Plataforma;
 
-/// <summary>
-/// Valores por omisión de la empresa (§3 del documento funcional, solo lo que aplica).
-/// Alimentan los cálculos de los formularios de facturación; no son la verdad fiscal, son
-/// el punto de partida para capturar más rápido.
-/// <para>
-/// El servidor SMTP propio de la empresa no está aquí sino en <see cref="CorreoDeEmpresa"/>:
-/// así su contraseña no viaja junto con las tasas (AGENTS.md §11).
-/// </para>
-/// <para>
-/// Es una entidad aparte de <see cref="Empresa"/> y no unas columnas más, porque la
-/// configuración la toca el permiso <c>configurar_empresa</c> con frecuencia mientras que
-/// los datos fiscales casi nunca cambian; separarlas deja la bitácora legible.
-/// </para>
-/// </summary>
+/// <summary>Valores iniciales para capturar facturas. La configuración SMTP está separada para no incluir secretos junto con las tasas.</summary>
 public sealed class ConfiguracionEmpresa : IEntidadDeEmpresa
 {
     /// <summary>Es también la llave primaria: hay exactamente una configuración por empresa.</summary>

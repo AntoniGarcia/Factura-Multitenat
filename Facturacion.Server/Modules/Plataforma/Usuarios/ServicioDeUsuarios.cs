@@ -11,39 +11,7 @@ using Microsoft.Extensions.Options;
 
 namespace Facturacion.Server.Modules.Plataforma.Usuarios;
 
-/// <summary>
-/// Usuarios de la empresa activa: alta, permisos, correo y baja lógica.
-///
-/// <para><b>Alta directa, no invitación</b></para>
-/// El administrador teclea la contraseña y se la comunica al usuario por fuera del sistema.
-/// Sustituyó a la invitación por correo, que se eliminó por completo.
-///
-/// <para>
-/// Tiene dos consecuencias que se decidieron a sabiendas y conviene no descubrir de golpe
-/// dentro de seis meses:
-/// </para>
-/// <list type="number">
-///   <item>
-///     El administrador conoce la contraseña, así que la bitácora ya no distingue con
-///     certeza al usuario de quien le creó la cuenta. Por eso el alta queda registrada:
-///     es lo único que permite reconstruir quién pudo haber actuado como quién.
-///   </item>
-///   <item>
-///     Nadie comprueba que el correo sea de quien dice. Aceptar una invitación era esa
-///     prueba. Mientras el correo no sirva para recuperar contraseñas, el riesgo se queda
-///     en que un usuario no reciba lo que se le mande.
-///   </item>
-/// </list>
-///
-/// <para><b>Los dos caminos del alta</b></para>
-/// Cuando el correo ya es de un usuario <b>de la misma cuenta</b> —el caso de "administrador
-/// en la llantera, auxiliar en la cementera"— no se crea a nadie ni se toca su contraseña:
-/// se le da acceso a la empresa nueva y ya.
-///
-/// <para><b>El límite de usuarios</b></para>
-/// Tres accesos activos por empresa: el que la dio de alta más dos auxiliares. No hay ningún
-/// campo de "rol": el límite cuenta filas de <see cref="UsuarioEmpresa"/>, no una etiqueta.
-/// </summary>
+/// <summary>Administra accesos de la empresa. El titular crea usuarios o vincula usuarios de la misma cuenta sin cambiar sus contraseñas. El alta directa no verifica el correo y el creador conoce la contraseña inicial; queda registrada en bitácora. El titular no se modifica desde esta pantalla.</summary>
 public sealed class ServicioDeUsuarios(
     AppDbContext baseDeDatos,
     UserManager<Usuario> usuarios,
@@ -69,10 +37,11 @@ public sealed class ServicioDeUsuarios(
                 ue.Activo && ue.Usuario.Activo,
                 ue.UsuarioId == contexto.UsuarioActual,
                 ue.Usuario.CreadoPorAdministrador,
-                ue.Permisos.Select(p => p.PermisoClave).ToList()))
+                ue.Permisos.Select(p => p.PermisoClave).ToList(),
+                ue.Usuario.EsTitular))
             .ToListAsync(ct);
 
-        return new UsuariosDeLaEmpresaDto(miembros, LimitePorEmpresa);
+        return new UsuariosDeLaEmpresaDto([.. miembros.Select(ConPermisosDeTitular)], LimitePorEmpresa);
     }
 
     public async Task<Resultado<RespuestaCrearUsuario>> CrearAsync(PeticionCrearUsuario peticion, CancellationToken ct)
@@ -156,6 +125,8 @@ public sealed class ServicioDeUsuarios(
         if (string.IsNullOrWhiteSpace(correo) || !EsCorreoValido(correo))
             return ErrorNegocio.Validacion("correo-invalido", "Escribe un correo válido.");
 
+        if (await ErrorSiEsTitularAsync(usuarioId, ct) is { } titular) return titular;
+
         var pertenece = await baseDeDatos.UsuariosEmpresas
             .AnyAsync(ue => ue.UsuarioId == usuarioId && ue.EmpresaId == contexto.EmpresaId, ct);
 
@@ -217,6 +188,8 @@ public sealed class ServicioDeUsuarios(
                 "no-a-uno-mismo",
                 "Tu propia contraseña se cambia desde tu perfil, no desde aquí.");
 
+        if (await ErrorSiEsTitularAsync(usuarioId, ct) is { } titular) return titular;
+
         var pertenece = await baseDeDatos.UsuariosEmpresas
             .AnyAsync(ue => ue.UsuarioId == usuarioId && ue.EmpresaId == contexto.EmpresaId, ct);
 
@@ -263,9 +236,11 @@ public sealed class ServicioDeUsuarios(
 
     public async Task<Resultado> ActualizarPermisosAsync(Guid usuarioId, IReadOnlyList<string> permisos, CancellationToken ct)
     {
-        var invalido = permisos.FirstOrDefault(p => !Permisos.EsValido(p));
+        var invalido = permisos.FirstOrDefault(p => !Permisos.EsAsignable(p));
         if (invalido is not null)
-            return ErrorNegocio.Validacion("permiso-invalido", $"«{invalido}» no es un permiso válido.");
+            return ErrorNegocio.Validacion("permiso-invalido", $"«{invalido}» no es un permiso que se pueda asignar.");
+
+        if (await ErrorSiEsTitularAsync(usuarioId, ct) is { } titular) return titular;
 
         var empresaId = contexto.EmpresaId;
 
@@ -313,6 +288,8 @@ public sealed class ServicioDeUsuarios(
 
         if (!activo && usuarioId == contexto.UsuarioActual)
             return ErrorNegocio.Regla("no-autodesactivar", "No puedes desactivarte a ti mismo. Pide a otro administrador que lo haga.");
+
+        if (await ErrorSiEsTitularAsync(usuarioId, ct) is { } titular) return titular;
 
         var miembro = await baseDeDatos.UsuariosEmpresas
             .Include(ue => ue.Usuario)
@@ -401,6 +378,10 @@ public sealed class ServicioDeUsuarios(
         if (usuarioExistente.CuentaId != contexto.CuentaActual)
             return ErrorNegocio.Conflicto("correo-en-uso", "Ese correo ya está en uso por otra cuenta.");
 
+        if (usuarioExistente.EsTitular)
+            return ErrorNegocio.Conflicto("titular-no-modificable",
+                "Ese correo es del titular de la cuenta: ya tiene acceso a todas sus empresas.");
+
         var existente = await baseDeDatos.UsuariosEmpresas
             .FirstOrDefaultAsync(ue => ue.UsuarioId == usuarioExistente.Id && ue.EmpresaId == empresaId, ct);
 
@@ -482,11 +463,20 @@ public sealed class ServicioDeUsuarios(
             .Select(p => p.PermisoClave)
             .ToListAsync(ct);
 
-        return new UsuarioDeEmpresaDto(
+        return ConPermisosDeTitular(new UsuarioDeEmpresaDto(
             miembro.UsuarioId, miembro.Usuario.Nombre, miembro.Usuario.Email!,
             miembro.Activo && miembro.Usuario.Activo, miembro.UsuarioId == contexto.UsuarioActual,
-            miembro.Usuario.CreadoPorAdministrador, permisos);
+            miembro.Usuario.CreadoPorAdministrador, permisos, miembro.Usuario.EsTitular));
     }
+
+    // El titular no tiene renglones de permiso: la lista los muestra todos, como el token.
+    private static UsuarioDeEmpresaDto ConPermisosDeTitular(UsuarioDeEmpresaDto usuario)
+        => usuario.EsTitular ? usuario with { Permisos = Permisos.Asignables } : usuario;
+
+    private async Task<ErrorNegocio?> ErrorSiEsTitularAsync(Guid usuarioId, CancellationToken ct)
+        => await baseDeDatos.Users.AsNoTracking().AnyAsync(u => u.Id == usuarioId && u.EsTitular, ct)
+            ? ErrorNegocio.Regla("titular-no-modificable", "Nadie puede modificar al titular de la cuenta.")
+            : null;
 
     private static ErrorNegocio? ValidarDatosBasicos(string correo, string nombre, IReadOnlyList<string> permisos)
     {
@@ -498,9 +488,9 @@ public sealed class ServicioDeUsuarios(
         if (string.IsNullOrWhiteSpace(nombre))
             errores["nombre"] = ["El nombre es obligatorio."];
 
-        var invalido = permisos.FirstOrDefault(p => !Permisos.EsValido(p));
+        var invalido = permisos.FirstOrDefault(p => !Permisos.EsAsignable(p));
         if (invalido is not null)
-            errores["permisos"] = [$"«{invalido}» no es un permiso válido."];
+            errores["permisos"] = [$"«{invalido}» no es un permiso que se pueda asignar."];
 
         return errores.Count == 0
             ? null

@@ -12,7 +12,7 @@ public sealed class OpcionesDeEsquemasSat
     /// <summary>
     /// Carpeta con <c>cfdv40.xsd</c>, sus importados y <c>cadenaoriginal_4_0.xslt</c>. Los
     /// XSLT de complemento van en la subcarpeta <c>xslt</c>. No están en el repositorio: son
-    /// artefactos del SAT, como el <c>.xls</c> de catálogos (ver docs/DESPLIEGUE.md).
+    /// artefactos del SAT, como el <c>.xls</c> de catálogos.
     /// </summary>
     public string Ruta { get; init; } = "CatalogosSAT";
 }

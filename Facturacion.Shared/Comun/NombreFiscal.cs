@@ -3,22 +3,7 @@ using System.Text;
 
 namespace Facturacion.Shared.Comun;
 
-/// <summary>
-/// Normaliza un nombre o razón social como exige CFDI 4.0: mayúsculas, sin acentos y sin
-/// régimen de capital (ARQUITECTURA.md §7). Es la causa más común de rechazo del PAC, porque el
-/// nombre tiene que coincidir <b>exactamente</b> con la Constancia de Situación Fiscal.
-///
-/// <para><b>Por qué vive en Shared y no en el servidor</b></para>
-/// El <c>Client</c> la usa para enseñarle al capturista, mientras escribe, en qué va a
-/// quedar convertido lo que tecleó. La que cuenta es la del servidor, que se ejecuta
-/// siempre (ARQUITECTURA.md §3); tenerla en un solo lugar es lo que garantiza que las dos digan
-/// lo mismo. La usan el emisor (fase 4) y el receptor (fase 5).
-///
-/// <para><b>La eñe no es un acento</b></para>
-/// Quitar diacríticos a la brava convierte «PEÑA» en «PENA», y eso <b>rompe</b> el
-/// timbrado: la Ñ es una letra propia del español y el SAT la conserva en la constancia.
-/// Por eso <see cref="QuitarAcentos"/> descompone letra por letra y deja la Ñ intacta.
-/// </summary>
+/// <summary>Normaliza nombres de emisor y receptor para CFDI 4.0. El cliente anticipa el resultado y el servidor aplica la validación al guardar.</summary>
 public static class NombreFiscal
 {
     /// <summary>

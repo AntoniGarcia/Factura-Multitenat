@@ -12,21 +12,7 @@ using Microsoft.EntityFrameworkCore;
 
 namespace Facturacion.Server.Modules.Documentos.Emision;
 
-/// <summary>
-/// Alta y edición de borradores de factura estándar (§12 del documento funcional).
-///
-/// <para><b>El comprobante es el borrador y el timbrado: la misma fila</b></para>
-/// No hay una tabla de borradores aparte. Se edita el mismo <see cref="Comprobante"/> mientras
-/// está en <c>borrador</c> o <c>error</c>; al confirmarlo con éxito, <c>ServicioDeTimbrado</c>
-/// lo congela. Los campos del receptor ya son copias desde B0 —nunca llaves foráneas—, así que
-/// "congelar" no cambia la forma del dato: solo deja de reescribirse.
-///
-/// <para><b>Por qué los totales se calculan y se guardan aquí, no al timbrar</b></para>
-/// <see cref="Salidas.GeneradorDeXmlCfdi"/> lee <c>Concepto.Importe</c> e
-/// <c>ImpuestoConcepto.Base/Importe</c> directo de la base: no vuelve a invocar el motor. Si
-/// esos valores no quedaran correctos desde que se guarda el borrador, el XML saldría con
-/// números que nadie calculó a propósito.
-/// </summary>
+/// <summary>Guarda y edita borradores con sus datos e importes calculados. El timbrado utiliza esos valores y congela el comprobante.</summary>
 public sealed class ServicioDeEmision(
     AppDbContext baseDeDatos,
     IContextoEmpresaInterno contexto,
@@ -51,6 +37,9 @@ public sealed class ServicioDeEmision(
 
         if (!VariantesDeFactura.EsValida(variante))
             return ErrorNegocio.Validacion("variante-desconocida", $"'{variante}' no es una clase de factura conocida.");
+
+        if (PermisoDeEmision.Exigir(contexto, Permisos.ParaVarianteDeFactura(variante)) is { } sinPermiso)
+            return sinPermiso;
 
         if (await ValidarLicenciaDeVarianteAsync(variante, ct) is { } sinLicencia)
             return sinLicencia;
@@ -90,7 +79,7 @@ public sealed class ServicioDeEmision(
     }
 
     /// <summary>
-    /// Ocultar la opción en el modal no basta (ARQUITECTURA.md §4): sin el módulo contratado no se
+    /// Ocultar la opción en el modal no basta: sin el módulo contratado no se
     /// crea el borrador, aunque la petición llegue armada a mano.
     /// </summary>
     private async Task<ErrorNegocio?> ValidarLicenciaDeVarianteAsync(string variante, CancellationToken ct)
@@ -132,6 +121,9 @@ public sealed class ServicioDeEmision(
 
         if (comprobante is null)
             return ErrorNegocio.NoEncontrado("comprobante-no-encontrado", "Ese comprobante no existe.");
+
+        if (PermisoDeEmision.Exigir(contexto, comprobante) is { } sinPermiso)
+            return sinPermiso;
 
         if (comprobante.TipoDeComprobante != TipoFactura)
             return ErrorNegocio.Conflicto("tipo-comprobante-incompatible",
@@ -210,8 +202,7 @@ public sealed class ServicioDeEmision(
     }
 
     /// <summary>
-    /// Solo para un borrador nunca timbrado (ARQUITECTURA.md §5, la única excepción a «nada se
-    /// borra»). Uno en <c>error</c> ya tomó folio: descartarlo dejaría un hueco sin explicación
+    /// Solo para un borrador nunca timbrado. Uno en <c>error</c> ya tomó folio: descartarlo dejaría un hueco sin explicación
     /// en la numeración, así que se descarta re-timbrando o dejándolo ahí, nunca borrándolo.
     /// </summary>
     public async Task<Resultado> EliminarBorradorAsync(Guid id, CancellationToken ct)
@@ -223,6 +214,9 @@ public sealed class ServicioDeEmision(
 
         if (comprobante is null)
             return ErrorNegocio.NoEncontrado("comprobante-no-encontrado", "Ese comprobante no existe.");
+
+        if (PermisoDeEmision.Exigir(contexto, comprobante) is { } sinPermiso)
+            return sinPermiso;
 
         if (comprobante.Estatus != "borrador")
             return ErrorNegocio.Conflicto(
@@ -260,10 +254,7 @@ public sealed class ServicioDeEmision(
             : relacionado;
     }
 
-    /// <summary>
-    /// El listado de documentos de §1 del documento funcional. No filtra por empresa: de eso
-    /// se encarga el filtro global de EF Core desde el claim (ARQUITECTURA.md §5).
-    /// </summary>
+    /// <summary>Lista los documentos de la empresa activa mediante el filtro global de EF.</summary>
     /// <param name="busca">
     /// RFC o nombre del receptor. Si el texto es un número se interpreta además como folio,
     /// que es como lo busca un contador que trae la factura impresa en la mano.
@@ -272,7 +263,7 @@ public sealed class ServicioDeEmision(
     /// <param name="hastaUtc">
     /// Fin del rango, <b>exclusivo</b> y ya en UTC. Quien llama traduce el día que eligió el
     /// usuario a instantes UTC: la columna guarda momentos, no fechas, y la tabla los muestra
-    /// en la hora del lugar de expedición (ARQUITECTURA.md §5). Si el corte se hiciera aquí sobre
+    /// en la hora del lugar de expedición. Si el corte se hiciera aquí sobre
     /// la fecha en UTC, una factura de las 8 de la noche aparecería fuera del día en que se
     /// emitió.
     /// </param>
@@ -428,6 +419,13 @@ public sealed class ServicioDeEmision(
                 return ErrorNegocio.Validacion("numero-identificacion-invalido",
                     $"El identificador del renglón {i + 1} debe tener hasta 100 caracteres y no contener '|'.");
 
+            // El concepto copia la unidad del producto en cada guardado: basta con corregir el
+            // producto. Detenerlo aquí evita que el error aparezca al timbrar, con el folio ya apartado.
+            if (!UnidadDeConcepto.EsValida(producto.UnidadTexto))
+                return ErrorNegocio.Validacion("unidad-de-concepto-invalida",
+                    $"El producto del renglón {i + 1} tiene la unidad «{producto.UnidadTexto}». " +
+                    $"{UnidadDeConcepto.Regla} Corrígela en el producto y vuelve a guardar.");
+
             resueltos.Add(new ConceptoResuelto(
                 Orden: i + 1,
                 Producto: producto,
@@ -475,7 +473,7 @@ public sealed class ServicioDeEmision(
         comprobante.ReceptorResidenciaFiscal = receptor?.ResidenciaFiscal;
         comprobante.ReceptorNumRegIdTrib = receptor?.NumRegIdTrib;
 
-        // Información Global solo aplica al RFC genérico nacional (ARQUITECTURA.md §7); en
+        // Información Global solo aplica al RFC genérico nacional; en
         // cualquier otro caso no se emite el nodo, así que ni se guardan los campos.
         var esPublicoEnGeneral = receptor?.Rfc == "XAXX010101000";
 

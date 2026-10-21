@@ -5,7 +5,7 @@ namespace Facturacion.Server.Modules.Plataforma.Catalogos;
 
 /// <summary>
 /// Punto de entrada de <c>dotnet run -- --cargar-catalogos ruta.xls</c>. Vive aquí y no en
-/// <c>Program.cs</c> (REPARTO-EQUIPO.md §5: ese archivo no crece) — Program.cs solo detecta
+/// <c>Program.cs</c> — Program.cs solo detecta
 /// el modificador y llama a <see cref="EjecutarAsync"/>.
 /// </summary>
 public static class CargaDeCatalogosCli

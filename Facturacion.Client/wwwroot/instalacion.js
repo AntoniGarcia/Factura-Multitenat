@@ -1,8 +1,4 @@
-// El navegador dispara 'beforeinstallprompt' solo cuando decide que la PWA es instalable
-// (manifiesto válido, service worker registrado, HTTPS). Guardamos ese evento para poder
-// mostrar el botón de instalación "solo cuando el navegador lo permite", como pide
-// PROMPT-FASES-A.md en la fase 2, y para poder disparar el prompt del sistema operativo
-// más tarde, cuando el usuario haga clic.
+// Conserva el evento de instalación de la PWA para mostrar el botón solo cuando el navegador lo permita.
 let eventoDiferido = null;
 let referenciaDotNet = null;
 

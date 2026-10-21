@@ -26,17 +26,17 @@ public sealed record CfdiSellado(string Xml, string CadenaOriginal, string Sello
 ///
 /// <para><b>El orden importa y no es arbitrario</b></para>
 /// <list type="number">
-///   <item><description>Se arma el XML con <c>Sello</c> vacío.</description></item>
-///   <item><description>Se calcula la cadena original sobre ese documento.</description></item>
-///   <item><description>Se firma la cadena y el resultado se escribe en <c>Sello</c>.</description></item>
-///   <item><description>Se valida contra el XSD, ya sellado, que es como viajará al PAC.</description></item>
+/// <item><description>Se arma el XML con <c>Sello</c> vacío.</description></item>
+/// <item><description>Se calcula la cadena original sobre ese documento.</description></item>
+/// <item><description>Se firma la cadena y el resultado se escribe en <c>Sello</c>.</description></item>
+/// <item><description>Se valida contra el XSD, ya sellado, que es como viajará al PAC.</description></item>
 /// </list>
 /// Validar antes de sellar dejaría sin comprobar justamente el documento que se envía. Y
 /// sellar antes de calcular la cadena es imposible: la cadena se extrae del XML.
 ///
 /// <para><b>La llave privada no sale de este método</b></para>
 /// Se abre, se firma y se desecha en el mismo ámbito. No se registra, no se serializa y no
-/// vuelve al cliente (ARQUITECTURA.md §4).
+/// vuelve al cliente.
 /// </summary>
 public sealed class ServicioDeXmlCfdi(
     AppDbContext baseDeDatos,

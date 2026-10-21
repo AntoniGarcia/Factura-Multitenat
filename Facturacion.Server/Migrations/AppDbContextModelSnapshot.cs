@@ -2847,8 +2847,38 @@ namespace Facturacion.Server.Migrations
                     b.HasData(
                         new
                         {
-                            Clave = "timbrar",
-                            Descripcion = "Emitir y timbrar comprobantes"
+                            Clave = "ver_documentos",
+                            Descripcion = "Consultar y descargar comprobantes"
+                        },
+                        new
+                        {
+                            Clave = "emitir_factura",
+                            Descripcion = "Emitir facturas básicas"
+                        },
+                        new
+                        {
+                            Clave = "emitir_notaria",
+                            Descripcion = "Emitir facturas con complemento de Notarios Públicos"
+                        },
+                        new
+                        {
+                            Clave = "emitir_carta_porte",
+                            Descripcion = "Emitir traslados con Carta Porte"
+                        },
+                        new
+                        {
+                            Clave = "emitir_comercio_exterior",
+                            Descripcion = "Emitir facturas con Comercio Exterior"
+                        },
+                        new
+                        {
+                            Clave = "emitir_obra",
+                            Descripcion = "Emitir facturas de obra"
+                        },
+                        new
+                        {
+                            Clave = "emitir_pago",
+                            Descripcion = "Emitir complementos de pago"
                         },
                         new
                         {
@@ -2857,23 +2887,43 @@ namespace Facturacion.Server.Migrations
                         },
                         new
                         {
-                            Clave = "administrar_usuarios",
-                            Descripcion = "Dar de alta usuarios y asignar permisos"
+                            Clave = "enviar_correo",
+                            Descripcion = "Enviar comprobantes por correo"
+                        },
+                        new
+                        {
+                            Clave = "administrar_clientes",
+                            Descripcion = "Dar de alta, editar y dar de baja clientes"
+                        },
+                        new
+                        {
+                            Clave = "administrar_productos",
+                            Descripcion = "Dar de alta, editar y dar de baja productos"
+                        },
+                        new
+                        {
+                            Clave = "administrar_vehiculos",
+                            Descripcion = "Dar de alta, editar y dar de baja vehículos"
+                        },
+                        new
+                        {
+                            Clave = "administrar_figuras",
+                            Descripcion = "Dar de alta, editar y dar de baja figuras de transporte"
                         },
                         new
                         {
                             Clave = "comprar_timbres",
-                            Descripcion = "Comprar paquetes de timbres"
+                            Descripcion = "Consultar el saldo y comprar paquetes de timbres"
                         },
                         new
                         {
-                            Clave = "ver_reportes",
-                            Descripcion = "Consultar reportes de la empresa"
+                            Clave = "mi_empresa",
+                            Descripcion = "Editar los datos fiscales y los certificados de la empresa"
                         },
                         new
                         {
-                            Clave = "configurar_empresa",
-                            Descripcion = "Configurar la empresa, sus series y sus certificados"
+                            Clave = "configuracion",
+                            Descripcion = "Configurar correo, impuestos, logo, Notaría y series de la empresa"
                         });
                 });
 
@@ -3317,6 +3367,9 @@ namespace Facturacion.Server.Migrations
                     b.Property<bool>("EmailConfirmed")
                         .HasColumnType("bit");
 
+                    b.Property<bool>("EsTitular")
+                        .HasColumnType("bit");
+
                     b.Property<DateTime>("FechaAltaUtc")
                         .HasColumnType("datetime2");
 
@@ -3373,6 +3426,10 @@ namespace Facturacion.Server.Migrations
                         .IsUnique()
                         .HasDatabaseName("UserNameIndex")
                         .HasFilter("[NormalizedUserName] IS NOT NULL");
+
+                    b.HasIndex(new[] { "CuentaId" }, "IX_AspNetUsers_CuentaId_Titular")
+                        .IsUnique()
+                        .HasFilter("[EsTitular] = 1");
 
                     b.ToTable("AspNetUsers", (string)null);
                 });

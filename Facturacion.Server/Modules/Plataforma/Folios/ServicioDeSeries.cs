@@ -22,7 +22,7 @@ public sealed class ServicioDeSeries(AppDbContext baseDeDatos, IServicioDeBitaco
 
     /// <summary>
     /// Series activas para elegir al emitir. Sin <c>FolioActual</c> y sin exigir
-    /// <c>configurar_empresa</c>: cualquiera con sesión que vaya a timbrar necesita ver esto,
+    /// <c>configuracion</c>: cualquiera con sesión que vaya a timbrar necesita ver esto,
     /// y enseñarle cuánto lleva emitido cada serie no le hace falta para elegir una.
     /// </summary>
     public async Task<IReadOnlyList<SerieParaEmisionDto>> ListarActivasAsync(

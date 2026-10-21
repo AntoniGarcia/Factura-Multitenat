@@ -1,6 +1,6 @@
 @page "/productos/nuevo"
 @page "/productos/{Id:guid}"
-@attribute [Authorize(Policy = Permisos.ConfigurarEmpresa)]
+@attribute [Authorize(Policy = Permisos.AdministrarProductos)]
 @using Facturacion.Shared.Contratos
 @inject ServicioDeProductos Productos
 @inject ServicioDeEmpresa Empresas
@@ -11,7 +11,7 @@
 <PageTitle>@(EsNuevo ? "Nuevo producto" : "Editar producto")</PageTitle>
 <TituloDePagina Texto="@(EsNuevo ? "Nuevo producto" : $"Producto {_codigoInterno}")" />
 
-<TarjetaFormulario RutaVolver="/productos">
+<TarjetaFormulario RutaVolver="/productos" Class="tarjeta-formulario-catalogo">
 <PanelErrores Problema="_error" />
 
 @if (_cargando)
@@ -22,24 +22,28 @@ else
 {
     <EditForm Model="this" OnValidSubmit="Guardar">
         <div class="formulario-catalogo-secciones">
-        <section class="formulario-catalogo-seccion formulario-catalogo-seccion-principal">
-        <h2 class="seccion-titulo">Identificación</h2>
+        <section class="formulario-catalogo-seccion formulario-catalogo-seccion-principal" aria-labelledby="producto-identificacion">
+        <h2 class="seccion-titulo" id="producto-identificacion">Identificación</h2>
 
-        <div class="rejilla-campos">
+        <div class="catalogo-rejilla">
+            <div class="catalogo-campo-amplio">
             <MudTextField @bind-Value="_descripcion" Label="Descripción" MaxLength="1000"
-                          Lines="2" HelperText="Es lo que sale como concepto en la factura." />
-            <MudTextField @bind-Value="_unidadTexto" Label="Unidad de medida" MaxLength="64"
-                          HelperText="La que lee el cliente en el PDF: «Litro», «Caja con 12»." />
+                          Lines="2" HelperText="Se utiliza como concepto en la factura." />
+            </div>
+            <div class="catalogo-campo-corto">
+            <MudTextField @bind-Value="_unidadTexto" Label="Unidad de medida" MaxLength="@UnidadDeConcepto.LongitudMaxima"
+                          HelperText="Texto para el PDF, por ejemplo: Litro." />
+            </div>
         </div>
         </section>
 
         <section class="formulario-catalogo-seccion formulario-catalogo-seccion-ancha">
         <h2 class="seccion-titulo">Claves del SAT</h2>
         <p class="seccion-ayuda">
-            Se eligen del catálogo, nunca se escriben a mano. Al elegirlas se muestra su descripción.
+            Busca por clave o descripción y selecciona una opción del catálogo.
         </p>
 
-        <div class="rejilla-campos">
+        <div class="catalogo-rejilla catalogo-rejilla-dos">
             <div>
                 <BuscadorCatalogo Catalogo="c_ClaveProdServ"
                                   Label="Clave de producto o servicio"
@@ -70,10 +74,10 @@ else
         </div>
         </section>
 
-        <section class="formulario-catalogo-seccion">
+        <section class="formulario-catalogo-seccion formulario-catalogo-seccion-ancha">
         <h2 class="seccion-titulo">Precio y peso</h2>
 
-        <div class="rejilla-campos">
+        <div class="catalogo-rejilla catalogo-rejilla-dos">
             <MudNumericField @bind-Value="_valorUnitario" Label="Precio de venta" Min="0M" Format="N2"
                              Class="cifra-tabular" />
             <MudNumericField @bind-Value="_pesoKg" Label="Peso en kilogramos" Min="0M" Format="N3"
@@ -102,8 +106,7 @@ else
         else
         {
             <p class="seccion-ayuda">
-                Los atajos cubren los casos comunes. Debajo se ve lo que de verdad va a viajar al
-                XML, que es lo que el SAT valida.
+                Elige un caso común o agrega impuestos específicos. Revisa el desglose antes de guardar.
             </p>
 
             <div class="atajos-iva">
@@ -164,7 +167,9 @@ else
                 </tbody>
             </MudSimpleTable>
 
-            <h3 class="seccion-subtitulo">Agregar otro impuesto</h3>
+            <details class="catalogo-opcional catalogo-impuesto-adicional">
+            <summary>Agregar otro impuesto</summary>
+            <div class="catalogo-opcional-contenido">
             <div class="rejilla-campos">
                 <MudSelect T="string" @bind-Value="_nuevoImpuesto" Label="Impuesto">
                     @foreach (var i in Catalogos.Obtener("c_Impuesto"))
@@ -190,14 +195,17 @@ else
 
                 <MudButton Variant="Variant.Outlined" OnClick="AgregarImpuesto">Agregar</MudButton>
             </div>
+            </div>
+            </details>
         }
         </section>
         </div>
 
         <div class="tarjeta-formulario-acciones">
+            <span class="catalogo-acciones-ayuda">Revisa las claves SAT y el desglose de impuestos.</span>
             <MudButton Variant="Variant.Text" OnClick="@(() => Navegacion.NavigateTo("/productos"))">Cancelar</MudButton>
             <MudButton ButtonType="ButtonType.Submit" Variant="Variant.Filled" Color="Color.Primary" Disabled="_guardando">
-                @(_guardando ? "Guardando…" : "Guardar")
+                @(_guardando ? "Guardando…" : "Guardar producto")
             </MudButton>
         </div>
     </EditForm>
@@ -243,12 +251,7 @@ else
     private decimal? _nuevaTasa;
     private bool _nuevoEsRetencion;
 
-    /// <summary>
-    /// Los tres casos que cubren casi todo, como el grupo de radios del sistema viejo (§6
-    /// del documento funcional). Son atajos sobre el modelo completo, no un modelo aparte:
-    /// cada uno escribe las tres columnas del SAT y se ve en la tabla de abajo.
-    /// El 8 % es la tasa de la franja fronteriza.
-    /// </summary>
+    /// <summary>Atajos de IVA que completan impuesto, factor y tasa sin sustituir la configuración detallada.</summary>
     private static readonly (string Etiqueta, string Factor, decimal? Tasa)[] Atajos =
     [
         ("IVA 16 %", "Tasa", 0.16m),
@@ -279,20 +282,12 @@ else
                 _impuestos.Clear();
                 _impuestos.AddRange(producto.Impuestos);
 
-                // Se resuelven contra el catálogo para poder mostrar la descripción, que es
-                // lo que le dice al capturista si eligió la clave correcta.
-                _claveProdServSel = await ResolverAsync("c_ClaveProdServ", producto.ClaveProdServ);
-                _claveUnidadSel = await ResolverAsync("c_ClaveUnidad", producto.ClaveUnidad);
+                _claveProdServSel = await Busqueda.ResolverAsync("c_ClaveProdServ", producto.ClaveProdServ, CancellationToken.None);
+                _claveUnidadSel = await Busqueda.ResolverAsync("c_ClaveUnidad", producto.ClaveUnidad, CancellationToken.None);
             }
         }
 
         _cargando = false;
-    }
-
-    private async Task<ClaveSatDto?> ResolverAsync(string catalogo, string clave)
-    {
-        var encontrados = await Busqueda.BuscarAsync(catalogo, clave, CancellationToken.None);
-        return encontrados.FirstOrDefault(c => c.Clave == clave);
     }
 
     private void AlElegirClaveProdServ(ClaveSatDto? clave) => _claveProdServSel = clave;
@@ -302,8 +297,11 @@ else
         _claveUnidadSel = clave;
 
         // La unidad en texto se precarga con la del catálogo, pero se puede cambiar: es lo
-        // que ve el cliente y a veces conviene que diga «Caja con 12» y no «Pieza».
-        if (clave is not null && string.IsNullOrWhiteSpace(_unidadTexto))
+        // que ve el cliente y a veces conviene que diga «Caja con 12» y no «Pieza». Un nombre
+        // del catálogo que no cabe en los 20 caracteres del SAT no se precarga ni se recorta:
+        // «Gramo por centímetro» ya significa otra cosa.
+        if (clave is not null && string.IsNullOrWhiteSpace(_unidadTexto) &&
+            UnidadDeConcepto.EsValida(clave.Descripcion))
             _unidadTexto = clave.Descripcion;
     }
 

@@ -3,22 +3,7 @@ using System.Security.Cryptography.X509Certificates;
 
 namespace Facturacion.Server.Infra.Almacen;
 
-/// <summary>
-/// <c>dotnet run -- --generar-llave-maestra</c>. Imprime un certificado nuevo en base 64
-/// para <c>Almacen:LlaveMaestraPfx</c>, que es lo que protege el llavero de Data Protection
-/// y, con él, los CSD guardados (ARQUITECTURA.md §4).
-/// <para>
-/// Existe como comando y no como generación automática al arrancar a propósito: una clave
-/// maestra que la aplicación se inventa sola y guarda junto a lo que protege no protege de
-/// nada. Al obligar a copiarla a la configuración, queda claro que es un secreto de
-/// despliegue y que hay que respaldarlo.
-/// </para>
-/// <para>
-/// <b>Perderla es perder los certificados.</b> Sin ella el llavero no se puede leer, y sin
-/// el llavero los <c>.cer</c> y <c>.key</c> guardados quedan ilegibles y hay que volver a
-/// cargarlos.
-/// </para>
-/// </summary>
+/// <summary>Genera un certificado para proteger el llavero. Debe conservarse y respaldarse.</summary>
 public static class GeneracionDeLlaveMaestraCli
 {
     public static void Ejecutar()

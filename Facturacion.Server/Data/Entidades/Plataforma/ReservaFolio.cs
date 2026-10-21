@@ -1,18 +1,6 @@
 namespace Facturacion.Server.Data.Entidades.Plataforma;
 
-/// <summary>
-/// Un folio apartado de una serie. Existe para poder explicar después cada número de la
-/// numeración, incluidos los que no llegaron a ningún comprobante.
-///
-/// <para><b>Un folio abandonado no se recicla</b></para>
-/// ARQUITECTURA.md §5 es explícito: si el timbrado falla después de tomar folio, el comprobante
-/// queda en error con ese folio apartado y el folio no vuelve a la serie. Reciclarlo
-/// significaría que dos comprobantes distintos pudieran llevar el mismo número en momentos
-/// distintos, que es exactamente lo que la numeración consecutiva sirve para impedir.
-/// Por eso <see cref="EstadosDeReservaFolio.Abandonado"/> deja registro en vez de devolver
-/// el número: el hueco en la numeración queda justificado y auditable.
-/// </para>
-/// </summary>
+/// <summary>Reserva un número de serie sin reutilizarlo, aunque falle el timbrado. La reserva explica los huecos de numeración.</summary>
 public sealed class ReservaFolio : IEntidadDeEmpresa
 {
     public Guid Id { get; set; }
@@ -28,10 +16,7 @@ public sealed class ReservaFolio : IEntidadDeEmpresa
     /// <summary>Uno de <see cref="EstadosDeReservaFolio"/>.</summary>
     public required string Estado { get; set; }
 
-    /// <summary>
-    /// Comprobante que acabó usando el folio. Lo llena la mitad B al confirmar; nulo
-    /// mientras la reserva sigue en curso o si se abandonó.
-    /// </summary>
+    /// <summary>Comprobante asociado al confirmar la reserva; nulo mientras está en curso o si se abandona.</summary>
     public Guid? ComprobanteId { get; set; }
 
     public DateTime MomentoUtc { get; set; }

@@ -16,29 +16,31 @@ else if (_falloCarga)
 }
 else
 {
+    <div class="notaria-formulario">
     <section class="emision-seccion">
         <h2 class="seccion-titulo">Datos de la operación</h2>
         <p class="seccion-ayuda">
-            Guarda la operación, los inmuebles, vendedores y compradores antes de abrir la vista previa PDF
-            o validar el XML; ambas opciones usan los datos guardados.
+            Datos del instrumento y de la operación inmobiliaria.
         </p>
-        <div class="rejilla-campos">
+        <div class="notaria-rejilla notaria-rejilla-dos">
             <MudNumericField T="int" @bind-Value="_numeroInstrumento" Label="Número de instrumento notarial"
                              Min="1" Max="999999" Required="true" Disabled="@(!Editable)" />
             <MudDatePicker Label="Fecha del instrumento" Date="@_fechaInstrumento"
                            DateChanged="v => _fechaInstrumento = v ?? DateTime.Today" Required="true" Disabled="@(!Editable)" />
-            <CampoMoneda Valor="@_montoOperacion" ValorCambiado="v => _montoOperacion = v"
-                         Label="Monto de la operación" Requerido="true" Deshabilitado="@(!Editable)" />
+        </div>
+        <div class="notaria-rejilla">
             <CampoMoneda Valor="@_subtotalOperacion" ValorCambiado="v => _subtotalOperacion = v"
                          Label="Subtotal de la operación" Requerido="true" Deshabilitado="@(!Editable)" />
             <CampoMoneda Valor="@_ivaOperacion" ValorCambiado="v => _ivaOperacion = v"
                          Label="IVA de la operación" Requerido="true" Deshabilitado="@(!Editable)" />
+            <CampoMoneda Valor="@_montoOperacion" ValorCambiado="v => _montoOperacion = v"
+                         Label="Monto de la operación" Requerido="true" Deshabilitado="@(!Editable)" />
         </div>
         <p class="seccion-ayuda">El monto debe ser igual al subtotal más el IVA.</p>
     </section>
 
     <section class="emision-seccion">
-        <div class="seccion-encabezado">
+        <div class="notaria-encabezado">
             <div>
                 <h2 class="seccion-titulo">Inmuebles</h2>
                 <p class="seccion-ayuda">Agrega todos los inmuebles que formen parte del mismo instrumento.</p>
@@ -53,15 +55,17 @@ else
         {
             var indice = i;
             var inmueble = _inmuebles[indice];
-            <article class="concepto-editor">
-                <div class="concepto-editor-identidad">
-                    <span class="concepto-editor-numero">@(indice + 1)</span>
-                    <strong>Inmueble @(indice + 1)</strong>
-                </div>
+            <article class="notaria-tarjeta" @key="inmueble">
+                <div class="notaria-tarjeta-cabecera">
+                <h3 class="notaria-tarjeta-titulo">
+                    <span class="notaria-numero" aria-hidden="true">@(indice + 1)</span>
+                    Inmueble @(indice + 1)
+                </h3>
                 <MudIconButton Icon="@Icons.Material.Filled.Delete" Size="Size.Small" title="Quitar inmueble"
                                aria-label="Quitar inmueble" OnClick="@(() => _inmuebles.RemoveAt(indice))"
                                Disabled="@(!Editable || _inmuebles.Count == 1)" />
-                <div class="rejilla-campos">
+                </div>
+                <div class="notaria-rejilla notaria-rejilla-dos">
                     <MudSelect T="string" @bind-Value="inmueble.TipoInmueble" Label="Tipo de inmueble" Required="true"
                                Disabled="@(!Editable)">
                         @foreach (var tipo in TiposDeInmueble)
@@ -70,24 +74,29 @@ else
                         }
                     </MudSelect>
                     <MudTextField @bind-Value="inmueble.Calle" Label="Calle" MaxLength="150" Required="true" Disabled="@(!Editable)" />
+                </div>
+                <div class="notaria-rejilla">
                     <MudTextField @bind-Value="inmueble.NumeroExterior" Label="Número exterior" MaxLength="55" Disabled="@(!Editable)" />
                     <MudTextField @bind-Value="inmueble.NumeroInterior" Label="Número interior" MaxLength="30" Disabled="@(!Editable)" />
                     <MudTextField @bind-Value="inmueble.Colonia" Label="Colonia" MaxLength="100" Disabled="@(!Editable)" />
                     <MudTextField @bind-Value="inmueble.Localidad" Label="Localidad" MaxLength="100" Disabled="@(!Editable)" />
                     <MudTextField @bind-Value="inmueble.Referencia" Label="Referencia" MaxLength="100" Disabled="@(!Editable)" />
+                    <MudTextField @bind-Value="inmueble.CodigoPostal" Label="Código postal" MaxLength="5" Required="true"
+                                  Class="cifra-tabular" Disabled="@(!Editable)" />
+                </div>
+                <div class="notaria-rejilla">
                     <MudTextField @bind-Value="inmueble.Municipio" Label="Municipio o alcaldía" MaxLength="100" Required="true" Disabled="@(!Editable)" />
                     <BuscadorCatalogo Catalogo="c_Estado" Label="Entidad federativa" Valor="@inmueble.Estado"
                                       ValorCambiado="v => inmueble.Estado = v" Requerido="true" Deshabilitado="@(!Editable)" />
                     <BuscadorCatalogo Catalogo="c_Pais" Label="País" Valor="@inmueble.Pais"
                                       ValorCambiado="v => inmueble.Pais = v" Requerido="true" Deshabilitado="@(!Editable)" />
-                    <MudTextField @bind-Value="inmueble.CodigoPostal" Label="Código postal" MaxLength="5" Required="true"
-                                  Class="cifra-tabular" Disabled="@(!Editable)" />
                 </div>
             </article>
         }
     </section>
 
     <div class="tarjeta-formulario-acciones">
+        <span class="catalogo-acciones-ayuda">Guarda la operación y los inmuebles.</span>
         <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="GuardarAsync" Disabled="@(!Editable || _guardando)">
             @(_guardando ? "Guardando…" : "Guardar datos notariales")
         </MudButton>
@@ -103,6 +112,7 @@ else
         {
             <p class="seccion-ayuda">@_mensajeValidacion</p>
         }
+    </div>
     </div>
 }
 

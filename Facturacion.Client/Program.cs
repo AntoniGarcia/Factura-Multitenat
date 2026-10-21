@@ -74,15 +74,21 @@ builder.Services.AddSingleton<IServicioDeVersion, ServicioDeVersion>();
 builder.Services.AddSingleton<ServicioDeInstalacion>();
 builder.Services.AddSingleton<ServicioDeDescargas>();
 
-// Las mismas seis políticas que el Server, desde la misma lista: el Client las necesita para
+// Las mismas políticas que el Server, desde la misma lista: el Client las necesita para
 // enrutar y para ocultar lo que no aplica. Es comodidad visual, NO protección — el Server
-// rechaza igual la operación aunque alguien llegue a la ruta a mano (ARQUITECTURA.md §4).
+// rechaza igual la operación aunque alguien llegue a la ruta a mano.
 builder.Services.AddAuthorizationCore(opciones =>
 {
     foreach (var permiso in Facturacion.Shared.Comun.Permisos.Todos)
         opciones.AddPolicy(permiso, politica => politica
             .RequireAuthenticatedUser()
             .RequireClaim(ClavesDeClaim.Permiso, permiso));
+
+    foreach (var (nombre, claves) in Facturacion.Shared.Comun.Permisos.Politicas.Compuestas)
+        opciones.AddPolicy(nombre, politica => politica
+            .RequireAuthenticatedUser()
+            .RequireAssertion(contexto => contexto.User.HasClaim(c =>
+                c.Type == ClavesDeClaim.Permiso && claves.Contains(c.Value))));
 
     // Las del panel del proveedor, igual que el Server: ver y acciones por sección.
     // Misma advertencia que las de arriba: aquí solo sirven para enrutar y ocultar.
@@ -103,15 +109,14 @@ builder.Services.AddTransient<ManejadorDeAutenticacion>();
 builder.Services.AddTransient<ManejadorDeAutenticacionDeOperador>();
 
 // MudBlazor no trae paleta propia aquí: lee las variables de mudblazor-tema.css, que a su
-// vez apuntan a las nuestras (ARQUITECTURA.md §8). Ver ese archivo para el porqué.
+// vez apuntan a las nuestras. Ver ese archivo para el porqué.
 builder.Services.AddMudServices();
 
 // Cliente desnudo: lo usa el propio circuito de identidad. Sin el manejador, para que un
 // 401 del refresh no dispare otro refresh.
 builder.Services.AddHttpClient(ServicioDeSesion.ClienteDesnudo, cliente => cliente.BaseAddress = origen);
 
-// Cliente general de la API: adjunta el token y reintenta una vez tras refrescar. Es el que
-// van a usar el resto de las fases y la mitad B.
+// Cliente de la API: adjunta el token y reintenta una vez tras renovar la sesión.
 builder.Services.AddHttpClient(ClientesHttp.Api, cliente => cliente.BaseAddress = origen)
     .AddHttpMessageHandler<ManejadorDeAutenticacion>();
 

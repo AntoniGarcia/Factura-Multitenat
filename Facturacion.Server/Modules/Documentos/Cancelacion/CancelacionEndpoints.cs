@@ -5,20 +5,7 @@ using Facturacion.Shared.Documentos;
 
 namespace Facturacion.Server.Modules.Documentos.Cancelacion;
 
-/// <summary>
-/// Cancelación ante el SAT y consulta de estatus (B8, §30 del documento funcional).
-///
-/// <para><b>Por qué exige <c>Idempotency-Key</c> si no gasta timbre</b></para>
-/// ARQUITECTURA.md §4 lo pide para todo <c>POST</c> que cobre o timbre. Cancelar no hace ninguna de
-/// las dos, pero sí es irreversible ante el SAT y llega por el mismo camino que provoca envíos
-/// repetidos: un doble clic, o el reintento del navegador cuando la respuesta tarda. Sin la
-/// clave, el segundo envío entra como petición nueva y se topa con el comprobante ya en
-/// <c>en_cancelacion</c>, devolviendo un conflicto que confunde a quien solo hizo clic dos veces.
-///
-/// <para><b>Van bajo <c>cancelar</c> y no bajo <c>timbrar</c></b></para>
-/// Son permisos distintos en ARQUITECTURA.md §4 a propósito: quien captura y timbra no
-/// necesariamente puede deshacer un documento fiscal ya emitido.
-/// </summary>
+/// <summary>Cancelación y consulta de estatus ante el SAT. Requiere permiso de cancelación y una clave de idempotencia para evitar solicitudes duplicadas.</summary>
 public static class CancelacionEndpoints
 {
     public static void MapCancelacion(this IEndpointRouteBuilder rutas)

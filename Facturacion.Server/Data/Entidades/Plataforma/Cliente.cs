@@ -1,21 +1,6 @@
 namespace Facturacion.Server.Data.Entidades.Plataforma;
 
-/// <summary>
-/// Receptor de comprobantes. Es donde viven las reglas de CFDI 4.0 que más timbrados rompen
-/// (ARQUITECTURA.md §7): nombre exacto de la constancia, código postal del domicilio fiscal,
-/// régimen fiscal y uso de CFDI compatible.
-///
-/// <para><b>Dos códigos postales, y no es redundancia</b></para>
-/// <see cref="DomicilioFiscalCp"/> es el de la <b>constancia</b> y es el que viaja al CFDI
-/// como <c>DomicilioFiscalReceptor</c>; es obligatorio. <see cref="CodigoPostal"/> es el del
-/// domicilio de entrega y solo sale en el PDF. El sistema viejo (§8 del documento funcional)
-/// tenía un solo campo «C.P.», y confundirlos produce comprobantes rechazados: el SAT
-/// compara ese dato contra el padrón.
-///
-/// <para><b>Nada se borra</b></para>
-/// Baja lógica con <see cref="Activo"/>. Un cliente inactivo sigue existiendo porque sus
-/// comprobantes viejos tienen que poder explicarse (ARQUITECTURA.md §5).
-/// </summary>
+/// <summary>Datos del receptor. El código postal fiscal corresponde a la constancia; el de entrega se utiliza para la dirección informativa. Los comprobantes conservan copias de estos datos.</summary>
 public sealed class Cliente : IEntidadDeEmpresa
 {
     public Guid Id { get; set; }

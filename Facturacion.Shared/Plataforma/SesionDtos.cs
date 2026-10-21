@@ -5,7 +5,7 @@
 /// <param name="Contrasena">Contraseña en claro; solo existe durante esta petición.</param>
 /// <param name="MantenerSesion">
 /// Cambia <b>únicamente</b> la duración de la cookie de refresh: 12 horas sin marcar,
-/// 30 días marcado. No se guarda nada más en el navegador (ARQUITECTURA.md §4).
+/// 30 días marcado. No se guarda nada más en el navegador.
 /// </param>
 public sealed record PeticionInicioSesion(
     string Correo,
@@ -30,7 +30,7 @@ public sealed record EmpresaDisponibleDto(
 /// <param name="Tema">
 /// Clave de <c>Facturacion.Shared.Comun.Temas</c>. El Client la aplica al arrancar, antes
 /// de que el usuario vea nada: el tema es parte de su perfil, no una preferencia del
-/// navegador (ARQUITECTURA.md §8).
+/// navegador.
 /// </param>
 public sealed record SesionDto(
     Guid UsuarioId,
@@ -46,7 +46,7 @@ public sealed record PeticionCambioTema(string Tema);
 
 /// <summary>
 /// Access token nuevo y la sesión que describe. El token vive <b>solo en memoria</b> del
-/// navegador: nunca en <c>localStorage</c> ni en <c>sessionStorage</c> (ARQUITECTURA.md §4).
+/// navegador: nunca en <c>localStorage</c> ni en <c>sessionStorage</c>.
 /// El refresh token no aparece aquí porque viaja en una cookie <c>HttpOnly</c> que el
 /// JavaScript de la página no puede leer.
 /// </summary>
@@ -57,7 +57,7 @@ public sealed record RespuestaSesion(
 
 /// <summary>
 /// Cambio de empresa activa. Es el <b>único</b> lugar del sistema donde el Client envía un
-/// identificador de empresa (ARQUITECTURA.md §4).
+/// identificador de empresa.
 /// </summary>
 public sealed record PeticionCambioEmpresa(Guid EmpresaId);
 

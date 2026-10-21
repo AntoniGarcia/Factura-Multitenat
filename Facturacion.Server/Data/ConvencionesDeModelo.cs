@@ -12,11 +12,10 @@ public static class ConvencionesDeModelo
 {
     public static void AplicarConvencionesDeFacturacion(this ModelConfigurationBuilder constructor)
     {
-        // ARQUITECTURA.md §5: dinero con decimal(18,6). Sin esto, toda columna decimal nace con la
-        // precisión por omisión de SQL Server y los centavos se pierden al redondear.
+        // Usa decimal(18,6) para conservar la precisión de los importes.
         constructor.Properties<decimal>().HavePrecision(18, 6);
 
-        // ARQUITECTURA.md §5: las fechas se guardan en UTC.
+        // Las fechas se guardan en UTC.
         constructor.Properties<DateTime>().HaveConversion<FechaUtcConverter>();
 
         // Las claves Guid las asigna el código; ver ClavesAsignadasPorElCodigo.

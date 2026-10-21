@@ -11,7 +11,7 @@ using Microsoft.EntityFrameworkCore;
 namespace Facturacion.Server.Modules.Plataforma.Empresas;
 
 /// <summary>
-/// Alta y edición del servidor SMTP propio de la empresa activa (AGENTS.md §11).
+/// Alta y edición del servidor SMTP propio de la empresa activa.
 /// <para>
 /// La contraseña es de solo escritura: entra cifrada y nunca sale. Una petición sin contraseña
 /// conserva la guardada, para que editar el puerto no obligue a volver a escribirla.

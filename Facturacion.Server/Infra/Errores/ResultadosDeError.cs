@@ -5,7 +5,7 @@ namespace Facturacion.Server.Infra.Errores;
 
 /// <summary>
 /// Convierte un error de negocio en la respuesta HTTP. Toda respuesta de error del sistema
-/// sale por aquí, en Problem Details y con su traza (ARQUITECTURA.md §4).
+/// sale por aquí, en Problem Details y con su traza.
 /// </summary>
 public static class ResultadosDeError
 {

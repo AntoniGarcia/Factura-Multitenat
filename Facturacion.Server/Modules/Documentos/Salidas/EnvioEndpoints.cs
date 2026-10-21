@@ -7,7 +7,7 @@ namespace Facturacion.Server.Modules.Documentos.Salidas;
 /// <summary>
 /// Envío de comprobantes por correo. Con <c>timbrar</c>, igual que la descarga: quien puede
 /// descargar el XML ya puede mandárselo a quien quiera, así que un permiso aparte no protegería
-/// nada, y la lista de permisos está cerrada (ARQUITECTURA.md §4).
+/// nada, y la lista de permisos está cerrada.
 /// </summary>
 public static class EnvioEndpoints
 {
@@ -15,7 +15,7 @@ public static class EnvioEndpoints
     {
         var grupo = rutas.MapGroup("/api/documentos")
             .WithTags("Documentos")
-            .RequireAuthorization(Permisos.Timbrar);
+            .RequireAuthorization(Permisos.EnviarCorreo);
 
         grupo.MapGet("/{id:guid}/envio", ObtenerPropuesta);
         grupo.MapPost("/{id:guid}/enviar", Enviar);

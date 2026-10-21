@@ -4,12 +4,7 @@ using System.Text.Json.Serialization;
 
 namespace Facturacion.Client.Servicios.Plataforma;
 
-/// <summary>
-/// Compara la versión con la que se compiló este WebAssembly contra la que el servidor
-/// dice tener ahora mismo. Un catálogo del SAT cacheado y viejo produce comprobantes mal
-/// emitidos: por eso <c>GuardaDeVersion</c> fuerza la recarga en cuanto difieren
-/// (ARQUITECTURA.md §4).
-/// </summary>
+/// <summary>Compara las versiones del cliente y servidor; solicita recargar cuando difieren.</summary>
 public interface IServicioDeVersion
 {
     string VersionCompilada { get; }

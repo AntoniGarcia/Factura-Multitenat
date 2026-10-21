@@ -9,7 +9,7 @@ public static class ComercioExteriorEndpoints
     public static void MapComercioExterior(this IEndpointRouteBuilder rutas)
     {
         var grupo = rutas.MapGroup("/api/comercio-exterior/comprobantes")
-            .WithTags("Comercio exterior").RequireAuthorization(Permisos.Timbrar);
+            .WithTags("Comercio exterior").RequireAuthorization(Permisos.EmitirComercioExterior);
         grupo.MapGet("/{comprobanteId:guid}", Obtener);
         grupo.MapPut("/{comprobanteId:guid}", Guardar);
         grupo.MapGet("/{comprobanteId:guid}/xml-borrador", XmlBorrador);

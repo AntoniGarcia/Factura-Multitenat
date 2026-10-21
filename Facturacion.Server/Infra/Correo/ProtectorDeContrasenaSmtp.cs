@@ -3,7 +3,7 @@ using Microsoft.AspNetCore.DataProtection;
 namespace Facturacion.Server.Infra.Correo;
 
 /// <summary>
-/// Cifra la contraseña del SMTP propio de una empresa (AGENTS.md §11).
+/// Cifra la contraseña del SMTP propio de una empresa.
 /// <para>
 /// El propósito es distinto al de la contraseña del CSD y lleva la empresa: una contraseña de
 /// correo no se descifra con el protector del sello ni en el contexto de otra empresa.

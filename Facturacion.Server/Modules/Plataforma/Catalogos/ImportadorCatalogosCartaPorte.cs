@@ -20,7 +20,8 @@ public sealed class ImportadorCatalogosCartaPorte(AppDbContext baseDeDatos)
         ["c_ConfigAutotransporte", "c_TipoPermiso", "c_FiguraTransporte", "c_ClaveProdServCP"];
 
     public async Task<IReadOnlyList<string>> ImportarAsync(
-        string rutaArchivo, CancellationToken ct, string? soloEsteCatalogo = null)
+        string rutaArchivo, CancellationToken ct, string? soloEsteCatalogo = null,
+        IReadOnlySet<string>? pendientes = null, Action<string, bool>? avance = null)
     {
         using var flujo = File.OpenRead(rutaArchivo);
         using var libro = WorkbookFactory.Create(flujo);
@@ -49,7 +50,13 @@ public sealed class ImportadorCatalogosCartaPorte(AppDbContext baseDeDatos)
         var resumen = new List<string>(seleccionados.Length);
 
         foreach (var catalogo in seleccionados)
+        {
+            if (pendientes is not null && !pendientes.Contains(catalogo.Nombre)) continue;
+            avance?.Invoke(catalogo.Nombre, false);
             resumen.Add(await catalogo.Importar());
+            avance?.Invoke(catalogo.Nombre, true);
+            if (pendientes is not null) baseDeDatos.ChangeTracker.Clear();
+        }
 
         return resumen;
     }

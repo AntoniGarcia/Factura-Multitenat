@@ -13,7 +13,7 @@ public sealed record RefreshDeOperadorEmitido(string EnClaro, RefreshTokenOperad
 /// <summary>
 /// Rotación de refresh tokens del panel de operador, con la misma mecánica que la del
 /// inquilino: familia por sesión, un solo uso por token, y ante un token ya consumido se
-/// invalida la familia entera (ARQUITECTURA.md §4).
+/// invalida la familia entera.
 ///
 /// <para><b>Por qué es una clase aparte y no un parámetro de la del inquilino</b></para>
 /// Las dos hacen lo mismo sobre tablas distintas, y ahí está el punto: si compartieran

@@ -4,38 +4,7 @@ using System.Text.RegularExpressions;
 
 namespace Facturacion.Server.Infra.Seguridad;
 
-/// <summary>
-/// La plantilla de la Content-Security-Policy y el cálculo de hashes de script en línea.
-///
-/// <para><b>Por qué el importmap necesita un hash</b></para>
-/// El SDK de Blazor inyecta en <c>index.html</c> un <c>&lt;script type="importmap"&gt;</c>
-/// <b>en línea</b> con los nombres huellados del runtime. Con <c>script-src 'self'</c> el
-/// navegador lo bloquea, <c>dotnet.js</c> nunca se resuelve y la aplicación se queda para
-/// siempre en la pantalla de carga.
-///
-/// <para>
-/// Las salidas eran tres: aflojar la CSP con <c>'unsafe-inline'</c>, apagar el huellado de
-/// assets, o autorizar ese script concreto por su hash. ARQUITECTURA.md §4 descarta la primera
-/// —<c>wasm-unsafe-eval</c> es lo único que se concede—, y la segunda resultó imposible: ni
-/// <c>StaticWebAssetFingerprintingEnabled</c> ni <c>StaticWebAssetsFingerprintContent</c>
-/// desactivan el huellado de los archivos del framework. Queda la tercera.
-/// </para>
-///
-/// <para><b>Por qué el hash no se calcula leyendo el archivo del disco</b></para>
-/// Se intentó así primero: leer <c>index.html</c> desde <c>IFileProvider</c> al arrancar.
-/// Funcionaba en desarrollo por una casualidad —el proveedor compuesto expone ahí una copia
-/// ya procesada— pero <b>revienta la aplicación al publicar</b>: en modo publicado no hay
-/// ningún <c>IFileProvider</c> que resuelva a un <c>index.html</c> con el importmap ya
-/// resuelto, y el arranque lanzaba <c>InvalidOperationException</c> antes de poder escuchar
-/// una sola petición. Se descubrió publicando de verdad y corriendo el binario publicado,
-/// no leyendo el código: "no des por hecho que funciona porque el proyecto compila"
-/// (ARQUITECTURA.md §9).
-/// <para>
-/// La solución robusta —en <see cref="CabecerasDeSeguridad"/>— calcula el hash de los bytes
-/// que de verdad se van a mandar por el cable en la primera respuesta HTML, sin importar
-/// qué mecanismo del framework los produjo ni si venían comprimidos.
-/// </para>
-/// </summary>
+/// <summary>Autoriza el importmap mediante el hash del HTML enviado. Se calcula sobre la respuesta final porque el archivo publicado puede diferir del disponible al arrancar.</summary>
 public static partial class PoliticaDeContenido
 {
     private const string Plantilla =
@@ -43,18 +12,8 @@ public static partial class PoliticaDeContenido
         "script-src 'self' 'wasm-unsafe-eval'{0}; " +
         "style-src 'self'; " +
 
-        // La única excepción a «nada de unsafe-*» además de wasm-unsafe-eval, y la más
-        // acotada que permite la especificación: MudBlazor escribe atributos style="" en
-        // línea —posición de menús flotantes, ancho de barras de progreso— y con solo
-        // style-src 'self' el navegador los descarta y los componentes salen mal colocados.
-        //
-        // Es una directiva aparte y no 'unsafe-inline' dentro de style-src a propósito:
-        // style-src-attr cubre nada más el atributo, así que un bloque <style> inyectado
-        // sigue bloqueado. Un atributo de estilo no ejecuta script; el riesgo residual
-        // sería exfiltrar con url(), y para eso haría falta inyección de HTML, que Razor
-        // escapa por omisión.
-        //
-        // Pendiente: no se comprobó quitándola (docs/REPASO-SEGURIDAD.md).
+        // Permite los atributos style usados por MudBlazor, sin habilitar bloques style en línea.
+        // No se ha comprobado el funcionamiento de los componentes sin esta excepción.
         "style-src-attr 'unsafe-inline'; " +
         "img-src 'self' data:; " +
         "font-src 'self'; " +

@@ -6,7 +6,7 @@ namespace Facturacion.Server.Infra.Correo;
 
 /// <summary>
 /// Decide si el servidor SMTP que capturó una empresa es un destino al que este servidor puede
-/// conectarse (AGENTS.md §11).
+/// conectarse.
 ///
 /// <para><b>Por qué</b></para>
 /// El servidor lo escribe el usuario. Sin esta revisión, la aplicación se conectaría adonde le

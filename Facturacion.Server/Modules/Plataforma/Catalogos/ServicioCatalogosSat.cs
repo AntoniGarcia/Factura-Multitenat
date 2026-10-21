@@ -74,7 +74,7 @@ public sealed class ServicioCatalogosSat(AppDbContext db) : IServicioCatalogosSa
             "c_Estado" => BuscarEstadoAsync(texto, tope, ct),
             "c_Municipio" => BuscarMunicipioAsync(texto, tope, ct),
 
-            // Con índice de texto completo (ARQUITECTURA.md §7): ~52,000 renglones no se buscan con LIKE.
+            // Con índice de texto completo: ~52,000 renglones no se buscan con LIKE.
             "c_ClaveProdServ" => BuscarClaveProdServAsync(texto, tope, ct),
             "c_ClaveUnidad" => BuscarClaveUnidadAsync(texto, tope, ct),
             "c_CodigoPostal" => BuscarCodigoPostalAsync(texto, tope, ct),
@@ -109,13 +109,18 @@ public sealed class ServicioCatalogosSat(AppDbContext db) : IServicioCatalogosSa
         return e is null ? null : new ClaveSatDto(catalogo, e.Clave, e.Descripcion, e.Vigente);
     }
 
+    // Con tope de resultados, ordenar por clave deja fuera lo que se buscaba: «metro cuadrado»
+    // coincide con 118 unidades y MTK quedaba después de las 50 primeras. Primero la clave
+    // exacta, luego el nombre exacto, luego los que empiezan igual y al final los más cortos.
     private static async Task<IReadOnlyList<ClaveSatDto>> BuscarSimpleAsync<TEntidad>(
         DbSet<TEntidad> tabla, string catalogo, string texto, int tope, CancellationToken ct)
         where TEntidad : class, ISatCatalogoSimple
     {
         return await tabla.AsNoTracking()
             .Where(x => x.Vigente && (x.Clave.Contains(texto) || x.Descripcion.Contains(texto)))
-            .OrderBy(x => x.Clave)
+            .OrderBy(x => x.Clave == texto ? 0 : x.Descripcion == texto ? 1 : x.Descripcion.StartsWith(texto) ? 2 : 3)
+            .ThenBy(x => x.Descripcion.Length)
+            .ThenBy(x => x.Clave)
             .Take(tope)
             .Select(x => new ClaveSatDto(catalogo, x.Clave, x.Descripcion, x.Vigente))
             .ToListAsync(ct);
@@ -145,6 +150,16 @@ public sealed class ServicioCatalogosSat(AppDbContext db) : IServicioCatalogosSa
 
     private async Task<IReadOnlyList<ClaveSatDto>> BuscarClaveProdServAsync(string texto, int tope, CancellationToken ct)
     {
+        if (texto.All(char.IsDigit))
+        {
+            return await db.SatClavesProdServ.AsNoTracking()
+                .Where(x => x.Vigente && x.Clave.StartsWith(texto))
+                .OrderBy(x => x.Clave)
+                .Take(tope)
+                .Select(x => new ClaveSatDto("c_ClaveProdServ", x.Clave, x.Descripcion, x.Vigente))
+                .ToListAsync(ct);
+        }
+
         var patron = PatronDeBusquedaDeTexto(texto);
 
         return await db.SatClavesProdServ.AsNoTracking()
@@ -167,7 +182,9 @@ public sealed class ServicioCatalogosSat(AppDbContext db) : IServicioCatalogosSa
     {
         return await db.SatClavesUnidad.AsNoTracking()
             .Where(x => x.Vigente && (x.Clave.Contains(texto) || x.Nombre.Contains(texto)))
-            .OrderBy(x => x.Clave)
+            .OrderBy(x => x.Clave == texto ? 0 : x.Nombre == texto ? 1 : x.Nombre.StartsWith(texto) ? 2 : 3)
+            .ThenBy(x => x.Nombre.Length)
+            .ThenBy(x => x.Clave)
             .Take(tope)
             .Select(x => new ClaveSatDto("c_ClaveUnidad", x.Clave, x.Nombre, x.Vigente))
             .ToListAsync(ct);
@@ -208,7 +225,7 @@ public sealed class ServicioCatalogosSat(AppDbContext db) : IServicioCatalogosSa
 
     /// <summary>
     /// Busca por dígitos del código postal, o por nombre de colonia o de municipio con
-    /// texto completo (ARQUITECTURA.md §7). Cada código postal puede tener muchas colonias; el
+    /// texto completo. Cada código postal puede tener muchas colonias; el
     /// resultado se agrupa por código postal para no repetir el mismo CP una vez por colonia.
     /// </summary>
     private async Task<IReadOnlyList<ClaveSatDto>> BuscarCodigoPostalAsync(string texto, int tope, CancellationToken ct)
@@ -296,7 +313,7 @@ public sealed class ServicioCatalogosSat(AppDbContext db) : IServicioCatalogosSa
     /// <summary>
     /// <c>CONTAINS</c> de SQL Server no acepta texto libre sin envolver: se arma como
     /// prefijo (<c>"texto*"</c>) para que "rom" encuentre "Roma" mientras se sigue
-    /// escribiendo, igual que espera <c>BuscadorCatalogo</c> (ARQUITECTURA.md §7).
+    /// escribiendo, igual que espera <c>BuscadorCatalogo</c>.
     /// </summary>
     private static string PatronDeBusquedaDeTexto(string texto)
         => $"\"{texto.Replace("\"", "")}*\"";

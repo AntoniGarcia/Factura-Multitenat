@@ -1,7 +1,4 @@
-/*
-  Estilos de los componentes comunes de Client/Componentes/Comunes/ (PROMPT-FASES-A.md
-  fase 2). Documentados aquí porque también los va a usar la mitad B.
-*/
+/* Estilos compartidos por los componentes comunes. */
 
 .indicador-estado {
     display: inline-flex;
@@ -713,7 +710,7 @@
     text-align: right;
 }
 
-/* No descartable a propósito (ARQUITECTURA.md §4): sin botón de cerrar, cubre toda la pantalla y
+/* No descartable a propósito: sin botón de cerrar, cubre toda la pantalla y
    se recarga sola a los pocos segundos aunque nadie haga clic. */
 .guarda-version {
     position: fixed;

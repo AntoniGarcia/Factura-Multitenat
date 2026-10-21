@@ -1,5 +1,5 @@
 @page "/productos/importar"
-@attribute [Authorize(Policy = Permisos.ConfigurarEmpresa)]
+@attribute [Authorize(Policy = Permisos.AdministrarProductos)]
 @inject ServicioDeProductos Productos
 @inject NavigationManager Navegacion
 

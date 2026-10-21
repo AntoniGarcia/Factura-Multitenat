@@ -1,8 +1,4 @@
-@*
-    El patrón repetido en §5, §7 y §9 del documento funcional: buscar, dar de alta, exportar.
-    Editar y desactivar van en cada renglón de TablaDatos, no aquí: son acciones sobre UN
-    registro, no sobre el catálogo completo.
-*@
+@* Acciones del catálogo: buscar, crear y exportar. Editar y desactivar corresponden a cada registro. *@
 
 <div class="barra-herramientas-catalogo">
     <MudTextField T="string"
@@ -57,7 +53,7 @@
     [Parameter]
     public string Placeholder { get; set; } = "Buscar…";
 
-    /// <summary>Se dispara con debounce de 300 ms, el mismo de BuscadorCatalogo (ARQUITECTURA.md §7).</summary>
+    /// <summary>Se dispara con debounce de 300 ms, el mismo de BuscadorCatalogo.</summary>
     [Parameter]
     public EventCallback<string> TextoCambiado { get; set; }
 

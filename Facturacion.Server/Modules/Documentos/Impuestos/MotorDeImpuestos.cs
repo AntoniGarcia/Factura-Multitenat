@@ -3,39 +3,15 @@ using Facturacion.Shared.Comun;
 namespace Facturacion.Server.Modules.Documentos.Impuestos;
 
 /// <summary>
-/// Calcula importes, impuestos y totales de un comprobante. Es la pieza más cara de
-/// equivocar del sistema, así que es <b>pura</b>: no toca base de datos, ni red, ni reloj.
-/// Todo lo que necesita entra por parámetro y todo lo que decide sale de vuelta, que es lo
-/// que permite cubrirla con decenas de casos sin montar nada.
-///
-/// <para><b>La regla que evita el rechazo más común del PAC</b></para>
-/// Los totales del comprobante son la <b>suma de los impuestos ya redondeados de cada
-/// concepto</b>, nunca el impuesto calculado sobre el total. Las dos cuentas no dan lo mismo
-/// —cada redondeo por renglón arrastra su propio residuo— y el PAC valida la primera. Aquí
-/// no hay ni una línea que aplique una tasa a un total.
-///
-/// <para><b>Exento no es tasa cero</b></para>
-/// Un exento no lleva importe: en el XML es un nodo sin ese atributo. Una tasa cero sí lo
-/// lleva, valiendo cero. Por eso <see cref="ImpuestoCalculado.Importe"/> es anulable y no un
-/// <c>decimal</c> con cero: si fueran lo mismo, el XML saldría mal y el rechazo llegaría
-/// hasta el timbrado.
+/// Calcula importes sin acceder a la base ni a la red. Suma los impuestos redondeados de cada concepto.
+/// Distingue exento, sin importe de impuesto, de tasa cero, que sí lleva importe con valor cero.
 /// </summary>
 public static class MotorDeImpuestos
 {
-    /// <summary>Decimales de cálculo. La presentación redondea a dos (ARQUITECTURA.md §5).</summary>
+    /// <summary>Decimales de cálculo. La presentación redondea a dos.</summary>
     public const int Decimales = 6;
 
-    /// <summary>
-    /// Modo de redondeo en el punto medio.
-    ///
-    /// <para>
-    /// Lo fija el prompt de la fase B1 como redondeo bancario. <b>No se pudo confirmar contra
-    /// el SAT</b>: el Anexo 20 define de cero a seis decimales y prohíbe importes de impuesto
-    /// negativos, pero no encontré que mande un modo concreto para el punto medio. Está aquí,
-    /// en una sola constante, para que cambiarlo sea una línea; hay una prueba que lo fija, y
-    /// cambiarlo la hace fallar a propósito.
-    /// </para>
-    /// </summary>
+    /// <summary>Usa redondeo bancario para los puntos medios. Este criterio no está confirmado contra el SAT; las pruebas fijan el comportamiento actual.</summary>
     public const MidpointRounding ModoDeRedondeo = MidpointRounding.ToEven;
 
     private const string Mxn = "MXN";

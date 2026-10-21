@@ -3,15 +3,7 @@ using Microsoft.AspNetCore.Authorization;
 
 namespace Facturacion.Server.Modules.Plataforma.Auth;
 
-/// <summary>
-/// Los seis permisos de ARQUITECTURA.md §4, como políticas de ASP.NET Core. El nombre de la
-/// política es la clave del permiso, así que un endpoint se anota con
-/// <c>.RequireAuthorization(Permisos.Timbrar)</c> y no hay cadenas sueltas.
-/// <para>
-/// No existe ninguna política por rol, y no la habrá: la base de datos ni siquiera tiene
-/// tablas de roles.
-/// </para>
-/// </summary>
+/// <summary>Registra una política por permiso. Los endpoints usan las claves de Permisos, no roles.</summary>
 public static class PoliticasDePermiso
 {
     public static AuthorizationBuilder AgregarPoliticasDePermiso(this AuthorizationBuilder constructor)
@@ -25,6 +17,15 @@ public static class PoliticasDePermiso
                 // de inquilino aunque de algún modo llegara a llevar permisos.
                 .RequireAssertion(contexto =>
                     !contexto.User.HasClaim(c => c.Type == ClavesDeClaim.Operador)));
+
+        // Las que se cumplen con cualquiera de varios permisos: el listado lo abre quien emite
+        // cualquier documento, y los catálogos los consulta quien los usa para emitir.
+        foreach (var (nombre, claves) in Permisos.Politicas.Compuestas)
+            constructor.AddPolicy(nombre, politica => politica
+                .RequireAuthenticatedUser()
+                .RequireAssertion(contexto =>
+                    !contexto.User.HasClaim(c => c.Type == ClavesDeClaim.Operador) &&
+                    contexto.User.HasClaim(c => c.Type == ClavesDeClaim.Permiso && claves.Contains(c.Value))));
 
         return constructor;
     }

@@ -3,7 +3,7 @@ namespace Facturacion.Server.Data.Entidades.Plataforma;
 /// <summary>
 /// Refresh token de una sesión de operador. Misma mecánica que el del inquilino: rotación en
 /// cada uso y familia por sesión, de modo que un token ya consumido invalida la familia
-/// entera (ARQUITECTURA.md §4).
+/// entera.
 ///
 /// <para><b>Por qué una tabla propia y no reutilizar <see cref="RefreshToken"/></b></para>
 /// Aquella tiene llave foránea real contra <see cref="Usuario"/>, así que un operador no cabe

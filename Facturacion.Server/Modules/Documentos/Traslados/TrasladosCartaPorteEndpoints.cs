@@ -11,7 +11,7 @@ public static class TrasladosCartaPorteEndpoints
     {
         var grupo = rutas.MapGroup("/api/traslados-carta-porte")
             .WithTags("Carta Porte")
-            .RequireAuthorization(Permisos.Timbrar);
+            .RequireAuthorization(Permisos.EmitirCartaPorte);
 
         grupo.MapPost("", Crear);
         grupo.MapGet("/{comprobanteId:guid}", Obtener);

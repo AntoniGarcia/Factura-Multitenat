@@ -30,6 +30,7 @@
         </MudTabs>
 
         <div class="tarjeta-formulario-acciones">
+            <span class="catalogo-acciones-ayuda">Guarda ambos grupos de participantes.</span>
             <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="GuardarAsync" Disabled="@(!Editable || _guardando)">
                 @(_guardando ? "Guardando…" : "Guardar vendedores y compradores")
             </MudButton>

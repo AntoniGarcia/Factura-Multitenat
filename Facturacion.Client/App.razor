@@ -1,4 +1,5 @@
 @using Facturacion.Client.Componentes.Comunes
+@inject NavigationManager Navegacion
 
 <GuardaDeVersion />
 
@@ -7,8 +8,17 @@
         <Router AppAssembly="@typeof(App).Assembly" NotFoundPage="typeof(Paginas.NoEncontrada)">
             <Found Context="routeData">
                 <AuthorizeRouteView RouteData="@routeData" DefaultLayout="@typeof(MainLayout)">
-                    <NotAuthorized>
-                        <RedirigirAInicioSesion />
+                    <NotAuthorized Context="estado">
+                        @* Sin sesión, a iniciar sesión; con sesión, le falta el permiso. El panel
+                           del operador es otra puerta y conserva su propio acceso. *@
+                        @if (estado.User.Identity?.IsAuthenticated == true && !EsPanelDeOperador)
+                        {
+                            <AvisoSinPermiso />
+                        }
+                        else
+                        {
+                            <RedirigirAInicioSesion />
+                        }
                     </NotAuthorized>
                 </AuthorizeRouteView>
                 <FocusOnNavigate RouteData="@routeData" Selector="h1" />
@@ -16,3 +26,8 @@
         </Router>
     </PuertaDeArranque>
 </CascadingAuthenticationState>
+
+@code {
+    private bool EsPanelDeOperador => Navegacion.ToBaseRelativePath(Navegacion.Uri)
+        .StartsWith("operador", StringComparison.OrdinalIgnoreCase);
+}

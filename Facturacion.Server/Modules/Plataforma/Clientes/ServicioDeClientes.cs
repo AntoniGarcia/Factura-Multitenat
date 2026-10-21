@@ -8,26 +8,13 @@ using Microsoft.EntityFrameworkCore;
 
 namespace Facturacion.Server.Modules.Plataforma.Clientes;
 
-/// <summary>
-/// Catálogo de clientes de la empresa activa. Implementa además
-/// <see cref="IServicioClientes"/> del contrato congelado, que es lo que la mitad B consume
-/// al timbrar (REPARTO-EQUIPO.md §5).
-/// <para>
-/// Ninguna consulta filtra por empresa a mano: lo hace el filtro global de EF Core desde el
-/// claim (ARQUITECTURA.md §5). Que aquí no se vea un <c>WHERE EmpresaId</c> es la señal de que
-/// está bien hecho, no de que falte.
-/// </para>
-/// </summary>
+/// <summary>Administra los clientes de la empresa activa y expone sus datos al módulo de emisión. EF aplica el filtro de empresa.</summary>
 public sealed class ServicioDeClientes(
     AppDbContext baseDeDatos,
     ValidadorDeCliente validador,
     IServicioDeBitacora bitacora) : IServicioClientes
 {
-    /// <summary>
-    /// La foto fiscal para congelar en el comprobante. Devuelve el DTO del contrato, nunca
-    /// la entidad: un comprobante timbrado no puede depender de un catálogo que cambia
-    /// (ARQUITECTURA.md §5, inmutabilidad).
-    /// </summary>
+    /// <summary>Devuelve una copia de los datos fiscales del cliente para conservarlos en el comprobante.</summary>
     public async Task<ReceptorFiscalDto?> ObtenerParaTimbradoAsync(Guid clienteId, CancellationToken ct)
     {
         var cliente = await baseDeDatos.Clientes
@@ -191,7 +178,7 @@ public sealed class ServicioDeClientes(
         return new RespuestaGuardarCliente(ADto(cliente), nombre);
     }
 
-    /// <summary>Baja lógica. Nunca borrado físico (ARQUITECTURA.md §5).</summary>
+    /// <summary>Baja lógica. Nunca borrado físico.</summary>
     public async Task<Resultado<ClienteDto>> CambiarActivoAsync(Guid id, bool activo, CancellationToken ct)
     {
         var cliente = await baseDeDatos.Clientes.FirstOrDefaultAsync(c => c.Id == id, ct);
