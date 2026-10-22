@@ -300,6 +300,119 @@
     }
 }
 
+.tarjeta-formulario.pago-formulario {
+    box-shadow: none;
+}
+
+.pago-formulario .seccion-formulario,
+.pago-resumen {
+    min-width: 0;
+    margin-top: 1rem;
+    padding: 0.875rem 1rem;
+    border: 1px solid var(--borde);
+    border-radius: var(--radio);
+    background: var(--superficie-elevada);
+}
+
+.pago-formulario .seccion-formulario > .seccion-titulo:first-child,
+.pago-resumen > .seccion-titulo {
+    margin-top: 0;
+    border-bottom: 0;
+}
+
+.pago-formulario .rejilla-formulario {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 0.75rem 1rem;
+}
+
+.pago-formulario .rejilla-formulario > * {
+    min-width: 0;
+}
+
+.pago-formulario .rejilla-consulta-pago {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) auto;
+    align-items: center;
+    gap: 0.75rem 1rem;
+    margin-bottom: 1rem;
+}
+
+.pago-formulario .resultado-consulta-pago {
+    display: grid;
+    grid-template-columns: minmax(0, 2fr) minmax(0, 1fr) auto;
+    align-items: center;
+    gap: 0.75rem 1rem;
+    padding: 0.875rem;
+    margin-bottom: 1rem;
+    border: 1px solid var(--borde);
+    border-radius: var(--radio);
+    background: var(--superficie);
+}
+
+.pago-formulario .pago-uuid {
+    overflow-wrap: anywhere;
+    max-width: 15rem;
+}
+
+.pago-formulario .pago-abono {
+    min-width: 10rem;
+}
+
+.pago-resumen-importes {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 1rem;
+    margin: 0.75rem 0;
+}
+
+.pago-resumen-importes dt {
+    font-size: 0.8125rem;
+    color: var(--texto-suave);
+}
+
+.pago-resumen-importes dd {
+    margin: 0.25rem 0 0;
+    font-size: 1.125rem;
+    font-weight: 500;
+    color: var(--texto);
+    overflow-wrap: anywhere;
+}
+
+.pago-resumen-diferencia {
+    border-color: var(--estado-advertencia-texto);
+}
+
+.pago-resumen-diferencia .seccion-ayuda {
+    color: var(--estado-advertencia-texto);
+}
+
+.pago-formulario .tarjeta-formulario-acciones {
+    position: sticky;
+    bottom: 0;
+    z-index: 4;
+    flex-wrap: wrap;
+    padding: 0.875rem 0;
+    background: var(--superficie);
+}
+
+@media (max-width: 48rem) {
+    .pago-formulario .rejilla-formulario,
+    .pago-formulario .rejilla-consulta-pago,
+    .pago-formulario .resultado-consulta-pago,
+    .pago-resumen-importes {
+        grid-template-columns: minmax(0, 1fr);
+    }
+
+    .pago-formulario .pago-uuid {
+        max-width: none;
+    }
+
+    .pago-formulario .pago-abono {
+        min-width: 0;
+    }
+}
+
 /* Los inmuebles y participantes no comparten la rejilla de conceptos. */
 .notaria-rejilla {
     display: grid;

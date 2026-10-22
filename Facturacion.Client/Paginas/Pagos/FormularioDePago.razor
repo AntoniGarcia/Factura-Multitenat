@@ -17,7 +17,7 @@
 <PageTitle>@(EsNuevo ? "Nuevo pago" : "Pago")</PageTitle>
 <TituloDePagina Texto="@(EsNuevo ? "Nuevo pago" : "Pago")" />
 
-<TarjetaFormulario Ancha="true" RutaVolver="/documentos">
+<TarjetaFormulario Ancha="true" RutaVolver="/documentos" Class="pago-formulario">
 <PanelErrores Problema="_error" />
 
 @if (_aviso is not null)
@@ -42,7 +42,7 @@ else
     <MudTabs Elevation="0" ApplyEffectsToContainer="true" Class="pestanas-pago">
         <MudTabPanel Text="General">
             <section class="seccion-formulario">
-                <h2>Datos del pago</h2>
+                <h2 class="seccion-titulo">Datos del pago</h2>
 
                 <div class="rejilla-formulario">
                     <MudTextField T="string" Label="Folio" Value="@FolioMostrado" ReadOnly="true"
@@ -52,12 +52,12 @@ else
                                   Disabled="@(!EsEditable)" Immediate="true"
                                   HelperText="Referencia de la transferencia, cheque o autorización." />
 
+                    <MudTextField T="string" Label="Huso horario de la empresa"
+                                  Value="@_pago.ZonaHoraria" ReadOnly="true" />
                     <MudDatePicker Label="Fecha del pago" @bind-Date="_fechaPagoLocal"
                                    Disabled="@(!EsEditable)" Required="true" />
                     <MudTimePicker Label="Hora del pago" @bind-Time="_horaPagoLocal"
                                    Disabled="@(!EsEditable)" Required="true" AmPm="false" />
-                    <MudTextField T="string" Label="Huso horario de la empresa"
-                                  Value="@_pago.ZonaHoraria" ReadOnly="true" />
 
                     <MudSelect T="string" Label="Forma de pago" @bind-Value="_formaDePago"
                                Disabled="@(!EsEditable)" Required="true">
@@ -89,12 +89,12 @@ else
                     <MudNumericField T="decimal" Label="Importe del pago" @bind-Value="_monto"
                                      Immediate="true"
                                      Disabled="@(!EsEditable)" Format="F2" Class="cifra-tabular"
-                                     HelperText="Tiene que cuadrar con lo repartido entre las facturas." />
+                                     HelperText="Debe coincidir con la suma de los abonos." />
                 </div>
             </section>
 
             <section class="seccion-formulario">
-                <h2>Cliente</h2>
+                <h2 class="seccion-titulo">Cliente</h2>
 
                 <div class="rejilla-formulario">
                     @if (EsEditable)
@@ -109,10 +109,9 @@ else
             </section>
 
             <section class="seccion-formulario">
-                <h2>Facturas que se pagan</h2>
-                <p class="ayuda-seccion">
-                    Solo aparecen facturas timbradas con método de pago PPD. El saldo y la parcialidad
-                    los resuelve el servidor: son los que valen.
+                <h2 class="seccion-titulo">Facturas que se pagan</h2>
+                <p class="seccion-ayuda">
+                    Consulta facturas timbradas PPD. El servidor determina el saldo y la parcialidad.
                 </p>
 
                 @if (EsEditable)
@@ -135,7 +134,7 @@ else
                             </span>
                             <MudNumericField T="decimal" Label="Importe a pagar" @bind-Value="_importeAPagar"
                                              Format="F2" Class="cifra-tabular" Immediate="true" />
-                            <MudButton Variant="Variant.Filled" OnClick="Agregar">Agregar</MudButton>
+                            <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="Agregar">Agregar factura</MudButton>
                         </div>
                     }
                 }
@@ -146,29 +145,25 @@ else
                 }
                 else
                 {
-                    <MudSimpleTable Dense="true" Striped="true">
-                        <thead>
-                            <tr>
-                                <th>Folio fiscal</th>
-                                <th>Serie-folio</th>
-                                <th>Moneda</th>
-                                <th>Parcialidad</th>
-                                <th>Saldo anterior</th>
-                                <th>Importe pagado</th>
-                                <th>Saldo insoluto</th>
-                                <th></th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            @foreach (var renglon in _renglones)
-                            {
-                                <tr>
-                                    <td class="cifra-tabular">@renglon.IdDocumento</td>
-                                    <td class="cifra-tabular">@renglon.Serie-@renglon.Folio</td>
-                                    <td>@renglon.Moneda</td>
-                                    <td class="cifra-tabular">@renglon.NumParcialidad</td>
-                                    <td class="cifra-tabular">@renglon.SaldoAnterior.ToString("N2")</td>
-                                    <td class="cifra-tabular">
+                    <MudTable T="Renglon" Items="_renglones" Dense="true" Striped="true" Elevation="0"
+                              Breakpoint="Breakpoint.Sm" Class="pago-facturas">
+                        <HeaderContent>
+                                <MudTh>Folio fiscal</MudTh>
+                                <MudTh>Serie-folio</MudTh>
+                                <MudTh>Moneda</MudTh>
+                                <MudTh>Parcialidad</MudTh>
+                                <MudTh>Saldo anterior</MudTh>
+                                <MudTh>Importe pagado</MudTh>
+                                <MudTh>Saldo insoluto</MudTh>
+                                <MudTh>Acciones</MudTh>
+                        </HeaderContent>
+                        <RowTemplate Context="renglon">
+                                    <MudTd DataLabel="Folio fiscal" Class="cifra-tabular pago-uuid">@renglon.IdDocumento</MudTd>
+                                    <MudTd DataLabel="Serie-folio" Class="cifra-tabular">@renglon.Serie-@renglon.Folio</MudTd>
+                                    <MudTd DataLabel="Moneda">@renglon.Moneda</MudTd>
+                                    <MudTd DataLabel="Parcialidad" Class="cifra-tabular">@renglon.NumParcialidad</MudTd>
+                                    <MudTd DataLabel="Saldo anterior" Class="cifra-tabular">@renglon.SaldoAnterior.ToString("N2")</MudTd>
+                                    <MudTd DataLabel="Importe pagado" Class="cifra-tabular pago-abono">
                                         @if (EsEditable)
                                         {
                                             <MudNumericField T="decimal" Value="renglon.ImpPagado"
@@ -180,9 +175,9 @@ else
                                         {
                                             @renglon.ImpPagado.ToString("N2")
                                         }
-                                    </td>
-                                    <td class="cifra-tabular">@((renglon.SaldoAnterior - renglon.ImpPagado).ToString("N2"))</td>
-                                    <td>
+                                    </MudTd>
+                                    <MudTd DataLabel="Saldo insoluto" Class="cifra-tabular">@((renglon.SaldoAnterior - renglon.ImpPagado).ToString("N2"))</MudTd>
+                                    <MudTd DataLabel="Acciones">
                                         @if (EsEditable)
                                         {
                                             <MudButton Size="Size.Small" Color="Color.Error"
@@ -190,28 +185,17 @@ else
                                                 Quitar
                                             </MudButton>
                                         }
-                                    </td>
-                                </tr>
-                            }
-                        </tbody>
-                    </MudSimpleTable>
-
-                    <p class="resumen-pago @(CuadraElPago ? "" : "resumen-pago-descuadrado")">
-                        Repartido <strong class="cifra-tabular">@Repartido.ToString("N2")</strong>
-                        de <strong class="cifra-tabular">@_monto.ToString("N2")</strong>.
-                        @if (!CuadraElPago)
-                        {
-                            <text>No cuadra: el SAT rechaza el complemento así.</text>
-                        }
-                    </p>
+                                    </MudTd>
+                        </RowTemplate>
+                    </MudTable>
                 }
             </section>
         </MudTabPanel>
 
         <MudTabPanel Text="Bancos">
             <section class="seccion-formulario">
-                <h2>Banco ordenante</h2>
-                <p class="ayuda-seccion">Datos opcionales. Para transferencias, incluido SPEI, no es necesario capturarlos.</p>
+                <h2 class="seccion-titulo">Banco ordenante</h2>
+                <p class="seccion-ayuda">Datos opcionales; no son necesarios para transferencias, incluido SPEI.</p>
 
                 <div class="rejilla-formulario">
                     <MudTextField T="string" Label="R.F.C. del banco ordenante" @bind-Value="_rfcOrdenante"
@@ -223,7 +207,9 @@ else
                                   Disabled="@(!EsEditable)" Class="cifra-tabular" Immediate="true" />
                 </div>
 
-                <h2>Banco beneficiario</h2>
+            </section>
+            <section class="seccion-formulario">
+                <h2 class="seccion-titulo">Banco beneficiario</h2>
 
                 <div class="rejilla-formulario">
                     <MudTextField T="string" Label="R.F.C. del banco beneficiario" @bind-Value="_rfcBeneficiario"
@@ -235,13 +221,36 @@ else
         </MudTabPanel>
     </MudTabs>
 
+    <section class="pago-resumen @(CuadraElPago ? "" : "pago-resumen-diferencia")" aria-labelledby="pago-resumen-titulo">
+        <h2 id="pago-resumen-titulo" class="seccion-titulo">Resumen del pago</h2>
+        <dl class="pago-resumen-importes">
+            <div><dt>Importe recibido (@_moneda)</dt><dd class="cifra-tabular">@_monto.ToString("N2")</dd></div>
+            <div><dt>Repartido entre facturas</dt><dd class="cifra-tabular">@Repartido.ToString("N2")</dd></div>
+            <div><dt>Diferencia</dt><dd class="cifra-tabular">@((_monto - Repartido).ToString("N2"))</dd></div>
+        </dl>
+        <p class="seccion-ayuda" role="status">
+            @if (!CuadraElPago)
+            {
+                <text>El importe recibido y la suma de los abonos deben coincidir.</text>
+            }
+            else if (_renglones.Count == 0)
+            {
+                <text>Agrega las facturas que cubre este pago.</text>
+            }
+            else
+            {
+                <text>El importe coincide con los abonos capturados.</text>
+            }
+        </p>
+    </section>
+
     @if (EsEditable)
     {
         <div class="tarjeta-formulario-acciones">
             <MudButton OnClick="@(() => Navegacion.NavigateTo("/documentos"))">Cancelar</MudButton>
-            <MudButton OnClick="Guardar" Disabled="@_trabajando">Guardar borrador</MudButton>
-            <MudButton OnClick="VistaPrevia" Disabled="@_trabajando">Vista previa PDF</MudButton>
-            <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="Timbrar"
+            <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="Guardar" Disabled="@_trabajando">Guardar borrador</MudButton>
+            <MudButton Variant="Variant.Outlined" OnClick="VistaPrevia" Disabled="@_trabajando">Vista previa PDF</MudButton>
+            <MudButton Variant="Variant.Outlined" Color="Color.Primary" OnClick="Timbrar"
                        Disabled="@(_trabajando || !PuedeTimbrar)">
                 Timbrar pago
             </MudButton>
