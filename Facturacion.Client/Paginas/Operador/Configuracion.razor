@@ -16,7 +16,7 @@
 <PageTitle>Configuración</PageTitle>
 <TituloDePagina Texto="Configuración" />
 
-<TarjetaFormulario>
+<TarjetaFormulario Class="tarjeta-formulario-catalogo operador-configuracion">
     <PanelErrores Problema="_error" />
 
     @if (_aviso is not null)
@@ -24,7 +24,11 @@
         <p class="mensaje-exito" role="status">@_aviso</p>
     }
 
-    <h2 class="seccion-titulo">Mis datos</h2>
+    <MudTabs Elevation="0">
+    <MudTabPanel Text="Mi cuenta">
+    <div class="formulario-catalogo-secciones">
+    <section class="formulario-catalogo-seccion formulario-catalogo-seccion-ancha" aria-labelledby="operador-config-perfil">
+    <h2 id="operador-config-perfil" class="seccion-titulo">Mis datos</h2>
 
     <div class="rejilla-campos">
         <MudTextField @bind-Value="_nombre" Label="Nombre" MaxLength="128" />
@@ -37,9 +41,12 @@
         </MudButton>
     </div>
 
-    <h2 class="seccion-titulo">Correo de acceso</h2>
+    </section>
+    <section class="formulario-catalogo-seccion formulario-catalogo-seccion-ancha" aria-labelledby="operador-config-correo">
+    <h2 id="operador-config-correo" class="seccion-titulo">Correo de acceso</h2>
+    <p class="seccion-ayuda">Confirma tu contraseña para cambiar el correo de acceso.</p>
 
-    <div class="rejilla-campos">
+    <div class="catalogo-rejilla catalogo-rejilla-dos">
         <MudTextField @bind-Value="_correo" Label="Correo" InputType="InputType.Email" MaxLength="254" />
         <MudTextField @bind-Value="_contrasenaParaCorreo" Label="Tu contraseña actual"
                       InputType="InputType.Password" />
@@ -53,10 +60,12 @@
         </MudButton>
     </div>
 
-    <h2 class="seccion-titulo">Contraseña</h2>
+    </section>
+    <section class="formulario-catalogo-seccion formulario-catalogo-seccion-ancha" aria-labelledby="operador-config-contrasena">
+    <h2 id="operador-config-contrasena" class="seccion-titulo">Contraseña</h2>
     <p class="seccion-ayuda">El cambio cierra tus sesiones abiertas.</p>
 
-    <div class="rejilla-campos">
+    <div class="catalogo-rejilla catalogo-rejilla-tres">
         <MudTextField @bind-Value="_contrasenaActual" Label="Contraseña actual"
                       InputType="InputType.Password" />
         <MudTextField @bind-Value="_contrasenaNueva" Label="Contraseña nueva"
@@ -80,11 +89,18 @@
             Cambiar contraseña
         </MudButton>
     </div>
+    </section>
+    </div>
+    </MudTabPanel>
 
     @if (Sesion.TienePermiso(PoliticasDelPanel.VerConfiguracion))
     {
-    <h2 class="seccion-titulo">Correo saliente</h2>
-    <p class="seccion-ayuda">Remitente para los correos del sistema.</p>
+    <MudTabPanel Text="Sistema">
+    <p class="seccion-ayuda operador-config-alcance">Estas opciones aplican al SaaS, no al correo particular de cada empresa.</p>
+    <div class="formulario-catalogo-secciones">
+    <section class="formulario-catalogo-seccion formulario-catalogo-seccion-ancha" aria-labelledby="operador-config-smtp">
+    <h2 id="operador-config-smtp" class="seccion-titulo">Correo saliente</h2>
+    <p class="seccion-ayuda">Remitente de registro, acceso y avisos del sistema.</p>
 
     @if (_sistemaCargando)
     {
@@ -92,7 +108,7 @@
     }
     else
     {
-        <div class="rejilla-campos">
+        <div class="catalogo-rejilla catalogo-rejilla-dos">
             <MudTextField @bind-Value="_servidor" Label="Servidor SMTP" Placeholder="smtp.ejemplo.com" Disabled="@(!PuedeAdministrarSistema)" />
             <MudTextField @bind-Value="_puertoTexto" Label="Puerto" Class="cifra-tabular" Disabled="@(!PuedeAdministrarSistema)" />
             <MudTextField @bind-Value="_usuarioSmtp" Label="Usuario" Disabled="@(!PuedeAdministrarSistema)" />
@@ -108,35 +124,50 @@
             <MudSwitch @bind-Value="_usarTls" Label="Usar conexión segura" Color="Color.Primary" Disabled="@(!PuedeAdministrarSistema)" />
         </div>
     }
+    </section>
 
-    <h2 class="seccion-titulo">Identidad del sistema</h2>
+    <section class="formulario-catalogo-seccion formulario-catalogo-seccion-ancha" aria-labelledby="operador-config-identidad">
+    <h2 id="operador-config-identidad" class="seccion-titulo">Identidad del sistema</h2>
 
     <div class="rejilla-campos">
         <MudTextField @bind-Value="_nombreDelSistema" Label="Nombre del sistema"
                       HelperText="Visible en correos y documentos."
                       MaxLength="128" Disabled="@(!PuedeAdministrarSistema)" />
     </div>
+    </section>
 
-    <h2 class="seccion-titulo">Mensajes del registro</h2>
+    <section class="formulario-catalogo-seccion formulario-catalogo-seccion-ancha" aria-labelledby="operador-config-mensajes">
+    <h2 id="operador-config-mensajes" class="seccion-titulo">Mensajes del registro</h2>
     <p class="seccion-ayuda">Variables disponibles: NOMBRE, CODIGO, MINUTOS y CORREO.</p>
 
-    <h3 class="seccion-subtitulo">Correo de verificación</h3>
+    <details class="catalogo-opcional operador-config-plantilla">
+    <summary>Correo de verificación</summary>
+    <div class="catalogo-opcional-contenido">
 
     <div class="rejilla-campos">
         <MudTextField @bind-Value="_asuntoVerificacion" Label="Asunto" MaxLength="128" Disabled="@(!PuedeAdministrarSistema)" />
     </div>
     <MudTextField @bind-Value="_cuerpoVerificacion" Label="Mensaje" Lines="7" MaxLength="8000" Disabled="@(!PuedeAdministrarSistema)" />
+    </div>
+    </details>
 
-    <h3 class="seccion-subtitulo">Correo de bienvenida</h3>
+    <details class="catalogo-opcional operador-config-plantilla">
+    <summary>Correo de bienvenida</summary>
+    <div class="catalogo-opcional-contenido">
 
     <div class="rejilla-campos">
         <MudTextField @bind-Value="_asuntoContrasena" Label="Asunto" MaxLength="128" Disabled="@(!PuedeAdministrarSistema)" />
     </div>
     <MudTextField @bind-Value="_cuerpoContrasena" Label="Mensaje" Lines="7" MaxLength="8000" Disabled="@(!PuedeAdministrarSistema)" />
+    </div>
+    </details>
+    </section>
+    </div>
 
     @if (PuedeAdministrarSistema)
     {
-    <div class="acciones-formulario">
+    <div class="tarjeta-formulario-acciones">
+        <span class="catalogo-acciones-ayuda">Guarda correo saliente, identidad y ambos mensajes.</span>
         <MudButton Variant="Variant.Filled" Color="Color.Primary"
                    Disabled="@(_sistemaCargando || _trabajando)"
                    OnClick="GuardarConfiguracionDelSistema">
@@ -144,7 +175,9 @@
         </MudButton>
     </div>
     }
+    </MudTabPanel>
     }
+    </MudTabs>
 
 </TarjetaFormulario>
 

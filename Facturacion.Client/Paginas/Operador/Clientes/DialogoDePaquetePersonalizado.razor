@@ -3,19 +3,26 @@
 
 <MudDialog>
     <DialogContent>
-        <p class="dialogo-cancelacion-aviso">
-            Este paquete será exclusivo para <strong>@NombreEmpresa</strong>. El cliente deberá
-            pulsar Comprar y la solicitud quedará pendiente hasta que el operador confirme el pago.
+        <p class="seccion-ayuda">
+            Exclusivo para <strong>@NombreEmpresa</strong>. La compra queda pendiente hasta confirmar el pago.
         </p>
 
-        <div class="rejilla-campos">
+        <div class="formulario-catalogo-secciones">
+        <section class="formulario-catalogo-seccion formulario-catalogo-seccion-ancha" aria-labelledby="paquete-exclusivo-contenido">
+        <h2 id="paquete-exclusivo-contenido" class="seccion-titulo">Contenido del paquete</h2>
+        <div class="catalogo-rejilla catalogo-rejilla-dos">
             <MudTextField T="string" Value="_nombre" ValueChanged="AlCambiarNombre"
                           Label="Nombre del paquete" Immediate="true" MaxLength="100" />
 
             <MudNumericField T="int?" Value="_cantidad" ValueChanged="AlCambiarCantidad"
                              Label="Cantidad de timbres" Min="1" Max="1000000" Immediate="true"
                              Adornment="Adornment.End" AdornmentText="timbres" />
+        </div>
+        </section>
 
+        <section class="formulario-catalogo-seccion formulario-catalogo-seccion-ancha" aria-labelledby="paquete-exclusivo-precio">
+        <h2 id="paquete-exclusivo-precio" class="seccion-titulo">Precio y vigencia</h2>
+        <div class="catalogo-rejilla catalogo-rejilla-dos">
             <CampoMoneda Valor="_precioTotal"
                          ValorCambiado="v => _precioTotal = v"
                          Label="Precio total (IVA incluido)"
@@ -36,6 +43,8 @@
                 <div class="resumen-desglose-total"><dt>Total</dt><dd>@_precioTotal.ToString("C2")</dd></div>
             </dl>
         }
+        </section>
+        </div>
     </DialogContent>
     <DialogActions>
         <MudButton OnClick="@(() => Dialogo.Cancel())">Cancelar</MudButton>

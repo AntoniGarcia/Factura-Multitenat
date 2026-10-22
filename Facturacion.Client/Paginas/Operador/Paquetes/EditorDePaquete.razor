@@ -12,10 +12,12 @@
 }
 else
 {
-    <EditForm Model="this" OnValidSubmit="Guardar">
-        <h2 class="seccion-titulo">Qué se vende</h2>
+    <EditForm Model="this" OnValidSubmit="Guardar" class="operador-paquete-editor">
+        <div class="formulario-catalogo-secciones">
+        <section class="formulario-catalogo-seccion formulario-catalogo-seccion-ancha" aria-labelledby="paquete-contenido">
+        <h2 id="paquete-contenido" class="seccion-titulo">Contenido del paquete</h2>
 
-        <div class="rejilla-campos">
+        <div class="catalogo-rejilla catalogo-rejilla-dos">
             <MudTextField @bind-Value="_nombre"
                           Label="Nombre"
                           MaxLength="100"
@@ -28,10 +30,13 @@ else
                              Immediate="true"
                              Class="cifra-tabular" />
         </div>
+        </section>
 
-        <h2 class="seccion-titulo">Precio</h2>
+        <section class="formulario-catalogo-seccion formulario-catalogo-seccion-ancha" aria-labelledby="paquete-precio">
+        <h2 id="paquete-precio" class="seccion-titulo">Precio</h2>
+        <p class="seccion-ayuda">El precio total ya incluye IVA.</p>
 
-        <div class="rejilla-campos">
+        <div class="catalogo-rejilla catalogo-rejilla-dos">
             <CampoMoneda Valor="_precioTotal"
                          ValorCambiado="AlCambiarPrecioTotal"
                          Label="Precio total (IVA incluido)" />
@@ -40,13 +45,6 @@ else
                          ValorCambiado="AlCambiarPrecioUnitario"
                          Label="Precio por timbre" />
 
-            <MudNumericField T="int"
-                             @bind-Value="_vigenciaMeses"
-                             Label="Vigencia en meses"
-                             Min="1"
-                             Max="120"
-                             Immediate="true"
-                             Class="cifra-tabular" />
         </div>
 
         @if (HayDescuadre)
@@ -59,10 +57,19 @@ else
                 </p>
             </div>
         }
+        </section>
 
-        <h2 class="seccion-titulo">Presentación</h2>
+        <section class="formulario-catalogo-seccion formulario-catalogo-seccion-ancha" aria-labelledby="paquete-condiciones">
+        <h2 id="paquete-condiciones" class="seccion-titulo">Vigencia y presentación</h2>
 
-        <div class="rejilla-campos">
+        <div class="catalogo-rejilla catalogo-rejilla-dos">
+            <MudNumericField T="int"
+                             @bind-Value="_vigenciaMeses"
+                             Label="Vigencia en meses"
+                             Min="1"
+                             Max="120"
+                             Immediate="true"
+                             Class="cifra-tabular" />
             <MudNumericField T="int"
                              @bind-Value="_orden"
                              Label="Orden"
@@ -70,6 +77,8 @@ else
                              Immediate="true"
                              Class="cifra-tabular"
                              HelperText="Orden de aparición para el cliente." />
+        </div>
+        </section>
         </div>
 
         @if (!EsNuevo && _compras > 0)

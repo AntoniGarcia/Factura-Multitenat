@@ -232,6 +232,37 @@
     gap: 0.75rem;
 }
 
+.operador-configuracion .mud-tabs-panels {
+    padding-top: 1rem;
+}
+
+.operador-configuracion .acciones-formulario {
+    margin-bottom: 0;
+    flex-wrap: wrap;
+}
+
+.operador-config-alcance {
+    margin-bottom: 1rem;
+}
+
+.operador-config-plantilla {
+    margin-top: 0.75rem;
+    background: var(--superficie);
+}
+
+.operador-configuracion .tarjeta-formulario-acciones {
+    margin-bottom: 0;
+}
+
+.operador-paquete-editor > .formulario-catalogo-secciones {
+    margin-bottom: 1rem;
+}
+
+.operador-paquete-editor .aviso-caducidad p {
+    margin: 0;
+    overflow-wrap: anywhere;
+}
+
 .empresa-formulario .tarjeta-formulario-acciones {
     margin-bottom: 0;
 }

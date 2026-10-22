@@ -21,16 +21,35 @@
         else
         {
             <EditForm Model="this" OnValidSubmit="Guardar">
-                <div class="rejilla-campos">
+                <div class="formulario-catalogo-secciones">
+                <section class="formulario-catalogo-seccion formulario-catalogo-seccion-ancha" aria-labelledby="operador-datos-acceso">
+                <h2 id="operador-datos-acceso" class="seccion-titulo">Datos de acceso</h2>
+                <div class="catalogo-rejilla catalogo-rejilla-dos">
                     <MudTextField @bind-Value="_correo" Label="Correo" Immediate="true" InputType="InputType.Email" MaxLength="254" Required="true" />
                     <MudTextField @bind-Value="_nombre" Label="Nombre" Immediate="true" MaxLength="128" Required="true" />
-                    <MudTextField @bind-Value="_contrasena" Label="@(_modo == ModoFormulario.Crear ? "Contraseña" : "Contraseña (dejar en blanco para no cambiar)")" Immediate="true"
+                </div>
+                <div class="catalogo-rejilla catalogo-rejilla-dos">
+                    <MudTextField @bind-Value="_contrasena" Label="@(_modo == ModoFormulario.Crear ? "Contraseña del nuevo operador" : "Nueva contraseña del operador")" Immediate="true"
                                   InputType="@(_verContrasena ? InputType.Text : InputType.Password)"
                                   Adornment="Adornment.End"
                                   AdornmentIcon="@(_verContrasena ? Icons.Material.Filled.VisibilityOff : Icons.Material.Filled.Visibility)"
                                   OnAdornmentClick="@(() => _verContrasena = !_verContrasena)"
                                   MaxLength="128"
-                                  Required="@(_modo == ModoFormulario.Crear)" />
+                                  Required="@(_modo == ModoFormulario.Crear)"
+                                  HelperText="@(_modo == ModoFormulario.Crear ? "Compártela por un medio seguro." : "Déjala vacía para conservar la actual.")" />
+                </div>
+
+                </section>
+                <section class="formulario-catalogo-seccion formulario-catalogo-seccion-ancha" aria-labelledby="operador-permisos">
+                <h2 id="operador-permisos" class="seccion-titulo">Permisos</h2>
+                <p class="seccion-ayuda">Selecciona una sección para revisar sus permisos específicos.</p>
+                <SelectorDePermisosDePanel @bind-Value="_permisos" Deshabilitado="@_guardando" />
+                </section>
+
+                <section class="formulario-catalogo-seccion formulario-catalogo-seccion-ancha" aria-labelledby="operador-confirmacion">
+                <h2 id="operador-confirmacion" class="seccion-titulo">Confirmar cambios</h2>
+                <p class="seccion-ayuda">Usa tu contraseña para autorizar esta operación.</p>
+                <div class="catalogo-rejilla catalogo-rejilla-dos">
                     <MudTextField @bind-Value="_contrasenaOperador" Label="Tu contraseña de operador" Immediate="true"
                                   InputType="@(_verContrasenaOp ? InputType.Text : InputType.Password)"
                                   Adornment="Adornment.End"
@@ -39,14 +58,8 @@
                                   MaxLength="128"
                                   Required="true" />
                 </div>
-
-                @if (_modo == ModoFormulario.Crear)
-                {
-                    <p class="seccion-ayuda">Comparte la contraseña por un medio seguro.</p>
-                }
-
-                <h2 class="seccion-titulo">Permisos</h2>
-                <SelectorDePermisosDePanel @bind-Value="_permisos" Deshabilitado="@_guardando" />
+                </section>
+                </div>
 
                 <div class="tarjeta-formulario-acciones">
                     <MudButton Variant="Variant.Text" OnClick="Cancelar">Cancelar</MudButton>
