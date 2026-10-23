@@ -20,9 +20,15 @@ $variables = @{}
 foreach ($elemento in $asp.environmentVariables.environmentVariable) { $variables[$elemento.name] = $elemento.value }
 if ($variables.ASPNETCORE_ENVIRONMENT -ne 'Staging' -or $variables.Pac__Modo -ne 'Deshabilitado' -or $variables.Instalacion__ArranqueAutomatico -ne 'true') { throw 'La configuracion no coincide con revision sin PAC.' }
 $privado = $variables.Instalacion__Directorio
-if (-not [IO.Path]::IsPathRooted($privado)) { throw 'La carpeta privada debe ser absoluta.' }
 $raiz = [IO.Path]::GetFullPath($DirectorioSitio).TrimEnd('\')
-if ($privado -eq $raiz -or ([IO.Path]::GetFullPath($privado)).StartsWith($raiz + '\', [StringComparison]::OrdinalIgnoreCase)) { throw 'La carpeta privada no puede quedar dentro del sitio.' }
+if ($variables.Instalacion__JuntoAlServidorRevision -eq 'true') {
+    if ($privado -or $variables.Instalacion__ConexionSinCifrarRevision -ne 'true') { throw 'La entrega junto al servidor no debe mezclar rutas externas y requiere conexion legible de revision.' }
+    $ocultos = @($configuracion.configuration.location.'system.webServer'.security.requestFiltering.hiddenSegments.add | ForEach-Object segment)
+    if ('cnf' -notin $ocultos -or 'appsettings.Instalacion.json' -notin $ocultos) { throw 'Falta bloquear el acceso web a la configuracion.' }
+} else {
+    if (-not [IO.Path]::IsPathRooted($privado)) { throw 'La carpeta privada debe ser absoluta.' }
+    if ($privado -eq $raiz -or ([IO.Path]::GetFullPath($privado)).StartsWith($raiz + '\', [StringComparison]::OrdinalIgnoreCase)) { throw 'La carpeta privada no puede quedar dentro del sitio.' }
+}
 $brotli = @(Get-ChildItem -LiteralPath (Join-Path $DirectorioSitio 'wwwroot') -Recurse -File -Filter '*.br').Count
 if ($brotli -eq 0) { throw 'Faltan los archivos comprimidos Brotli.' }
 Write-Output "Archivos y configuracion de revision correctos. Recursos Brotli: $brotli."

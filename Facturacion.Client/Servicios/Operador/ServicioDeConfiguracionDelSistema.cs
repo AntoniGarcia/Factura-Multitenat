@@ -2,6 +2,7 @@ using System.Net.Http.Json;
 using Facturacion.Client.Servicios.Plataforma;
 using Facturacion.Shared.Comun;
 using Facturacion.Shared.Operador;
+using Facturacion.Shared.Documentos;
 
 namespace Facturacion.Client.Servicios.Operador;
 
@@ -9,6 +10,10 @@ namespace Facturacion.Client.Servicios.Operador;
 public sealed class ServicioDeConfiguracionDelSistema(IHttpClientFactory fabrica)
 {
     private HttpClient Cliente => fabrica.CreateClient(ClientesHttp.ApiOperador);
+
+    public async Task<EstadoDeIntegracionFiscalDto?> ObtenerEstadoFiscalAsync(CancellationToken ct = default)
+        => await Cliente.GetFromJsonAsync<EstadoDeIntegracionFiscalDto>(
+            "api/operador/configuracion/integracion-fiscal", ct);
 
     public async Task<ConfiguracionDelSistemaDto?> ObtenerAsync(CancellationToken ct = default)
         => await Cliente.GetFromJsonAsync<ConfiguracionDelSistemaDto>("api/operador/configuracion", ct);

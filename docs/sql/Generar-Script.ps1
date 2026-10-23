@@ -19,5 +19,13 @@ $contenidoSql = [regex]::Replace($contenidoSql, $patronProcedimiento, {
     $definicion = $coincidencia.Value.TrimEnd().Replace("'", "''")
     "    EXEC(N'" + $definicion.TrimStart() + "');`r`n"
 })
-[IO.File]::WriteAllText($rutaSql, $contenidoSql, [Text.UTF8Encoding]::new($false))
+# Compilar cada paso solo cuando le corresponda evita referencias a columnas futuras.
+$patronPaso = '(?ms)(^IF NOT EXISTS \(\r?\n    SELECT \* FROM \[__EFMigrationsHistory\].*?^BEGIN\r?\n)(.*?)(^END;)'
+$contenidoSql = [regex]::Replace($contenidoSql, $patronPaso, {
+    param($paso)
+    $cuerpo = $paso.Groups[2].Value.TrimEnd().Replace("'", "''")
+    $paso.Groups[1].Value + "    EXEC(N'" + $cuerpo.TrimStart() + "');`r`n" + $paso.Groups[3].Value
+})
+$opcionesSql = "SET QUOTED_IDENTIFIER ON;`r`nSET ANSI_NULLS ON;`r`nSET ANSI_PADDING ON;`r`nSET ANSI_WARNINGS ON;`r`nSET ARITHABORT ON;`r`nSET CONCAT_NULL_YIELDS_NULL ON;`r`nSET NUMERIC_ROUNDABORT OFF;`r`nGO`r`n"
+[IO.File]::WriteAllText($rutaSql, $opcionesSql + $contenidoSql, [Text.UTF8Encoding]::new($false))
 Write-Output "Script generado: $rutaSql"

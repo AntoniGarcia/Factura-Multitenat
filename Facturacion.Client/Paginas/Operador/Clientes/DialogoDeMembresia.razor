@@ -12,10 +12,13 @@
     <DialogContent>
         <p class="dialogo-cancelacion-aviso">@Mensaje</p>
 
-        <div class="rejilla-campos">
+        <section class="operador-dialogo-bloque" aria-labelledby="cuenta-membresia-vigencia">
+        <h2 id="cuenta-membresia-vigencia" class="seccion-titulo">Vigencia de la membresía</h2>
+        <div class="operador-dialogo-campos operador-dialogo-campos-dos">
             <MudDatePicker @bind-Date="_inicio" Label="Vigente desde" />
             <MudDatePicker @bind-Date="_fin" Label="Vigente hasta" />
         </div>
+        </section>
 
         @if (!EsRangoValido)
         {
@@ -26,7 +29,7 @@
         <MudButton OnClick="@(() => Dialogo.Cancel())">Cancelar</MudButton>
         <MudButton Variant="Variant.Filled" Color="Color.Primary" Disabled="@(!EsRangoValido)"
                    OnClick="Confirmar">
-            Registrar
+            Registrar membresía
         </MudButton>
     </DialogActions>
 </MudDialog>

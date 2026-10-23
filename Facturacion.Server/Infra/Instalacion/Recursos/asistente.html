@@ -19,18 +19,13 @@
         <p id="detalle-finalizado">La conexión ya está configurada.</p>
         <p id="detalle-arranque"></p>
         <div id="confirmar-acceso" hidden>
-            <div data-clave-instalacion><label for="clave-final">Clave de instalación</label>
-            <input id="clave-final" type="password" minlength="32" maxlength="128" autocomplete="off"></div>
             <div class="acciones"><button type="button" id="abrir-acceso" class="principal">Entrar</button></div>
         </div>
         <details id="pendientes" hidden><summary>Configuración pendiente</summary><ul id="lista-pendientes"></ul></details>
     </section>
     <form id="formulario" hidden autocomplete="off">
         <fieldset id="campos">
-            <legend>Acceso a la instalación</legend>
-            <div data-clave-instalacion><label for="clave">Clave de instalación</label>
-            <div class="secreto"><input id="clave" type="password" required minlength="32" maxlength="128" autocomplete="off" aria-describedby="ayuda-clave"><button type="button" class="mostrar" data-campo="clave" aria-controls="clave" aria-label="Mostrar clave de instalación">Mostrar</button></div>
-            <p id="ayuda-clave" class="ayuda">Se encuentra en <code>cnf/clave-instalacion.txt</code>.</p></div>
+            <legend>Conexión a la base de datos</legend>
             <h2>Datos de SQL Server</h2>
             <label for="autenticacion">Autenticación</label>
             <select id="autenticacion" aria-describedby="ayuda-autenticacion"><option value="sql">Usuario y contraseña SQL</option><option value="windows">Autenticación de Windows</option></select>
@@ -49,9 +44,6 @@
         <fieldset id="campos-operador">
             <legend>Crea el administrador del sistema</legend>
             <p class="introduccion">Administrador de la plataforma.</p>
-            <div data-clave-instalacion><label for="clave-operador">Clave de instalación</label>
-            <input id="clave-operador" type="password" required minlength="32" maxlength="128" autocomplete="off" aria-describedby="ayuda-clave-operador">
-            <p id="ayuda-clave-operador" class="ayuda">La misma clave de <code>cnf/clave-instalacion.txt</code>.</p></div>
             <div class="rejilla">
                 <div><label for="nombre-operador">Nombre completo</label><input id="nombre-operador" required maxlength="128" autocomplete="name"></div>
                 <div><label for="correo-operador">Correo de acceso</label><input id="correo-operador" type="email" required maxlength="254" autocomplete="username"></div>

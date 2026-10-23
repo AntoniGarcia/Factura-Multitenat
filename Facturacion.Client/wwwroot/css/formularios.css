@@ -236,6 +236,31 @@
     padding-top: 1rem;
 }
 
+.cliente-configuracion .mud-tabs-panels {
+    padding-top: 1rem;
+}
+
+.cliente-config-subtitulo {
+    margin: 1rem 0 0.75rem;
+    padding-top: 0.75rem;
+    border-top: 1px solid var(--borde);
+    font-size: 0.9375rem;
+    font-weight: 500;
+    color: var(--texto);
+}
+
+.cliente-config-guardado-inmediato {
+    margin: 0 0 1rem;
+    color: var(--texto);
+    font-size: 0.8125rem;
+    font-weight: 500;
+}
+
+.cliente-configuracion .logo-empresa,
+.cliente-configuracion .logo-empresa-acciones {
+    flex-wrap: wrap;
+}
+
 .operador-configuracion .acciones-formulario {
     margin-bottom: 0;
     flex-wrap: wrap;
@@ -256,6 +281,38 @@
 
 .operador-paquete-editor > .formulario-catalogo-secciones {
     margin-bottom: 1rem;
+}
+
+.operador-dialogo-campos {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    gap: 0.875rem 1rem;
+}
+
+.operador-dialogo-campos > * {
+    min-width: 0;
+}
+
+.operador-dialogo-campos-dos {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.operador-dialogo-bloque + .operador-dialogo-bloque {
+    margin-top: 1rem;
+    padding-top: 1rem;
+    border-top: 1px solid var(--borde);
+}
+
+.operador-dialogo-bloque > .seccion-titulo {
+    margin-top: 0;
+    margin-bottom: 0.75rem;
+    border-bottom: 0;
+}
+
+@media (max-width: 48rem) {
+    .operador-dialogo-campos-dos {
+        grid-template-columns: minmax(0, 1fr);
+    }
 }
 
 .operador-paquete-editor .aviso-caducidad p {
@@ -328,6 +385,117 @@
 
     .catalogo-acciones-ayuda {
         flex-basis: 100%;
+    }
+}
+
+.tarjeta-formulario.carta-porte-formulario {
+    box-shadow: none;
+}
+
+.carta-porte-formulario .seccion-formulario {
+    min-width: 0;
+    margin-top: 1rem;
+    padding: 0.875rem 1rem;
+    border: 1px solid var(--borde);
+    border-radius: var(--radio);
+    background: var(--superficie-elevada);
+}
+
+.carta-porte-formulario .seccion-formulario > h2 {
+    margin: 0 0 0.75rem;
+    font-size: 1rem;
+    font-weight: 500;
+    color: var(--texto);
+}
+
+.carta-porte-formulario .rejilla-formulario {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 0.75rem 1rem;
+}
+
+.carta-porte-formulario .rejilla-formulario > * {
+    min-width: 0;
+}
+
+.carta-porte-formulario .carta-porte-rejilla-dos,
+.carta-porte-fechas {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 0.75rem 1rem;
+}
+
+.carta-porte-fecha-grupo,
+.carta-porte-mercancia {
+    min-width: 0;
+    padding: 0.875rem;
+    border: 1px solid var(--borde);
+    border-radius: var(--radio);
+    background: var(--superficie);
+}
+
+.carta-porte-mercancia {
+    margin-top: 1rem;
+}
+
+.carta-porte-mercancia > .rejilla-formulario + .rejilla-formulario {
+    margin-top: 0.75rem;
+}
+
+.carta-porte-fecha-grupo > h3,
+.carta-porte-mercancia-cabecera > h3 {
+    margin: 0 0 0.5rem;
+    font-size: 0.9375rem;
+    font-weight: 500;
+    color: var(--texto);
+}
+
+.carta-porte-mercancia-cabecera {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+}
+
+.carta-porte-resumen {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 1rem;
+    margin: 1rem 0 0;
+}
+
+.carta-porte-resumen dt {
+    color: var(--texto-suave);
+    font-size: 0.8125rem;
+}
+
+.carta-porte-resumen dd {
+    margin: 0.25rem 0 0;
+    color: var(--texto);
+    overflow-wrap: anywhere;
+}
+
+.carta-porte-formulario .tarjeta-formulario-acciones {
+    position: sticky;
+    bottom: 0;
+    z-index: 4;
+    flex-wrap: wrap;
+    padding: 0.875rem 0;
+    background: var(--superficie);
+}
+
+@media (max-width: 64rem) {
+    .carta-porte-fechas {
+        grid-template-columns: minmax(0, 1fr);
+    }
+}
+
+@media (max-width: 48rem) {
+    .carta-porte-formulario .rejilla-formulario,
+    .carta-porte-formulario .carta-porte-rejilla-dos,
+    .carta-porte-resumen {
+        grid-template-columns: minmax(0, 1fr);
     }
 }
 
@@ -441,6 +609,156 @@
 
     .pago-formulario .pago-abono {
         min-width: 0;
+    }
+}
+
+.obra-rejilla,
+.obra-deduccion {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 0.75rem 1rem;
+    margin-bottom: 0.875rem;
+}
+
+.obra-rejilla > *,
+.obra-deduccion > * {
+    min-width: 0;
+}
+
+.obra-deduccion {
+    grid-template-columns: minmax(0, 2fr) minmax(0, 1fr);
+    padding-bottom: 0.75rem;
+    border-bottom: 1px solid var(--borde);
+}
+
+.obra-subtitulo {
+    margin: 1rem 0 0.5rem;
+    font-size: 0.9375rem;
+    font-weight: 500;
+    color: var(--texto);
+}
+
+.obra-resultado {
+    padding: 0.875rem 1rem;
+    border: 1px solid var(--borde);
+    border-radius: var(--radio);
+    background: var(--superficie-elevada);
+}
+
+.obra-resultado > .seccion-titulo {
+    margin-top: 0;
+    border-bottom: 0;
+}
+
+.obra-desglose {
+    margin: 1rem 0 0;
+}
+
+.obra-desglose > div {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: 0.5rem 1rem;
+    padding: 0.5rem 0;
+    color: var(--texto);
+}
+
+.obra-desglose dt {
+    color: var(--texto-suave);
+    overflow-wrap: anywhere;
+}
+
+.obra-desglose dd {
+    margin: 0;
+    text-align: right;
+}
+
+.obra-desglose .obra-liquido {
+    border-top: 1px solid var(--borde);
+    margin-top: 0.5rem;
+    font-size: 1.0625rem;
+    font-weight: 500;
+}
+
+.obra-liquido dt,
+.obra-liquido dd {
+    color: var(--acento);
+}
+
+.obra-formulario .tarjeta-formulario-acciones {
+    flex-wrap: wrap;
+}
+
+@media (max-width: 48rem) {
+    .obra-rejilla,
+    .obra-deduccion {
+        grid-template-columns: minmax(0, 1fr);
+    }
+}
+
+.comercio-formulario .comercio-rejilla,
+.comercio-formulario .rejilla-campos {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 0.75rem 1rem;
+    margin-bottom: 0.875rem;
+}
+
+.comercio-formulario .comercio-rejilla-dos {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.comercio-formulario .comercio-rejilla > *,
+.comercio-formulario .rejilla-campos > * {
+    min-width: 0;
+}
+
+.comercio-mercancia {
+    min-width: 0;
+    padding: 0.875rem 1rem;
+    margin-top: 1rem;
+    border: 1px solid var(--borde);
+    border-radius: var(--radio);
+    background: var(--superficie-elevada);
+}
+
+.comercio-mercancia-titulo {
+    margin: 0 0 1rem;
+    font-size: 0.9375rem;
+    font-weight: 500;
+    color: var(--texto);
+    overflow-wrap: anywhere;
+}
+
+.comercio-subtitulo {
+    margin: 1rem 0 0.5rem;
+    font-size: 0.875rem;
+    font-weight: 500;
+    color: var(--texto);
+}
+
+.comercio-domicilio {
+    margin-bottom: 0.875rem;
+}
+
+.comercio-formulario .tarjeta-formulario-acciones,
+.comercio-herramientas {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 0.75rem;
+}
+
+.comercio-herramientas {
+    padding-top: 0.75rem;
+    border-top: 1px solid var(--borde);
+    margin-bottom: 1rem;
+}
+
+@media (max-width: 48rem) {
+    .comercio-formulario .comercio-rejilla,
+    .comercio-formulario .comercio-rejilla-dos,
+    .comercio-formulario .rejilla-campos {
+        grid-template-columns: minmax(0, 1fr);
     }
 }
 
@@ -856,6 +1174,21 @@
         padding-right: 0.75rem;
         padding-left: 0.75rem;
     }
+}
+
+.usuario-formulario .usuario-contrasena {
+    max-width: 28rem;
+    margin-bottom: 0.5rem;
+}
+
+.usuario-formulario .tarjeta-formulario-acciones {
+    position: sticky;
+    bottom: 0;
+    z-index: 2;
+    flex-wrap: wrap;
+    padding: 0.75rem 0;
+    background: var(--superficie);
+    border-top: 1px solid var(--borde);
 }
 
 /* ── Selector de permisos del panel ─────────────────────────────────────────── */

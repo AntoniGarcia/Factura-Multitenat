@@ -30,6 +30,7 @@ public sealed class ServicioDeCsd(
         return [.. certificados.Select(c => ADto(c, diasAviso))];
     }
 
+   
     public async Task<Resultado<CertificadoCsdDto>> CargarAsync(
         byte[] cer, byte[] key, string contrasena, CancellationToken ct)
     {

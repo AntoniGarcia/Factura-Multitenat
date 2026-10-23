@@ -104,7 +104,8 @@ $asp.SetAttribute('stdoutLogFile',(Join-Path $DirectorioPrivado 'logs\stdout'))
 if (-not $asp.environmentVariables) { [void]$asp.AppendChild($web.CreateElement('environmentVariables')) }
 $valores = @{
     ASPNETCORE_ENVIRONMENT='Staging'; Pac__Modo='Deshabilitado';
-    Instalacion__ArranqueAutomatico='true'; Instalacion__PermitirSinClaveLocal='true';
+    Instalacion__ArranqueAutomatico='true';
+    Instalacion__ConexionSinCifrarRevision='true';
     Instalacion__Directorio=(Join-Path $DirectorioPrivado 'cnf');
     AllowedHosts=((@('localhost','127.0.0.1','[::1]',$NombreHost) | Select-Object -Unique) -join ';')
 }

@@ -1,15 +1,15 @@
-# Entrega de revisión para Windows / IIS
+# Configuración del servidor
 
 Para una instalacion nueva en un sitio IIS ya creado y con carpeta vacia, empezar
-por **EMPEZAR-AQUI.md** y ejecutar **INSTALAR.cmd como administrador**. Permite elegir
+por **Pasos de instalacion.md** y ejecutar **INSTALAR.cmd como administrador**. Permite elegir
 el sitio, copia la publicacion y prepara rutas y permisos sin modificar SQL ni enlaces.
 Rechaza carpetas ocupadas, llaves previas y grupos compartidos. No actualiza instalaciones.
 `PREPARAR-IIS.ps1` queda como alternativa manual. No repetir los pasos manuales
 de carpetas sobre una instalacion ya preparada.
 
-Publicación conjunta de Facturacion.Server y Facturacion.Client, preparada el 21 de
-octubre de 2026. No es producción: utiliza Staging, PAC deshabilitado y no incorpora
-pasarela de pagos. El complemento de pagos CFDI sí forma parte de la aplicación.
+El paquete incluye el servidor y la interfaz del cliente, actualizados al 22 de
+octubre de 2026. Es una versión de revisión, sin PAC ni pasarela de pagos.
+El complemento de pagos CFDI sí está incluido.
 
 ## Qué entregar y dónde va
 
@@ -22,11 +22,12 @@ pasarela de pagos. El complemento de pagos CFDI sí forma parte de la aplicació
   de ejecución, después de crear la estructura. Requiere revisión del administrador.
 - `VERIFICAR.ps1`: comprobación local de archivos y configuración no secreta.
   Ejecutar desde PowerShell: `.\VERIFICAR.ps1`. No cambia permisos ni instala servicios.
-- `SHA256SUMS.txt`: huellas de los archivos entregados, para comprobar integridad.
-- `PREPARAR-IIS.ps1` y `EMPEZAR-AQUI.md`: preparacion automatica y pasos breves.
+- `Comprobacion de archivos.txt`: firmas SHA256 para comprobar que los archivos no cambiaron. No es una contraseña.
+- `PREPARAR-IIS.ps1` y `Pasos de instalacion.md`: preparacion automatica y pasos breves.
 - `INSTALAR.cmd` y `INSTALAR.ps1`: instalador interactivo para un sitio IIS existente
   y una carpeta vacia. Ejecutar fuera del sitio publico, con permisos de administrador.
-- `LEEME-IIS.md`: estas instrucciones, fuera de la raíz pública.
+- `Configuracion del servidor.md`: estas instrucciones, fuera de la raíz pública.
+- `Actualizar el sistema.md`: pasos para sustituir una publicación existente conservando su configuración.
 
 No contiene bases con datos, usuarios, contraseñas, certificados privados ni `cnf`.
 El ZIP por si solo no instala IIS, SQL Server ni certificados. Ejecutar el instalador
@@ -108,10 +109,10 @@ La publicación trae un `web.config` de revisión SIN secretos. Ajustar:
 
 Conservar `hostingModel="outofprocess"`, `ASPNETCORE_ENVIRONMENT=Staging`,
 `Instalacion__ArranqueAutomatico=true` y `Pac__Modo=Deshabilitado`.
-La entrega también activa `Instalacion__PermitirSinClaveLocal=true`: el asistente
-no pide clave cuando se abre desde el servidor mediante localhost o una IP de
-loopback. Desde otra PC sigue exigiendo la clave. No funciona como excepción en
-Production y no acepta invocaciones de una página de otro origen.
+El asistente no utiliza clave de instalación. En Staging admite el hostname y
+acceso desde otras PC; fuera de Staging solo permite configurar desde el servidor.
+Rechaza llamadas del navegador desde otro origen. Completar la instalación antes
+de compartir el sitio: quien tenga acceso al asistente podrá configurarlo.
 No establecer `Instalacion__PrepararRevision=true`: es un comando de consola que
 prepara archivos y termina el proceso, no el modo de arranque para IIS.
 No configurar `ASPNETCORE_URLS`: los enlaces HTTPS se configuran en IIS.
@@ -137,18 +138,9 @@ restringir el sitio al responsable; abrirlo a revisores después de crear al ope
 Abrir `https://NOMBRE_DEL_SITIO/operador`. En el primer acceso IIS arrancará el backend
 y este creará su configuración cifrada bajo la identidad del grupo.
 
-Para evitar la clave durante esta revisión, completar el asistente desde el
-navegador del propio servidor usando `https://localhost:PUERTO/operador`, con un
-enlace y certificado HTTPS apropiados para localhost. No hace falta abrir archivos
-ni copiar la clave. Si solo hay un enlace por dominio o el acceso es remoto,
-la clave sigue siendo necesaria. Como administrador del servidor, se encuentra en:
-
-```text
-C:\FacturacionDatos\Revision\cnf\clave-instalacion.txt
-```
-
-Si se eligió otra ruta, usar esa. Para el acceso que requiera clave, copiarla sin enviarla por correo,
-FTP sin cifrado o capturas. La clave no es la contraseña SQL ni la del operador.
+Este paquete permite completar el asistente sin clave de instalación por localhost
+o por el hostname del sitio. No hace falta abrir ningún archivo de claves.
+Las contraseñas de la base de datos y del operador siguen siendo independientes.
 
 Capturar servidor, base y método de autenticación; probar y guardar. Windows usa la
 identidad del grupo IIS, NO la cuenta del administrador que abre el navegador.
@@ -166,7 +158,6 @@ En la carpeta privada, `cnf` contiene:
 
 - `appsettings.Instalacion.json`: conexión SQL cifrada.
 - `appsettings.ArranqueRevision.json`: JWT y clave maestra cifrados.
-- `clave-instalacion.txt`: autorización del asistente, legible solo para las identidades autorizadas.
 - `llavero-instalacion`, `llavero-aplicacion`: claves persistentes.
 - `datos`: almacenamiento de archivos de la aplicación.
 

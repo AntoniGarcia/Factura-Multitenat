@@ -17,18 +17,16 @@ public static class InstalacionModule
     public static EstadoDeInstalacion Preparar(WebApplicationBuilder constructor)
     {
         var configuracion = constructor.Configuration;
-        var ruta = configuracion["Instalacion:Directorio"] ?? Path.Combine(constructor.Environment.ContentRootPath, "cnf");
-        ruta = Path.GetFullPath(ruta);
-        var publico = Path.GetFullPath(constructor.Environment.WebRootPath
-            ?? Path.Combine(constructor.Environment.ContentRootPath, "wwwroot"));
-        if (ruta.Equals(publico, StringComparison.OrdinalIgnoreCase)
-            || ruta.StartsWith(publico + Path.DirectorySeparatorChar, StringComparison.OrdinalIgnoreCase))
-            throw new InvalidOperationException("El directorio de instalación debe quedar fuera de wwwroot.");
+        var rutas = RutasDeInstalacion.Obtener(constructor);
+        var ruta = rutas.Conexion;
 
-        var archivo = new ConfiguracionDeInstalacion(ruta);
-        ArranqueDeRevision.Cargar(constructor, ruta);
+        var conexionSinCifrar = configuracion.GetValue<bool>("Instalacion:ConexionSinCifrarRevision");
+        if (conexionSinCifrar && !constructor.Environment.IsStaging())
+            throw new InvalidOperationException("La conexión sin cifrar solo se permite en Staging para revisión.");
+        var archivo = new ConfiguracionDeInstalacion(ruta, conexionSinCifrar);
+        ArranqueDeRevision.Cargar(constructor, rutas.Interna);                    /////////////////
         string? errorCarga = null;
-        var conexion = configuracion.GetConnectionString("BaseDeDatos");
+        var conexion = configuracion.GetConnectionString("BaseDeDatos");    
         if (string.IsNullOrWhiteSpace(conexion) && archivo.Existe)
         {
             try
@@ -51,7 +49,8 @@ public static class InstalacionModule
         var configurada = !string.IsNullOrWhiteSpace(conexion);
         // Una conexión temporalmente caída nunca se interpreta como una instalación nueva.
         var mostrar = forzado || !configurada || (archivo.Existe && pendiente.Length > 0);
-        if (mostrar) archivo.AsegurarClave();
+        var claveAnterior = Path.Combine(ruta, "clave-instalacion.txt");
+        if (File.Exists(claveAnterior)) File.Delete(claveAnterior);
         return new(archivo, mostrar, configurada || archivo.Existe, errorCarga, pendiente);
     }
 
@@ -85,6 +84,13 @@ public static class InstalacionModule
                     "Se necesita HTTPS", "Abre el asistente con HTTPS antes de enviar credenciales.");
                 return;
             }
+            if (contexto.Request.Path.StartsWithSegments("/api/instalacion")
+                && !AccesoAlAsistente.Autoriza(app.Environment, contexto))
+            {
+                await ResultadosDeError.EscribirProblema(contexto, 403, "instalacion-acceso",
+                    "Acceso no permitido", "Abre el asistente desde el servidor o desde el sitio de revisión.");
+                return;
+            }
             await siguiente(contexto);
         });
         app.UseRateLimiter();
@@ -105,8 +111,7 @@ public static class InstalacionModule
                 operadorPendiente = operador is { Error: null, HayOperadores: false },
                 operadorCreado = operador?.HayOperadores == true,
                 principalExistente = operador?.HayPrincipal == true,
-                configuracionPendiente = estado.ConfiguracionPendiente,
-                requiereClave = !AccesoAlAsistente.SinClaveLocal(constructor.Configuration, constructor.Environment, contexto)
+                configuracionPendiente = estado.ConfiguracionPendiente
             });
         }).RequireRateLimiting("instalacion");
         app.MapPost("/api/instalacion/probar", (ParametrosDeConexion parametros, HttpContext contexto) =>
@@ -115,8 +120,8 @@ public static class InstalacionModule
             Procesar(parametros, contexto, estado, constructor, guardar: true)).RequireRateLimiting("instalacion");
         app.MapPost("/api/instalacion/finalizar", async (HttpContext contexto) =>
         {
-            if (!AccesoAlAsistente.Autoriza(constructor.Configuration, constructor.Environment, contexto, estado.Archivo))
-                return Problema(contexto, 403, "clave-instalacion", "Clave de instalación incorrecta.");
+            if (!AccesoAlAsistente.Autoriza(constructor.Environment, contexto))
+                return Problema(contexto, 403, "instalacion-acceso", "Abre el asistente desde el servidor o desde el sitio de revisión.");
             if (estado.ConfiguracionPendiente.Length > 0 || constructor.Configuration.GetValue<bool>("Instalacion:SoloConexion"))
                 return Problema(contexto, 409, "instalacion-pendiente", "La instalación está incompleta.");
             var cadena = ConexionActual(constructor.Configuration, estado);
@@ -139,8 +144,8 @@ public static class InstalacionModule
         }).RequireRateLimiting("instalacion");
         app.MapPost("/api/instalacion/operador", async (DatosDelOperadorInicial datos, HttpContext contexto) =>
         {
-            if (!AccesoAlAsistente.Autoriza(constructor.Configuration, constructor.Environment, contexto, estado.Archivo))
-                return Problema(contexto, 403, "clave-instalacion", "La clave de instalación no es válida.");
+            if (!AccesoAlAsistente.Autoriza(constructor.Environment, contexto))
+                return Problema(contexto, 403, "instalacion-acceso", "Abre el asistente desde el servidor o desde el sitio de revisión.");
             if (InstalacionDelOperador.Validar(datos) is { } error)
                 return Problema(contexto, 400, "operador-datos", error);
             var cadena = ConexionActual(constructor.Configuration, estado);
@@ -168,7 +173,7 @@ public static class InstalacionModule
         app.MapFallback(async contexto => await ResultadosDeError.EscribirProblema(
             contexto, 404, "instalacion-ruta", "Ruta no disponible",
             "Durante la instalación solo están disponibles los asistentes de conexión y operador."));
-        app.Logger.LogInformation("Instalación inicial disponible en /operador. La clave de acceso se encuentra en {RutaClave}", estado.Archivo.RutaClave);
+        app.Logger.LogInformation("Instalación inicial disponible en /operador.");
         await app.RunAsync();
         return Volatile.Read(ref continuar) == 1;
     }
@@ -193,7 +198,6 @@ public static class InstalacionModule
         if (cadena is null) return estado;
         var operador = await InstalacionDelOperador.ConsultarAsync(cadena, CancellationToken.None);
         if (operador.HayOperadores && operador.Error is null) return estado;
-        estado.Archivo.AsegurarClave();
         return estado with { MostrarAsistente = true, ErrorCarga = operador.Error };
     }
 
@@ -207,8 +211,8 @@ public static class InstalacionModule
     private static async Task<IResult> Procesar(
         ParametrosDeConexion parametros, HttpContext contexto, EstadoDeInstalacion estado, WebApplicationBuilder constructor, bool guardar)
     {
-        if (!AccesoAlAsistente.Autoriza(constructor.Configuration, constructor.Environment, contexto, estado.Archivo))
-            return Problema(contexto, 403, "clave-instalacion", "La clave de instalación no es válida.");
+        if (!AccesoAlAsistente.Autoriza(constructor.Environment, contexto))
+            return Problema(contexto, 403, "instalacion-acceso", "Abre el asistente desde el servidor o desde el sitio de revisión.");
         if (estado.ConexionConfigurada || estado.Archivo.Existe)
             return Problema(contexto, 409, "conexion-configurada", "La conexión ya está guardada. Este asistente no permite reemplazarla.");
         if (!ConexionSqlDeInstalacion.Validar(parametros))
