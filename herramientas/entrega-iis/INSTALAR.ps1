@@ -126,7 +126,7 @@ try {
     Write-Host 'Instalacion preparada. Abre el asistente:'
     $urls | Select-Object -Unique | ForEach-Object { Write-Host $_ }
     Write-Host 'Captura en el navegador los parametros de la base existente. El asistente no instala el esquema SQL.'
-    Write-Host ('Si el acceso es remoto, la clave del asistente se genera al primer acceso en: '+(Join-Path $privado 'cnf\clave-instalacion.txt'))
+    Write-Host 'Esta entrega de revision no pide clave de instalacion. Completa el asistente antes de compartir el acceso.'
     Write-Host 'Comprueba que el navegador confie en el certificado y que corresponda a la direccion. No ignores avisos HTTPS.'
 } catch {
     $codigoSalida=1

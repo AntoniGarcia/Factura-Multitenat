@@ -8,13 +8,14 @@
 
 <PanelErrores Problema="_error" />
 
-<div class="aviso-documentos" role="status">
+<div class="comercio-formulario">
+<p class="seccion-ayuda">
     Puedes revisar el XML y validar el CFDI completo antes de timbrar.
-</div>
+</p>
 
 <section class="emision-seccion">
     <h2 class="seccion-titulo">Datos del complemento</h2>
-    <div class="rejilla-campos">
+    <div class="comercio-rejilla comercio-rejilla-dos">
         <MudSelect T="string" Value="@_datos.ClavePedimento" ValueChanged="v => Cambiar(_datos with { ClavePedimento = v })"
                    Label="Clave de pedimento" Clearable="true">
             <MudSelectItem T="string" Value="@("A1")">A1 — exportación definitiva</MudSelectItem>
@@ -34,20 +35,23 @@
         <BuscadorCatalogo Catalogo="c_INCOTERM" Label="INCOTERM" Valor="@ClaveSeleccionada("c_INCOTERM", _datos.Incoterm)"
                           ValorCambiado="v => Cambiar(_datos with { Incoterm = v?.Clave })"
                           MostrarOpciones="true" MuestraSelectorEnLista="false" />
+    </div>
+    <h3 class="comercio-subtitulo">Importes en dólares</h3>
+    <div class="comercio-rejilla comercio-rejilla-dos">
         <MudNumericField T="decimal?" Value="@_datos.TipoCambioUsd"
                          ValueChanged="v => Cambiar(_datos with { TipoCambioUsd = v })"
                          Label="Tipo de cambio USD" Format="N6" Min="0" />
         <CampoMoneda Valor="@(_datos.TotalUsd ?? 0)" ValorCambiado="v => Cambiar(_datos with { TotalUsd = v })"
                      Label="Total USD" />
+    </div>
         <MudTextField T="string" Value="@_datos.Observaciones"
                       ValueChanged="v => Cambiar(_datos with { Observaciones = v })"
                       Label="Observaciones del complemento" MaxLength="300" Lines="2" />
-    </div>
 </section>
 
 <section class="emision-seccion">
     <h2 class="seccion-titulo">Mercancías por concepto</h2>
-    <p>Captura solo los conceptos que representan mercancías exportadas. Si editas un concepto, revisa de nuevo sus datos aduaneros.</p>
+    <p class="seccion-ayuda">Captura las mercancías exportadas. Si cambias un concepto, revisa sus datos aduaneros.</p>
     @foreach (var obsoleta in (_datos.Mercancias ?? []).Where(m => !ObtenerConceptos().Any(c =>
         c.Orden == m.OrdenConcepto && c.ClaveProdServ == m.ClaveProdServConcepto && c.Descripcion == m.DescripcionConcepto)))
     {
@@ -60,15 +64,15 @@
     {
         var mercancia = (_datos.Mercancias ?? []).FirstOrDefault(x => x.OrdenConcepto == concepto.Orden &&
             x.ClaveProdServConcepto == concepto.ClaveProdServ && x.DescripcionConcepto == concepto.Descripcion);
-        <div class="emision-seccion" @key="concepto.Orden">
-            <h3 class="seccion-titulo">@concepto.Orden. @concepto.Descripcion</h3>
+        <article class="comercio-mercancia" @key="concepto.Orden">
+            <h3 class="comercio-mercancia-titulo">@concepto.Orden. @concepto.Descripcion</h3>
             @if (mercancia is null)
             {
                 <MudButton Variant="Variant.Outlined" OnClick="() => AgregarMercancia(concepto)">Agregar datos aduaneros</MudButton>
             }
             else
             {
-                <div class="rejilla-campos">
+                <div class="comercio-rejilla comercio-rejilla-dos">
                     <BuscadorCatalogo Catalogo="c_FraccionArancelaria" Label="Fracción arancelaria"
                                       Valor="@ClaveSeleccionada("c_FraccionArancelaria", mercancia.FraccionArancelaria)"
                                       ValorCambiado="v => CambiarMercancia(mercancia, mercancia with { FraccionArancelaria = v?.Clave })"
@@ -77,6 +81,8 @@
                                       Valor="@ClaveSeleccionada("c_UnidadAduana", mercancia.UnidadAduana)"
                                       ValorCambiado="v => CambiarMercancia(mercancia, mercancia with { UnidadAduana = v?.Clave })"
                                       MostrarOpciones="true" MuestraSelectorEnLista="false" />
+                </div>
+                <div class="comercio-rejilla">
                     <MudNumericField T="decimal?" Value="@mercancia.CantidadAduana"
                                      ValueChanged="v => CambiarMercancia(mercancia, mercancia with { CantidadAduana = v })"
                                      Label="Cantidad aduanera" Min="0" />
@@ -86,6 +92,9 @@
                     <MudNumericField T="decimal?" Value="@mercancia.ValorDolares"
                                      ValueChanged="v => CambiarMercancia(mercancia, mercancia with { ValorDolares = v })"
                                      Label="Valor en dólares" Min="0" />
+                </div>
+                <h4 class="comercio-subtitulo">Identificación de la mercancía</h4>
+                <div class="comercio-rejilla comercio-rejilla-dos">
                     <MudTextField T="string" Value="@mercancia.Marca"
                                   ValueChanged="v => CambiarMercancia(mercancia, mercancia with { Marca = v })"
                                   Label="Marca" MaxLength="35" />
@@ -101,13 +110,13 @@
                 </div>
                 <MudButton Variant="Variant.Text" OnClick="() => QuitarMercancia(mercancia)">Quitar datos aduaneros</MudButton>
             }
-        </div>
+        </article>
     }
 </section>
 
 <section class="emision-seccion">
     <h2 class="seccion-titulo">Identificación del receptor extranjero</h2>
-    <div class="rejilla-campos">
+    <div class="comercio-rejilla comercio-rejilla-dos">
         <BuscadorCatalogo Catalogo="c_Pais" Label="Residencia fiscal" Valor="@ResidenciaSeleccionada"
                           ValorCambiado="AlCambiarResidencia" MuestraSelectorEnLista="false" />
         <MudTextField T="string" Value="@_datos.NumeroRegistroTributario"
@@ -116,25 +125,32 @@
     </div>
 </section>
 
-<section class="emision-seccion">
-    <h2 class="seccion-titulo">Domicilio del emisor</h2>
+<details class="catalogo-opcional comercio-domicilio">
+    <summary>Domicilio del emisor</summary>
+    <div class="catalogo-opcional-contenido">
     <MudTextField T="string" Value="@_datos.CurpEmisor"
                   ValueChanged="v => Cambiar(_datos with { CurpEmisor = v })"
                   Label="CURP (solo persona física)" MaxLength="18" Class="cifra-tabular" />
     <EditorDomicilioComercioExterior Valor="@_datos.DomicilioEmisor" EsEmisor="true"
                                     ValorCambiado="v => Cambiar(_datos with { DomicilioEmisor = v })" />
-</section>
+    </div>
+</details>
 
-<section class="emision-seccion">
-    <h2 class="seccion-titulo">Domicilio del receptor</h2>
+<details class="catalogo-opcional comercio-domicilio">
+    <summary>Domicilio del receptor</summary>
+    <div class="catalogo-opcional-contenido">
     <EditorDomicilioComercioExterior Valor="@_datos.DomicilioReceptor" BloquearPais="true"
                                     ValorCambiado="v => Cambiar(_datos with { DomicilioReceptor = v })" />
-</section>
+    </div>
+</details>
 
-<div class="acciones-formulario">
+<div class="tarjeta-formulario-acciones">
+    <span class="catalogo-acciones-ayuda">Guarda los datos del complemento antes de validar sus archivos.</span>
     <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="GuardarAsync" Disabled="@_guardando">
         @(_guardando ? "Guardando…" : "Guardar datos de comercio exterior")
     </MudButton>
+</div>
+<div class="comercio-herramientas" role="group" aria-label="Archivos y validación de comercio exterior">
     <MudButton Variant="Variant.Outlined" OnClick="DescargarXmlAsync" Disabled="@(_guardando || !_tieneDatosGuardados)">
         Descargar XML del complemento
     </MudButton>
@@ -149,6 +165,7 @@
 {
     <p class="seccion-ayuda" role="status">@_mensajeValidacion</p>
 }
+</div>
 
 @code {
     [Parameter, EditorRequired] public Guid ComprobanteId { get; set; }

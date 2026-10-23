@@ -1,12 +1,22 @@
 # Entrega para revisión en Windows / IIS
 
-La guía vigente de instalación se mantiene junto a los archivos de entrega:
-[LEEME-IIS.md](../herramientas/entrega-iis/LEEME-IIS.md).
+La alternativa vigente sin instalador está en
+`entregas/Facturacion-IIS-SoloArchivos-20261022.zip`. Contiene directamente la
+publicación, sin scripts SQL, CMD ni PowerShell. Sus pasos están en
+[la guía de entrega sin instalador](../herramientas/entrega-archivos/LEEME.md).
+Guarda la conexión legible junto al backend y las llaves internas en `cnf/`;
+requiere escritura de la identidad IIS en la carpeta y ajustar `AllowedHosts`.
+El paquete con instalador descrito abajo se conserva como alternativa anterior.
 
-La entrega con instalador se genera en `entregas/Facturacion-Revision-IIS-Instalador-20261021.zip`.
+La guía vigente de instalación se mantiene junto a los archivos de entrega:
+[Configuracion del servidor.md](<../herramientas/entrega-iis/Configuracion del servidor.md>).
+
+La entrega actualizada está en `entregas/Facturacion-IIS-Actualizado-20261022.zip`.
+Para instalaciones existentes, seguir [Actualizar el sistema.md](<../herramientas/entrega-iis/Actualizar el sistema.md>)
+y conservar la configuración privada y el `web.config` del servidor.
 Contiene `sitio/`, el script de estructura en `base-datos/`, una guía de permisos
 SQL y la comprobación de archivos `VERIFICAR.ps1`. No incluye configuración privada.
-Incluye `INSTALAR.cmd`, `INSTALAR.ps1`, `PREPARAR-IIS.ps1` y `EMPEZAR-AQUI.md`.
+Incluye `INSTALAR.cmd`, `INSTALAR.ps1`, `PREPARAR-IIS.ps1` y `Pasos de instalacion.md`.
 Con el sitio IIS ya creado y su carpeta vacia, ejecutar INSTALAR.cmd como administrador,
 seleccionar el sitio y confirmar: copia la publicacion y prepara rutas y permisos.
 El paquete debe extraerse fuera de cualquier sitio publico. No copiar los archivos al
@@ -20,11 +30,14 @@ El sitio se publica como raíz de IIS con Hosting Bundle de .NET 10 y un grupo d
 El administrador debe ajustar AllowedHosts, HTTPS y la ruta privada absoluta fuera
 del sitio antes de arrancar. No se utiliza INICIAR.cmd ni se necesitan SDK o Visual Studio.
 
-El asistente prueba y guarda SQL cifrado y permite crear al primer operador.
-Desde el 21 de octubre, la entrega de revisión omite la clave al abrir el asistente
-desde el propio servidor con localhost/loopback y la opción explícita
-`Instalacion__PermitirSinClaveLocal=true`. El acceso remoto conserva la clave;
-Production no permite esta excepción. No se elimina el cifrado ni las llaves internas.
+El asistente prueba y guarda la conexión SQL y permite crear al primer operador.
+La siguiente entrega de revisión activa `Instalacion__ConexionSinCifrarRevision=true`:
+la conexión se guarda legible fuera del sitio, solo en Staging. No modifica ni convierte
+conexiones guardadas anteriormente y no elimina el cifrado del resto de secretos.
+Desde el 22 de octubre se eliminó la clave de instalación del formulario, servidor
+y archivos nuevos. En Staging se admite configurar por hostname; fuera de Staging
+solo se admite el acceso local. Completar la instalación antes de compartir el sitio.
+Se conservan el cifrado y las llaves internas.
 El esquema se instala por separado; los catálogos faltantes se cargan automáticamente.
 El SMTP del sistema se configura después desde el operador antes de probar correos.
 No copiar llaves ni secretos desde la PC de desarrollo al servidor.

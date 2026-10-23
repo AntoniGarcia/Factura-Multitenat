@@ -34,19 +34,6 @@ public sealed class InstalacionDeConexionPruebas : IDisposable
         Assert.True(ConexionSqlDeInstalacion.Validar(Parametros()));
     }
 
-    [Fact]
-    public void La_clave_no_se_regenera_entre_arranques()
-    {
-        var archivo = new ConfiguracionDeInstalacion(_directorio);
-        archivo.AsegurarClave();
-        var clave = File.ReadAllText(archivo.RutaClave).Trim();
-        archivo.AsegurarClave();
-        Assert.Equal(clave, File.ReadAllText(archivo.RutaClave).Trim());
-        Assert.True(archivo.Autoriza(clave));
-        Assert.False(archivo.Autoriza(""));
-        Assert.False(archivo.Autoriza(new string('0', 64)));
-    }
-
     [WindowsInstalacionFact]
     public void Windows_no_requiere_credenciales_sql_y_no_las_incluye_si_el_cliente_las_envia()
     {
@@ -80,20 +67,20 @@ public sealed class InstalacionDeConexionPruebas : IDisposable
     public async Task El_json_no_contiene_la_contrasena_y_otro_arranque_puede_descifrarlo()
     {
         var archivo = new ConfiguracionDeInstalacion(_directorio);
-        archivo.AsegurarClave();
         var conexion = ConexionSqlDeInstalacion.CrearCadena(Parametros());
         Assert.True(await archivo.GuardarAsync(conexion, default));
         var json = File.ReadAllText(Path.Combine(_directorio, "appsettings.Instalacion.json"));
         Assert.DoesNotContain(Parametros().Contrasena, json);
         Assert.DoesNotContain(conexion, json);
         Assert.Equal(conexion, new ConfiguracionDeInstalacion(_directorio).LeerConexion());
+        Assert.Equal(conexion, new ConfiguracionDeInstalacion(_directorio, conexionSinCifrar: true).LeerConexion());
+        Assert.False(File.Exists(Path.Combine(_directorio, "clave-instalacion.txt")));
     }
 
     [WindowsInstalacionFact]
     public async Task Dos_guardados_concurrentes_no_reemplazan_la_instalacion()
     {
         var primero = new ConfiguracionDeInstalacion(_directorio);
-        primero.AsegurarClave();
         var segundo = new ConfiguracionDeInstalacion(_directorio);
         var resultados = await Task.WhenAll(
             primero.GuardarAsync("Server=primero;Database=prueba", default),
@@ -105,11 +92,51 @@ public sealed class InstalacionDeConexionPruebas : IDisposable
         Assert.Equal(conexion, primero.LeerConexion());
     }
 
+    [Fact]
+    public async Task Revision_explicita_guarda_conexion_legible_sin_crear_llavero()
+    {
+        var archivo = new ConfiguracionDeInstalacion(_directorio, conexionSinCifrar: true);
+        var conexion = ConexionSqlDeInstalacion.CrearCadena(Parametros());
+        Assert.True(await archivo.GuardarAsync(conexion, default));
+        var json = File.ReadAllText(Path.Combine(_directorio, "appsettings.Instalacion.json"));
+        using var documento = System.Text.Json.JsonDocument.Parse(json);
+        Assert.Equal(2, documento.RootElement.GetProperty("Version").GetInt32());
+        Assert.Equal(conexion, documento.RootElement.GetProperty("Conexion").GetString());
+        Assert.False(Directory.Exists(Path.Combine(_directorio, "llavero-instalacion")));
+        Assert.Equal(conexion, new ConfiguracionDeInstalacion(_directorio, conexionSinCifrar: true).LeerConexion());
+        Assert.False(await archivo.GuardarAsync("Server=otro", default));
+        Assert.Throws<InvalidDataException>(() => new ConfiguracionDeInstalacion(_directorio).LeerConexion());
+    }
+
+    [Fact]
+    public async Task Revision_carga_la_conexion_legible_sin_reemplazarla()
+    {
+        var archivo = new ConfiguracionDeInstalacion(_directorio, conexionSinCifrar: true);
+        var conexion = ConexionSqlDeInstalacion.CrearCadena(Parametros());
+        await archivo.GuardarAsync(conexion, default);
+        var constructor = Constructor();
+        constructor.Configuration["Instalacion:ConexionSinCifrarRevision"] = "true";
+        var estado = InstalacionModule.Preparar(constructor);
+        Assert.Null(estado.ErrorCarga);
+        Assert.True(estado.ConexionConfigurada);
+        Assert.Equal(conexion, constructor.Configuration.GetConnectionString("BaseDeDatos"));
+    }
+
+    [Theory]
+    [InlineData("Production")]
+    [InlineData("Development")]
+    public void Rechaza_activar_conexion_sin_cifrar_fuera_de_revision(string entorno)
+    {
+        var constructor = Constructor();
+        constructor.Environment.EnvironmentName = entorno;
+        constructor.Configuration["Instalacion:ConexionSinCifrarRevision"] = "true";
+        Assert.Throws<InvalidOperationException>(() => InstalacionModule.Preparar(constructor));
+    }
+
     [WindowsInstalacionFact]
     public async Task La_conexion_guardada_se_carga_pero_no_elude_configuracion_pendiente()
     {
         var archivo = new ConfiguracionDeInstalacion(_directorio);
-        archivo.AsegurarClave();
         var conexion = ConexionSqlDeInstalacion.CrearCadena(Parametros());
         await archivo.GuardarAsync(conexion, default);
         var constructor = Constructor();
@@ -138,6 +165,19 @@ public sealed class InstalacionDeConexionPruebas : IDisposable
         var constructor = Constructor();
         constructor.Configuration["Instalacion:Directorio"] = Path.Combine(constructor.Environment.ContentRootPath, "wwwroot", "cnf");
         Assert.Throws<InvalidOperationException>(() => InstalacionModule.Preparar(constructor));
+    }
+
+    [Fact]
+    public void Retira_solo_el_archivo_de_clave_anterior()
+    {
+        Directory.CreateDirectory(_directorio);
+        var rutaAnterior = Path.Combine(_directorio, "clave-instalacion.txt");
+        var conservado = Path.Combine(_directorio, "conservar.txt");
+        File.WriteAllText(rutaAnterior, "clave de prueba obsoleta");
+        File.WriteAllText(conservado, "conservar");
+        InstalacionModule.Preparar(Constructor());
+        Assert.False(File.Exists(rutaAnterior));
+        Assert.Equal("conservar", File.ReadAllText(conservado));
     }
 
     [Fact]

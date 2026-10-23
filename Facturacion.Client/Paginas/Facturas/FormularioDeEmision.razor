@@ -60,14 +60,6 @@ else if (!EsEditable)
 }
 else
 {
-    @if (_integracionFiscal is { TimbradoDisponible: false })
-    {
-        <div class="aviso-documentos" role="status">
-            El timbrado está pendiente de integración con el PAC. Puedes capturar y guardar
-            borradores; no se generarán folios fiscales ni se consumirán timbres.
-        </div>
-    }
-
     <div class="emision-layout">
     <div class="emision-captura">
     <MudTabs Class="emision-pestanas">
@@ -105,7 +97,7 @@ else
                 <MudTextField T="string" Value="@(_cliente?.Rfc)" Label="R.F.C." ReadOnly="true" Class="cifra-tabular" />
                 <MudTextField T="string" Value="@(_cliente?.Nombre)" Label="Nombre" ReadOnly="true" />
                 <MudTextField T="string" Value="@(_cliente?.DomicilioFiscalCp)" Label="CP del cliente" ReadOnly="true" Class="cifra-tabular"
-                              HelperText="@(_cliente?.Rfc is "XAXX010101000" or "XEXX010101000" ? "En el CFDI se usará el CP del lugar de expedición, como exige el SAT." : null)" />
+                              HelperText="@(_cliente?.Rfc is "XAXX010101000" or "XEXX010101000" ? "El CFDI usará el CP de expedición." : null)" />
 
                 <MudSelect T="string" @bind-Value="_metodoPago" Label="Método de pago" Clearable="true">
                     @foreach (var m in Catalogos.Obtener("c_MetodoPago"))
@@ -133,8 +125,7 @@ else
             <section class="emision-seccion">
             <h2 class="seccion-titulo">Conceptos</h2>
             <p class="seccion-ayuda">
-                Cada renglón se resuelve desde el catálogo de productos: código, unidad, descripción, precio e
-                impuestos vienen de ahí. Solo la cantidad y el descuento se capturan aquí.
+                Selecciona un producto y ajusta la cantidad y el descuento.
             </p>
 
             <div class="lista-conceptos">
@@ -355,7 +346,7 @@ else
 
         <p class="emision-resumen-nota">
             @(EsFacturaDeObra
-                ? "La vista fiscal admite obra privada sin ajustes u obra pública con solo 5 al millar al 0.50 %, siempre que el CFDI coincida. La estimación comercial se consulta aparte."
+                ? "Vista fiscal: obra privada sin ajustes u obra pública con solo 5 al millar (0.50 %), si coincide con el CFDI. La estimación se consulta por separado."
                 : EsFacturaComercio && !_comercioGuardado
                     ? "Guarda y valida los datos de Comercio Exterior antes de timbrar."
                     : "Importes calculados por el servidor al guardar el borrador.")

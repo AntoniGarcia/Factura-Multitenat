@@ -10,7 +10,7 @@
 <PageTitle>@(Id is null ? "Nuevo paquete" : "Editar paquete")</PageTitle>
 <TituloDePagina Texto="@(Id is null ? "Nuevo paquete" : "Editar paquete")" />
 
-<TarjetaFormulario RutaVolver="/operador/paquetes">
+<TarjetaFormulario RutaVolver="/operador/paquetes" Class="tarjeta-formulario-catalogo">
     <EditorDePaquete Id="Id"
                      Guardado="VolverALista"
                      Cancelado="VolverALista" />

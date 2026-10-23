@@ -11,7 +11,7 @@
     <DialogContent>
         <p class="dialogo-cancelacion-aviso">@Mensaje</p>
 
-        <div class="rejilla-campos">
+        <div class="operador-dialogo-campos">
             <MudTextField @bind-Value="_correoNuevo" Label="Correo nuevo" InputType="InputType.Email"
                           Immediate="true" MaxLength="254" />
 
@@ -23,7 +23,7 @@
         <MudButton OnClick="@(() => Dialogo.Cancel())">Cancelar</MudButton>
         <MudButton Variant="Variant.Filled" Color="Color.Primary" Disabled="@(!SePuedeConfirmar)"
                    OnClick="Confirmar">
-            Guardar
+            Guardar correo
         </MudButton>
     </DialogActions>
 </MudDialog>
