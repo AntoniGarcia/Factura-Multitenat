@@ -94,20 +94,6 @@ public static class MenuPrincipal
         //new("/catalogos", "Catálogos", "catalogo", Permiso: null),
         ElementoDeMenu.Submenu("Catálogos", "catalogo", Catalogos),
 
-<<<<<<< HEAD
-        // ── Mi empresa: se configura una vez y se revisa de vez en cuando ───────────────
-        new("/empresa/nueva", "Agregar empresa", "person", Permisos.ConfigurarEmpresa, Grupos.Empresa),
-        new("/empresa", "Datos fiscales", "business", Permisos.ConfigurarEmpresa, Grupos.Empresa),
-        new("/empresa/series", "Series de folios", "tag", Permisos.ConfigurarEmpresa, Grupos.Empresa),
-        new("/empresa/certificados", "Certificados", "verified_user", Permisos.ConfigurarEmpresa, Grupos.Empresa),
-        new("/empresa/configuracion", "Configuración", "settings", Permisos.ConfigurarEmpresa, Grupos.Empresa),
-        new("/empresa/transporte", "Transporte", "local_shipping", Permisos.ConfigurarEmpresa, Grupos.Empresa),
-
-        // ── Administración: cuenta, gente y datos del SAT ───────────────────────────────
-        new("/timbres", "Timbres", "confirmation_number", Permisos.ComprarTimbres, Grupos.Administracion),
-        new("/usuarios", "Usuarios", "people", Permisos.AdministrarUsuarios, Grupos.Administracion),
-        //new("/admin/catalogos-sat", "Catálogos del SAT", "inventory_2", Permiso: null, Grupos.Administracion)
-=======
         // ── Mi Administración: se configura una vez y se revisa de vez en cuando ───────────────       
         new("/empresa/nueva", "Empresas", "domain_add", Permisos.Titular, Grupos.Administracion),
         new("/empresa/usuarios", "Usuarios", "people", Permisos.Titular, Grupos.Administracion),
@@ -115,6 +101,5 @@ public static class MenuPrincipal
         // ── Tienda: cuenta, gente y datos del SAT ───────────────────────────────
         new("/timbres", "Timbres", "confirmation_number", Permisos.ComprarTimbres, Grupos.Tienda),
         // new("/admin/catalogos-sat", "Catálogos del SAT", "inventory_2", Permiso: null, Grupos.Administracion)
->>>>>>> bb34909164bf2df4931383e4d04b8d80b4b4c521
     ];
 }
