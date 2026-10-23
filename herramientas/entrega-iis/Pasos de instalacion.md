@@ -1,6 +1,6 @@
-# Instalacion en un sitio IIS existente
+# Cómo instalar el sistema
 
-Para una instalacion NUEVA con el sitio IIS ya creado:
+Estos pasos son para instalar por primera vez. El sitio IIS y la base de datos ya deben existir.
 
 1. El sitio debe tener una carpeta fisica vacia, un grupo exclusivo con identidad
    ApplicationPoolIdentity y un enlace HTTPS con certificado valido.
@@ -18,8 +18,8 @@ No reemplaza una publicacion o carpeta privada existente: esta fase NO actualiza
 Si el destino ya tiene archivos, detenerse y conservarlos; no vaciarlo para forzar una instalacion nueva.
 
 La carpeta privada queda en `%ProgramData%\FacturacionRevision\NOMBRE_DEL_GRUPO\cnf`.
-El asistente no pide clave desde localhost en el propio servidor; desde otra PC
-conserva la clave, generada al primer acceso en `clave-instalacion.txt` dentro de `cnf`.
+Esta entrega de revisión no pide clave de instalación, incluso al entrar por hostname.
+Completar el asistente antes de compartir el acceso; quien pueda abrirlo podrá configurarlo.
 El certificado debe corresponder a la direccion y ser confiable en el navegador.
 Si Windows bloquea los scripts, revisar el origen y la politica del servidor;
 el lanzador no desactiva ni evita la politica de ejecucion.
@@ -56,9 +56,9 @@ Puede consultar previamente el plan, sin modificar nada, añadiendo `-WhatIf`.
    el puerto HTTPS configurado. Capturar servidor SQL, base y usuario/contraseña;
    guardar y crear al primer operador si no existe. Los catálogos faltantes se cargan solos.
 
-Si solo se configura un enlace por dominio, o se entra desde otra PC, el asistente
-seguirá pidiendo la clave: está en `clave-instalacion.txt` dentro de la carpeta
-privada `cnf` que imprime el preparador. El modo sin clave es únicamente para localhost.
+El asistente ya no genera ni solicita una clave de instalación. En Staging admite
+otras PC; fuera de Staging solo permite configurar desde el servidor.
+Las contraseñas SQL y del operador se siguen utilizando.
 
 ## Qué hace el comando
 
@@ -76,7 +76,7 @@ No es un migrador: rechaza cambiar la ruta privada de una aplicación ya configu
 
 No ejecutar el preparador de una instalación NUEVA sobre la instalación anterior de Luis
 sin revisar sus rutas. Para actualizar una instalación existente conservar web.config,
-identidad y carpeta privada; seguir LEEME-IIS.md.
+identidad y carpeta privada; seguir Configuracion del servidor.md.
 
 Si el usuario SQL ya está creado, capturarlo en el asistente. Si se usa autenticación
 Windows, SQL debe reconocer a `IIS APPPOOL\Marpa` en la misma máquina, o a la cuenta
@@ -85,4 +85,29 @@ de dominio apropiada si SQL es remoto. Dar acceso a SQL sigue siendo tarea de su
 Si Windows bloquea un script descargado, revisar primero su origen y contenido y seguir
 la política de ejecución del servidor. No desactivar globalmente esa política.
 
-Para detalles de certificado, diagnóstico, SQL y actualizaciones: `LEEME-IIS.md`.
+## Abrir el sistema desde otras computadoras
+
+Sí se puede usar un hostname, por ejemplo `facturacion.empresa.com`. Primero debe
+estar en el enlace HTTPS del sitio IIS y tener un certificado para ese nombre.
+El instalador toma los nombres de los enlaces del sitio y los permite en la aplicación.
+No crea el dominio ni configura DNS.
+
+En la misma red, el nombre debe resolver a la IP del servidor desde las otras PC.
+`localhost` solo funciona en la computadora donde se abre el navegador.
+
+Para entrar desde Internet, el encargado de la red debe configurar el DNS público,
+la entrada HTTPS y el firewall. Si el servidor está detrás de un router, también
+debe resolver el acceso externo; con CGNAT puede requerirse otra solución.
+No se debe abrir el puerto de SQL Server al público. El instalador no hace estos cambios.
+Antes de publicar, completar la instalación y revisar seguridad y permisos.
+Este paquete sigue siendo de revisión, sin timbrado real ni pasarela de pagos.
+
+## Comprobación de archivos
+
+`Comprobacion de archivos.txt` contiene una firma SHA256 por archivo. Sirve para
+revisar que la copia esté completa y no haya cambiado. No es una clave y no se
+ejecuta. La revisión es opcional para instalar; el archivo no garantiza por sí
+solo quién creó el paquete.
+
+Para más detalles: `Configuracion del servidor.md`. Si ya está instalado, leer
+`Actualizar el sistema.md` y no ejecutar otra vez el instalador.

@@ -31,16 +31,16 @@
 
                 <div class="rejilla-campos">
                     <MudTextField @bind-Value="_descripcion" Label="Descripción" MaxLength="1000"
-                                  Lines="2" HelperText="Es lo que sale como concepto en la factura." />
+                                  Lines="2" />
                     <MudTextField @bind-Value="_unidadTexto" Label="Unidad de medida" MaxLength="@UnidadDeConcepto.LongitudMaxima"
-                                  HelperText="La que lee el cliente en el PDF, hasta 20 caracteres: «Litro», «Caja con 12»." />
+                                  HelperText="Hasta 20 caracteres. Ejemplo: Litro." />
                 </div>
                 </section>
 
                 <section class="formulario-catalogo-seccion formulario-catalogo-seccion-ancha">
                 <h2 class="seccion-titulo">Claves del SAT</h2>
                 <p class="seccion-ayuda">
-                    Se eligen del catálogo, nunca se escriben a mano. Al elegirlas se muestra su descripción.
+                    Busca y selecciona las claves del catálogo.
                 </p>
 
                 <div class="rejilla-campos">
@@ -106,8 +106,7 @@
                 else
                 {
                     <p class="seccion-ayuda">
-                        Los atajos cubren los casos comunes. Debajo se ve lo que de verdad va a viajar al
-                        XML, que es lo que el SAT valida.
+                        Usa un atajo y revisa el desglose fiscal.
                     </p>
 
                     <div class="atajos-iva">
@@ -131,8 +130,7 @@
                     @if (_impuestos.Count == 0 && HayTasasPredeterminadas)
                     {
                         <p class="seccion-ayuda">
-                            Se agregarán las tasas mayores que cero configuradas para esta empresa.
-                            Revisa el desglose antes de guardar. Para IVA 0 % o exento, usa el atajo correspondiente.
+                            Se agregarán las tasas mayores que cero. Para IVA 0 % o exento, usa su atajo.
                         </p>
                     }
 

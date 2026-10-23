@@ -1,5 +1,3 @@
-using System.Security.Cryptography;
-using System.Text;
 using System.Text.Json;
 using Microsoft.AspNetCore.DataProtection;
 
@@ -11,9 +9,11 @@ public sealed class ConfiguracionDeInstalacion
     private readonly string _directorio;
     private readonly string _archivo;
     private readonly Lazy<IDataProtector> _protector;
+    private readonly bool _conexionSinCifrar;
 
-    public ConfiguracionDeInstalacion(string directorio)
+    public ConfiguracionDeInstalacion(string directorio, bool conexionSinCifrar = false)
     {
+        _conexionSinCifrar = conexionSinCifrar;
         _directorio = Path.GetFullPath(directorio);
         _archivo = Path.Combine(_directorio, "appsettings.Instalacion.json");
         _protector = new Lazy<IDataProtector>(() =>
@@ -33,37 +33,30 @@ public sealed class ConfiguracionDeInstalacion
 
     public bool Existe => File.Exists(_archivo);
     public string Directorio => _directorio;
-    public string RutaClave => Path.Combine(_directorio, "clave-instalacion.txt");
 
     public string? LeerConexion()
     {
         if (!Existe) return null;
-        var documento = JsonSerializer.Deserialize<ConexionPersistida>(File.ReadAllText(_archivo))
+        var contenido = File.ReadAllText(_archivo);
+        using var formato = JsonDocument.Parse(contenido);
+        if (formato.RootElement.ValueKind != JsonValueKind.Object
+            || !formato.RootElement.TryGetProperty("Version", out var version)
+            || version.ValueKind != JsonValueKind.Number || !version.TryGetInt32(out var numeroVersion))
+            throw new InvalidDataException("La configuración de instalación no tiene un formato válido.");
+        if (numeroVersion == 2)
+        {
+            if (!_conexionSinCifrar)
+                throw new InvalidDataException("La conexión sin cifrar solo se admite en el modo explícito de revisión.");
+            var revision = JsonSerializer.Deserialize<ConexionEnClaro>(contenido);
+            if (string.IsNullOrWhiteSpace(revision?.Conexion))
+                throw new InvalidDataException("La conexión de revisión está vacía.");
+            return revision.Conexion;
+        }
+        var documento = JsonSerializer.Deserialize<ConexionPersistida>(contenido)
             ?? throw new InvalidDataException("La configuración de instalación está vacía.");
         if (documento.Version != 1 || string.IsNullOrWhiteSpace(documento.ConexionProtegida))
             throw new InvalidDataException("La configuración de instalación no es compatible.");
         return _protector.Value.Unprotect(documento.ConexionProtegida);
-    }
-
-    public void AsegurarClave()
-    {
-        Directory.CreateDirectory(_directorio);
-        try
-        {
-            using var archivo = new FileStream(RutaClave, FileMode.CreateNew, FileAccess.Write, FileShare.None);
-            using var escritor = new StreamWriter(archivo, Encoding.UTF8);
-            escritor.Write(Convert.ToHexString(RandomNumberGenerator.GetBytes(32)));
-        }
-        catch (IOException) when (File.Exists(RutaClave)) { }
-    }
-
-    public bool Autoriza(string clave)
-    {
-        if (clave.Length is < 32 or > 128) return false;
-        var esperada = File.ReadAllText(RutaClave).Trim();
-        return CryptographicOperations.FixedTimeEquals(
-            SHA256.HashData(Encoding.UTF8.GetBytes(clave)),
-            SHA256.HashData(Encoding.UTF8.GetBytes(esperada)));
     }
 
     public async Task<bool> GuardarAsync(string conexion, CancellationToken ct)
@@ -73,7 +66,10 @@ public sealed class ConfiguracionDeInstalacion
         try
         {
             if (Existe) return false;
-            var datos = new ConexionPersistida(1, _protector.Value.Protect(conexion), DateTimeOffset.UtcNow);
+            Directory.CreateDirectory(_directorio);
+            object datos = _conexionSinCifrar
+                ? new ConexionEnClaro(2, conexion, DateTimeOffset.UtcNow)
+                : new ConexionPersistida(1, _protector.Value.Protect(conexion), DateTimeOffset.UtcNow);
             temporal = Path.Combine(_directorio, $".conexion-{Guid.NewGuid():N}.tmp");
             await File.WriteAllTextAsync(temporal, JsonSerializer.Serialize(datos, new JsonSerializerOptions
             {
@@ -91,4 +87,5 @@ public sealed class ConfiguracionDeInstalacion
     }
 
     private sealed record ConexionPersistida(int Version, string ConexionProtegida, DateTimeOffset GuardadaUtc);
+    private sealed record ConexionEnClaro(int Version, string Conexion, DateTimeOffset GuardadaUtc);
 }

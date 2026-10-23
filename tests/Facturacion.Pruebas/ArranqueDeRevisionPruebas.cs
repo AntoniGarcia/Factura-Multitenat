@@ -96,6 +96,44 @@ public sealed class ArranqueDeRevisionPruebas : IDisposable
         return constructor;
     }
 
+    [WindowsInstalacionFact]
+    public async Task Publicacion_sin_instalador_guarda_sql_junto_a_dll_y_conserva_llaves_en_cnf()
+    {
+        WebApplicationBuilder Crear()
+        {
+            var constructor = Constructor();
+            constructor.Environment.ContentRootPath = _directorio;
+            constructor.Environment.WebRootPath = Path.Combine(_directorio, "wwwroot");
+            constructor.Configuration["Instalacion:Directorio"] = null;
+            constructor.Configuration["ConnectionStrings:BaseDeDatos"] = null;
+            constructor.Configuration["Instalacion:ArranqueAutomatico"] = "true";
+            constructor.Configuration["Instalacion:JuntoAlServidorRevision"] = "true";
+            constructor.Configuration["Instalacion:ConexionSinCifrarRevision"] = "true";
+            return constructor;
+        }
+        var primero = Crear();
+        await ArranqueDeRevision.PrepararAlArrancarAsync(primero, default);
+        var estado = InstalacionModule.Preparar(primero);
+        Assert.Equal(_directorio, estado.Archivo.Directorio);
+        Assert.Empty(estado.ConfiguracionPendiente);
+        Assert.True(estado.MostrarAsistente);
+        const string conexion = "Server=prueba;Database=prueba;Integrated Security=true";
+        Assert.True(await estado.Archivo.GuardarAsync(conexion, default));
+        Assert.True(File.Exists(Path.Combine(_directorio, "appsettings.Instalacion.json")));
+        Assert.True(File.Exists(Path.Combine(_directorio, "cnf", "appsettings.ArranqueRevision.json")));
+        Assert.False(Directory.Exists(Path.Combine(_directorio, "llavero-instalacion")));
+        var firma = primero.Configuration["Jwt:ClaveDeFirma"];
+        var segundo = Crear();
+        await ArranqueDeRevision.PrepararAlArrancarAsync(segundo, default);
+        var posterior = InstalacionModule.Preparar(segundo);
+        Assert.Null(posterior.ErrorCarga);
+        Assert.True(posterior.ConexionConfigurada);
+        Assert.False(posterior.MostrarAsistente);
+        Assert.Equal(conexion, segundo.Configuration["ConnectionStrings:BaseDeDatos"]);
+        Assert.Equal(firma, segundo.Configuration["Jwt:ClaveDeFirma"]);
+        Assert.False(File.Exists(Path.Combine(_directorio, "clave-instalacion.txt")));
+    }
+
     public void Dispose()
     {
         if (Directory.Exists(_directorio)) Directory.Delete(_directorio, recursive: true);

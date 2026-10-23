@@ -6,19 +6,25 @@
             Define los módulos contratados por <strong>@NombreEmpresa</strong>. El cambio queda registrado en la bitácora.
         </p>
 
-        <div class="rejilla-formulario">
+        <section class="operador-dialogo-bloque" aria-labelledby="empresa-modulos-contratados">
+        <h2 id="empresa-modulos-contratados" class="seccion-titulo">Módulos contratados</h2>
+        <div class="operador-dialogo-campos operador-dialogo-campos-dos">
             <MudCheckBox @bind-Value="_notarios" Label="Notaría" />
             <MudCheckBox @bind-Value="_obras" Label="Constructoras" />
             <MudCheckBox @bind-Value="_comercio" Label="Comercio exterior" />
             <MudCheckBox @bind-Value="_ine" Label="Complemento INE" />
         </div>
+        </section>
 
+        <section class="operador-dialogo-bloque" aria-labelledby="empresa-modulos-confirmacion">
+        <h2 id="empresa-modulos-confirmacion" class="seccion-titulo">Confirmar cambios</h2>
         <MudTextField @bind-Value="_contrasena" Label="Tu contraseña de operador"
                       InputType="@(_verContrasena ? InputType.Text : InputType.Password)"
                       Adornment="Adornment.End"
                       AdornmentIcon="@(_verContrasena ? Icons.Material.Filled.VisibilityOff : Icons.Material.Filled.Visibility)"
                       OnAdornmentClick="@(() => _verContrasena = !_verContrasena)"
                       Immediate="true" MaxLength="128" Required="true" />
+        </section>
     </DialogContent>
     <DialogActions>
         <MudButton OnClick="Cancelar">Cancelar</MudButton>

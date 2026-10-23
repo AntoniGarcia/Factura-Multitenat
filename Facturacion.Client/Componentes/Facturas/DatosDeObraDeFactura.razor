@@ -6,6 +6,7 @@
 
 <PanelErrores Problema="_error" />
 
+<div class="obra-formulario">
 <section class="emision-seccion">
     <h2 class="seccion-titulo">Estimación de obra</h2>
     @if (_conciliacion is { } conciliacion)
@@ -15,13 +16,16 @@
         </div>
     }
 
-    <div class="rejilla-campos">
+    <div class="obra-rejilla">
         <MudSelect T="string" @bind-Value="_tipoObra" Label="Tipo de obra" Required="true">
             <MudSelectItem T="string" Value="@TiposDeObra.Publica">Obra pública</MudSelectItem>
             <MudSelectItem T="string" Value="@TiposDeObra.Privada">Obra privada</MudSelectItem>
         </MudSelect>
         <MudTextField T="string" Value="@(ImporteTrabajos > 0 ? ImporteTrabajos.ToString("N2") : "Guarda los conceptos")"
                       Label="Importe de los trabajos" ReadOnly="true" Class="cifra-tabular" />
+    </div>
+    <h3 class="obra-subtitulo">Ajustes de la estimación</h3>
+    <div class="obra-rejilla">
         <MudNumericField T="decimal" @bind-Value="_porcentajeAmortizacion" Immediate="true" Label="Amortización del anticipo (%)"
                          Min="0" Max="100" Format="N2" Class="cifra-tabular" />
         <MudNumericField T="decimal" @bind-Value="_porcentajeRetenciones" Immediate="true" Label="Retenciones (%)"
@@ -32,12 +36,7 @@
                          Min="0" Max="100" Format="N2" Class="cifra-tabular" />
     </div>
     <p class="seccion-ayuda">
-        La armotizacion corresponde a un anticipo fiscal o parcialidad se conserva estos importes mientras se define
-        su tratamiento
-    </p>
-    <p class="seccion-ayuda">
-        Al guardar una estimación sin ajustes de base y con IVA uniforme, el importe de IVA
-        se toma de los conceptos del CFDI. Mientras editas, el cálculo es preliminar.
+        Cálculo preliminar. Sin ajustes de base y con IVA uniforme, al guardar se usa el IVA de los conceptos.
     </p>
 </section>
 
@@ -53,28 +52,24 @@
 <section class="emision-seccion">
     <h2 class="seccion-titulo">Deducciones del pago</h2>
     <p class="seccion-ayuda">
-        Cada porcentaje se aplica al importe original de los trabajos. Las tasas inician en cero:
-        captura solo las deducciones que correspondan al contrato.
+        Porcentajes sobre el importe original. Captura solo lo previsto en el contrato.
     </p>
     @if (_tipoObra == TiposDeObra.Privada)
     {
         <div class="aviso-documentos" role="status">
-            El «5 al millar» de obra pública no se aplica automáticamente a contratos privados.
-            Revisa y renombra las deducciones según el contrato antes de guardar.
+            En obra privada, ajusta los nombres y tasas de las deducciones según el contrato.
         </div>
     }
     else if (_tipoObra == TiposDeObra.Publica)
     {
         <div class="aviso-documentos" role="status">
-            En este flujo de obra pública, captura «5 al millar» al 0.50 % solo si corresponde
-            a tu contrato. Se informará en el complemento de impuestos locales; no disminuye
-            el total del CFDI, pero sí el importe líquido estimado.
+            «5 al millar»: 0.50 % si aplica al contrato. Se informa como impuesto local y reduce el líquido, no el total del CFDI.
         </div>
     }
     @for (var i = 0; i < _deducciones.Count; i++)
     {
         var deduccion = _deducciones[i];
-        <div class="rejilla-campos">
+        <div class="obra-deduccion">
             <MudTextField @bind-Value="deduccion.Nombre" Label="Concepto" MaxLength="60" Required="true" />
             <MudNumericField T="decimal" @bind-Value="deduccion.Porcentaje" Immediate="true" Label="Porcentaje (%)"
                              Min="0" Max="100" Format="N2" Class="cifra-tabular" />
@@ -82,22 +77,12 @@
     }
 </section>
 
-<div class="acciones-formulario">
-    <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="GuardarAsync" Disabled="@(_guardando || (_datosAnterioresSinTasa && !_aceptaRecalculo))">
-        @(_guardando ? "Guardando…" : "Guardar cálculo de obra")
-    </MudButton>
-    <MudButton Variant="Variant.Outlined" StartIcon="@Icons.Material.Filled.PictureAsPdf"
-               OnClick="VistaPreviaAsync" Disabled="@(_guardando || (_datosAnterioresSinTasa && !_aceptaRecalculo))">
-        Vista previa de estimación
-    </MudButton>
-</div>
-
 @if (VistaActual is { } vista)
 {
-    <section class="emision-seccion" aria-label="Resultado de la estimación">
+    <section class="obra-resultado" aria-label="Resultado de la estimación">
         <h2 class="seccion-titulo">Cálculo preliminar</h2>
-        <p class="seccion-ayuda">Calculado sobre los conceptos guardados. El servidor valida los importes al guardar.</p>
-        <dl class="emision-resumen-totales">
+        <p class="seccion-ayuda">Estimación sobre conceptos guardados; no sustituye el total fiscal del CFDI.</p>
+        <dl class="obra-desglose">
             <div><dt>Importe de trabajos</dt><dd class="cifra-tabular">@vista.ImporteTrabajos.ToString("N2")</dd></div>
             <div><dt>Amortización del anticipo</dt><dd class="cifra-tabular">−@vista.Amortizacion.ToString("N2")</dd></div>
             <div><dt>Retenciones</dt><dd class="cifra-tabular">−@vista.Retenciones.ToString("N2")</dd></div>
@@ -109,10 +94,22 @@
             {
                 <div><dt>@deduccion.Nombre</dt><dd class="cifra-tabular">−@deduccion.Importe.ToString("N2")</dd></div>
             }
-            <div class="emision-resumen-total"><dt>Importe líquido estimado</dt><dd class="cifra-tabular">@vista.ImporteLiquido.ToString("N2")</dd></div>
+            <div class="obra-liquido"><dt>Importe líquido estimado</dt><dd class="cifra-tabular">@vista.ImporteLiquido.ToString("N2")</dd></div>
         </dl>
     </section>
 }
+
+<div class="tarjeta-formulario-acciones">
+    <span class="catalogo-acciones-ayuda">Revisa los ajustes y deducciones antes de guardar.</span>
+    <MudButton Variant="Variant.Outlined" StartIcon="@Icons.Material.Filled.PictureAsPdf"
+               OnClick="VistaPreviaAsync" Disabled="@(_guardando || (_datosAnterioresSinTasa && !_aceptaRecalculo))">
+        Vista previa de estimación
+    </MudButton>
+    <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="GuardarAsync" Disabled="@(_guardando || (_datosAnterioresSinTasa && !_aceptaRecalculo))">
+        @(_guardando ? "Guardando…" : "Guardar cálculo de obra")
+    </MudButton>
+</div>
+</div>
 
 @code {
     [Parameter, EditorRequired] public Guid ComprobanteId { get; set; }

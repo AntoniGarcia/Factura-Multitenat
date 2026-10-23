@@ -8,26 +8,17 @@
     let probada = false;
     let ocupado = false;
     let cerrada = false;
-    let claveInstalacion = "";
     let finalizando = false;
     let accesoPendiente = null;
-    let requiereClave = true;
 
     async function abrirAcceso() {
         if (finalizando) return;
-        const clave = claveInstalacion || porId("clave-final").value.trim();
-        if (requiereClave && !accesoPendiente && !clave) {
-            porId("confirmar-acceso").hidden = false;
-            porId("clave-final").focus();
-            return;
-        }
         finalizando = true;
         porId("abrir-acceso").disabled = true;
         try {
             if (!accesoPendiente) {
                 const respuesta = await fetch("/api/instalacion/finalizar", {
-                    method: "POST", credentials: "omit", cache: "no-store",
-                    headers: { "X-Clave-Instalacion": clave }
+                    method: "POST", credentials: "omit", cache: "no-store"
                 });
                 const resultado = await respuesta.json();
                 if (!respuesta.ok) {
@@ -35,8 +26,6 @@
                     return;
                 }
                 accesoPendiente = resultado.acceso;
-                claveInstalacion = "";
-                porId("clave-final").value = "";
             }
             mensaje("Abriendo acceso…");
             for (let intento = 0; intento < 40; intento++) {
@@ -95,7 +84,6 @@
     async function enviar(accion) {
         if (ocupado || cerrada || !formulario.reportValidity()) return;
         ocupado = true;
-        const clave = porId("clave").value.trim();
         const datos = parametros();
         campos.disabled = true;
         porId("probar").textContent = accion === "guardar" ? "Guardando…" : "Comprobando…";
@@ -104,7 +92,7 @@
                 method: "POST",
                 credentials: "omit",
                 cache: "no-store",
-                headers: { "Content-Type": "application/json", "X-Clave-Instalacion": clave },
+                headers: { "Content-Type": "application/json" },
                 body: JSON.stringify(datos)
             });
             const resultado = await respuesta.json();
@@ -115,8 +103,6 @@
                 return;
             }
             if (accion === "guardar") {
-                claveInstalacion = clave;
-                porId("clave-operador").value = clave;
                 mensaje("Conexión guardada.");
                 await iniciar();
             } else {
@@ -164,7 +150,7 @@
         const mostrar = campo.type === "password";
         campo.type = mostrar ? "text" : "password";
         boton.textContent = mostrar ? "Ocultar" : "Mostrar";
-        boton.setAttribute("aria-label", `${mostrar ? "Ocultar" : "Mostrar"} ${campo.id === "clave" ? "clave de instalación" : "contraseña SQL"}`);
+        boton.setAttribute("aria-label", `${mostrar ? "Ocultar" : "Mostrar"} contraseña SQL`);
     }));
 
     async function iniciar() {
@@ -172,12 +158,6 @@
             const respuesta = await fetch("/api/instalacion/estado", { cache: "no-store", credentials: "omit" });
             if (!respuesta.ok) throw new Error();
             const estado = await respuesta.json();
-            requiereClave = estado.requiereClave !== false;
-            document.querySelectorAll("[data-clave-instalacion]").forEach(grupo => { grupo.hidden = !requiereClave; });
-            for (const id of ["clave", "clave-operador", "clave-final"]) {
-                porId(id).disabled = !requiereClave;
-                if (id !== "clave-final") porId(id).required = requiereClave;
-            }
             if (estado.conexionGuardada) {
                 terminar(estado.errorCarga || undefined);
                 if (estado.errorCarga) {
@@ -212,7 +192,7 @@
                 }
                 if (!estado.errorCarga && estado.principalExistente && !estado.configuracionPendiente.length) {
                     porId("confirmar-acceso").hidden = false;
-                    if (!requiereClave || claveInstalacion || accesoPendiente) await abrirAcceso();
+                    await abrirAcceso();
                 }
             } else formulario.hidden = false;
         } catch {
@@ -232,13 +212,12 @@
             nombre: porId("nombre-operador").value, correo: porId("correo-operador").value,
             contrasena: porId("contrasena-operador").value, confirmacion: porId("confirmacion-operador").value
         };
-        claveInstalacion = porId("clave-operador").value.trim();
         porId("campos-operador").disabled = true;
         porId("crear-operador").textContent = "Creando…";
         try {
             const respuesta = await fetch("/api/instalacion/operador", {
                 method: "POST", credentials: "omit", cache: "no-store",
-                headers: { "Content-Type": "application/json", "X-Clave-Instalacion": porId("clave-operador").value.trim() },
+                headers: { "Content-Type": "application/json" },
                 body: JSON.stringify(datos)
             });
             const resultado = await respuesta.json();

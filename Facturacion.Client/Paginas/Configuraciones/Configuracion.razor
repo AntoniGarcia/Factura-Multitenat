@@ -1,9 +1,6 @@
 @page "/configuracion"
 @attribute [Authorize(Policy = Permisos.Configuracion)]
-@using Facturacion.Client.Servicios.Documentos
-@using Facturacion.Shared.Documentos
 @inject ServicioDeEmpresa Empresas
-@inject ServicioDeEmision Emision
 @inject IServicioDeConfirmacion Confirmacion
 
 @* El logo se guarda al seleccionarlo; los demás cambios se envían con Guardar. *@
@@ -11,6 +8,7 @@
 <PageTitle>Configuración</PageTitle>
 <TituloDePagina Texto="Configuración" />
 
+<TarjetaFormulario Class="tarjeta-formulario-catalogo cliente-configuracion">
 <PanelErrores Problema="_error" />
 
 @if (_cargando)
@@ -22,22 +20,13 @@ else
     <MudTabs @bind-ActivePanelIndex="_pestana">
 
         <MudTabPanel Text="General" Icon="@Icons.Material.Filled.Tune">
-            <h2 class="seccion-titulo">Timbrado</h2>
+            <div class="formulario-catalogo-secciones">
+            <section class="formulario-catalogo-seccion formulario-catalogo-seccion-ancha" aria-labelledby="cliente-config-logo">
+            <h2 id="cliente-config-logo" class="seccion-titulo">Logo de la empresa</h2>
             <p class="seccion-ayuda">
-                El timbrado lo hace el proveedor de la plataforma y consume timbres de tu bolsa.
+                PNG o JPG, hasta 2 MB. Se muestra en el PDF.
             </p>
-            <p role="status">
-                <span class="indicador-estado @ClaseDelPac">@TextoDelPac</span>
-            </p>
-            @if (DetalleDelPac is { } detalle)
-            {
-                <p class="seccion-ayuda">@detalle</p>
-            }
-
-            <h2 class="seccion-titulo">Logo de la empresa</h2>
-            <p class="seccion-ayuda">
-                Aparece en el PDF de tus comprobantes. PNG o JPG de hasta 2 MB; se guarda en cuanto lo eliges.
-            </p>
+            <p class="cliente-config-guardado-inmediato" role="note">El logo se guarda al seleccionarlo, sin pulsar Guardar.</p>
             <div class="logo-empresa">
                 @if (_logo is not null)
                 {
@@ -68,28 +57,33 @@ else
             {
                 <p class="texto-error" role="alert">@_errorLogo</p>
             }
+            </section>
 
-            <h2 class="seccion-titulo">Notificaciones</h2>
+            <section class="formulario-catalogo-seccion formulario-catalogo-seccion-ancha" aria-labelledby="cliente-config-avisos">
+            <h2 id="cliente-config-avisos" class="seccion-titulo">Notificaciones</h2>
             <div class="rejilla-campos">
                 <MudNumericField @bind-Value="_diasAviso" Label="Avisar caducidad del certificado"
                                  Min="1" Max="365" HelperText="Días antes de que caduque."
                                  Error="@(ErrorDiasAviso is not null)" ErrorText="@ErrorDiasAviso"
                                  Class="cifra-tabular" />
             </div>
+            </section>
+            </div>
         </MudTabPanel>
 
         <MudTabPanel Text="Correo" Icon="@Icons.Material.Filled.Email">
-            <h2 class="seccion-titulo">Servidor de correo</h2>
+            <section class="formulario-catalogo-seccion" aria-labelledby="cliente-config-correo">
+            <h2 id="cliente-config-correo" class="seccion-titulo">Envío de comprobantes</h2>
             <p class="seccion-ayuda">
-                Con tu propio servidor, los comprobantes salen desde tu dirección. Sin él, salen de la
-                dirección del sistema con el nombre y el «Responder a» que pongas aquí.
+                Solo aplica al envío de comprobantes.
             </p>
 
             <MudSwitch @bind-Value="_habilitado" Label="Usar mi propio servidor de correo" Color="Color.Primary" />
 
             @if (_habilitado)
             {
-                <div class="rejilla-campos">
+                <h3 class="cliente-config-subtitulo">Conexión SMTP</h3>
+                <div class="catalogo-rejilla catalogo-rejilla-dos">
                     <MudTextField @bind-Value="_servidor" Label="Servidor SMTP" Placeholder="smtp.miempresa.com"
                                   MaxLength="253" Immediate="true"
                                   Error="@(ErrorServidor is not null)" ErrorText="@ErrorServidor" />
@@ -116,12 +110,11 @@ else
                                Label="Requiere autenticación SSL/TLS" />
                 </div>
                 <p class="seccion-ayuda">
-                    Siempre cifrado: el 465 usa SSL directo y el 587, STARTTLS. Gmail y Outlook piden una
-                    contraseña de aplicación en lugar de la contraseña de la cuenta.
+                    Conexión cifrada. En Gmail, usa una contraseña de aplicación.
                 </p>
 
-                <h3 class="seccion-subtitulo">Remitente (De)</h3>
-                <div class="rejilla-campos">
+                <h3 class="cliente-config-subtitulo">Remitente (De)</h3>
+                <div class="catalogo-rejilla catalogo-rejilla-dos">
                     <MudTextField @bind-Value="_remitenteNombre" Label="Nombre del remitente" Placeholder="Facturación Mi Empresa"
                                   MaxLength="128" Immediate="true" />
                     <MudTextField @bind-Value="_remitenteCorreo" Label="Correo del remitente" Placeholder="facturas@miempresa.com"
@@ -132,8 +125,8 @@ else
             }
             else
             {
-                <h3 class="seccion-subtitulo">Remitente del sistema</h3>
-                <div class="rejilla-campos">
+                <h3 class="cliente-config-subtitulo">Remitente del sistema</h3>
+                <div class="catalogo-rejilla catalogo-rejilla-dos">
                     <MudTextField @bind-Value="_nombreRemitenteSistema" Label="Nombre del remitente"
                                   Placeholder="Facturación Mi Empresa" MaxLength="128" Immediate="true"
                                   HelperText="Vacío: el nombre del sistema."
@@ -144,48 +137,56 @@ else
                                   Error="@(ErrorResponderA is not null)" ErrorText="@ErrorResponderA" />
                 </div>
             }
+            </section>
         </MudTabPanel>
 
         <MudTabPanel Text="Impuestos" Icon="@Icons.Material.Filled.Percent">
-            <p class="seccion-ayuda mt-3">
-                Estas tasas son una sugerencia al configurar productos. Los impuestos de la factura
-                se calculan con los que tenga guardados cada producto.
+            <p class="seccion-ayuda">
+                Tasas sugeridas para productos. Cada factura usa los impuestos guardados en sus conceptos.
             </p>
 
-            <h2 class="seccion-titulo">Impuesto trasladado</h2>
-            <div class="rejilla-campos">
+            <div class="formulario-catalogo-secciones">
+            <section class="formulario-catalogo-seccion formulario-catalogo-seccion-ancha" aria-labelledby="cliente-config-traslados">
+            <h2 id="cliente-config-traslados" class="seccion-titulo">Impuestos trasladados</h2>
+            <div class="catalogo-rejilla catalogo-rejilla-dos">
                 <MudNumericField @bind-Value="_ivaPct" Label="IVA %" Min="0M" Max="100M" Step="1M" Format="N2"
-                                 Class="cifra-tabular" HelperText="16 es 16 %." />
+                                 Class="cifra-tabular" />
                 <MudNumericField @bind-Value="_iepsPct" Label="IEPS %" Min="0M" Max="100M" Format="N2"
-                                 Class="cifra-tabular" HelperText="Cero si la empresa no lo cobra." />
+                                 Class="cifra-tabular" />
             </div>
+            </section>
 
-            <h2 class="seccion-titulo">Impuesto retenido</h2>
-            <div class="rejilla-campos">
+            <section class="formulario-catalogo-seccion formulario-catalogo-seccion-ancha" aria-labelledby="cliente-config-retenciones">
+            <h2 id="cliente-config-retenciones" class="seccion-titulo">Impuestos retenidos</h2>
+            <p class="seccion-ayuda">Usa cero si no aplica.</p>
+            <div class="catalogo-rejilla catalogo-rejilla-tres">
                 <MudNumericField @bind-Value="_retIvaPct" Label="IVA %" Min="0M" Max="100M" Format="N2"
-                                 Class="cifra-tabular" HelperText="Cero si la empresa no retiene." />
+                                 Class="cifra-tabular" />
                 <MudNumericField @bind-Value="_retIsrPct" Label="ISR %" Min="0M" Max="100M" Format="N2"
-                                 Class="cifra-tabular" HelperText="Cero si la empresa no retiene." />
+                                 Class="cifra-tabular" />
                 <MudNumericField @bind-Value="_retIepsPct" Label="IEPS %" Min="0M" Max="100M" Format="N2"
-                                 Class="cifra-tabular" HelperText="Cero si la empresa no retiene." />
+                                 Class="cifra-tabular" />
             </div>
+            </section>
 
-            <h2 class="seccion-titulo">Impuestos locales</h2>
+            <section class="formulario-catalogo-seccion formulario-catalogo-seccion-ancha" aria-labelledby="cliente-config-locales">
+            <h2 id="cliente-config-locales" class="seccion-titulo">Impuestos locales</h2>
             <p class="seccion-ayuda">
-                Se guardan para los documentos que los apliquen. Hoy ningún comprobante los usa: los
-                impuestos locales viajan en su propio complemento, que solo usa la factura de obra pública.
+                Su aplicación depende del documento.
             </p>
             <div class="rejilla-campos">
                 <MudNumericField @bind-Value="_ishPct" Label="ISH %" Min="0M" Max="100M" Format="N2"
                                  Class="cifra-tabular" HelperText="Impuesto sobre hospedaje." />
             </div>
+            </section>
+            </div>
         </MudTabPanel>
     </MudTabs>
 
-    <div class="acciones-formulario">
+    <div class="tarjeta-formulario-acciones">
         <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="GuardarAsync"
                    Disabled="@(_guardando || !HayCambios)">
-            @(_guardando ? "Guardando…" : "Guardar")
+            @(_guardando ? "Guardando…" : "Guardar configuración")
         </MudButton>
         <MudButton Variant="Variant.Text" OnClick="Cancelar" Disabled="@(_guardando || !HayCambios)">
             Cancelar
@@ -197,6 +198,7 @@ else
         }
     </div>
 }
+</TarjetaFormulario>
 
 @code {
     private const long TopeLogo = 2 * 1024 * 1024;
@@ -206,7 +208,6 @@ else
     private DetalleProblema? _error;
     private string? _errorLogo;
 
-    private EstadoDeIntegracionFiscalDto? _pac;
     private string? _logo;
 
     // Lo último que confirmó el servidor: contra esto se calcula qué cambió y a qué vuelve «Cancelar».
@@ -228,10 +229,9 @@ else
         {
             var configuracion = Empresas.ObtenerConfiguracionAsync();
             var correo = Empresas.ObtenerCorreoAsync();
-            var pac = ConsultarPacAsync();
             var logo = CargarLogoAsync();
 
-            await Task.WhenAll(configuracion, correo, pac, logo);
+            await Task.WhenAll(configuracion, correo, logo);
 
             AplicarConfiguracion((await configuracion)!);
             AplicarCorreo((await correo)!);
@@ -241,44 +241,6 @@ else
             _cargando = false;
         }
     }
-
-    // ── Estado del PAC ──────────────────────────────────────────────────────────────
-
-    private async Task ConsultarPacAsync()
-    {
-        try
-        {
-            _pac = await Emision.ObtenerEstadoDeIntegracionAsync();
-        }
-        catch (HttpRequestException)
-        {
-            _pac = null;
-        }
-    }
-
-    private string TextoDelPac => _pac switch
-    {
-        null => "Estado del PAC desconocido",
-        { TimbradoDisponible: false } => "PAC no disponible",
-        { Simulado: true } => "PAC disponible en modo simulado",
-        _ => "PAC disponible"
-    };
-
-    private string ClaseDelPac => _pac switch
-    {
-        null => "indicador-estado-borrador",
-        { TimbradoDisponible: false } => "indicador-estado-cancelada",
-        { Simulado: true } => "indicador-estado-advertencia",
-        _ => "indicador-estado-timbrada"
-    };
-
-    private string? DetalleDelPac => _pac switch
-    {
-        null => "No se pudo consultar. Vuelve a abrir esta pantalla en unos minutos.",
-        { TimbradoDisponible: false } => "Puedes capturar borradores, pero no timbrar hasta que el PAC esté disponible.",
-        { Simulado: true } => "Los timbres de este entorno son de prueba y no tienen validez fiscal.",
-        _ => null
-    };
 
     // ── Logo ────────────────────────────────────────────────────────────────────────
 

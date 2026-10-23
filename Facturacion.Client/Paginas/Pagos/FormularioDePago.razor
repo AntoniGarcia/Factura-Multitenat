@@ -31,14 +31,6 @@
 }
 else
 {
-    @if (_integracionFiscal is { TimbradoDisponible: false })
-    {
-        <div class="aviso-documentos" role="status">
-            El timbrado está pendiente de integración con el PAC. Puedes capturar y guardar
-            borradores; no se generarán folios fiscales ni se consumirán timbres.
-        </div>
-    }
-
     <MudTabs Elevation="0" ApplyEffectsToContainer="true" Class="pestanas-pago">
         <MudTabPanel Text="General">
             <section class="seccion-formulario">
@@ -111,7 +103,7 @@ else
             <section class="seccion-formulario">
                 <h2 class="seccion-titulo">Facturas que se pagan</h2>
                 <p class="seccion-ayuda">
-                    Consulta facturas timbradas PPD. El servidor determina el saldo y la parcialidad.
+                    Busca facturas timbradas PPD. El saldo y la parcialidad se calculan automáticamente.
                 </p>
 
                 @if (EsEditable)

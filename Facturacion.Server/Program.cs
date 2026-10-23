@@ -26,10 +26,10 @@ while (true)
     constructor.AgregarRegistro();
 
     await ArranqueDeRevision.PrepararAlArrancarAsync(constructor, CancellationToken.None);
-    var instalacion = InstalacionModule.Preparar(constructor);
+    var instalacion = InstalacionModule.Preparar(constructor);                                      /////////////
     if (constructor.Configuration.GetValue<bool>("Instalacion:PrepararRevision"))
     {
-        var preparada = await ArranqueDeRevision.PrepararAsync(constructor, instalacion.Archivo.Directorio, CancellationToken.None);
+        var preparada = await ArranqueDeRevision.PrepararAsync(constructor, RutasDeInstalacion.Obtener(constructor).Interna, CancellationToken.None);
         Console.WriteLine(preparada
             ? "Arranque de revisión guardado y protegido. Reinicia con Staging y el mismo directorio de instalación. PAC deshabilitado; correo pendiente de configurar."
             : "El arranque de revisión ya existe. No se reemplazaron sus claves ni su almacenamiento.");

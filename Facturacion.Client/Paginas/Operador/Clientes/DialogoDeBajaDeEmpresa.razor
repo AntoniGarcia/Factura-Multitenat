@@ -11,7 +11,7 @@
             para poder reactivarla después.
         </p>
 
-        <div class="rejilla-campos">
+        <div class="operador-dialogo-campos">
             <MudTextField @bind-Value="_motivo" Label="Motivo de la desactivación" Immediate="true"
                           Lines="3" MaxLength="300" Counter="300" />
 
@@ -23,7 +23,7 @@
         <MudButton OnClick="@(() => Dialogo.Cancel())">Cancelar</MudButton>
         <MudButton Variant="Variant.Filled" Color="Color.Error" Disabled="@(!SePuedeConfirmar)"
                    OnClick="Confirmar">
-            Desactivar
+            Desactivar empresa
         </MudButton>
     </DialogActions>
 </MudDialog>

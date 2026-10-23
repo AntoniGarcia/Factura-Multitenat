@@ -1,6 +1,8 @@
 using System.Security.Claims;
 using Facturacion.Server.Infra.Errores;
 using Facturacion.Server.Modules.Operador.Auth;
+using Facturacion.Server.Modules.Documentos.Pac;
+using Facturacion.Shared.Documentos;
 using Facturacion.Shared.Comun;
 using Facturacion.Shared.Operador;
 
@@ -19,6 +21,12 @@ public static class ConfiguracionDelSistemaEndpoints
             .RequireAuthorization(PoliticasDeOperador.Operador);
 
         grupo.MapGet("/", Obtener).RequireAuthorization(PoliticasDeOperador.VerConfiguracion);
+        grupo.MapGet("/integracion-fiscal", (IServiceProvider servicios) =>
+        {
+            var pac = servicios.GetService<IProveedorPac>();
+            return Results.Ok(new EstadoDeIntegracionFiscalDto(
+                pac is not null, pac is Facturacion.Server.Modules.Documentos.Dobles.DobleProveedorPac));
+        }).RequireAuthorization(PoliticasDeOperador.VerConfiguracion);
         grupo.MapPut("/", Guardar).RequireAuthorization(PoliticasDeOperador.AdministrarConfiguracion);
     }
 

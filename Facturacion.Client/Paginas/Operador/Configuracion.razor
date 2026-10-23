@@ -7,6 +7,7 @@
 @using Facturacion.Client.Servicios.Plataforma
 @using Facturacion.Shared.Comun
 @using Facturacion.Shared.Operador
+@using Facturacion.Shared.Documentos
 @inject ServicioDePerfilDeOperador Perfil
 @inject ServicioDeSesionDeOperador Sesion
 @inject ServicioDeConfiguracionDelSistema ConfiguracionDelSistema
@@ -96,8 +97,11 @@
     @if (Sesion.TienePermiso(PoliticasDelPanel.VerConfiguracion))
     {
     <MudTabPanel Text="Sistema">
-    <p class="seccion-ayuda operador-config-alcance">Estas opciones aplican al SaaS, no al correo particular de cada empresa.</p>
     <div class="formulario-catalogo-secciones">
+    <section class="formulario-catalogo-seccion formulario-catalogo-seccion-ancha" aria-labelledby="operador-config-pac">
+    <h2 id="operador-config-pac" class="seccion-titulo">Integración fiscal</h2>
+    <p role="status">@EstadoDelPac</p>
+    </section>
     <section class="formulario-catalogo-seccion formulario-catalogo-seccion-ancha" aria-labelledby="operador-config-smtp">
     <h2 id="operador-config-smtp" class="seccion-titulo">Correo saliente</h2>
     <p class="seccion-ayuda">Remitente de registro, acceso y avisos del sistema.</p>
@@ -196,6 +200,14 @@
     private string _contrasenaRepetida = string.Empty;
 
     private bool _sistemaCargando = true;
+    private EstadoDeIntegracionFiscalDto? _pac;
+    private string EstadoDelPac => _pac switch
+    {
+        null => _sistemaCargando ? "Consultando PAC…" : "No se pudo consultar el PAC.",
+        { TimbradoDisponible: false } => "PAC no configurado. Timbrado no disponible.",
+        { Simulado: true } => "PAC simulado. Sin validez fiscal.",
+        _ => "PAC disponible."
+    };
     private string _servidor = string.Empty;
     private string _puertoTexto = string.Empty;
     private string _usuarioSmtp = string.Empty;
@@ -227,6 +239,15 @@
     protected override async Task OnAfterRenderAsync(bool primeraVez)
     {
         if (!primeraVez || !Sesion.TienePermiso(PoliticasDelPanel.VerConfiguracion)) return;
+
+        try
+        {
+            _pac = await ConfiguracionDelSistema.ObtenerEstadoFiscalAsync();
+        }
+        catch (HttpRequestException)
+        {
+            _pac = null;
+        }
 
         var configuracion = await ConfiguracionDelSistema.ObtenerAsync();
 

@@ -13,6 +13,12 @@ public static class ArranqueDeRevision
     {
         if (!constructor.Configuration.GetValue<bool>("Instalacion:ArranqueAutomatico")) return;
         ExigirStaging(constructor);
+        var rutas = RutasDeInstalacion.Obtener(constructor);
+        if (constructor.Configuration.GetValue<bool>("Instalacion:JuntoAlServidorRevision"))
+        {
+            await PrepararAsync(constructor, rutas.Interna, ct);
+            return;
+        }
         var ruta = constructor.Configuration["Instalacion:Directorio"];
         if (string.IsNullOrWhiteSpace(ruta) || !Path.IsPathRooted(ruta))
             throw new InvalidOperationException("El arranque automático requiere un directorio privado absoluto.");
@@ -33,7 +39,7 @@ public static class ArranqueDeRevision
             ?? throw new InvalidDataException("La configuración de revisión está vacía.");
         if (protegido.Version != 1 || string.IsNullOrWhiteSpace(protegido.ContenidoProtegido))
             throw new InvalidDataException("La configuración de revisión no es compatible.");
-        var valores = JsonSerializer.Deserialize<Dictionary<string, string?>>(
+        var valores = JsonSerializer.Deserialize<Dictionary<string, string?>>(                      //////////
             Protector(directorio).Unprotect(protegido.ContenidoProtegido))
             ?? throw new InvalidDataException("No se pudo leer la configuración de revisión.");
         // Las variables del alojamiento y la configuración explícita conservan prioridad.
