@@ -22,7 +22,7 @@
                 });
                 const resultado = await respuesta.json();
                 if (!respuesta.ok) {
-                    mensaje(resultado.detalle || resultado.detail || "No se pudo finalizar.", true, resultado.traceId);
+                    mensaje(resultado.detalle || resultado.detail || "No se pudo finalizar.", true);
                     return;
                 }
                 accesoPendiente = resultado.acceso;
@@ -51,13 +51,12 @@
     }
     porId("abrir-acceso").addEventListener("click", abrirAcceso);
 
-    function mensaje(texto, error = false, traza = "") {
+    function mensaje(texto, error = false) {
         const zona = porId("mensaje");
         zona.className = error ? "error" : "exito";
         zona.setAttribute("role", error ? "alert" : "status");
         zona.hidden = false;
         porId("texto-mensaje").textContent = texto;
-        porId("traza").textContent = traza ? `Referencia para soporte: ${traza}` : "";
     }
 
     function terminar(texto) {
@@ -99,7 +98,7 @@
             if (!respuesta.ok) {
                 probada = false;
                 if (respuesta.status === 409) terminar();
-                mensaje(resultado.detalle || resultado.detail || "No se pudo completar la conexión.", true, resultado.traceId);
+                mensaje(resultado.detalle || resultado.detail || "No se pudo completar la conexión.", true);
                 return;
             }
             if (accion === "guardar") {
@@ -222,7 +221,7 @@
             });
             const resultado = await respuesta.json();
             if (!respuesta.ok) {
-                mensaje(resultado.detalle || resultado.detail || "No se pudo crear el operador.", true, resultado.traceId);
+                mensaje(resultado.detalle || resultado.detail || "No se pudo crear el operador.", true);
                 if (respuesta.status === 409) {
                     formularioOperador.reset();
                     formularioOperador.hidden = true;

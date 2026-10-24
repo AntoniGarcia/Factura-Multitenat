@@ -132,17 +132,6 @@ button:disabled {
     font-size: 0.875rem;
 }
 
-.panel-errores-traza {
-    margin: 0.5rem 0 0;
-    color: var(--texto-suave);
-    font-size: 0.75rem;
-}
-
-.panel-errores-traza code {
-    font-family: var(--tipografia-monoespaciada);
-    user-select: all;
-}
-
 .invalid {
     outline: 1px solid var(--estado-error);
 }

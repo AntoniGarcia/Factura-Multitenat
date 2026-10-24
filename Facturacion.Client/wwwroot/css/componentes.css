@@ -738,16 +738,6 @@
     color: var(--acento);
 }
 
-.panel-errores-copiar {
-    min-height: auto;
-    padding: 0.125rem 0.5rem;
-    margin-left: 0.5rem;
-    font-size: 0.75rem;
-    background: var(--superficie);
-    color: var(--texto-suave);
-    border-color: var(--borde-fuerte);
-}
-
 /* ── Rejilla de panel ──────────────────────────────────────────────────────────
    Doce columnas, como las plantillas de administración al uso. Las clases de tramo
    dicen cuánto ocupa cada tarjeta, de modo que en una misma fila quepan dos gráficas
