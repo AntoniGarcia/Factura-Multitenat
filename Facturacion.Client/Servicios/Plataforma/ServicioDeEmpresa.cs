@@ -123,8 +123,7 @@ public sealed class ServicioDeEmpresa(IHttpClientFactory fabrica)
     }
 
     /// <summary>
-    /// Separa el éxito del Problem Details para que la pantalla pueda pintar el error con
-    /// <c>PanelErrores</c> y su <c>traceId</c>, en vez de un mensaje genérico.
+    /// Separa la respuesta correcta de los errores que muestra PanelErrores.
     /// </summary>
     private static async Task<(T? Exito, DetalleProblema? Error)> LeerAsync<T>(
         HttpResponseMessage respuesta, CancellationToken ct)

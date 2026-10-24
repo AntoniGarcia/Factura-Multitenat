@@ -1,11 +1,14 @@
 # Entrega para revisión en Windows / IIS
 
 La alternativa vigente sin instalador está en
-`entregas/Facturacion-IIS-SoloArchivos-20261022.zip`. Contiene directamente la
+`entregas/Facturacion-IIS-Cnf-20261024.zip`. Contiene directamente la
 publicación, sin scripts SQL, CMD ni PowerShell. Sus pasos están en
 [la guía de entrega sin instalador](../herramientas/entrega-archivos/LEEME.md).
-Guarda la conexión legible junto al backend y las llaves internas en `cnf/`;
-requiere escritura de la identidad IIS en la carpeta y ajustar `AllowedHosts`.
+Guarda la conexión legible, los temporales y las llaves internas en `cnf/`;
+requiere Modificar de la identidad IIS solo en `cnf/`, lectura y ejecución en
+la carpeta principal y ajustar `AllowedHosts`. El perfil del grupo debe estar
+cargado para la protección de las llaves de Windows. No distribuir un `cnf/`
+generado en otra computadora; conservar el del servidor al actualizar.
 El paquete con instalador descrito abajo se conserva como alternativa anterior.
 
 La guía vigente de instalación se mantiene junto a los archivos de entrega:

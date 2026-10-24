@@ -86,7 +86,7 @@ public sealed class MiddlewareDeExcepciones(RequestDelegate siguiente, ILogger<M
                     Tipo: "urn:facturacion:error:interno",
                     Titulo: "Ocurrió un error inesperado",
                     Estado: estado,
-                    Detalle: "Vuelve a intentarlo. Si sigue ocurriendo, repórtalo a soporte con el identificador de traza.",
+                    Detalle: "Vuelve a intentarlo más tarde.",
                     Instancia: contexto.Request.Path.Value,
                     TraceId: traceId,
                     Errores: null);

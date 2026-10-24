@@ -15,9 +15,6 @@
                 estado.textContent = "No se pudo completar la carga.";
                 estado.setAttribute("role", "alert");
                 detalle.textContent = "Revisa los archivos SAT y los permisos de la base de datos.";
-                const referencia = document.getElementById("referencia");
-                referencia.hidden = false;
-                referencia.textContent = `Referencia: ${datos.referencia}`;
                 return;
             }
             estado.textContent = datos.estado === "esperando" ? "Esperando otra carga…"

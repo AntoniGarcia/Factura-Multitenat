@@ -488,6 +488,12 @@ appsettings.Development.json
 
 # Configuración y claves creadas por el asistente en cada servidor.
 cnf/
+appsettings.Instalacion.json
+appsettings.ArranqueRevision.json
+clave-instalacion.txt
+llavero-instalacion/
+llavero-aplicacion/
+*.bak
 
 # Ningún certificado entra al repositorio, ni de prueba.
 *.cer
