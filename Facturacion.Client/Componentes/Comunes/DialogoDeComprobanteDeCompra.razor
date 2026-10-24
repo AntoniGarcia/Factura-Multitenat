@@ -17,9 +17,10 @@
             }
         </div>
 
-        <p class="seccion-ayuda comprobante-aviso-fiscal">
-            @AvisoFiscal
-        </p>
+        @if (!string.IsNullOrWhiteSpace(AvisoFiscal))
+        {
+            <p class="seccion-ayuda comprobante-aviso-fiscal">@AvisoFiscal</p>
+        }
     </DialogContent>
     <DialogActions>
         <MudButton OnClick="Cerrar">Cerrar</MudButton>

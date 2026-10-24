@@ -51,21 +51,6 @@
 
 <section class="emision-seccion">
     <h2 class="seccion-titulo">Deducciones del pago</h2>
-    <p class="seccion-ayuda">
-        Porcentajes sobre el importe original. Captura solo lo previsto en el contrato.
-    </p>
-    @if (_tipoObra == TiposDeObra.Privada)
-    {
-        <div class="aviso-documentos" role="status">
-            En obra privada, ajusta los nombres y tasas de las deducciones según el contrato.
-        </div>
-    }
-    else if (_tipoObra == TiposDeObra.Publica)
-    {
-        <div class="aviso-documentos" role="status">
-            «5 al millar»: 0.50 % si aplica al contrato. Se informa como impuesto local y reduce el líquido, no el total del CFDI.
-        </div>
-    }
     @for (var i = 0; i < _deducciones.Count; i++)
     {
         var deduccion = _deducciones[i];
@@ -271,8 +256,7 @@
         {
             { x => x.Archivo, archivo },
             { x => x.TituloVistaPrevia, "Estimación de obra" },
-            { x => x.AvisoFiscal,
-                "Documento interno para revisión. No es un CFDI, no tiene folio fiscal y no acredita impuestos." }
+            { x => x.AvisoFiscal, string.Empty }
         };
         await Dialogos.ShowAsync<DialogoDeComprobanteDeCompra>(
             "Vista previa de estimación de obra", parametros,

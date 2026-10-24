@@ -29,7 +29,7 @@ public sealed class GeneradorDePdfEstimacionObra
                         TiposDeObra.Privada => "Obra privada",
                         _ => "Tipo de obra sin clasificar"
                     }).FontSize(9);
-                    encabezado.Item().PaddingTop(3).Text("BORRADOR - DOCUMENTO INTERNO SIN VALIDEZ FISCAL")
+                    encabezado.Item().PaddingTop(3).Text("BORRADOR")
                         .Bold().FontSize(9);
                     encabezado.Item().PaddingTop(7).LineHorizontal(1);
                 });
@@ -111,13 +111,6 @@ public sealed class GeneradorDePdfEstimacionObra
                         });
                 });
 
-                pagina.Footer().Column(pie =>
-                {
-                    pie.Item().LineHorizontal(0.5f);
-                    pie.Item().PaddingTop(4).Text(
-                        "Estimación comercial para revisión. No es CFDI, no tiene folio fiscal ni acredita impuestos. " +
-                        "Los importes del CFDI se determinarán por separado.").FontSize(7);
-                });
             });
         }).GeneratePdf();
 
