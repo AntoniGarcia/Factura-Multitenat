@@ -1,15 +1,16 @@
 # Estado actual del sistema de facturación
 
-**Corte documental: 8 de octubre de 2026.** Este archivo sustituye el reporte del
-24 de agosto, que describía la mitad B como un módulo vacío. Para comprobar el estado de
-un entorno concreto, se deben revisar su versión desplegada, sus migraciones y sus pruebas:
-un cambio en `develop` no demuestra por sí solo que Azure ya lo esté ejecutando.
+**Corte documental: 24 de octubre de 2026.** Las secciones fechadas el 7 y el 8 de octubre
+se conservan como historia de esas revisiones. Para comprobar el estado de un entorno
+concreto, se deben revisar su versión desplegada, sus migraciones y sus pruebas: un cambio
+en `develop` no demuestra por sí solo que el servidor de entrega ya lo esté ejecutando.
 
 ## Alcance y estado verificable
 
 El repositorio contiene una aplicación CFDI 4.0 multiempresa con cliente Blazor
-WebAssembly, API ASP.NET Core y SQL Server. Están implementados la identidad, las
-empresas emisoras, los usuarios y permisos, los catálogos SAT, los clientes, los
+WebAssembly, API ASP.NET Core y SQL Server (compatible desde SQL Server 2014). Están
+implementados la identidad, las empresas emisoras, los usuarios y permisos —por sección,
+con titular de la cuenta (AGENTS.md §11)—, los catálogos SAT, los clientes, los
 productos, las series y folios, y la bolsa de timbres. El panel del operador permite
 gestionar cuentas, paquetes y compras; las compras pueden quedar pendientes y un
 operador puede acreditar el pago manualmente.
@@ -34,12 +35,69 @@ integración de pago.
 
 ## Evidencia de la última entrega de código
 
-Al cierre previo a este documento, `develop` estaba sincronizada con `origin/develop`.
-Los últimos cambios publicados fueron `46305d6`, `8796b99`, `f7e64f4` y `ebadbca`:
-impuestos y salidas de obra; Carta Porte; reimportación de productos y tasas; avisos
-de interfaz. La compilación Release pasó sin errores ni advertencias nuevas; la suite
-registró 115 pruebas aprobadas y una omitida. Esa verificación es de código local:
-**no confirma** migraciones aplicadas, configuración ni funcionamiento de Azure.
+Al 24 de octubre, `develop` local está **11 commits por delante** de `origin/develop`, sin
+publicar: incluye la compatibilidad con SQL Server 2014 (`711c5f6`), el arreglo de los
+marcadores de conflicto que se colaron en el menú lateral (`01a36ba`) y varios merges. La
+rama `feature/cierre-facturacion` ya está integrada en `develop`. La compilación Release
+pasa sin errores ni advertencias; la suite registra **157 pruebas aprobadas y dos
+omitidas**. Esa verificación es de código local: **no confirma** migraciones aplicadas,
+configuración ni funcionamiento del servidor de entrega.
+
+## Cambios del 8 al 24 de octubre de 2026
+
+**Notaría y conceptos** (`703735e`, 8 oct)
+
+- Los inmuebles notariales no se guardaban: el estado se validaba con 2 caracteres y
+  `c_Estado` tiene 3. La base guarda la clave de `c_Estado` y el XML la traduce a la clave
+  01–32 que exige el complemento de Notarios Públicos (`EntidadesNotariales.cs`).
+- La unidad del concepto respeta el límite del SAT (20 caracteres, sin «|») al guardar el
+  producto, al importarlo por CSV y al guardar el borrador. La factura notarial valida el
+  XML completo antes de apartar folio y timbre.
+- El buscador de catálogos ordena por relevancia antes del tope de 50 resultados
+  («metro cuadrado» ahora muestra `MTK` primero).
+- Un usuario sin permiso para una pantalla ve una notificación y vuelve a Inicio, en lugar
+  de terminar en el inicio de sesión; los botones que no puede usar no se muestran.
+
+**Permisos por sección y titular** (`693058b`, 9 oct; regla en AGENTS.md §11)
+
+- Dieciséis permisos por sección en lugar de seis. El titular de la cuenta lleva todos en
+  el token, es el único que administra usuarios y da de alta empresas, y nadie lo modifica.
+- Migración `20261009_A_PermisosPorSeccionYTitular`, probada en una copia de la base de
+  desarrollo antes de aplicarla: marca al titular y convierte los permisos de los usuarios
+  internos sin quitarles acceso.
+- Se comprobaron por la API las reglas del titular (no modificable, permisos no asignables
+  rechazados). **No se ha verificado en el navegador** el selector por secciones, el
+  renglón del titular en Usuarios ni un usuario interno con permisos limitados.
+
+**Interfaz** (9 al 24 oct)
+
+- En móvil, la barra inferior es una sola fila (Inicio, Documentos, Catálogos y Más) y se
+  oculta mientras se escribe; el tema oscuro ya no muestra la barra de desplazamiento
+  blanca.
+- Se reorganizaron los formularios de catálogos, empresa, series, transporte, Notaría,
+  complemento de pagos y configuración del operador (`596677f`, `f3c5a08`, `732de3e`).
+- La pantalla y el asistente ya no muestran el `traceId` ni la referencia de soporte de un
+  error; queda solo en el registro del servidor (`c8c58bb`, `711c5f6`). **Esto contradice
+  AGENTS.md §4** («traceId, visible en pantalla para soporte») y todavía no tiene entrada
+  en §11.
+
+**Instalación y despliegue** (13 al 24 oct)
+
+- La entrega se hace por FTP a carpetas del servidor que administra otra persona; IIS,
+  SQL Server, HTTPS y los secretos le corresponden a ese administrador.
+- Asistente de conexión (`d742503`, documentado en `docs/ASISTENTE-CONEXION.md`): sin
+  cadena de conexión, el servidor abre un modo de instalación en `/operador` que comprueba
+  y guarda la conexión y crea el primer operador principal; los catálogos se cargan solos.
+- Instalador para sitios IIS existentes y guías de prueba local en `herramientas/`
+  (`49818b0`); la configuración se guarda en `cnf` sin tocar la raíz (`b34fe8c`).
+- Script de instalación de la base (`docs/sql/Facturacion.Instalacion.sql`) regenerado y
+  probado en una base de nivel de compatibilidad 120 (SQL Server 2014). La carpeta
+  `Despliegue/` queda fuera del repositorio.
+- El 13 de octubre se hizo un ensayo local completo (FTP, sitio IIS, base y acceso desde
+  otra PC de la red). Hallazgo: los permisos de SQL para la aplicación necesitan también
+  `GRANT EXECUTE` sobre los procedimientos de folios y timbres; ya están en
+  `herramientas/entrega-iis/Permisos-Aplicacion.sql.ejemplo`. **No se ha acreditado**
+  todavía la instalación en el servidor real.
 
 ## Pendientes antes de llamar al sistema completo
 
@@ -149,9 +207,10 @@ entorno local, no acredita la existencia de un CFDI certificado por el SAT.
 1. Validar manualmente, con datos representativos y por empresa, los flujos completos
    de factura estándar, Carta Porte, Comercio Exterior, Notaría y Constructoras;
    verificar borrador, impuestos, XML/PDF y errores de validación.
-2. Completar la preparación de entrega local: configuración obligatoria, almacenamiento
-   persistente, migraciones y versiones de los catálogos SAT. Azure está descartado
-   para el trabajo actual; la guía de despliegue queda como referencia histórica.
+2. Completar la instalación en el servidor real con su administrador: sitio de IIS que
+   apunte a la carpeta del FTP, Hosting Bundle de .NET 10, HTTPS, base de datos con los
+   permisos de la plantilla, secretos por un canal seguro y carga de catálogos. Azure está
+   descartado; `docs/DESPLIEGUE.md` queda como referencia histórica.
 3. Retomar la auditoría de aislamiento entre inquilinos y sus correcciones pendientes
    que se pospusieron expresamente. No declarar cerrada la seguridad multiempresa
    basándose solo en los filtros o pruebas existentes.
@@ -160,6 +219,13 @@ entorno local, no acredita la existencia de un CFDI certificado por el SAT.
    autorizado antes de pasar a producción.
 5. Decidir la pasarela de pagos y diseñar la acreditación automática por separado.
    No simular un cobro ni liberar timbres por pulsar «comprar».
+6. Rediseñar el correo de envío de comprobantes con el logo de la empresa, con estructura
+   parecida a la de los correos de GitHub. El logo va incrustado (CID), no como URL
+   pública, porque los logos se sirven con autorización (AGENTS.md §4).
+7. Decidir si el `traceId` deja de mostrarse en pantalla y, si se mantiene así,
+   registrarlo en AGENTS.md §11.
+8. Publicar `develop` (11 commits locales) y revisar antes de cada commit que no queden
+   marcadores de conflicto.
 
 El objetivo de entrega indicado en [AGENTS.md](AGENTS.md) es el **5 de diciembre de
 2026**. Los planes originales de [PROMPT-FASES-A.md](PROMPT-FASES-A.md),

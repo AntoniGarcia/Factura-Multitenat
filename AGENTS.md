@@ -358,3 +358,27 @@ certificados» y §6 «Correo»).
   servidor y la conexión va a la IP ya validada.
 - Si el SMTP de la empresa falla, el envío falla con un error claro; **no** se reenvía en
   silencio por el SMTP del SaaS.
+
+**9 de octubre de 2026 — Permisos por sección y titular de la cuenta** (modifica §4
+«Autorización»).
+
+- Los permisos asignables son dieciséis, agrupados por sección:
+  - Documentos: `ver_documentos` (listado y descarga, solo consulta).
+  - Emitir: `emitir_factura`, `emitir_notaria`, `emitir_carta_porte`,
+    `emitir_comercio_exterior`, `emitir_obra`, `emitir_pago`, `cancelar` y `enviar_correo`.
+    Reemplazan a `timbrar`.
+  - Catálogos: `administrar_clientes`, `administrar_productos`, `administrar_vehiculos` y
+    `administrar_figuras`.
+  - Tienda: `comprar_timbres`.
+  - Empresa: `mi_empresa` (datos y certificados) y `configuracion` (general, correo,
+    impuestos, logo, perfil de Notaría y series y folios). Reemplazan a `configurar_empresa`.
+- `ver_reportes` se retira mientras no exista ningún reporte.
+- No hay dependencias entre casillas. Cualquier permiso de Emitir abre también el listado y
+  la descarga, y la consulta de los catálogos que necesita para emitir. Emitir una variante
+  con licencia (Notaría, Comercio Exterior, Obra) exige además la licencia de la empresa.
+- Cada cuenta tiene un **titular**: el usuario que la registró o el del sembrado. Lleva en el
+  token todos los permisos de cualquier empresa de su cuenta, sin guardarlos, y es el único
+  que administra usuarios y da de alta empresas. `administrar_usuarios` deja de ser una
+  casilla. Nadie modifica al titular, y los usuarios que él crea nunca administran usuarios.
+- Jerarquía: operador principal (1) → operadores (1.1) → titular (2) → usuarios internos (3).
+  Si el operador llega a dar de alta cuentas, el usuario que cree será un titular (2).
