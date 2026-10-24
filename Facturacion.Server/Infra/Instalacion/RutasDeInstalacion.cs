@@ -1,5 +1,3 @@
-using Microsoft.IdentityModel.Tokens;
-
 namespace Facturacion.Server.Infra.Instalacion;
 
 public sealed record RutasDeInstalacion(string Conexion, string Interna)
@@ -13,20 +11,18 @@ public sealed record RutasDeInstalacion(string Conexion, string Interna)
             throw new InvalidOperationException("La configuración junto al servidor requiere Staging y conexión legible de revisión.");
         if (juntoAlServidor && !string.IsNullOrWhiteSpace(configuracion["Instalacion:Directorio"]))
             throw new InvalidOperationException("No combines la configuración junto al servidor con una ruta de instalación externa.");
-         var sitio = Path.GetFullPath(constructor.Environment.ContentRootPath);
-        
-         var conexion = juntoAlServidor ? Path.Combine(sitio, "cnf") : Path.GetFullPath(
+        var sitio = Path.GetFullPath(constructor.Environment.ContentRootPath);
+        var conexion = juntoAlServidor ? Path.Combine(sitio, "cnf") : Path.GetFullPath(
             configuracion["Instalacion:Directorio"] ?? Path.Combine(sitio, "cnf"));
-
-
-
         var interna = juntoAlServidor ? Path.Combine(sitio, "cnf") : conexion;
+        if (juntoAlServidor && !File.Exists(Path.Combine(conexion, "appsettings.Instalacion.json"))
+            && File.Exists(Path.Combine(sitio, "appsettings.Instalacion.json")))
+            conexion = sitio;
         var publico = Path.GetFullPath(constructor.Environment.WebRootPath ?? Path.Combine(sitio, "wwwroot"))
             .TrimEnd(Path.DirectorySeparatorChar);
         foreach (var ruta in new[] { conexion, interna })
             if (ruta.Equals(publico, StringComparison.OrdinalIgnoreCase)
                 || ruta.StartsWith(publico + Path.DirectorySeparatorChar, StringComparison.OrdinalIgnoreCase))
                 throw new InvalidOperationException("La configuración debe quedar fuera de wwwroot.");
-        return new(conexion, interna);
-    }
+        return new(conexion, interna);    }
 }

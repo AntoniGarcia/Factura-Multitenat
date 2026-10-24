@@ -50,7 +50,7 @@ public static class InstalacionModule
         // Una conexión temporalmente caída nunca se interpreta como una instalación nueva.
         var mostrar = forzado || !configurada || (archivo.Existe && pendiente.Length > 0);
         var claveAnterior = Path.Combine(ruta, "clave-instalacion.txt");
-        if (File.Exists(claveAnterior)) File.Delete(claveAnterior);
+        if (ruta == rutas.Interna && File.Exists(claveAnterior)) File.Delete(claveAnterior);
         return new(archivo, mostrar, configurada || archivo.Existe, errorCarga, pendiente);
     }
 
@@ -223,8 +223,18 @@ public static class InstalacionModule
         if (!guardar) return Results.Ok(prueba);
 
         // Se vuelve a probar al guardar: no se confía en el resultado declarado por el navegador.
-        if (!await estado.Archivo.GuardarAsync(ConexionSqlDeInstalacion.CrearCadena(parametros), contexto.RequestAborted))
-            return Problema(contexto, 409, "conexion-configurada", "Otra solicitud ya guardó la conexión.");
+        try
+        {
+            if (!await estado.Archivo.GuardarAsync(ConexionSqlDeInstalacion.CrearCadena(parametros), contexto.RequestAborted))
+                return Problema(contexto, 409, "conexion-configurada", "Otra solicitud ya guardó la conexión.");
+        }
+        catch (Exception error) when (error is UnauthorizedAccessException or IOException)
+        {
+            contexto.RequestServices.GetRequiredService<ILoggerFactory>().CreateLogger("Instalacion")
+                .LogError(error, "No se pudo escribir la configuración de conexión.");
+            return Problema(contexto, 500, "conexion-guardado",
+                "La conexión SQL funciona, pero no se pudo guardar. Revisa los permisos de crear, renombrar y eliminar archivos en la carpeta de configuración (cnf en esta entrega).");
+        }
         return Results.Ok(new { mensaje = "Conexión guardada.", prueba.TablasVisibles });
     }
 

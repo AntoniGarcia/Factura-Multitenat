@@ -1,4 +1,6 @@
 using System.Security.Cryptography.X509Certificates;
+using System.Security.AccessControl;
+using System.Security.Principal;
 using Facturacion.Server.Infra.Instalacion;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.Extensions.Configuration;
@@ -97,7 +99,7 @@ public sealed class ArranqueDeRevisionPruebas : IDisposable
     }
 
     [WindowsInstalacionFact]
-    public async Task Publicacion_sin_instalador_guarda_sql_junto_a_dll_y_conserva_llaves_en_cnf()
+    public async Task Publicacion_sin_instalador_guarda_sql_y_llaves_solo_en_cnf_y_los_recupera_al_reiniciar()
     {
         WebApplicationBuilder Crear()
         {
@@ -114,12 +116,14 @@ public sealed class ArranqueDeRevisionPruebas : IDisposable
         var primero = Crear();
         await ArranqueDeRevision.PrepararAlArrancarAsync(primero, default);
         var estado = InstalacionModule.Preparar(primero);
-        Assert.Equal(_directorio, estado.Archivo.Directorio);
+        Assert.Equal(Path.Combine(_directorio, "cnf"), estado.Archivo.Directorio);
         Assert.Empty(estado.ConfiguracionPendiente);
         Assert.True(estado.MostrarAsistente);
         const string conexion = "Server=prueba;Database=prueba;Integrated Security=true";
         Assert.True(await estado.Archivo.GuardarAsync(conexion, default));
-        Assert.True(File.Exists(Path.Combine(_directorio, "appsettings.Instalacion.json")));
+        Assert.True(File.Exists(Path.Combine(_directorio, "cnf", "appsettings.Instalacion.json")));
+        Assert.Empty(Directory.GetFiles(_directorio));
+        Assert.Empty(Directory.GetFiles(Path.Combine(_directorio, "cnf"), "*.tmp"));
         Assert.True(File.Exists(Path.Combine(_directorio, "cnf", "appsettings.ArranqueRevision.json")));
         Assert.False(Directory.Exists(Path.Combine(_directorio, "llavero-instalacion")));
         var firma = primero.Configuration["Jwt:ClaveDeFirma"];
@@ -132,6 +136,51 @@ public sealed class ArranqueDeRevisionPruebas : IDisposable
         Assert.Equal(conexion, segundo.Configuration["ConnectionStrings:BaseDeDatos"]);
         Assert.Equal(firma, segundo.Configuration["Jwt:ClaveDeFirma"]);
         Assert.False(File.Exists(Path.Combine(_directorio, "clave-instalacion.txt")));
+    }
+
+    [WindowsInstalacionFact]
+    public async Task Guarda_y_reinicia_con_raiz_sin_creacion_ni_eliminacion_y_solo_cnf_modificable()
+    {
+        if (!OperatingSystem.IsWindows()) return;
+        Directory.CreateDirectory(Path.Combine(_directorio, "cnf"));
+        var carpeta = new DirectoryInfo(_directorio);
+        var original = carpeta.GetAccessControl();
+        var limitada = carpeta.GetAccessControl();
+        using var identidad = WindowsIdentity.GetCurrent();
+        limitada.AddAccessRule(new FileSystemAccessRule(identidad.User!,
+            FileSystemRights.CreateFiles | FileSystemRights.DeleteSubdirectoriesAndFiles | FileSystemRights.Delete,
+            InheritanceFlags.None, PropagationFlags.None, AccessControlType.Deny));
+        try
+        {
+            carpeta.SetAccessControl(limitada);
+            Assert.Throws<UnauthorizedAccessException>(() => File.WriteAllText(Path.Combine(_directorio, "no-permitido.tmp"), "prueba"));
+            WebApplicationBuilder Crear()
+            {
+                var constructor = Constructor();
+                constructor.Environment.ContentRootPath = _directorio;
+                constructor.Environment.WebRootPath = Path.Combine(_directorio, "wwwroot");
+                constructor.Configuration["Instalacion:Directorio"] = null;
+                constructor.Configuration["ConnectionStrings:BaseDeDatos"] = null;
+                constructor.Configuration["Instalacion:ArranqueAutomatico"] = "true";
+                constructor.Configuration["Instalacion:JuntoAlServidorRevision"] = "true";
+                constructor.Configuration["Instalacion:ConexionSinCifrarRevision"] = "true";
+                return constructor;
+            }
+            var primero = Crear();
+            await ArranqueDeRevision.PrepararAlArrancarAsync(primero, default);
+            var estado = InstalacionModule.Preparar(primero);
+            const string conexion = "Server=prueba;Database=prueba;Integrated Security=true";
+            Assert.True(await estado.Archivo.GuardarAsync(conexion, default));
+            var segundo = Crear();
+            await ArranqueDeRevision.PrepararAlArrancarAsync(segundo, default);
+            Assert.Null(InstalacionModule.Preparar(segundo).ErrorCarga);
+            Assert.Equal(conexion, segundo.Configuration["ConnectionStrings:BaseDeDatos"]);
+            Assert.Empty(Directory.GetFiles(_directorio));
+        }
+        finally
+        {
+            carpeta.SetAccessControl(original);
+        }
     }
 
     public void Dispose()
