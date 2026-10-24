@@ -1,7 +1,6 @@
 @using Facturacion.Shared.Comun
-@inject IJSRuntime Js
 
-@* Muestra el error y permite copiar el traceId para localizarlo en soporte. *@
+@* Muestra el error. El traceId no se enseña: queda en el registro del servidor. *@
 
 @if (Problema is not null)
 {
@@ -25,36 +24,10 @@
                 }
             </ul>
         }
-
-        @if (!string.IsNullOrWhiteSpace(Problema.TraceId))
-        {
-            <p class="panel-errores-traza">
-                Referencia para soporte: <code class="cifra-tabular">@Problema.TraceId</code>
-                <button type="button" class="panel-errores-copiar" @onclick="Copiar" title="Copiar">
-                    @(_copiado ? "Copiado" : "Copiar")
-                </button>
-            </p>
-        }
     </div>
 }
 
 @code {
     [Parameter]
     public DetalleProblema? Problema { get; set; }
-
-    private bool _copiado;
-
-    private async Task Copiar()
-    {
-        if (Problema?.TraceId is not { Length: > 0 } traceId) return;
-
-        await Js.InvokeVoidAsync("copiarAlPortapapeles", traceId);
-
-        _copiado = true;
-        StateHasChanged();
-
-        await Task.Delay(1500);
-        _copiado = false;
-        StateHasChanged();
-    }
 }

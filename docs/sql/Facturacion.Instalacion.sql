@@ -1138,7 +1138,15 @@ IF NOT EXISTS (
     WHERE [MigrationId] = N'20260814225631_A_EmpresaYFolios'
 )
 BEGIN
-    EXEC(N'EXEC(N''CREATE OR ALTER PROCEDURE dbo.ReservarFolio
+    EXEC(N'IF OBJECT_ID(N''dbo.ReservarFolio'', N''P'') IS NOT NULL DROP PROCEDURE dbo.ReservarFolio;');
+END;
+
+IF NOT EXISTS (
+    SELECT * FROM [__EFMigrationsHistory]
+    WHERE [MigrationId] = N'20260814225631_A_EmpresaYFolios'
+)
+BEGIN
+    EXEC(N'CREATE PROCEDURE dbo.ReservarFolio
         @SerieId    uniqueidentifier,
         @EmpresaId  uniqueidentifier,
         @ReservaId  uniqueidentifier,
@@ -1164,11 +1172,11 @@ BEGIN
         IF @Folio IS NULL
         BEGIN
             ROLLBACK TRANSACTION;
-            THROW 50001, ''''La serie no existe, no es de esta empresa, o está inactiva.'''', 1;
+            THROW 50001, ''La serie no existe, no es de esta empresa, o está inactiva.'', 1;
         END
 
         INSERT INTO dbo.ReservasFolio (Id, EmpresaId, SerieId, Folio, Estado, MomentoUtc)
-        VALUES (@ReservaId, @EmpresaId, @SerieId, @Folio, ''''reservado'''', @MomentoUtc);
+        VALUES (@ReservaId, @EmpresaId, @SerieId, @Folio, ''reservado'', @MomentoUtc);
 
         COMMIT TRANSACTION;
 
@@ -1176,7 +1184,7 @@ BEGIN
                @SerieId   AS SerieId,
                @Prefijo   AS Serie,
                @Folio     AS Folio;
-    END'');');
+    END');
 END;
 
 IF NOT EXISTS (
@@ -1527,7 +1535,15 @@ IF NOT EXISTS (
     WHERE [MigrationId] = N'20260815134713_A_Timbres'
 )
 BEGIN
-    EXEC(N'EXEC(N''CREATE OR ALTER PROCEDURE dbo.ReservarTimbre
+    EXEC(N'IF OBJECT_ID(N''dbo.ReservarTimbre'', N''P'') IS NOT NULL DROP PROCEDURE dbo.ReservarTimbre;');
+END;
+
+IF NOT EXISTS (
+    SELECT * FROM [__EFMigrationsHistory]
+    WHERE [MigrationId] = N'20260815134713_A_Timbres'
+)
+BEGIN
+    EXEC(N'CREATE PROCEDURE dbo.ReservarTimbre
         @EmpresaId     uniqueidentifier,
         @ReservaId     uniqueidentifier,
         @ComprobanteId uniqueidentifier,
@@ -1566,19 +1582,19 @@ BEGIN
         INSERT INTO dbo.ReservasTimbre
             (Id, EmpresaId, ComprobanteId, Estado, CreadaUtc)
         VALUES
-            (@ReservaId, @EmpresaId, @ComprobanteId, ''''reservado'''', @MomentoUtc);
+            (@ReservaId, @EmpresaId, @ComprobanteId, ''reservado'', @MomentoUtc);
 
         INSERT INTO dbo.MovimientosTimbre
             (Id, EmpresaId, Tipo, DeltaDisponible, DeltaReservado,
              DisponiblesDespues, ReservadosDespues, ReservaId, MomentoUtc)
         VALUES
-            (NEWID(), @EmpresaId, ''''reserva'''', -1, 1,
+            (NEWID(), @EmpresaId, ''reserva'', -1, 1,
              @Disponibles, @Reservados, @ReservaId, @MomentoUtc);
 
         COMMIT TRANSACTION;
 
         SELECT CAST(1 AS bit) AS Reservado, @Disponibles AS DisponiblesDespues;
-    END'');');
+    END');
 END;
 
 IF NOT EXISTS (
@@ -1586,7 +1602,15 @@ IF NOT EXISTS (
     WHERE [MigrationId] = N'20260815134713_A_Timbres'
 )
 BEGIN
-    EXEC(N'EXEC(N''CREATE OR ALTER PROCEDURE dbo.ConfirmarTimbre
+    EXEC(N'IF OBJECT_ID(N''dbo.ConfirmarTimbre'', N''P'') IS NOT NULL DROP PROCEDURE dbo.ConfirmarTimbre;');
+END;
+
+IF NOT EXISTS (
+    SELECT * FROM [__EFMigrationsHistory]
+    WHERE [MigrationId] = N'20260815134713_A_Timbres'
+)
+BEGIN
+    EXEC(N'CREATE PROCEDURE dbo.ConfirmarTimbre
         @EmpresaId  uniqueidentifier,
         @ReservaId  uniqueidentifier,
         @MomentoUtc datetime2(7)
@@ -1600,12 +1624,12 @@ BEGIN
         BEGIN TRANSACTION;
 
         UPDATE r WITH (UPDLOCK, ROWLOCK)
-           SET r.Estado      = ''''confirmado'''',
+           SET r.Estado      = ''confirmado'',
                r.ResueltaUtc = @MomentoUtc
           FROM dbo.ReservasTimbre AS r
          WHERE r.Id = @ReservaId
            AND r.EmpresaId = @EmpresaId
-           AND r.Estado = ''''reservado'''';
+           AND r.Estado = ''reservado'';
 
         IF @@ROWCOUNT = 0
         BEGIN
@@ -1626,13 +1650,13 @@ BEGIN
             (Id, EmpresaId, Tipo, DeltaDisponible, DeltaReservado,
              DisponiblesDespues, ReservadosDespues, ReservaId, MomentoUtc)
         VALUES
-            (NEWID(), @EmpresaId, ''''consumo'''', 0, -1,
+            (NEWID(), @EmpresaId, ''consumo'', 0, -1,
              @Disponibles, @Reservados, @ReservaId, @MomentoUtc);
 
         COMMIT TRANSACTION;
 
         SELECT CAST(1 AS bit) AS Resuelto;
-    END'');');
+    END');
 END;
 
 IF NOT EXISTS (
@@ -1640,7 +1664,15 @@ IF NOT EXISTS (
     WHERE [MigrationId] = N'20260815134713_A_Timbres'
 )
 BEGIN
-    EXEC(N'EXEC(N''CREATE OR ALTER PROCEDURE dbo.DevolverTimbre
+    EXEC(N'IF OBJECT_ID(N''dbo.DevolverTimbre'', N''P'') IS NOT NULL DROP PROCEDURE dbo.DevolverTimbre;');
+END;
+
+IF NOT EXISTS (
+    SELECT * FROM [__EFMigrationsHistory]
+    WHERE [MigrationId] = N'20260815134713_A_Timbres'
+)
+BEGIN
+    EXEC(N'CREATE PROCEDURE dbo.DevolverTimbre
         @EmpresaId  uniqueidentifier,
         @ReservaId  uniqueidentifier,
         @Motivo     nvarchar(300),
@@ -1655,13 +1687,13 @@ BEGIN
         BEGIN TRANSACTION;
 
         UPDATE r WITH (UPDLOCK, ROWLOCK)
-           SET r.Estado           = ''''devuelto'''',
+           SET r.Estado           = ''devuelto'',
                r.ResueltaUtc      = @MomentoUtc,
                r.MotivoResolucion = @Motivo
           FROM dbo.ReservasTimbre AS r
          WHERE r.Id = @ReservaId
            AND r.EmpresaId = @EmpresaId
-           AND r.Estado = ''''reservado'''';
+           AND r.Estado = ''reservado'';
 
         IF @@ROWCOUNT = 0
         BEGIN
@@ -1683,13 +1715,13 @@ BEGIN
             (Id, EmpresaId, Tipo, DeltaDisponible, DeltaReservado,
              DisponiblesDespues, ReservadosDespues, ReservaId, Motivo, MomentoUtc)
         VALUES
-            (NEWID(), @EmpresaId, ''''devolucion'''', 1, -1,
+            (NEWID(), @EmpresaId, ''devolucion'', 1, -1,
              @Disponibles, @Reservados, @ReservaId, @Motivo, @MomentoUtc);
 
         COMMIT TRANSACTION;
 
         SELECT CAST(1 AS bit) AS Resuelto;
-    END'');');
+    END');
 END;
 
 IF NOT EXISTS (
@@ -1697,7 +1729,15 @@ IF NOT EXISTS (
     WHERE [MigrationId] = N'20260815134713_A_Timbres'
 )
 BEGIN
-    EXEC(N'EXEC(N''CREATE OR ALTER PROCEDURE dbo.AcreditarCompra
+    EXEC(N'IF OBJECT_ID(N''dbo.AcreditarCompra'', N''P'') IS NOT NULL DROP PROCEDURE dbo.AcreditarCompra;');
+END;
+
+IF NOT EXISTS (
+    SELECT * FROM [__EFMigrationsHistory]
+    WHERE [MigrationId] = N'20260815134713_A_Timbres'
+)
+BEGIN
+    EXEC(N'CREATE PROCEDURE dbo.AcreditarCompra
         @CompraId   uniqueidentifier,
         @MomentoUtc datetime2(7)
     AS
@@ -1711,7 +1751,7 @@ BEGIN
         BEGIN TRANSACTION;
 
         UPDATE c WITH (UPDLOCK, ROWLOCK)
-           SET c.Estado        = ''''pagada'''',
+           SET c.Estado        = ''pagada'',
                c.AcreditadaUtc = @MomentoUtc,
                c.VenceUtc      = DATEADD(month, c.VigenciaMeses, @MomentoUtc),
                @EmpresaId      = c.EmpresaId,
@@ -1719,7 +1759,7 @@ BEGIN
                @Vigencia       = c.VigenciaMeses
           FROM dbo.ComprasTimbres AS c
          WHERE c.Id = @CompraId
-           AND c.Estado = ''''pendiente_de_pago'''';
+           AND c.Estado = ''pendiente_de_pago'';
 
         IF @@ROWCOUNT = 0
         BEGIN
@@ -1750,13 +1790,13 @@ BEGIN
             (Id, EmpresaId, Tipo, DeltaDisponible, DeltaReservado,
              DisponiblesDespues, ReservadosDespues, CompraId, MomentoUtc)
         VALUES
-            (NEWID(), @EmpresaId, ''''compra'''', @Cantidad, 0,
+            (NEWID(), @EmpresaId, ''compra'', @Cantidad, 0,
              @Disponibles, @Reservados, @CompraId, @MomentoUtc);
 
         COMMIT TRANSACTION;
 
         SELECT CAST(1 AS bit) AS Acreditada, @Disponibles AS DisponiblesDespues;
-    END'');');
+    END');
 END;
 
 IF NOT EXISTS (

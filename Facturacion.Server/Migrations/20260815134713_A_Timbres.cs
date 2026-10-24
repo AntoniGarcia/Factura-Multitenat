@@ -193,12 +193,17 @@ namespace Facturacion.Server.Migrations
         /// </summary>
         private static void CrearProcedimientos(MigrationBuilder migrationBuilder)
         {
+            // Las cuatro se borran y se crean en vez de usar CREATE OR ALTER: ese no existe
+            // antes de SQL Server 2016 SP1.
+
             // ── Reservar ────────────────────────────────────────────────────────────────
             // Devuelve una fila con Reservado = 0 cuando no alcanza el saldo. No lanza: que
             // un cliente se quede sin timbres es un hecho de negocio previsto, no una falla
             // del sistema, y el contrato pide un error de negocio claro.
             migrationBuilder.Sql("""
-                CREATE OR ALTER PROCEDURE dbo.ReservarTimbre
+                IF OBJECT_ID(N'dbo.ReservarTimbre', N'P') IS NOT NULL DROP PROCEDURE dbo.ReservarTimbre;
+                GO
+                CREATE PROCEDURE dbo.ReservarTimbre
                     @EmpresaId     uniqueidentifier,
                     @ReservaId     uniqueidentifier,
                     @ComprobanteId uniqueidentifier,
@@ -257,7 +262,9 @@ namespace Facturacion.Server.Migrations
             // que impide confirmar dos veces la misma reserva y gastar dos timbres por un
             // solo comprobante: la segunda llamada no encuentra renglón que actualizar.
             migrationBuilder.Sql("""
-                CREATE OR ALTER PROCEDURE dbo.ConfirmarTimbre
+                IF OBJECT_ID(N'dbo.ConfirmarTimbre', N'P') IS NOT NULL DROP PROCEDURE dbo.ConfirmarTimbre;
+                GO
+                CREATE PROCEDURE dbo.ConfirmarTimbre
                     @EmpresaId  uniqueidentifier,
                     @ReservaId  uniqueidentifier,
                     @MomentoUtc datetime2(7)
@@ -310,7 +317,9 @@ namespace Facturacion.Server.Migrations
             // A diferencia del folio, el timbre sí vuelve: es dinero pagado y el PAC no cobró
             // nada por un comprobante que no se timbró.
             migrationBuilder.Sql("""
-                CREATE OR ALTER PROCEDURE dbo.DevolverTimbre
+                IF OBJECT_ID(N'dbo.DevolverTimbre', N'P') IS NOT NULL DROP PROCEDURE dbo.DevolverTimbre;
+                GO
+                CREATE PROCEDURE dbo.DevolverTimbre
                     @EmpresaId  uniqueidentifier,
                     @ReservaId  uniqueidentifier,
                     @Motivo     nvarchar(300),
@@ -367,7 +376,9 @@ namespace Facturacion.Server.Migrations
             // razón que en confirmar: acreditar dos veces la misma compra regalaría un
             // paquete entero de timbres.
             migrationBuilder.Sql("""
-                CREATE OR ALTER PROCEDURE dbo.AcreditarCompra
+                IF OBJECT_ID(N'dbo.AcreditarCompra', N'P') IS NOT NULL DROP PROCEDURE dbo.AcreditarCompra;
+                GO
+                CREATE PROCEDURE dbo.AcreditarCompra
                     @CompraId   uniqueidentifier,
                     @MomentoUtc datetime2(7)
                 AS
