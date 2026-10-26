@@ -1,5 +1,7 @@
 using System.Security.Cryptography;
 using System.Text;
+using System.Text.Json;
+using Microsoft.Extensions.Caching.Memory;
 using Facturacion.Server.Data;
 using Facturacion.Server.Infra.Errores;
 using Facturacion.Shared.Comun;
@@ -132,31 +134,33 @@ public static class CatalogosEndpoints
     }
 
     /// <summary>
-    /// Todos los catálogos precargables en una sola respuesta, con ETag calculado a partir
-    /// de cuándo se cargó cada uno por última vez: mientras nadie vuelva a correr el
-    /// importador, el Client puede quedarse con su copia en memoria sin volver a pedirla.
+    /// La huella incluye los datos para detectar también cambios hechos desde SQL.
     /// </summary>
-    private static async Task<IResult> ObtenerPrecargables(AppDbContext db, HttpContext contexto, CancellationToken ct)
+    private static readonly SemaphoreSlim ExclusividadPrecargables = new(1, 1);
+
+    private static async Task<IResult> ObtenerPrecargables(AppDbContext db, IMemoryCache cache, HttpContext contexto, CancellationToken ct)
     {
-        var versiones = await db.CatalogoVersiones.AsNoTracking()
-            .Where(v => Precargables.Contains(v.Catalogo))
-            .OrderBy(v => v.Catalogo)
-            .Select(v => new { v.Catalogo, v.FechaCargaUtc, v.RenglonesVigentes })
-            .ToListAsync(ct);
+        const string claveCache = "catalogos-sat-precargables";
+        await ExclusividadPrecargables.WaitAsync(ct);
+        (string Etag, Dictionary<string, IReadOnlyList<ClaveSatDto>> Datos) instantanea;
+        try
+        {
+            if (!cache.TryGetValue(claveCache, out instantanea))
+            {
+                var datos = new Dictionary<string, IReadOnlyList<ClaveSatDto>>(Precargables.Length);
+                foreach (var catalogo in Precargables)
+                    datos[catalogo] = await BuscarTodoVigenteAsync(db, catalogo, ct);
+                instantanea = (CalcularEtag(JsonSerializer.Serialize(datos)), datos);
+                cache.Set(claveCache, instantanea, TimeSpan.FromSeconds(2));
+            }
+        }
+        finally { ExclusividadPrecargables.Release(); }
 
-        var etag = CalcularEtag(string.Join('|', versiones.Select(v => $"{v.Catalogo}:{v.FechaCargaUtc:O}:{v.RenglonesVigentes}")));
-
-        if (contexto.Request.Headers.IfNoneMatch.Any(valor => valor == etag))
-            return Results.StatusCode(StatusCodes.Status304NotModified);
-
-        contexto.Response.Headers.ETag = etag;
-
-        var resultado = new Dictionary<string, IReadOnlyList<ClaveSatDto>>(Precargables.Length);
-
-        foreach (var catalogo in Precargables)
-            resultado[catalogo] = await BuscarTodoVigenteAsync(db, catalogo, ct);
-
-        return Results.Ok(resultado);
+        contexto.Response.Headers.CacheControl = "private, no-cache";
+        contexto.Response.Headers.ETag = instantanea.Etag;
+        return contexto.Request.Headers.IfNoneMatch.Any(valor => valor == instantanea.Etag)
+            ? Results.StatusCode(StatusCodes.Status304NotModified)
+            : Results.Ok(instantanea.Datos);
     }
 
     private static async Task<IReadOnlyList<ClaveSatDto>> BuscarTodoVigenteAsync(

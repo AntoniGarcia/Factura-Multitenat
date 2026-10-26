@@ -1,0 +1,48 @@
+@implements IAsyncDisposable
+@inject ServicioDeCatalogos Catalogos
+@inject ServicioDeSesion Sesion
+@inject ILogger<ActualizadorDeCatalogos> Registro
+
+@code {
+    [Parameter] public EventCallback AlCambiar { get; set; }
+    private readonly CancellationTokenSource _cancelacion = new();
+    private readonly PeriodicTimer _temporizador = new(TimeSpan.FromSeconds(5));
+    private Task? _seguimiento;
+    private long _revision;
+
+    protected override void OnInitialized()
+    {
+        _revision = Catalogos.Revision;
+        _seguimiento = SeguirAsync(_cancelacion.Token);
+    }
+
+    private async Task SeguirAsync(CancellationToken ct)
+    {
+        try
+        {
+            do
+            {
+                if (!Sesion.HaySesion) continue;
+                try { await Catalogos.ActualizarSiCorrespondeAsync(ct); }
+                catch (HttpRequestException) { continue; }
+                catch (System.Text.Json.JsonException) { continue; }
+                catch (OperationCanceledException) when (!ct.IsCancellationRequested) { continue; }
+                if (ct.IsCancellationRequested) return;
+                if (_revision == Catalogos.Revision) continue;
+                _revision = Catalogos.Revision;
+                await InvokeAsync(() => AlCambiar.InvokeAsync());
+            }
+            while (await _temporizador.WaitForNextTickAsync(ct));
+        }
+        catch (OperationCanceledException) when (ct.IsCancellationRequested) { }
+        catch (Exception ex) { Registro.LogError(ex, "No se pudo actualizar la vista de catálogos."); }
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        await _cancelacion.CancelAsync();
+        _temporizador.Dispose();
+        if (_seguimiento is not null) await _seguimiento;
+        _cancelacion.Dispose();
+    }
+}

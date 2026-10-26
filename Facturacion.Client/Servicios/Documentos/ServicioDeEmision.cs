@@ -48,6 +48,13 @@ public sealed class ServicioDeEmision(IHttpClientFactory fabrica)
         return await LeerAsync<ComprobanteDto>(respuesta, ct);
     }
 
+    public async Task<(VistaPreviaFacturaDto? Exito, DetalleProblema? Error)> CalcularAsync(
+        Guid id, PeticionGuardarBorrador peticion, CancellationToken ct = default)
+    {
+        using var respuesta = await Cliente.PostAsJsonAsync($"api/documentos/{id}/calcular", peticion, ct);
+        return await LeerAsync<VistaPreviaFacturaDto>(respuesta, ct);
+    }
+
     public Task<(ArchivoParaDescarga? Archivo, DetalleProblema? Error)> ObtenerVistaPreviaPdfAsync(
         Guid id, CancellationToken ct = default)
         => ObtenerArchivoAsync($"api/documentos/{id}/vista-previa.pdf", $"borrador-factura-{id:N}.pdf", ct);

@@ -171,6 +171,8 @@
     </DialogActions>
 </MudDialog>
 
+<ActualizadorDeCatalogos AlCambiar="@(() => { })" />
+
 @code {
     [CascadingParameter]
     private IMudDialogInstance MudDialog { get; set; } = default!;

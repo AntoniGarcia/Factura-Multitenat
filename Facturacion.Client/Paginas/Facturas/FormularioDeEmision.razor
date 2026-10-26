@@ -70,14 +70,18 @@ else
                 <MudTextField T="string" Value="@NombreDeVariante" Label="Tipo de documento" ReadOnly="true" />
                 <MudTextField T="string" Value="@FolioMostrado" Label="Folio" ReadOnly="true" Class="cifra-tabular" />
 
-                <MudSelect T="string" @bind-Value="_moneda" Label="Moneda">
-                    @foreach (var m in Catalogos.Obtener("c_Moneda"))
+                <MudSelect T="string" @bind-Value="_moneda" @bind-Value:after="ActualizarVistaPreviaAsync" Label="Moneda">
+                    @foreach (var m in Catalogos.ObtenerMonedasDeCaptura())
                     {
                         <MudSelectItem T="string" Value="@m.Clave">@m.Clave — @m.Descripcion</MudSelectItem>
                     }
+                    @if (_moneda is not ("MXN" or "USD"))
+                    {
+                        <MudSelectItem T="string" Value="@_moneda" Disabled="true">@_moneda — Moneda guardada</MudSelectItem>
+                    }
                 </MudSelect>
 
-                <CampoMoneda Valor="@(_tipoCambio ?? 0)" ValorCambiado="v => _tipoCambio = v"
+                <CampoMoneda Valor="@(_tipoCambio ?? 0)" ValorCambiado="async v => { _tipoCambio = v; await ActualizarVistaPreviaAsync(); }"
                               Label="Tipo de cambio" Deshabilitado="@(_moneda == "MXN")"
                               Requerido="@(_moneda != "MXN")" />
 
@@ -152,8 +156,8 @@ else
                                 </div>
                             </div>
 
-                            <MudNumericField T="decimal" Value="@renglon.Cantidad" ValueChanged="v => renglon.Cantidad = v"
-                                             Label="Cantidad" Format="N2" Min="0.000001m"
+                            <MudNumericField T="decimal" Value="@renglon.Cantidad" ValueChanged="async v => { renglon.Cantidad = v; await ActualizarVistaPreviaAsync(); }"
+                                             Label="Cantidad" Format="N2" Min="0.000001m" Immediate="true"
                                              Class="concepto-editor-cantidad cifra-tabular" />
 
                             @if (EsFacturaComercio)
@@ -163,18 +167,17 @@ else
                                               HelperText="Debe coincidir con el NoIdentificacion del CFDI." />
                             }
 
-                            <div class="concepto-editor-dato concepto-editor-precio">
-                                <span>Precio unitario</span>
-                                <strong class="cifra-tabular">@renglon.ValorUnitario.ToString("N2")</strong>
-                            </div>
+                            <MudNumericField T="decimal" Value="@renglon.ValorUnitario" ValueChanged="async v => { renglon.ValorUnitario = v; await ActualizarVistaPreviaAsync(); }"
+                                             Label="Precio unitario" Format="N2" Min="0" Max="999999999999.999999m" Immediate="true"
+                                             Class="concepto-editor-precio cifra-tabular" />
 
-                            <MudNumericField T="decimal" Value="@renglon.Descuento" ValueChanged="v => renglon.Descuento = v"
-                                             Label="Descuento" Format="N2" Min="0"
+                            <MudNumericField T="decimal" Value="@renglon.Descuento" ValueChanged="async v => { renglon.Descuento = v; await ActualizarVistaPreviaAsync(); }"
+                                             Label="Descuento" Format="N2" Min="0" Immediate="true"
                                              Class="concepto-editor-descuento cifra-tabular" />
 
                             <div class="concepto-editor-dato concepto-editor-importe">
                                 <span>Importe</span>
-                                <strong class="cifra-tabular">@renglon.Importe.ToString("N2")</strong>
+                                <strong class="cifra-tabular">@(renglon.ImporteSeguro?.ToString("N2") ?? "—")</strong>
                             </div>
 
                             @if (renglon.ObjetoImp == "02" && renglon.Impuestos.Count == 0)
@@ -188,7 +191,7 @@ else
                             <MudIconButton Icon="@Icons.Material.Filled.Delete" Size="Size.Small"
                                            Class="concepto-editor-quitar"
                                            title="Quitar concepto" aria-label="Quitar concepto"
-                                           OnClick="@(() => _renglones.RemoveAt(indice))" />
+                                           OnClick="@(() => QuitarConceptoAsync(indice))" />
                         }
                     </div>
                 }
@@ -294,7 +297,7 @@ else
         @if (EsFacturaDeObra)
         {
             <MudTabPanel Text="Obra">
-                <DatosDeObraDeFactura ComprobanteId="@_comprobante.Id" ImporteTrabajos="@_comprobante.SubTotal" GuardarFactura="GuardarAsync"
+                <DatosDeObraDeFactura ComprobanteId="@_comprobante.Id" ImporteTrabajos="@(_vistaPrevia?.SubTotal ?? _comprobante.SubTotal)" GuardarFactura="GuardarAsync"
                                       AlGuardar="@(() => _obraGuardada = true)" />
             </MudTabPanel>
         }
@@ -333,15 +336,44 @@ else
         <dl class="emision-resumen-datos">
             <div><dt>Moneda</dt><dd class="cifra-tabular">@_moneda</dd></div>
             <div><dt>Serie</dt><dd class="cifra-tabular">@(_serie?.Prefijo ?? "—")</dd></div>
-            <div><dt>Conceptos</dt><dd class="cifra-tabular">@_renglones.Count</dd></div>
+            <div><dt>Conceptos</dt><dd class="cifra-tabular">@ConceptosSeleccionados.Count</dd></div>
         </dl>
 
-        <dl class="emision-resumen-totales">
-            <div><dt>Subtotal</dt><dd>@_comprobante.SubTotal.ToString("N2")</dd></div>
-            <div><dt>Descuento</dt><dd>−@_comprobante.Descuento.ToString("N2")</dd></div>
-            <div><dt>Impuestos trasladados</dt><dd>@_comprobante.TotalImpuestosTrasladados.ToString("N2")</dd></div>
-            <div><dt>Impuestos retenidos</dt><dd>−@_comprobante.TotalImpuestosRetenidos.ToString("N2")</dd></div>
-            <div class="emision-resumen-total"><dt>Total @_comprobante.Moneda</dt><dd>@_comprobante.Total.ToString("N2")</dd></div>
+        <section class="emision-resumen-productos" aria-labelledby="resumen-conceptos-titulo">
+            <h3 id="resumen-conceptos-titulo">Conceptos</h3>
+            @if (ConceptosSeleccionados.Count == 0)
+            {
+                <p class="emision-resumen-nota">Sin productos agregados.</p>
+            }
+            else
+            {
+                <div class="emision-resumen-lista" role="list" tabindex="0" aria-label="Productos de la factura">
+                    <Virtualize Items="@ConceptosSeleccionados" Context="concepto" ItemSize="88">
+                        <div class="emision-resumen-producto" role="listitem" @key="concepto">
+                            <strong title="@concepto.Descripcion">@concepto.Descripcion</strong>
+                            <span class="cifra-tabular">@concepto.Cantidad.ToString("0.######") × @concepto.ValorUnitario.ToString("N2")</span>
+                            <span class="cifra-tabular">@(concepto.ImporteSeguro?.ToString("N2") ?? "—")</span>
+                            @if (concepto.Descuento != 0)
+                            {
+                                <small>Descuento: <span class="cifra-tabular">−@concepto.Descuento.ToString("N2")</span></small>
+                            }
+                        </div>
+                    </Virtualize>
+                </div>
+            }
+        </section>
+
+        @if (_calculandoVistaPrevia)
+        {
+            <p class="emision-resumen-nota" role="status">Calculando…</p>
+        }
+        <PanelErrores Problema="_errorVistaPrevia" />
+        <dl class="emision-resumen-totales" aria-busy="@_calculandoVistaPrevia">
+            <div><dt>Subtotal</dt><dd>@ImportePrevio(_vistaPrevia?.SubTotal)</dd></div>
+            <div><dt>Descuento</dt><dd>@ImportePrevio(_vistaPrevia?.Descuento, true)</dd></div>
+            <div><dt>Impuestos trasladados</dt><dd>@ImportePrevio(_vistaPrevia?.TotalImpuestosTrasladados)</dd></div>
+            <div><dt>Impuestos retenidos</dt><dd>@ImportePrevio(_vistaPrevia?.TotalImpuestosRetenidos, true)</dd></div>
+            <div class="emision-resumen-total"><dt>Total @_moneda</dt><dd>@ImportePrevio(_vistaPrevia?.Total)</dd></div>
         </dl>
 
         @if (EsFacturaComercio && !_comercioGuardado)
@@ -373,6 +405,8 @@ else
 }
 </TarjetaFormulario>
 
+<ActualizadorDeCatalogos AlCambiar="@(() => { })" />
+
 @code {
     private const string RfcPublicoEnGeneral = "XAXX010101000";
 
@@ -394,6 +428,11 @@ else
     private bool _generando;
     private bool _preparandoVista;
     private DetalleProblema? _error;
+    private DetalleProblema? _errorVistaPrevia;
+    private VistaPreviaFacturaDto? _vistaPrevia;
+    private bool _calculandoVistaPrevia;
+    private CancellationTokenSource? _calculoCancelacion;
+    private List<RenglonConcepto> ConceptosSeleccionados => _renglones.Where(r => r.ProductoId is not null).ToList();
     private EstadoDeIntegracionFiscalDto? _integracionFiscal;
     private bool _obraGuardada;
     private bool _comercioGuardado;
@@ -474,6 +513,9 @@ else
 
     protected override async Task OnParametersSetAsync()
     {
+        CancelarCalculo();
+        _vistaPrevia = null;
+        _errorVistaPrevia = null;
         _cargando = true;
         _error = null;
         _integracionFiscal = await Emision.ObtenerEstadoDeIntegracionAsync();
@@ -566,6 +608,7 @@ else
 
             _relacionados.Clear();
             _relacionados.AddRange(comprobante.Relacionados);
+            _vistaPrevia = DesdeComprobante(comprobante);
         }
 
         _cargando = false;
@@ -612,6 +655,83 @@ else
         renglon.ValorUnitario = producto.ValorUnitario;
         renglon.Impuestos = [.. producto.Impuestos.Select(i =>
             new ImpuestoDeConceptoDto(i.Impuesto, i.TipoFactor, i.TasaOCuota, i.EsRetencion))];
+        await ActualizarVistaPreviaAsync();
+    }
+
+    private async Task QuitarConceptoAsync(int indice)
+    {
+        _renglones.RemoveAt(indice);
+        await ActualizarVistaPreviaAsync();
+    }
+
+    private static VistaPreviaFacturaDto DesdeComprobante(ComprobanteDto documento) => new(
+        documento.SubTotal, documento.Descuento, documento.TotalImpuestosTrasladados,
+        documento.TotalImpuestosRetenidos, documento.Total, documento.Conceptos);
+
+    private static string ImportePrevio(decimal? importe, bool restar = false)
+        => importe is { } valor ? (restar ? "−" : "") + valor.ToString("N2") : "—";
+
+    private void CancelarCalculo()
+    {
+        _calculoCancelacion?.Cancel();
+        _calculoCancelacion = null;
+        _calculandoVistaPrevia = false;
+    }
+
+    private async Task ActualizarVistaPreviaAsync()
+    {
+        CancelarCalculo();
+        _vistaPrevia = null;
+        _errorVistaPrevia = null;
+        if (_comprobante is null || !EsEditable) return;
+        var renglones = ConceptosSeleccionados;
+        if (renglones.Count == 0)
+        {
+            _vistaPrevia = new(0, 0, 0, 0, 0, []);
+            return;
+        }
+        if (renglones.Any(r => r.ImporteSeguro is null))
+        {
+            _errorVistaPrevia = ProblemaLocal("Revisa las cantidades; el importe es demasiado grande.");
+            return;
+        }
+        var cancelacion = new CancellationTokenSource();
+        _calculoCancelacion = cancelacion;
+        _calculandoVistaPrevia = true;
+        var id = _comprobante.Id;
+        var peticion = CapturarFactura(soloElegidos: true);
+        try
+        {
+            await Task.Delay(300, cancelacion.Token);
+            var (vista, error) = await Emision.CalcularAsync(id, peticion, cancelacion.Token);
+            if (_calculoCancelacion != cancelacion) return;
+            _vistaPrevia = vista;
+            _errorVistaPrevia = error;
+            if (vista is not null)
+                for (var i = 0; i < renglones.Count; i++)
+                {
+                    var calculado = vista.Conceptos[i];
+                    renglones[i].ValorUnitario = calculado.ValorUnitario;
+                    renglones[i].Descripcion = calculado.Descripcion;
+                    renglones[i].ObjetoImp = calculado.ObjetoImp;
+                    renglones[i].Impuestos = calculado.Impuestos;
+                }
+        }
+        catch (OperationCanceledException) when (cancelacion.IsCancellationRequested) { }
+        catch (HttpRequestException)
+        {
+            if (_calculoCancelacion == cancelacion)
+                _errorVistaPrevia = ProblemaLocal("No se pudo actualizar el cálculo. Revisa tu conexión y vuelve a intentar.");
+        }
+        finally
+        {
+            if (_calculoCancelacion == cancelacion)
+            {
+                _calculoCancelacion = null;
+                _calculandoVistaPrevia = false;
+            }
+            cancelacion.Dispose();
+        }
     }
     
     private async Task AgregarRelacionadoAsync()
@@ -638,6 +758,11 @@ else
     private async Task<bool> GuardarAsync()
     {
         if (_comprobante is null) return false;
+        if (_renglones.Any(r => r.ImporteSeguro is null))
+        {
+            _error = ProblemaLocal("Revisa las cantidades; el importe es demasiado grande.");
+            return false;
+        }
 
         // Antes se filtraban con .Where(r => r.ProductoId is not null) y desaparecían sin
         // mensaje. El servidor rechaza igual estos renglones —ResolverConceptosAsync—, así que
@@ -662,7 +787,26 @@ else
         _guardando = true;
         _error = null;
 
-        var peticion = new PeticionGuardarBorrador(
+        CancelarCalculo();
+        var peticion = CapturarFactura();
+        var (exito, error) = await Emision.GuardarAsync(_comprobante.Id, peticion);
+
+        _guardando = false;
+
+        if (error is not null)
+        {
+            _error = error;
+            return false;
+        }
+
+        _comprobante = exito;
+        _vistaPrevia = DesdeComprobante(exito!);
+        _errorVistaPrevia = null;
+        _borradorSinGuardar = null;
+        return true;
+    }
+
+    private PeticionGuardarBorrador CapturarFactura(bool soloElegidos = false) => new(
             "I",
             _serie?.Id,
             _moneda,
@@ -677,25 +821,10 @@ else
             EsPublicoEnGeneral ? _globalPeriodicidad : null,
             EsPublicoEnGeneral ? _globalMeses : null,
             EsPublicoEnGeneral ? _globalAnio : null,
-            [.. _renglones.Select((r, i) => new ConceptoDto(
+            [.. _renglones.Where(r => !soloElegidos || r.ProductoId is not null).Select((r, i) => new ConceptoDto(
                 null, i + 1, r.ProductoId, r.ClaveProdServ!, r.ClaveUnidad!, r.UnidadTexto, r.NoIdentificacion,
                 r.Descripcion!, r.Cantidad, r.ValorUnitario, r.Importe, r.Descuento, r.ObjetoImp!, r.Impuestos))],
             _relacionados);
-
-        var (exito, error) = await Emision.GuardarAsync(_comprobante.Id, peticion);
-
-        _guardando = false;
-
-        if (error is not null)
-        {
-            _error = error;
-            return false;
-        }
-
-        _comprobante = exito;
-        _borradorSinGuardar = null;
-        return true;
-    }
 
     private async Task VistaPreviaAsync()
     {
@@ -816,6 +945,14 @@ else
         /// </para>
         /// </summary>
         public decimal Importe => Math.Round(Cantidad * ValorUnitario, 6, MidpointRounding.ToEven);
+        public decimal? ImporteSeguro
+        {
+            get
+            {
+                try { return Importe; }
+                catch (OverflowException) { return null; }
+            }
+        }
     }
 
     // Id del borrador que se creó al abrir la pantalla y todavía no se guardó nunca.
@@ -845,6 +982,10 @@ else
         }
     }
 
-    public void Dispose() => _registroDeSalida?.Dispose();
+    public void Dispose()
+    {
+        CancelarCalculo();
+        _registroDeSalida?.Dispose();
+    }
     
 }

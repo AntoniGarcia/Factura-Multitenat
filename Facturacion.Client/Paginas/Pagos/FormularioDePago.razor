@@ -63,12 +63,13 @@ else
                     </MudSelect>
 
                     <MudSelect T="string" Label="Moneda" @bind-Value="_moneda" Disabled="@(!EsEditable)">
-                        @foreach (var moneda in Catalogos.Obtener("c_Moneda"))
+                        @foreach (var moneda in Catalogos.ObtenerMonedasDeCaptura())
                         {
-                            @if (moneda.Clave != "XXX")
-                            {
-                                <MudSelectItem T="string" Value="@moneda.Clave">@moneda.Clave — @moneda.Descripcion</MudSelectItem>
-                            }
+                            <MudSelectItem T="string" Value="@moneda.Clave">@moneda.Clave — @moneda.Descripcion</MudSelectItem>
+                        }
+                        @if (_moneda is not ("MXN" or "USD"))
+                        {
+                            <MudSelectItem T="string" Value="@_moneda" Disabled="true">@_moneda — Moneda guardada</MudSelectItem>
                         }
                     </MudSelect>
 
@@ -250,6 +251,8 @@ else
     }
 }
 </TarjetaFormulario>
+
+<ActualizadorDeCatalogos AlCambiar="@(() => { })" />
 
 @code {
     [Parameter]
