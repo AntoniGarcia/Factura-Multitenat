@@ -38,6 +38,7 @@ public sealed class ServicioDeTrasladosCartaPorte(
     public async Task<Resultado<TrasladoCartaPorteDto>> CrearAsync(
         PeticionGuardarTrasladoCartaPorte peticion, CancellationToken ct)
     {
+        await using var transaccion = await baseDeDatos.Database.BeginTransactionAsync(ct);
         var validacion = await ValidarAsync(peticion, ct);
         if (validacion.EsFallo) return validacion.Error!;
 
@@ -72,6 +73,7 @@ public sealed class ServicioDeTrasladosCartaPorte(
             despues: ParaBitacora(traslado));
 
         await baseDeDatos.SaveChangesAsync(ct);
+        await transaccion.CommitAsync(ct);
         return await ADtoAsync(comprobante.Estatus, traslado, ct);
     }
 
@@ -113,6 +115,7 @@ public sealed class ServicioDeTrasladosCartaPorte(
     public async Task<Resultado<TrasladoCartaPorteDto>> ActualizarAsync(
         Guid comprobanteId, PeticionGuardarTrasladoCartaPorte peticion, CancellationToken ct)
     {
+        await using var transaccion = await baseDeDatos.Database.BeginTransactionAsync(ct);
         var traslado = await CargarAsync(comprobanteId, ct);
         if (traslado is null)
             return ErrorNegocio.NoEncontrado("traslado-no-encontrado", "No se encontró ese traslado Carta Porte.");
@@ -147,6 +150,7 @@ public sealed class ServicioDeTrasladosCartaPorte(
             antes, ParaBitacora(traslado));
 
         await baseDeDatos.SaveChangesAsync(ct);
+        await transaccion.CommitAsync(ct);
         return await ADtoAsync(traslado.Comprobante.Estatus, traslado, ct);
     }
 

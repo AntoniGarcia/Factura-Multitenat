@@ -1,14 +1,20 @@
 @page "/clientes"
 @attribute [Authorize]
+@using Facturacion.Client.Paginas.Operador.Operadores
 @inject ServicioDeClientes Clientes
 @inject NavigationManager Navegacion
 @inject IServicioDeConfirmacion Confirmacion
 @inject ServicioDeSesion Sesion
+@inject IDialogService Dialogos
 
 <PageTitle>Clientes</PageTitle>
 <TituloDePagina Texto="Clientes" />
 
 <PanelErrores Problema="_error" />
+@if (_aviso is not null)
+{
+    <p class="mensaje-exito" role="status">@_aviso</p>
+}
 
 <section class="catalogo-panel" aria-label="Catálogo de clientes">
     <p class="catalogo-descripcion">
@@ -38,6 +44,8 @@
 @code {
     private TablaDatos<ClienteEnListaDto>? _tabla;
     private DetalleProblema? _error;
+    private string? _aviso;
+    private bool _trabajando;
     private string _texto = string.Empty;
     private bool? _activos = true;
 
@@ -71,10 +79,15 @@
     ];
 
     private ColumnaDeTabla<ClienteEnListaDto> Acciones => new("", c => @<div class="acciones-renglon">
-                          <MudButton Size="Size.Small" OnClick="@(() => Navegacion.NavigateTo($"/clientes/{c.Id}"))">Editar</MudButton>
-                          <MudButton Size="Size.Small" OnClick="@(() => CambiarActivo(c))">
+                          <MudButton Size="Size.Small" Disabled="@_trabajando" OnClick="@(() => Navegacion.NavigateTo($"/clientes/{c.Id}"))">Editar</MudButton>
+                          <MudButton Size="Size.Small" Disabled="@_trabajando" OnClick="@(() => CambiarActivo(c))">
                               @(c.Activo ? "Desactivar" : "Reactivar")
                           </MudButton>
+                          @if (Sesion.TienePermiso(Permisos.Titular))
+                          {
+                              <MudButton Size="Size.Small" Color="Color.Error" Disabled="@_trabajando"
+                                         OnClick="@(() => EliminarAsync(c))">Eliminar</MudButton>
+                          }
                       </div>);
 
     private async Task<ResultadoDePagina<ClienteEnListaDto>> CargarAsync(PeticionDePagina peticion, CancellationToken ct)
@@ -107,6 +120,7 @@
     /// </summary>
     private async Task CambiarActivo(ClienteEnListaDto cliente)
     {
+        if (_trabajando) return;
         if (cliente.Activo)
         {
             var confirmado = await Confirmacion.ConfirmarAsync(
@@ -122,6 +136,38 @@
         _error = error;
 
         if (error is null) await RecargarAsync();
+    }
+
+    private async Task EliminarAsync(ClienteEnListaDto cliente)
+    {
+        if (_trabajando) return;
+        _trabajando = true;
+        _error = null;
+        _aviso = null;
+        try
+        {
+            var parametros = new DialogParameters<DialogoConfirmarContrasenaOperador>
+            {
+                { x => x.Mensaje, $"Eliminar a «{cliente.Nombre}». Escribe tu contraseña. No se puede deshacer y solo se permite si no tiene documentos relacionados." },
+                { x => x.TextoConfirmar, "Eliminar" },
+                { x => x.ColorConfirmar, Color.Error }
+            };
+            var referencia = await Dialogos.ShowAsync<DialogoConfirmarContrasenaOperador>("Eliminar cliente", parametros,
+                new DialogOptions { BackdropClick = false, MaxWidth = MaxWidth.Small, FullWidth = true });
+            if (await referencia.Result is not { Canceled: false, Data: string contrasena }) return;
+            _error = await Clientes.EliminarAsync(cliente.Id, contrasena);
+            if (_error is null)
+            {
+                _aviso = "Cliente eliminado.";
+                await RecargarAsync();
+            }
+        }
+        catch (HttpRequestException)
+        {
+            _error = new("about:blank", "No se pudo confirmar la eliminación", 0,
+                "Actualiza la lista antes de intentarlo de nuevo.", null, string.Empty, null);
+        }
+        finally { _trabajando = false; }
     }
 
     private void Exportar()

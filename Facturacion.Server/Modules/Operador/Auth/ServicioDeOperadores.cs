@@ -1,6 +1,7 @@
 using Facturacion.Server.Data;
 using Facturacion.Server.Data.Entidades.Plataforma;
 using Facturacion.Server.Infra.Bitacora;
+using Facturacion.Server.Infra.Seguridad;
 using Facturacion.Shared.Comun;
 using Facturacion.Shared.Operador;
 using Microsoft.AspNetCore.Identity;
@@ -20,10 +21,47 @@ public sealed class ServicioDeOperadores(
     AppDbContext baseDeDatos,
     IPasswordHasher<OperadorPlataforma> hasher,
     ServicioDeRefreshTokensDeOperador refrescos,
-    IServicioDeBitacora bitacora)
+    IServicioDeBitacora bitacora,
+    IControlDeIntentos intentos)
 {
     private static readonly HashSet<string> _permisosValidos =
         new(PermisosDePanel.Todos, StringComparer.OrdinalIgnoreCase);
+
+    public async Task<Resultado> EliminarAsync(Guid operadorActualId, Guid id, string contrasena, CancellationToken ct)
+    {
+        var claveIntentos = $"eliminar-operador:{operadorActualId}";
+        if (intentos.BloqueoRestante(claveIntentos) is not null)
+            return ErrorNegocio.LimiteExcedido("demasiados-intentos", "Espera antes de volver a confirmar tu contraseña.");
+        var actual = await baseDeDatos.OperadoresPlataforma.SingleOrDefaultAsync(x => x.Id == operadorActualId && x.Activo, ct);
+        if (actual is null || actual.BloqueadoHastaUtc > DateTime.UtcNow)
+            return ErrorNegocio.Regla("operador-no-activo", "Tu acceso de operador no está disponible.");
+        if (string.IsNullOrEmpty(contrasena) || contrasena.Length > 128 ||
+            await ContrasenaIncorrecta(operadorActualId, contrasena, ct))
+        {
+            intentos.RegistrarFallo(claveIntentos);
+            return ErrorNegocio.Validacion("contrasena-incorrecta", "Tu contraseña de operador no es correcta.");
+        }
+        intentos.Limpiar(claveIntentos);
+
+        await using var transaccion = await baseDeDatos.Database.BeginTransactionAsync(System.Data.IsolationLevel.Serializable, ct);
+        var operador = await baseDeDatos.OperadoresPlataforma.Include(x => x.Permisos).SingleOrDefaultAsync(x => x.Id == id, ct);
+        if (operador is null)
+            return ErrorNegocio.NoEncontrado("operador-no-encontrado", "Ese operador no existe.");
+        if (id == operadorActualId || operador.EsPrincipal)
+            return ErrorNegocio.Regla("operador-protegido", "No puedes eliminar tu acceso ni al operador principal.");
+        if (operador.UltimoAccesoUtc is not null ||
+            await baseDeDatos.Bitacora.IgnoreQueryFilters().AnyAsync(x => x.OperadorId == id, ct) ||
+            await baseDeDatos.RefreshTokensOperador.AnyAsync(x => x.OperadorId == id, ct) ||
+            await baseDeDatos.ConfiguracionesDelSistema.AnyAsync(x => x.ActualizadaPorOperadorId == id, ct))
+            return ErrorNegocio.Regla("operador-con-historial", "Tiene actividad registrada. Desactívalo para conservar su historial.");
+
+        bitacora.Registrar(EntidadesDeBitacora.OperadorPlataforma, id.ToString(), AccionesDeBitacora.OperadorEliminado,
+            antes: Retrato(operador), operadorId: operadorActualId);
+        baseDeDatos.OperadoresPlataforma.Remove(operador);
+        await baseDeDatos.SaveChangesAsync(ct);
+        await transaccion.CommitAsync(ct);
+        return Resultado.Exito();
+    }
 
     /// <summary>Lista paginada de operadores, con sus permisos.</summary>
     public async Task<PaginaDeOperadores> ListarAsync(

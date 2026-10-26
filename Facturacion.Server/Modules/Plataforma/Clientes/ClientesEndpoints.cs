@@ -27,6 +27,8 @@ public static class ClientesEndpoints
         grupo.MapPost("/", Crear).RequireAuthorization(Permisos.AdministrarClientes);
         grupo.MapPut("/{id:guid}", Actualizar).RequireAuthorization(Permisos.AdministrarClientes);
         grupo.MapPost("/{id:guid}/activo", CambiarActivo).RequireAuthorization(Permisos.AdministrarClientes);
+        grupo.MapPost("/{id:guid}/eliminar", Eliminar)
+            .RequireAuthorization(Permisos.AdministrarClientes, Permisos.Titular);
     }
 
     private static async Task<IResult> Listar(
@@ -47,6 +49,14 @@ public static class ClientesEndpoints
     {
         var cliente = await clientes.ObtenerAsync(id, ct);
         return cliente is null ? Results.NotFound() : Results.Ok(cliente);
+    }
+
+    private static async Task<IResult> Eliminar(
+        Guid id, PeticionEliminarConContrasena peticion, ServicioDeClientes clientes,
+        HttpContext contexto, CancellationToken ct)
+    {
+        var resultado = await clientes.EliminarAsync(id, peticion.Contrasena, ct);
+        return resultado.EsFallo ? resultado.Error!.AResultado(contexto) : Results.NoContent();
     }
 
     private static async Task<IResult> Crear(

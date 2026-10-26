@@ -1,6 +1,7 @@
 using Facturacion.Server.Data;
 using Facturacion.Server.Data.Entidades.Plataforma;
 using Facturacion.Server.Infra.Bitacora;
+using Facturacion.Server.Infra.Seguridad;
 using Facturacion.Server.Infra.Tenencia;
 using Facturacion.Server.Modules.Plataforma.Auth;
 using Facturacion.Shared.Comun;
@@ -18,9 +19,57 @@ public sealed class ServicioDeUsuarios(
     IServicioDeBitacora bitacora,
     IContextoEmpresaInterno contexto,
     ServicioDeRefreshTokens refrescos,
-    IOptions<OpcionesDeSoporte> opcionesSoporte)
+    IOptions<OpcionesDeSoporte> opcionesSoporte,
+    IControlDeIntentos intentos)
 {
     public const int LimitePorEmpresa = 3;
+
+    public async Task<Resultado> EliminarAsync(Guid usuarioId, string contrasena, CancellationToken ct)
+    {
+        var confirmacion = await ConfirmacionDeTitular.ValidarAsync(usuarios, contexto, intentos, contrasena);
+        if (confirmacion.EsFallo) return confirmacion.Error!;
+        var titular = confirmacion.Valor;
+
+        await using var transaccion = await baseDeDatos.Database.BeginTransactionAsync(System.Data.IsolationLevel.Serializable, ct);
+        var miembro = await baseDeDatos.UsuariosEmpresas
+            .Include(x => x.Usuario).Include(x => x.Permisos)
+            .SingleOrDefaultAsync(x => x.UsuarioId == usuarioId && x.EmpresaId == contexto.EmpresaId &&
+                x.Usuario.CuentaId == titular.CuentaId, ct);
+        if (miembro is null)
+            return ErrorNegocio.NoEncontrado("usuario-no-encontrado", "Ese usuario no pertenece a esta empresa.");
+        if (usuarioId == titular.Id || miembro.Usuario.EsTitular || !miembro.Usuario.CreadoPorAdministrador)
+            return ErrorNegocio.Regla("usuario-protegido", "No puedes eliminar este usuario.");
+
+        if (await baseDeDatos.UsuariosEmpresas.IgnoreQueryFilters()
+            .AnyAsync(x => x.UsuarioId == usuarioId && x.EmpresaId != contexto.EmpresaId, ct))
+            return ErrorNegocio.Regla("usuario-en-otras-empresas", "Tiene acceso a otras empresas. Desactiva su acceso aquí.");
+
+        // Se revisa toda su actividad, no solo la de la empresa abierta.
+        var id = usuarioId.ToString();
+        var tieneHistorial = await baseDeDatos.Bitacora.IgnoreQueryFilters().AnyAsync(x =>
+                x.UsuarioId == usuarioId && !(x.Entidad == EntidadesDeBitacora.UsuarioEmpresa &&
+                    x.EntidadId == id && x.Accion == AccionesDeBitacora.UsuarioCreado), ct)
+            || await baseDeDatos.RefreshTokens.AnyAsync(x => x.UsuarioId == usuarioId, ct)
+            || await baseDeDatos.Comprobantes.IgnoreQueryFilters().AnyAsync(x => x.CreadoPorUsuarioId == usuarioId, ct)
+            || await baseDeDatos.EnviosDeCorreo.IgnoreQueryFilters().AnyAsync(x => x.EnviadoPorUsuarioId == usuarioId, ct)
+            || await baseDeDatos.SolicitudesCancelacion.IgnoreQueryFilters().AnyAsync(x => x.SolicitadaPorUsuarioId == usuarioId, ct)
+            || await baseDeDatos.ComprasTimbres.IgnoreQueryFilters().AnyAsync(x => x.UsuarioId == usuarioId, ct)
+            || await baseDeDatos.MovimientosTimbre.IgnoreQueryFilters().AnyAsync(x => x.UsuarioId == usuarioId, ct)
+            || await baseDeDatos.CertificadosCsd.IgnoreQueryFilters().AnyAsync(x => x.CargadoPorUsuarioId == usuarioId, ct)
+            || await baseDeDatos.ClavesIdempotencia.IgnoreQueryFilters().AnyAsync(x => x.UsuarioId == usuarioId, ct)
+            || await baseDeDatos.UsuariosEmpresasPermisos.IgnoreQueryFilters().AnyAsync(x => x.OtorgadoPorUsuarioId == usuarioId, ct);
+        if (tieneHistorial)
+            return ErrorNegocio.Regla("usuario-con-historial", "Tiene actividad registrada. Desactívalo para conservar su historial.");
+
+        bitacora.Registrar(EntidadesDeBitacora.UsuarioEmpresa, id, AccionesDeBitacora.UsuarioEliminado,
+            antes: new { miembro.Usuario.Nombre, miembro.Usuario.Email }, usuarioId: titular.Id);
+        baseDeDatos.UsuariosEmpresasPermisos.RemoveRange(miembro.Permisos);
+        baseDeDatos.UsuariosEmpresas.Remove(miembro);
+        baseDeDatos.Users.Remove(miembro.Usuario);
+        await baseDeDatos.SaveChangesAsync(ct);
+        await transaccion.CommitAsync(ct);
+        return Resultado.Exito();
+    }
 
     public async Task<UsuariosDeLaEmpresaDto> ListarAsync(CancellationToken ct)
     {

@@ -27,6 +27,7 @@ public static class OperadoresEndpoints
         grupo.MapPost("/", Crear).RequireAuthorization(PoliticasDeOperador.AdministrarOperadores);
         grupo.MapPut("/{id:guid}", Actualizar).RequireAuthorization(PoliticasDeOperador.AdministrarOperadores);
         grupo.MapPost("/{id:guid}/activo", CambiarActivo).RequireAuthorization(PoliticasDeOperador.CambiarEstadoOperadores);
+        grupo.MapPost("/{id:guid}/eliminar", Eliminar).RequireAuthorization(PoliticasDeOperador.AdministrarOperadores);
     }
 
     private static async Task<IResult> Listar(
@@ -41,6 +42,15 @@ public static class OperadoresEndpoints
         var paginaEfectiva = Math.Max(pagina, 0);
 
         return Results.Ok(await operadores.ListarAsync(texto, activos, paginaEfectiva, tamanoEfectivo, ct));
+    }
+
+    private static async Task<IResult> Eliminar(
+        Guid id, PeticionEliminarConContrasena peticion, ServicioDeOperadores operadores,
+        HttpContext contexto, CancellationToken ct)
+    {
+        if (!TryOperador(contexto, out var operadorId)) return Results.Unauthorized();
+        var resultado = await operadores.EliminarAsync(operadorId, id, peticion.Contrasena, ct);
+        return resultado.EsFallo ? resultado.Error!.AResultado(contexto) : Results.NoContent();
     }
 
     private static async Task<IResult> Obtener(

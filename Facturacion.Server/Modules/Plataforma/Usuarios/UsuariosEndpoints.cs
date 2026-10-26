@@ -28,10 +28,19 @@ public static class UsuariosEndpoints
         grupo.MapPut("/{usuarioId:guid}/contrasena", CambiarContrasena);
         grupo.MapPut("/{usuarioId:guid}/permisos", ActualizarPermisos);
         grupo.MapPost("/{usuarioId:guid}/activo", CambiarActivo);
+        grupo.MapPost("/{usuarioId:guid}/eliminar", Eliminar);
     }
 
     private static async Task<IResult> Listar(ServicioDeUsuarios usuarios, CancellationToken ct)
         => Results.Ok(await usuarios.ListarAsync(ct));
+
+    private static async Task<IResult> Eliminar(
+        Guid usuarioId, PeticionEliminarConContrasena peticion, ServicioDeUsuarios usuarios,
+        HttpContext contexto, CancellationToken ct)
+    {
+        var resultado = await usuarios.EliminarAsync(usuarioId, peticion.Contrasena, ct);
+        return resultado.EsFallo ? resultado.Error!.AResultado(contexto) : Results.NoContent();
+    }
 
     private static async Task<IResult> Crear(
         PeticionCrearUsuario peticion, ServicioDeUsuarios usuarios, HttpContext contexto, CancellationToken ct)

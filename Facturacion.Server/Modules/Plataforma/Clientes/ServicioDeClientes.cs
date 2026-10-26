@@ -1,10 +1,13 @@
 using Facturacion.Server.Data;
 using Facturacion.Server.Data.Entidades.Plataforma;
 using Facturacion.Server.Infra.Bitacora;
+using Facturacion.Server.Infra.Seguridad;
+using Facturacion.Server.Infra.Tenencia;
 using Facturacion.Shared.Comun;
 using Facturacion.Shared.Contratos;
 using Facturacion.Shared.Plataforma;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.AspNetCore.Identity;
 
 namespace Facturacion.Server.Modules.Plataforma.Clientes;
 
@@ -12,12 +15,48 @@ namespace Facturacion.Server.Modules.Plataforma.Clientes;
 public sealed class ServicioDeClientes(
     AppDbContext baseDeDatos,
     ValidadorDeCliente validador,
-    IServicioDeBitacora bitacora) : IServicioClientes
+    IServicioDeBitacora bitacora,
+    UserManager<Usuario> usuarios,
+    IContextoEmpresaInterno contexto,
+    IControlDeIntentos intentos) : IServicioClientes
 {
+    public async Task<Resultado> EliminarAsync(Guid id, string contrasena, CancellationToken ct)
+    {
+        var confirmacion = await ConfirmacionDeTitular.ValidarAsync(usuarios, contexto, intentos, contrasena);
+        if (confirmacion.EsFallo) return confirmacion.Error!;
+        var empresaValida = await baseDeDatos.Empresas.AsNoTracking().AnyAsync(x =>
+            x.Id == contexto.EmpresaId && x.CuentaId == confirmacion.Valor.CuentaId && x.Activa, ct);
+        if (!empresaValida)
+            return ErrorNegocio.Regla("acceso-no-autorizado", "La empresa activa no está disponible.");
+
+        await using var transaccion = await baseDeDatos.Database.BeginTransactionAsync(System.Data.IsolationLevel.Serializable, ct);
+        var cliente = await baseDeDatos.Clientes
+            .FromSqlInterpolated($"SELECT * FROM [Clientes] WITH (UPDLOCK, HOLDLOCK) WHERE [Id] = {id}")
+            .FirstOrDefaultAsync(ct);
+        if (cliente is null)
+            return ErrorNegocio.NoEncontrado("cliente-no-encontrado", "No se encontró ese cliente.");
+
+        if (await baseDeDatos.Comprobantes.AnyAsync(x => x.ClienteId == id, ct) ||
+            await baseDeDatos.TrasladosCartaPorte.AnyAsync(x => x.ClienteDestinoId == id, ct))
+            return ErrorNegocio.Regla("cliente-con-movimientos", "Tiene documentos relacionados. Desactívalo para conservar su historial.");
+
+        bitacora.Registrar(EntidadesDeBitacora.Cliente, id.ToString(), AccionesDeBitacora.ClienteEliminado,
+            antes: ADto(cliente), usuarioId: confirmacion.Valor.Id);
+        baseDeDatos.Clientes.Remove(cliente);
+        await baseDeDatos.SaveChangesAsync(ct);
+        await transaccion.CommitAsync(ct);
+        return Resultado.Exito();
+    }
+
     /// <summary>Devuelve una copia de los datos fiscales del cliente para conservarlos en el comprobante.</summary>
     public async Task<ReceptorFiscalDto?> ObtenerParaTimbradoAsync(Guid clienteId, CancellationToken ct)
     {
-        var cliente = await baseDeDatos.Clientes
+        // Al guardar un documento, el bloqueo impide eliminar al receptor entre la consulta y el guardado.
+        var consulta = baseDeDatos.Database.CurrentTransaction is null
+            ? baseDeDatos.Clientes.AsQueryable()
+            : baseDeDatos.Clientes.FromSqlInterpolated(
+                $"SELECT * FROM [Clientes] WITH (UPDLOCK, HOLDLOCK) WHERE [Id] = {clienteId}");
+        var cliente = await consulta
             .AsNoTracking()
             .FirstOrDefaultAsync(c => c.Id == clienteId, ct);
 
@@ -178,7 +217,7 @@ public sealed class ServicioDeClientes(
         return new RespuestaGuardarCliente(ADto(cliente), nombre);
     }
 
-    /// <summary>Baja lógica. Nunca borrado físico.</summary>
+    /// <summary>Desactiva o reactiva al cliente conservando sus documentos.</summary>
     public async Task<Resultado<ClienteDto>> CambiarActivoAsync(Guid id, bool activo, CancellationToken ct)
     {
         var cliente = await baseDeDatos.Clientes.FirstOrDefaultAsync(c => c.Id == id, ct);

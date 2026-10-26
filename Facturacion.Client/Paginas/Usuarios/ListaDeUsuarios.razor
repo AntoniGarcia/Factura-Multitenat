@@ -2,6 +2,7 @@
 @attribute [Authorize(Policy = Permisos.Titular)]
 @using Facturacion.Client.Componentes.Comunes
 @using Facturacion.Client.Componentes.Usuarios
+@using Facturacion.Client.Paginas.Operador.Operadores
 @using Facturacion.Client.Servicios.Plataforma
 @using Facturacion.Shared.Comun
 @using Facturacion.Shared.Plataforma
@@ -100,9 +101,14 @@ else
                             }
                             @if (!usuario.EsUsuarioActual)
                             {
-                                <MudButton Size="Size.Small" OnClick="@(() => CambiarActivo(usuario))">
+                                <MudButton Size="Size.Small" Disabled="@_dialogoAbierto" OnClick="@(() => CambiarActivo(usuario))">
                                     @(usuario.Activo ? "Desactivar" : "Reactivar")
                                 </MudButton>
+                                @if (usuario.CreadoPorAdministrador)
+                                {
+                                    <MudButton Size="Size.Small" Color="Color.Error" Disabled="@_dialogoAbierto"
+                                               OnClick="@(() => EliminarAsync(usuario))">Eliminar</MudButton>
+                                }
                             }
                         </div>
                         }
@@ -229,6 +235,7 @@ else
 
     private async Task CambiarActivo(UsuarioDeEmpresaDto usuario)
     {
+        if (_dialogoAbierto) return;
         if (usuario.Activo)
         {
             var confirmado = await Confirmacion.ConfirmarAsync(
@@ -244,6 +251,38 @@ else
         _error = error;
 
         if (error is null) await CargarAsync();
+    }
+
+    private async Task EliminarAsync(UsuarioDeEmpresaDto usuario)
+    {
+        if (_dialogoAbierto) return;
+        _dialogoAbierto = true;
+        _error = null;
+        _aviso = null;
+        try
+        {
+            var parametros = new DialogParameters<DialogoConfirmarContrasenaOperador>
+            {
+                { x => x.Mensaje, $"Eliminar a «{usuario.Nombre}». Escribe tu contraseña. Solo se permite si no tiene actividad ni acceso a otras empresas." },
+                { x => x.TextoConfirmar, "Eliminar" },
+                { x => x.ColorConfirmar, Color.Error }
+            };
+            var referencia = await Dialogos.ShowAsync<DialogoConfirmarContrasenaOperador>("Eliminar usuario", parametros,
+                new DialogOptions { BackdropClick = false, MaxWidth = MaxWidth.Small, FullWidth = true });
+            if (await referencia.Result is not { Canceled: false, Data: string contrasena }) return;
+            _error = await Usuarios.EliminarAsync(usuario.UsuarioId, contrasena);
+            if (_error is null)
+            {
+                _aviso = "Usuario eliminado.";
+                await CargarAsync();
+            }
+        }
+        catch (HttpRequestException)
+        {
+            _error = new("about:blank", "No se pudo confirmar la eliminación", 0,
+                "Actualiza la lista antes de intentarlo de nuevo.", null, string.Empty, null);
+        }
+        finally { _dialogoAbierto = false; }
     }
 
 }

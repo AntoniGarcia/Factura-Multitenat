@@ -52,6 +52,7 @@ public static class AccionesDeBitacora
 
     // Clientes.
     public const string ClienteCreado = "cliente_creado";
+    public const string ClienteEliminado = "cliente_eliminado";
     public const string ClienteActualizado = "cliente_actualizado";
     public const string ClienteDesactivado = "cliente_desactivado";
     public const string ClienteReactivado = "cliente_reactivado";
@@ -100,6 +101,8 @@ public static class AccionesDeBitacora
     // exactamente lo que una bitácora no debe permitir.
     public const string CuentaRegistrada = "cuenta_registrada";
     public const string UsuarioCreado = "usuario_creado";
+    public const string UsuarioEliminado = "usuario_eliminado";
+    public const string OperadorEliminado = "operador_eliminado";
     public const string EmpresaCreada = "empresa_creada";
     public const string AccesoOtorgadoDirecto = "acceso_otorgado_directo";
     public const string CorreoCambiado = "correo_cambiado";
