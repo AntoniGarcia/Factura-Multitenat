@@ -16,6 +16,9 @@
     --acento: #1B3A6B;
     --acento-rgb: 27, 58, 107;
     --acento-suave: #E8EDF5;
+    --opcion-seleccionada-fondo: #DFEAF8;
+    --opcion-seleccionada-texto: #19375F;
+    --opcion-hover-fondo: #EEF3FA;
     /* La navegación usa una superficie propia. Sus variables no se reutilizan fuera del
        menú porque el texto claro sobre fondo oscuro responde a otro contexto de contraste. */
     --superficie-menu: #F2F3FC;
@@ -116,6 +119,9 @@
     --acento: #376FBE;
     --acento-rgb: 55, 111, 190;
     --acento-suave: #1F3550;
+    --opcion-seleccionada-fondo: #C8DBF4;
+    --opcion-seleccionada-texto: #142C4D;
+    --opcion-hover-fondo: #2E425B;
     --superficie-menu: #1F2833;
     --cliente-menu-fondo: #111923;
     --cliente-menu-borde: #2C3542;
@@ -147,6 +153,9 @@
     --acento: #1B3A6B;
     --acento-rgb: 27, 58, 107;
     --acento-suave: #E8EDF5;
+    --opcion-seleccionada-fondo: #E4EAF2;
+    --opcion-seleccionada-texto: #24364F;
+    --opcion-hover-fondo: #F0EEE8;
     --superficie-menu: #F7F2E8;
     --cliente-menu-fondo: #302A22;
     --cliente-menu-borde: #51483B;

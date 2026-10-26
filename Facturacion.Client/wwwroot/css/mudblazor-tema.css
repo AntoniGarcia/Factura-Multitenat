@@ -105,6 +105,41 @@
     min-height: var(--alto-control);
 }
 
+/* Selección legible en desplegables y autocompletados de ambos paneles. */
+.mud-popover .mud-list-item {
+    --mud-palette-primary-hover: var(--opcion-seleccionada-fondo);
+    --mud-palette-action-default-hover: var(--opcion-hover-fondo);
+}
+
+.mud-popover .mud-list-item.mud-selected-item:not(.mud-list-item-disabled) {
+    background-color: var(--opcion-seleccionada-fondo) !important;
+    color: var(--opcion-seleccionada-texto) !important;
+    font-weight: var(--peso-etiqueta);
+}
+
+.mud-popover .mud-list-item.mud-selected-item:not(.mud-list-item-disabled) :is(.mud-list-item-icon, .mud-list-item-secondary-text, .buscador-catalogo-descripcion) {
+    color: inherit;
+}
+
+.mud-popover .mud-list-item-clickable:not(.mud-list-item-disabled):focus-visible {
+    outline: 2px solid var(--texto);
+    outline-offset: -2px;
+}
+
+.mud-popover .mud-list-item.mud-selected-item:not(.mud-list-item-disabled):focus-visible {
+    outline-color: var(--opcion-seleccionada-texto);
+}
+
+select option {
+    background-color: var(--superficie);
+    color: var(--texto);
+}
+
+select option:checked {
+    background-color: var(--opcion-seleccionada-fondo);
+    color: var(--opcion-seleccionada-texto);
+}
+
 /*
   Encabezado de tabla del rediseño: rótulo chico en versalitas sobre el gris de fondo, para
   que la fila de títulos no compita con los datos. Va aquí, en el puente, y no en cada
