@@ -149,7 +149,7 @@
     private IReadOnlyList<ElementoDeMenuOperador> ElementosVisibles
         => Sesion.Sesion is { } operador
             ? MenuDeOperador.Elementos
-                .Where(e => e.Permiso is null || operador.Permisos.Contains(e.Permiso))
+                .Where(e => e.Permiso is null || Sesion.TienePermiso(e.Permiso))
                 .ToList()
             : MenuDeOperador.Elementos;
 
@@ -189,6 +189,7 @@
         "people" => Icons.Material.Filled.People,
         "supervisor_account" => Icons.Material.Filled.SupervisorAccount,
         "settings" => Icons.Material.Filled.Settings,
+        "menu_book" => Icons.Material.Filled.MenuBook,
         _ => Icons.Material.Filled.Circle
     };
 

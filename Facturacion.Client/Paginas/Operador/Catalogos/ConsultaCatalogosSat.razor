@@ -1,0 +1,141 @@
+@page "/operador/catalogos-sat"
+@layout LayoutDeOperador
+@attribute [Authorize(Policy = PoliticasDelPanel.VerCatalogosSat)]
+@using Facturacion.Shared.Operador
+@using Facturacion.Client.Servicios.Operador
+@implements IDisposable
+@inject ServicioDeCatalogosDeOperador Catalogos
+
+<PageTitle>Catálogos del SAT</PageTitle>
+<TituloDePagina Texto="Catálogos del SAT" />
+<PanelErrores Problema="_error" />
+
+@if (_cargando)
+{
+    <p role="status">Cargando catálogos…</p>
+}
+else if (_catalogos.Count > 0)
+{
+    <section class="catalogo-panel" aria-label="Consulta de catálogos del SAT">
+        <p class="catalogo-descripcion">Consulta de claves y vigencia. Solo lectura.</p>
+        <div class="filtros-documentos">
+            <MudSelect T="string" Label="Catálogo del SAT" Value="_catalogo" ValueChanged="CambiarCatalogoAsync">
+                @foreach (var item in _catalogos)
+                {
+                    <MudSelectItem T="string" Value="@item.Definicion.Clave">@item.Definicion.Nombre · @item.Definicion.Clave</MudSelectItem>
+                }
+            </MudSelect>
+            <MudTextField T="string" Label="Buscar clave o descripción" Value="_texto" ValueChanged="BuscarAsync"
+                          DebounceInterval="300" Immediate="true" MaxLength="150"
+                          Adornment="Adornment.Start" AdornmentIcon="@Icons.Material.Filled.Search" />
+            <MudSelect T="string" Label="Vigencia" Value="_vigencia" ValueChanged="CambiarVigenciaAsync">
+                <MudSelectItem T="string" Value="@("todos")">Todas</MudSelectItem>
+                <MudSelectItem T="string" Value="@("vigentes")">Vigentes</MudSelectItem>
+                <MudSelectItem T="string" Value="@("no-vigentes")">No vigentes</MudSelectItem>
+            </MudSelect>
+            <MudButton StartIcon="@Icons.Material.Filled.Refresh" OnClick="ActualizarAsync">Actualizar</MudButton>
+        </div>
+        @if (Seleccionado?.UltimaCarga is { } carga)
+        {
+            <p class="seccion-ayuda">Versión @carga.VersionCatalogo · Revisión @carga.RevisionCatalogo · Última carga: @carga.FechaCargaUtc.ToLocalTime().ToString("dd/MM/yyyy HH:mm")</p>
+        }
+        else
+        {
+            <p class="seccion-ayuda">Sin información de la última carga.</p>
+        }
+        @if (FaltaBusqueda)
+        {
+            <p class="seccion-ayuda" role="status">Escribe al menos tres caracteres para consultar este catálogo.</p>
+        }
+        <div class="catalogo-tabla">
+            <TablaDatos T="FilaCatalogoSatDto" @key="_revision" Columnas="_columnas"
+                        CargarPagina="CargarAsync" TextoEntidad="claves" TextoSinDatos="No hay claves que coincidan." TamanoPagina="24" />
+        </div>
+    </section>
+}
+else
+{
+    <MudButton OnClick="ActualizarAsync">Volver a intentar</MudButton>
+}
+
+@code {
+    private IReadOnlyList<CatalogoSatDeOperadorDto> _catalogos = [];
+    private string _catalogo = "c_Moneda";
+    private string _texto = "";
+    private string _vigencia = "todos";
+    private bool _cargando = true;
+    private bool _descartado;
+    private DetalleProblema? _error;
+    private long _revision;
+    private CatalogoSatDeOperadorDto? Seleccionado => _catalogos.FirstOrDefault(x => x.Definicion.Clave == _catalogo);
+    private bool FaltaBusqueda => Seleccionado?.Definicion.RequiereBusqueda == true && _texto.Trim().Length < 3;
+    private readonly IReadOnlyList<ColumnaDeTabla<FilaCatalogoSatDto>> _columnas =
+    [
+        new("Clave", x => @<span class="cifra-tabular">@x.Clave</span>),
+        new("Descripción", x => @<div class="catalogo-celda-principal"><strong>@x.Descripcion</strong><span>@x.Contexto</span></div>),
+        new("Vigencia", x => @<span class="indicador-estado indicador-estado-@(x.Vigente ? "timbrada" : "borrador")">@(x.Vigente ? "Vigente" : "No vigente")</span>),
+        new("Desde", x => @<span class="cifra-tabular">@(x.InicioVigencia == DateOnly.MinValue ? "—" : x.InicioVigencia.ToString("dd/MM/yyyy"))</span>),
+        new("Hasta", x => @<span class="cifra-tabular">@(x.FinVigencia?.ToString("dd/MM/yyyy") ?? "—")</span>)
+    ];
+
+    protected override async Task OnInitializedAsync()
+    {
+        await CargarCatalogosAsync();
+        _cargando = false;
+    }
+
+    private async Task CargarCatalogosAsync()
+    {
+        try
+        {
+            var (datos, error) = await Catalogos.ListarAsync();
+            if (_descartado) return;
+            _error = error;
+            if (datos is not null) _catalogos = datos;
+        }
+        catch (HttpRequestException) { _error = ErrorDeConexion(); }
+    }
+
+    private async Task<ResultadoDePagina<FilaCatalogoSatDto>> CargarAsync(PeticionDePagina peticion, CancellationToken ct)
+    {
+        var revision = _revision;
+        if (FaltaBusqueda) return new([], 0);
+        try
+        {
+            var (datos, error) = await Catalogos.ConsultarAsync(_catalogo, _texto, _vigencia switch
+            { "vigentes" => true, "no-vigentes" => false, _ => null }, peticion.Pagina, peticion.TamanoPagina, ct);
+            if (ct.IsCancellationRequested || revision != _revision || _descartado) throw new OperationCanceledException(ct);
+            _error = error;
+            return new(datos?.Elementos ?? [], datos?.Total ?? 0);
+        }
+        catch (HttpRequestException)
+        {
+            if (revision == _revision && !_descartado) _error = ErrorDeConexion();
+            return new([], 0);
+        }
+        finally { if (!_descartado) await InvokeAsync(StateHasChanged); }
+    }
+
+    private Task CambiarCatalogoAsync(string clave)
+    {
+        _catalogo = clave;
+        _texto = "";
+        _error = null;
+        _revision++;
+        return Task.CompletedTask;
+    }
+
+    private Task BuscarAsync(string texto) { _texto = texto; return RecargarAsync(); }
+    private Task CambiarVigenciaAsync(string vigencia) { _vigencia = vigencia; return RecargarAsync(); }
+    private Task RecargarAsync()
+    {
+        _revision++;
+        _error = null;
+        return Task.CompletedTask;
+    }
+
+    private async Task ActualizarAsync() { await CargarCatalogosAsync(); await RecargarAsync(); }
+    private static DetalleProblema ErrorDeConexion() => new("about:blank", "No se pudieron consultar los catálogos", 0,
+        "Revisa tu conexión y vuelve a intentar.", null, "", null);
+    public void Dispose() { _descartado = true; _revision++; }
+}

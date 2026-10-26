@@ -39,6 +39,7 @@ builder.Services.AddScoped<ServicioDeUsuariosDePlataforma>();
 builder.Services.AddScoped<ServicioDeTableroDeOperador>();
 builder.Services.AddScoped<ServicioDePerfilDeOperador>();
 builder.Services.AddScoped<ServicioDeOperadores>();
+builder.Services.AddScoped<ServicioDeCatalogosDeOperador>();
 builder.Services.AddScoped<ServicioDeConfiguracionDelSistema>();
 builder.Services.AddSingleton<ServicioDeTema>();
 builder.Services.AddSingleton<EstadoDeEncabezado>();

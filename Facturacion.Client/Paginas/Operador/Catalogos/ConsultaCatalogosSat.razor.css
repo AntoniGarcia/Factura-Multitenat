@@ -1,0 +1,10 @@
+@media (max-width: 599.98px) {
+    .catalogo-tabla ::deep .mud-table-root {
+        width: 100%;
+        table-layout: fixed;
+    }
+
+    .catalogo-tabla ::deep .mud-table-cell {
+        overflow-wrap: anywhere;
+    }
+}
