@@ -123,6 +123,29 @@ public sealed class ServicioDeConfiguracionDelSistema(
         return true;
     }
 
+    public async Task<Resultado<bool>> ProbarAsync(
+        Guid operadorId, PeticionGuardarConfiguracionDelSistema peticion, CancellationToken ct)
+    {
+        if (string.IsNullOrEmpty(peticion.ContrasenaDelOperador)
+            || await ContrasenaDelOperadorEsIncorrecta(operadorId, peticion.ContrasenaDelOperador, ct))
+            return ErrorNegocio.Validacion("contrasena-incorrecta", "Tu contraseña de operador no es correcta.");
+        string? contrasena = peticion.ContrasenaSmtpNueva;
+        if (string.IsNullOrWhiteSpace(contrasena))
+        {
+            try { contrasena = (await proveedor.ObtenerAsync(ct)).Correo.Contrasena; }
+            catch (System.Security.Cryptography.CryptographicException)
+            {
+                return ErrorNegocio.Validacion("smtp-contrasena-ilegible", "No se pudo leer la contraseña SMTP guardada. Captúrala de nuevo.");
+            }
+        }
+        var error = ProbadorSmtp.Validar(peticion.Servidor, peticion.Puerto, peticion.Usuario, contrasena,
+            peticion.RemitenteNombre, peticion.RemitenteCorreo, peticion.UsarTls, sslDirecto: false);
+        if (error is not null) return error;
+        if (string.IsNullOrWhiteSpace(peticion.RemitenteNombre))
+            return ErrorNegocio.Validacion("smtp-nombre-requerido", "Escribe el nombre del remitente.");
+        return await ProbadorSmtp.ProbarAsync(peticion.Servidor.Trim(), peticion.Puerto, peticion.Usuario.Trim(), contrasena!, ct);
+    }
+
     private async Task<bool> ContrasenaDelOperadorEsIncorrecta(
         Guid operadorId, string contrasena, CancellationToken ct)
     {

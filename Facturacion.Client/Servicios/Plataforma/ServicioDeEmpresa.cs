@@ -53,6 +53,12 @@ public sealed class ServicioDeEmpresa(IHttpClientFactory fabrica)
     public async Task<IReadOnlyList<CertificadoCsdDto>> ListarCertificadosAsync(CancellationToken ct = default)
         => await Cliente.GetFromJsonAsync<IReadOnlyList<CertificadoCsdDto>>("api/empresa/certificados", ct) ?? [];
 
+    public async Task<DetalleProblema?> ProbarCorreoAsync(PeticionGuardarCorreoDeEmpresa peticion, CancellationToken ct = default)
+    {
+        using var respuesta = await Cliente.PostAsJsonAsync("api/empresa/correo/probar", peticion, ct);
+        return respuesta.IsSuccessStatusCode ? null : await respuesta.Content.ReadFromJsonAsync<DetalleProblema>(ct);
+    }
+
     public async Task<(CertificadoCsdDto? Exito, DetalleProblema? Error)> CargarCertificadoAsync(
         Stream cer, string nombreCer, Stream key, string nombreKey, string contrasena, CancellationToken ct = default)
     {

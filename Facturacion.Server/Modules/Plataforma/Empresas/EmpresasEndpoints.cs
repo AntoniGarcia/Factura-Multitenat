@@ -36,6 +36,12 @@ public static class EmpresasEndpoints
 
         grupo.MapGet("/correo", ObtenerCorreo).RequireAuthorization(Permisos.Configuracion);
         grupo.MapPut("/correo", GuardarCorreo).RequireAuthorization(Permisos.Configuracion);
+        grupo.MapPost("/correo/probar", async (PeticionGuardarCorreoDeEmpresa peticion,
+            ServicioDeConfiguracionDeCorreo servicio, HttpContext contexto, CancellationToken ct) =>
+        {
+            var resultado = await servicio.ProbarAsync(peticion, ct);
+            return resultado.EsExito ? Results.Ok() : resultado.Error!.AResultado(contexto);
+        }).RequireAuthorization(Permisos.Configuracion);
 
         // Lectura del logo: basta con tener sesión en la empresa. El endpoint no recibe
         // empresa ni ruta —las saca del claim—, así que no hay forma de pedir el de otra.

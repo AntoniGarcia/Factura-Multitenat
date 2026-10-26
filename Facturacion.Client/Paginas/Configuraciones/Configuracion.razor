@@ -72,7 +72,8 @@ else
         </MudTabPanel>
 
         <MudTabPanel Text="Correo" Icon="@Icons.Material.Filled.Email">
-            <section class="formulario-catalogo-seccion" aria-labelledby="cliente-config-correo">
+            <section class="formulario-catalogo-seccion" aria-labelledby="cliente-config-correo"
+                     @oninput="LimpiarPruebaSmtp" @onchange="LimpiarPruebaSmtp">
             <h2 id="cliente-config-correo" class="seccion-titulo">Envío de comprobantes</h2>
             <p class="seccion-ayuda">
                 Solo aplica al envío de comprobantes.
@@ -137,6 +138,16 @@ else
                                   Error="@(ErrorResponderA is not null)" ErrorText="@ErrorResponderA" />
                 </div>
             }
+            @if (_habilitado)
+            {
+                <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="ProbarSmtp" Disabled="@(_probandoSmtp || _guardando)">
+                    @(_probandoSmtp ? "Comprobando…" : "Probar conexión")
+                </MudButton>
+                @if (_avisoSmtp is not null)
+                {
+                    <p class="mensaje-exito" role="status">@_avisoSmtp</p>
+                }
+            }
             </section>
         </MudTabPanel>
 
@@ -185,10 +196,10 @@ else
 
     <div class="tarjeta-formulario-acciones">
         <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="GuardarAsync"
-                   Disabled="@(_guardando || !HayCambios)">
+                   Disabled="@(_guardando || _probandoSmtp || !HayCambios)">
             @(_guardando ? "Guardando…" : "Guardar configuración")
         </MudButton>
-        <MudButton Variant="Variant.Text" OnClick="Cancelar" Disabled="@(_guardando || !HayCambios)">
+        <MudButton Variant="Variant.Text" OnClick="Cancelar" Disabled="@(_guardando || _probandoSmtp || !HayCambios)">
             Cancelar
         </MudButton>
 
@@ -207,6 +218,9 @@ else
     private int _pestana;
     private DetalleProblema? _error;
     private string? _errorLogo;
+    private bool _probandoSmtp;
+    private string? _avisoSmtp;
+    private int _versionSmtp;
 
     private string? _logo;
 
@@ -222,6 +236,28 @@ else
     private string? _servidor, _usuario, _contrasena, _remitenteNombre, _remitenteCorreo;
     private string? _nombreRemitenteSistema, _responderA;
     private int _puerto;
+
+    private void LimpiarPruebaSmtp()
+    {
+        _avisoSmtp = null;
+        _versionSmtp++;
+    }
+
+    private async Task ProbarSmtp()
+    {
+        if (_probandoSmtp || _guardando || !_habilitado) return;
+        _probandoSmtp = true;
+        _avisoSmtp = null;
+        _error = null;
+        var version = _versionSmtp;
+        try
+        {
+            _error = await Empresas.ProbarCorreoAsync(CorreoCapturado);
+            if (_error is null && version == _versionSmtp)
+                _avisoSmtp = "Conexión y autenticación correctas. No se guardaron cambios ni se envió correo.";
+        }
+        finally { _probandoSmtp = false; }
+    }
 
     protected override async Task OnInitializedAsync()
     {
