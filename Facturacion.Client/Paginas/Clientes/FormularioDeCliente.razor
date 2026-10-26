@@ -72,12 +72,7 @@ else
                 solo lleva clave y descripción— así que filtrar aquí sería adivinar. El
                 servidor sí lo sabe y lo rechaza con un mensaje que dice cuál es el problema.
             *@
-            <MudSelect T="string" @bind-Value="_regimenFiscal" Label="Régimen fiscal" Disabled="@_esGenericoNacional">
-                @foreach (var r in Catalogos.Obtener("c_RegimenFiscal"))
-                {
-                    <MudSelectItem T="string" Value="@r.Clave">@r.Clave — @r.Descripcion</MudSelectItem>
-                }
-            </MudSelect>
+<BuscadorCatalogo Catalogo="c_RegimenFiscal" Opciones="@Catalogos.Obtener("c_RegimenFiscal")" @bind-Clave="_regimenFiscal" Label="Régimen fiscal" Deshabilitado="@_esGenericoNacional" PuedeLimpiar="false" />
             </div>
             <div class="catalogo-campo-corto">
             <MudTextField @bind-Value="_domicilioFiscalCp"
@@ -92,6 +87,7 @@ else
         {
             <div class="rejilla-campos">
                 <BuscadorCatalogo Catalogo="c_Pais" Label="País de residencia fiscal"
+                                  MostrarOpciones="true"
                                   Valor="@ResidenciaFiscalSeleccionada"
                                   ValorCambiado="p => _residenciaFiscal = p?.Clave"
                                   MuestraSelectorEnLista="false" Requerido="true" />
@@ -106,26 +102,11 @@ else
         <p class="seccion-ayuda">Opcionales. Se precargan al facturar y pueden cambiarse en cada documento.</p>
 
         <div class="catalogo-rejilla catalogo-rejilla-tres">
-            <MudSelect T="string" @bind-Value="_usoCfdi" Label="Uso de CFDI" Clearable="true" Disabled="@_esGenericoNacional">
-                @foreach (var u in Catalogos.Obtener("c_UsoCFDI"))
-                {
-                    <MudSelectItem T="string" Value="@u.Clave">@u.Clave — @u.Descripcion</MudSelectItem>
-                }
-            </MudSelect>
+<BuscadorCatalogo Catalogo="c_UsoCFDI" Opciones="@Catalogos.Obtener("c_UsoCFDI")" @bind-Clave="_usoCfdi" Label="Uso de CFDI" PuedeLimpiar="true" Deshabilitado="@_esGenericoNacional" />
 
-            <MudSelect T="string" @bind-Value="_metodoPago" Label="Método de pago" Clearable="true">
-                @foreach (var m in Catalogos.Obtener("c_MetodoPago"))
-                {
-                    <MudSelectItem T="string" Value="@m.Clave">@m.Clave — @m.Descripcion</MudSelectItem>
-                }
-            </MudSelect>
+<BuscadorCatalogo Catalogo="c_MetodoPago" Opciones="@Catalogos.Obtener("c_MetodoPago")" @bind-Clave="_metodoPago" Label="Método de pago" PuedeLimpiar="true" />
 
-            <MudSelect T="string" @bind-Value="_formaPago" Label="Forma de pago" Clearable="true">
-                @foreach (var f in Catalogos.Obtener("c_FormaPago"))
-                {
-                    <MudSelectItem T="string" Value="@f.Clave">@f.Clave — @f.Descripcion</MudSelectItem>
-                }
-            </MudSelect>
+<BuscadorCatalogo Catalogo="c_FormaPago" Opciones="@Catalogos.Obtener("c_FormaPago")" @bind-Clave="_formaPago" Label="Forma de pago" PuedeLimpiar="true" />
         </div>
         </section>
 

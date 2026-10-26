@@ -19,12 +19,10 @@ else if (_catalogos.Count > 0)
     <section class="catalogo-panel" aria-label="Consulta de catálogos del SAT">
         <p class="catalogo-descripcion">Consulta de claves y vigencia. Solo lectura.</p>
         <div class="filtros-documentos">
-            <MudSelect T="string" Label="Catálogo del SAT" Value="_catalogo" ValueChanged="CambiarCatalogoAsync">
-                @foreach (var item in _catalogos)
-                {
-                    <MudSelectItem T="string" Value="@item.Definicion.Clave">@item.Definicion.Nombre · @item.Definicion.Clave</MudSelectItem>
-                }
-            </MudSelect>
+            <MudAutocomplete T="string" Label="Catálogo del SAT" Value="_catalogo" ValueChanged="CambiarCatalogoAsync"
+                             ToStringFunc="NombreCatalogo" SearchFunc="BuscarCatalogosAsync" MinCharacters="0"
+                             DebounceInterval="300" OpenOnFocus="true" Strict="true" MaxItems="null"
+                             Placeholder="Escribe nombre o clave…" />
             <MudTextField T="string" Label="Buscar clave o descripción" Value="_texto" ValueChanged="BuscarAsync"
                           DebounceInterval="300" Immediate="true" MaxLength="150"
                           Adornment="Adornment.Start" AdornmentIcon="@Icons.Material.Filled.Search" />
@@ -118,6 +116,7 @@ else
 
     private Task CambiarCatalogoAsync(string clave)
     {
+        if (!_catalogos.Any(x => x.Definicion.Clave == clave)) return Task.CompletedTask;
         _catalogo = clave;
         _texto = "";
         _error = null;
@@ -126,6 +125,16 @@ else
     }
 
     private Task BuscarAsync(string texto) { _texto = texto; return RecargarAsync(); }
+    private string NombreCatalogo(string clave)
+        => _catalogos.FirstOrDefault(x => x.Definicion.Clave == clave) is { } item
+            ? $"{item.Definicion.Nombre} · {item.Definicion.Clave}" : clave;
+
+    private Task<IEnumerable<string>> BuscarCatalogosAsync(string texto, CancellationToken ct)
+        => Task.FromResult(_catalogos.Where(x => string.IsNullOrWhiteSpace(texto) || texto == NombreCatalogo(_catalogo) ||
+            System.Globalization.CultureInfo.GetCultureInfo("es-MX").CompareInfo.IndexOf(
+                $"{x.Definicion.Nombre} {x.Definicion.Clave}", texto.Trim(),
+                System.Globalization.CompareOptions.IgnoreCase | System.Globalization.CompareOptions.IgnoreNonSpace) >= 0)
+            .Select(x => x.Definicion.Clave));
     private Task CambiarVigenciaAsync(string vigencia) { _vigencia = vigencia; return RecargarAsync(); }
     private Task RecargarAsync()
     {

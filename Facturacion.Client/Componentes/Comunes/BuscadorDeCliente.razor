@@ -13,7 +13,10 @@
                   ValueChanged="@(v => ValorCambiado.InvokeAsync(v))"
                   SearchFunc="Buscar"
                   ToStringFunc="@Formatear"
-                  MinCharacters="3"
+                  MinCharacters="0"
+                  MaxItems="25"
+                  OpenOnFocus="true"
+                  Strict="false"
                   DebounceInterval="300"
                   ResetValueOnEmptyText="true"
                   CoerceText="false"
@@ -45,8 +48,6 @@
 
     private async Task<IEnumerable<ClienteEnListaDto>> Buscar(string texto, CancellationToken ct)
     {
-        if (string.IsNullOrWhiteSpace(texto) || texto.Length < 3) return [];
-
         var pagina = await Clientes.ListarAsync(texto, activos: true, 0, 25, null, false, ct);
         return pagina.Elementos;
     }

@@ -103,26 +103,11 @@ else
                 <MudTextField T="string" Value="@(_cliente?.DomicilioFiscalCp)" Label="CP del cliente" ReadOnly="true" Class="cifra-tabular"
                               HelperText="@(_cliente?.Rfc is "XAXX010101000" or "XEXX010101000" ? "El CFDI usará el CP de expedición." : null)" />
 
-                <MudSelect T="string" @bind-Value="_metodoPago" Label="Método de pago" Clearable="true">
-                    @foreach (var m in Catalogos.Obtener("c_MetodoPago"))
-                    {
-                        <MudSelectItem T="string" Value="@m.Clave">@m.Clave — @m.Descripcion</MudSelectItem>
-                    }
-                </MudSelect>
+<BuscadorCatalogo Catalogo="c_MetodoPago" Opciones="@Catalogos.Obtener("c_MetodoPago")" @bind-Clave="_metodoPago" Label="Método de pago" PuedeLimpiar="true" />
 
-                <MudSelect T="string" @bind-Value="_formaPago" Label="Forma de pago" Clearable="true">
-                    @foreach (var f in Catalogos.Obtener("c_FormaPago"))
-                    {
-                        <MudSelectItem T="string" Value="@f.Clave">@f.Clave — @f.Descripcion</MudSelectItem>
-                    }
-                </MudSelect>
+<BuscadorCatalogo Catalogo="c_FormaPago" Opciones="@Catalogos.Obtener("c_FormaPago")" @bind-Clave="_formaPago" Label="Forma de pago" PuedeLimpiar="true" />
 
-                <MudSelect T="string" @bind-Value="_usoCfdi" Label="Uso de CFDI">
-                    @foreach (var u in Catalogos.Obtener("c_UsoCFDI"))
-                    {
-                        <MudSelectItem T="string" Value="@u.Clave">@u.Clave — @u.Descripcion</MudSelectItem>
-                    }
-                </MudSelect>
+<BuscadorCatalogo Catalogo="c_UsoCFDI" Opciones="@Catalogos.Obtener("c_UsoCFDI")" @bind-Clave="_usoCfdi" Label="Uso de CFDI" PuedeLimpiar="false" />
             </div>
             </section>
 
@@ -224,12 +209,7 @@ else
             <p class="seccion-ayuda">Opcional: solo si esta factura corrige, sustituye o se relaciona con otra ya timbrada.</p>
 
             <div class="rejilla-campos">
-                <MudSelect T="string" @bind-Value="_tipoRelacion" Label="Tipo de relación" Clearable="true">
-                    @foreach (var t in Catalogos.Obtener("c_TipoRelacion"))
-                    {
-                        <MudSelectItem T="string" Value="@t.Clave">@t.Clave — @t.Descripcion</MudSelectItem>
-                    }
-                </MudSelect>
+<BuscadorCatalogo Catalogo="c_TipoRelacion" Opciones="@Catalogos.Obtener("c_TipoRelacion")" @bind-Clave="_tipoRelacion" Label="Tipo de relación" PuedeLimpiar="true" />
                 <MudTextField @bind-Value="_serieRelacionado" Label="Serie" MaxLength="25" />
                 <MudNumericField T="int?" @bind-Value="_folioRelacionado" Label="Folio" />
             </div>
@@ -272,18 +252,8 @@ else
             else
             {
                 <div class="rejilla-campos">
-                    <MudSelect T="string" @bind-Value="_globalPeriodicidad" Label="Periodicidad" Required="true">
-                        @foreach (var p in Catalogos.Obtener("c_Periodicidad"))
-                        {
-                            <MudSelectItem T="string" Value="@p.Clave">@p.Clave — @p.Descripcion</MudSelectItem>
-                        }
-                    </MudSelect>
-                    <MudSelect T="string" @bind-Value="_globalMeses" Label="Mes" Required="true">
-                        @foreach (var m in Catalogos.Obtener("c_Meses"))
-                        {
-                            <MudSelectItem T="string" Value="@m.Clave">@m.Clave — @m.Descripcion</MudSelectItem>
-                        }
-                    </MudSelect>
+<BuscadorCatalogo Catalogo="c_Periodicidad" Opciones="@Catalogos.Obtener("c_Periodicidad")" @bind-Clave="_globalPeriodicidad" Label="Periodicidad" Requerido="true" PuedeLimpiar="false" />
+<BuscadorCatalogo Catalogo="c_Meses" Opciones="@Catalogos.Obtener("c_Meses")" @bind-Clave="_globalMeses" Label="Mes" Requerido="true" PuedeLimpiar="false" />
                     <MudNumericField T="int?" @bind-Value="_globalAnio" Label="Año" Required="true" />
                 </div>
             }
@@ -512,6 +482,18 @@ else
     };
 
     protected override async Task OnParametersSetAsync()
+    {
+        try { await CargarFacturaAsync(); }
+        catch (HttpRequestException)
+        {
+            _comprobante = null;
+            _cargando = false;
+            _error = new DetalleProblema("about:blank", "No se pudo abrir la factura", 0,
+                "Vuelve al listado e inténtalo de nuevo.", null, "", null);
+        }
+    }
+
+    private async Task CargarFacturaAsync()
     {
         CancelarCalculo();
         _vistaPrevia = null;

@@ -23,12 +23,7 @@
                                    ? "La serie ya entregó folios; no se puede cambiar."
                                    : "Número con el que comenzará la serie.")" />
 
-    <MudSelect T="string" @bind-Value="_tipoComprobante" Label="Tipo de comprobante" Disabled="_guardando">
-        @foreach (var tipo in Catalogos.Obtener("c_TipoDeComprobante"))
-        {
-            <MudSelectItem T="string" Value="@tipo.Clave">@tipo.Clave — @tipo.Descripcion</MudSelectItem>
-        }
-    </MudSelect>
+<BuscadorCatalogo Catalogo="c_TipoDeComprobante" Opciones="@Catalogos.Obtener("c_TipoDeComprobante")" @bind-Clave="_tipoComprobante" Label="Tipo de comprobante" Deshabilitado="_guardando" PuedeLimpiar="false" />
 
     <MudCheckBox @bind-Value="_activa" Label="Serie activa" Disabled="_guardando" />
 </div>

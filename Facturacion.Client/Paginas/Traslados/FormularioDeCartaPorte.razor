@@ -176,12 +176,7 @@
                     @if (EsEditable)
                     {
                         <div class="rejilla-formulario">
-                            <MudSelect T="string" @bind-Value="_tipoRelacion" Label="Tipo de relación" Clearable="true">
-                                @foreach (var tipo in Catalogos.Obtener("c_TipoRelacion"))
-                                {
-                                    <MudSelectItem T="string" Value="@tipo.Clave">@tipo.Clave — @tipo.Descripcion</MudSelectItem>
-                                }
-                            </MudSelect>
+<BuscadorCatalogo Catalogo="c_TipoRelacion" Opciones="@Catalogos.Obtener("c_TipoRelacion")" @bind-Clave="_tipoRelacion" Label="Tipo de relación" PuedeLimpiar="true" />
                             <MudTextField T="string" @bind-Value="_serieRelacionado" Label="Serie" Immediate="true" MaxLength="25" />
                             <MudNumericField T="int?" @bind-Value="_folioRelacionado" Label="Folio" Immediate="true" Min="1" />
                         </div>

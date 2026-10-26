@@ -27,8 +27,13 @@ public sealed class ServicioDePagos(IHttpClientFactory fabrica)
             : await respuesta.Content.ReadFromJsonAsync<DetalleProblema>(ct);
     }
 
-    public Task<PagoDto?> ObtenerAsync(Guid id, CancellationToken ct = default)
-        => Cliente.GetFromJsonAsync<PagoDto>($"api/pagos/{id}", ct);
+    public async Task<PagoDto?> ObtenerAsync(Guid id, CancellationToken ct = default)
+    {
+        using var respuesta = await Cliente.GetAsync($"api/pagos/{id}", ct);
+        if (respuesta.StatusCode == System.Net.HttpStatusCode.NotFound) return null;
+        respuesta.EnsureSuccessStatusCode();
+        return await respuesta.Content.ReadFromJsonAsync<PagoDto>(ct);
+    }
 
     public async Task<(PagoDto? Exito, DetalleProblema? Error)> GuardarAsync(
         Guid id, PeticionGuardarPago peticion, CancellationToken ct = default)
