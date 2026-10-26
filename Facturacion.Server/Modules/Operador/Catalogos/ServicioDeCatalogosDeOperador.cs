@@ -107,7 +107,8 @@ public sealed class ServicioDeCatalogosDeOperador(AppDbContext db)
         var patron = Patron(texto);
         var consulta = db.SatCodigosPostales.AsNoTracking();
         consulta = texto.All(char.IsDigit) ? consulta.Where(x => x.Clave.StartsWith(texto))
-            : consulta.Where(x => db.SatColonias.Any(c => c.ClaveCodigoPostal == x.Clave && EF.Functions.Contains(c.Nombre, patron)) ||
+            : consulta.Where(x => db.SatEstados.Any(e => e.Clave == x.ClaveEstado && (e.Nombre.Contains(texto) || e.Clave == texto)) ||
+                db.SatColonias.Any(c => c.ClaveCodigoPostal == x.Clave && EF.Functions.Contains(c.Nombre, patron)) ||
                 db.SatMunicipios.Any(m => m.Clave == x.ClaveMunicipio && m.ClaveEstado == x.ClaveEstado && EF.Functions.Contains(m.Descripcion, patron)));
         return consulta.Select(x => new Fila { Clave = x.Clave,
             Descripcion = db.SatEstados.Where(e => e.Clave == x.ClaveEstado).Select(e => e.Nombre).FirstOrDefault() ?? x.ClaveEstado,

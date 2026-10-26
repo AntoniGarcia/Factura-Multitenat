@@ -46,8 +46,11 @@ public sealed class ServicioDeProductos(
         if (!string.IsNullOrWhiteSpace(texto))
         {
             var buscado = texto.Trim();
+            var codigo = int.TryParse(buscado, out var numero) ? numero : (int?)null;
+            var id = Guid.TryParse(buscado, out var identificador) ? identificador : (Guid?)null;
             consulta = consulta.Where(p =>
-                p.Descripcion.Contains(buscado) || p.ClaveProdServ.Contains(buscado) || p.UnidadTexto.Contains(buscado));
+                p.Descripcion.Contains(buscado) || p.ClaveProdServ.Contains(buscado) || p.UnidadTexto.Contains(buscado) ||
+                p.ClaveUnidad.Contains(buscado) || p.CodigoInterno == codigo || p.Id == id);
         }
 
         var total = await consulta.CountAsync(ct);

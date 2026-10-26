@@ -352,10 +352,14 @@ public sealed class ServicioDeEmision(
         {
             var texto = busca.Trim();
             var folio = int.TryParse(texto, out var n) ? n : (int?)null;
+            var identificador = Guid.TryParse(texto, out var id) ? id : (Guid?)null;
 
             consulta = consulta.Where(c =>
                 c.ReceptorRfc.Contains(texto) ||
                 c.ReceptorNombre.Contains(texto) ||
+                (identificador != null && (c.Id == identificador || c.Uuid == identificador)) ||
+                (c.Serie != null && c.Serie.Contains(texto)) ||
+                c.Conceptos.Any(concepto => concepto.Descripcion.Contains(texto)) ||
                 (folio != null && c.Folio == folio));
         }
 

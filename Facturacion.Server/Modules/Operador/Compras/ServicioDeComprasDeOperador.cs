@@ -61,8 +61,11 @@ public sealed class ServicioDeComprasDeOperador(
         if (!string.IsNullOrWhiteSpace(texto))
         {
             var patron = $"%{texto.Trim()}%";
+            var identificador = Guid.TryParse(texto.Trim(), out var valorId) ? valorId : (Guid?)null;
 
             unidas = unidas.Where(u =>
+                u.compra.Id == identificador ||
+                EF.Functions.Like(u.cuenta.Nombre, patron) ||
                 EF.Functions.Like(u.empresa.NombreFiscal, patron) ||
                 EF.Functions.Like(u.empresa.Rfc, patron) ||
                 EF.Functions.Like(u.compra.NombrePaquete, patron));

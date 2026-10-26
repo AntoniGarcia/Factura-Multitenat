@@ -77,7 +77,9 @@ public sealed class ServicioDeOperadores(
         if (!string.IsNullOrWhiteSpace(texto))
         {
             var patron = $"%{texto.Trim()}%";
+            var identificador = Guid.TryParse(texto.Trim(), out var valorId) ? valorId : (Guid?)null;
             consulta = consulta.Where(o =>
+                o.Id == identificador ||
                 EF.Functions.Like(o.Nombre, patron) ||
                 EF.Functions.Like(o.Correo, patron));
         }

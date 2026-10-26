@@ -43,8 +43,10 @@ public sealed class ServicioDeUsuariosDePlataforma(
         if (!string.IsNullOrWhiteSpace(texto))
         {
             var patron = $"%{texto.Trim()}%";
+            var identificador = Guid.TryParse(texto.Trim(), out var valorId) ? valorId : (Guid?)null;
 
             consulta = consulta.Where(u =>
+                u.Id == identificador ||
                 EF.Functions.Like(u.Nombre, patron) ||
                 EF.Functions.Like(u.Email!, patron));
         }

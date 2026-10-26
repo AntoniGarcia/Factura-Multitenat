@@ -92,7 +92,10 @@ public sealed class ServicioDeClientes(
         if (!string.IsNullOrWhiteSpace(texto))
         {
             var buscado = texto.Trim();
-            consulta = consulta.Where(c => c.Nombre.Contains(buscado) || c.Rfc.Contains(buscado));
+            var clave = int.TryParse(buscado, out var numero) ? numero : (int?)null;
+            var id = Guid.TryParse(buscado, out var identificador) ? identificador : (Guid?)null;
+            consulta = consulta.Where(c => c.Nombre.Contains(buscado) || c.Rfc.Contains(buscado) ||
+                (c.CorreoPrincipal != null && c.CorreoPrincipal.Contains(buscado)) || c.ClaveInterna == clave || c.Id == id);
         }
 
         var total = await consulta.CountAsync(ct);

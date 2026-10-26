@@ -42,10 +42,12 @@ public sealed class ServicioDeClientesDePlataforma(
         if (!string.IsNullOrWhiteSpace(texto))
         {
             var patron = $"%{texto.Trim()}%";
+            var identificador = Guid.TryParse(texto.Trim(), out var valorId) ? valorId : (Guid?)null;
 
             // Se busca también por los datos de sus empresas: al proveedor le llega el RFC
             // del cliente antes que el nombre de la cuenta con que se dio de alta.
             consulta = consulta.Where(c =>
+                c.Id == identificador ||
                 EF.Functions.Like(c.Nombre, patron) ||
                 EF.Functions.Like(c.CorreoContacto, patron) ||
                 baseDeDatos.Empresas.Any(e => e.CuentaId == c.Id &&
