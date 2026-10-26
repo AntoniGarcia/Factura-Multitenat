@@ -218,14 +218,14 @@ public static class InstalacionModule
         if (!ConexionSqlDeInstalacion.Validar(parametros))
             return Problema(contexto, 400, "parametros-conexion", "Completa servidor y base. Con autenticación SQL también se requieren usuario y contraseña; la autenticación de Windows requiere ejecutar la aplicación en Windows.");
 
-        var prueba = await ConexionSqlDeInstalacion.ProbarAsync(parametros, contexto.RequestAborted);
+        var prueba = await ConexionSqlDeInstalacion.ProbarAsync(parametros, contexto.RequestAborted, constructor.Environment);
         if (!prueba.Correcta) return Problema(contexto, 400, "conexion-sql", prueba.Mensaje);
         if (!guardar) return Results.Ok(prueba);
 
         // Se vuelve a probar al guardar: no se confía en el resultado declarado por el navegador.
         try
         {
-            if (!await estado.Archivo.GuardarAsync(ConexionSqlDeInstalacion.CrearCadena(parametros), contexto.RequestAborted))
+            if (!await estado.Archivo.GuardarAsync(ConexionSqlDeInstalacion.CrearCadena(parametros, constructor.Environment), contexto.RequestAborted))
                 return Problema(contexto, 409, "conexion-configurada", "Otra solicitud ya guardó la conexión.");
         }
         catch (Exception error) when (error is UnauthorizedAccessException or IOException)

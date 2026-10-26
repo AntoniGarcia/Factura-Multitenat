@@ -1,7 +1,7 @@
 # Entrega para revisión en Windows / IIS
 
 La alternativa vigente sin instalador está en
-`entregas/Facturacion-IIS-Cnf-20261024.zip`. Contiene directamente la
+`entregas/Facturacion-IIS-Cnf-20261024-v2.zip`. Contiene directamente la
 publicación, sin scripts SQL, CMD ni PowerShell. Sus pasos están en
 [la guía de entrega sin instalador](../herramientas/entrega-archivos/LEEME.md).
 Guarda la conexión legible, los temporales y las llaves internas en `cnf/`;

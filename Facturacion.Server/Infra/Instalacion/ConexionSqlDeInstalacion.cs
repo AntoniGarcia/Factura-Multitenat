@@ -10,7 +10,6 @@ public sealed class ParametrosDeConexion
     [StringLength(128)] public string Usuario { get; set; } = "";
     [StringLength(512)] public string Contrasena { get; set; } = "";
     public bool UsarAutenticacionWindows { get; set; }
-    public bool ConfiarEnCertificado { get; set; }
 }
 
 public sealed record ComprobacionDeConexion(bool Correcta, string Mensaje, int? TablasVisibles = null);
@@ -25,7 +24,7 @@ public static class ConexionSqlDeInstalacion
                 ? OperatingSystem.IsWindows()
                 : !string.IsNullOrWhiteSpace(parametros.Usuario) && !string.IsNullOrWhiteSpace(parametros.Contrasena));
 
-    public static string CrearCadena(ParametrosDeConexion parametros, bool paraPrueba = false)
+    public static string CrearCadena(ParametrosDeConexion parametros, IHostEnvironment? entorno = null, bool paraPrueba = false)
         => new SqlConnectionStringBuilder
         {
             DataSource = parametros.Servidor.Trim(),
@@ -34,7 +33,7 @@ public static class ConexionSqlDeInstalacion
             Password = parametros.UsarAutenticacionWindows ? "" : parametros.Contrasena,
             IntegratedSecurity = parametros.UsarAutenticacionWindows,
             Encrypt = SqlConnectionEncryptOption.Mandatory,
-            TrustServerCertificate = parametros.ConfiarEnCertificado,
+            TrustServerCertificate = entorno?.IsStaging() == true,
             PersistSecurityInfo = false,
             Pooling = !paraPrueba,
             ConnectTimeout = paraPrueba ? 8 : 15,
@@ -42,11 +41,11 @@ public static class ConexionSqlDeInstalacion
             ApplicationName = paraPrueba ? "Facturacion.Instalacion" : "Facturacion"
         }.ConnectionString;
 
-    public static async Task<ComprobacionDeConexion> ProbarAsync(ParametrosDeConexion parametros, CancellationToken ct)
+    public static async Task<ComprobacionDeConexion> ProbarAsync(ParametrosDeConexion parametros, CancellationToken ct, IHostEnvironment? entorno = null)
     {
         try
         {
-            await using var conexion = new SqlConnection(CrearCadena(parametros, paraPrueba: true));
+            await using var conexion = new SqlConnection(CrearCadena(parametros, entorno, paraPrueba: true));
             await conexion.OpenAsync(ct);
             await using var comando = conexion.CreateCommand();
             // Solo se consulta metainformación: no se ejecutan migraciones ni se escriben datos.
