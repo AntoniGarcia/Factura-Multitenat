@@ -11,9 +11,10 @@ public static class TrasladosCartaPorteEndpoints
     {
         var grupo = rutas.MapGroup("/api/traslados-carta-porte")
             .WithTags("Carta Porte")
-            .RequireAuthorization(Permisos.EmitirCartaPorte);
+            .RequireAuthorization(Permisos.Politicas.CartaPorte);
 
-        grupo.MapPost("", Crear);
+        // Se suma a la del grupo. Actualizar decide en el servicio: Crear basta para el borrador propio.
+        grupo.MapPost("", Crear).RequireAuthorization(Permisos.CartaPorteCrear);
         grupo.MapGet("/{comprobanteId:guid}", Obtener);
         grupo.MapPut("/{comprobanteId:guid}", Actualizar);
         grupo.MapPost("/{comprobanteId:guid}/validar-xml", ValidarXml);

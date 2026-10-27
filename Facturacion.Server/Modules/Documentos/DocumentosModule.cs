@@ -22,6 +22,7 @@ public static class DocumentosModule
         // El tablero obtiene sus cifras desde el resumen real de comprobantes.
 
         servicios.AddScoped<IResumenDocumentos, ResumenDocumentos>();
+        servicios.AddScoped<IUsoDeCatalogos, UsoDeCatalogos>();
 
         servicios.AddOptions<OpcionesDeEsquemasSat>().Bind(configuracion.GetSection(OpcionesDeEsquemasSat.Seccion));
 

@@ -250,13 +250,13 @@ else
         <div class="tablero-accesos">
             @* Nuevo documento y Catálogos abren un selector en vez de navegar: son botones, no
                enlaces, para que se activen con Enter y con Espacio como cualquier acción. *@
-            <SiTienePermiso Permiso="@Permisos.Politicas.Emitir">
+            <SiTienePermiso Permiso="@Permisos.Politicas.Crear">
                 <button type="button" class="tablero-acceso tablero-acceso-principal" @onclick="AbrirNuevoDocumentoAsync">
                     <MudIcon Icon="@Icons.Material.Filled.AddCircle" Size="Size.Small" />
                     <span><strong>Nuevo documento</strong><small>Factura, pago o Carta Porte</small></span>
                 </button>
             </SiTienePermiso>
-            <SiTienePermiso Permiso="@Permisos.Politicas.Documentos">
+            <SiTienePermiso Permiso="@Permisos.DocumentosListado">
                 <a class="tablero-acceso" href="/documentos">
                     <MudIcon Icon="@Icons.Material.Filled.Description" Size="Size.Small" />
                     <span><strong>Documentos</strong><small>Consultar y descargar</small></span>

@@ -2847,83 +2847,328 @@ namespace Facturacion.Server.Migrations
                     b.HasData(
                         new
                         {
-                            Clave = "ver_documentos",
-                            Descripcion = "Consultar y descargar comprobantes"
+                            Clave = "documentos_listado",
+                            Descripcion = "Documentos: Listado"
                         },
                         new
                         {
-                            Clave = "emitir_factura",
-                            Descripcion = "Emitir facturas básicas"
+                            Clave = "documentos_descarga",
+                            Descripcion = "Documentos: Descarga"
                         },
                         new
                         {
-                            Clave = "emitir_notaria",
-                            Descripcion = "Emitir facturas con complemento de Notarios Públicos"
+                            Clave = "documentos_eliminar",
+                            Descripcion = "Documentos: Eliminar borradores"
                         },
                         new
                         {
-                            Clave = "emitir_carta_porte",
-                            Descripcion = "Emitir traslados con Carta Porte"
+                            Clave = "factura_crear",
+                            Descripcion = "Factura básica: Crear"
                         },
                         new
                         {
-                            Clave = "emitir_comercio_exterior",
-                            Descripcion = "Emitir facturas con Comercio Exterior"
+                            Clave = "factura_modificar",
+                            Descripcion = "Factura básica: Modificar"
                         },
                         new
                         {
-                            Clave = "emitir_obra",
-                            Descripcion = "Emitir facturas de obra"
+                            Clave = "factura_cancelar",
+                            Descripcion = "Factura básica: Cancelar"
                         },
                         new
                         {
-                            Clave = "emitir_pago",
-                            Descripcion = "Emitir complementos de pago"
+                            Clave = "factura_timbrar",
+                            Descripcion = "Factura básica: Timbrar"
                         },
                         new
                         {
-                            Clave = "cancelar",
-                            Descripcion = "Cancelar comprobantes timbrados"
+                            Clave = "factura_enviar",
+                            Descripcion = "Factura básica: Enviar por correo"
                         },
                         new
                         {
-                            Clave = "enviar_correo",
-                            Descripcion = "Enviar comprobantes por correo"
+                            Clave = "factura_eliminar",
+                            Descripcion = "Factura básica: Eliminar borrador"
                         },
                         new
                         {
-                            Clave = "administrar_clientes",
-                            Descripcion = "Dar de alta, editar y dar de baja clientes"
+                            Clave = "notaria_crear",
+                            Descripcion = "Factura con Notaría: Crear"
                         },
                         new
                         {
-                            Clave = "administrar_productos",
-                            Descripcion = "Dar de alta, editar y dar de baja productos"
+                            Clave = "notaria_modificar",
+                            Descripcion = "Factura con Notaría: Modificar"
                         },
                         new
                         {
-                            Clave = "administrar_vehiculos",
-                            Descripcion = "Dar de alta, editar y dar de baja vehículos"
+                            Clave = "notaria_cancelar",
+                            Descripcion = "Factura con Notaría: Cancelar"
                         },
                         new
                         {
-                            Clave = "administrar_figuras",
-                            Descripcion = "Dar de alta, editar y dar de baja figuras de transporte"
+                            Clave = "notaria_timbrar",
+                            Descripcion = "Factura con Notaría: Timbrar"
+                        },
+                        new
+                        {
+                            Clave = "notaria_enviar",
+                            Descripcion = "Factura con Notaría: Enviar por correo"
+                        },
+                        new
+                        {
+                            Clave = "notaria_eliminar",
+                            Descripcion = "Factura con Notaría: Eliminar borrador"
+                        },
+                        new
+                        {
+                            Clave = "carta_porte_crear",
+                            Descripcion = "Carta Porte: Crear"
+                        },
+                        new
+                        {
+                            Clave = "carta_porte_modificar",
+                            Descripcion = "Carta Porte: Modificar"
+                        },
+                        new
+                        {
+                            Clave = "carta_porte_cancelar",
+                            Descripcion = "Carta Porte: Cancelar"
+                        },
+                        new
+                        {
+                            Clave = "carta_porte_timbrar",
+                            Descripcion = "Carta Porte: Timbrar"
+                        },
+                        new
+                        {
+                            Clave = "carta_porte_enviar",
+                            Descripcion = "Carta Porte: Enviar por correo"
+                        },
+                        new
+                        {
+                            Clave = "carta_porte_eliminar",
+                            Descripcion = "Carta Porte: Eliminar borrador"
+                        },
+                        new
+                        {
+                            Clave = "comercio_exterior_crear",
+                            Descripcion = "Comercio Exterior: Crear"
+                        },
+                        new
+                        {
+                            Clave = "comercio_exterior_modificar",
+                            Descripcion = "Comercio Exterior: Modificar"
+                        },
+                        new
+                        {
+                            Clave = "comercio_exterior_cancelar",
+                            Descripcion = "Comercio Exterior: Cancelar"
+                        },
+                        new
+                        {
+                            Clave = "comercio_exterior_timbrar",
+                            Descripcion = "Comercio Exterior: Timbrar"
+                        },
+                        new
+                        {
+                            Clave = "comercio_exterior_enviar",
+                            Descripcion = "Comercio Exterior: Enviar por correo"
+                        },
+                        new
+                        {
+                            Clave = "comercio_exterior_eliminar",
+                            Descripcion = "Comercio Exterior: Eliminar borrador"
+                        },
+                        new
+                        {
+                            Clave = "obra_crear",
+                            Descripcion = "Factura de obra: Crear"
+                        },
+                        new
+                        {
+                            Clave = "obra_modificar",
+                            Descripcion = "Factura de obra: Modificar"
+                        },
+                        new
+                        {
+                            Clave = "obra_cancelar",
+                            Descripcion = "Factura de obra: Cancelar"
+                        },
+                        new
+                        {
+                            Clave = "obra_timbrar",
+                            Descripcion = "Factura de obra: Timbrar"
+                        },
+                        new
+                        {
+                            Clave = "obra_enviar",
+                            Descripcion = "Factura de obra: Enviar por correo"
+                        },
+                        new
+                        {
+                            Clave = "obra_eliminar",
+                            Descripcion = "Factura de obra: Eliminar borrador"
+                        },
+                        new
+                        {
+                            Clave = "pago_crear",
+                            Descripcion = "Complemento de pago: Crear"
+                        },
+                        new
+                        {
+                            Clave = "pago_modificar",
+                            Descripcion = "Complemento de pago: Modificar"
+                        },
+                        new
+                        {
+                            Clave = "pago_cancelar",
+                            Descripcion = "Complemento de pago: Cancelar"
+                        },
+                        new
+                        {
+                            Clave = "pago_timbrar",
+                            Descripcion = "Complemento de pago: Timbrar"
+                        },
+                        new
+                        {
+                            Clave = "pago_enviar",
+                            Descripcion = "Complemento de pago: Enviar por correo"
+                        },
+                        new
+                        {
+                            Clave = "pago_eliminar",
+                            Descripcion = "Complemento de pago: Eliminar borrador"
+                        },
+                        new
+                        {
+                            Clave = "clientes_crear",
+                            Descripcion = "Clientes: Crear"
+                        },
+                        new
+                        {
+                            Clave = "clientes_modificar",
+                            Descripcion = "Clientes: Modificar"
+                        },
+                        new
+                        {
+                            Clave = "clientes_desactivar",
+                            Descripcion = "Clientes: Desactivar y reactivar"
+                        },
+                        new
+                        {
+                            Clave = "clientes_eliminar",
+                            Descripcion = "Clientes: Eliminar"
+                        },
+                        new
+                        {
+                            Clave = "productos_crear",
+                            Descripcion = "Productos: Crear"
+                        },
+                        new
+                        {
+                            Clave = "productos_modificar",
+                            Descripcion = "Productos: Modificar"
+                        },
+                        new
+                        {
+                            Clave = "productos_desactivar",
+                            Descripcion = "Productos: Desactivar y reactivar"
+                        },
+                        new
+                        {
+                            Clave = "productos_eliminar",
+                            Descripcion = "Productos: Eliminar"
+                        },
+                        new
+                        {
+                            Clave = "series_crear",
+                            Descripcion = "Series y folios: Crear"
+                        },
+                        new
+                        {
+                            Clave = "series_modificar",
+                            Descripcion = "Series y folios: Modificar"
+                        },
+                        new
+                        {
+                            Clave = "series_desactivar",
+                            Descripcion = "Series y folios: Desactivar y reactivar"
+                        },
+                        new
+                        {
+                            Clave = "series_eliminar",
+                            Descripcion = "Series y folios: Eliminar"
+                        },
+                        new
+                        {
+                            Clave = "vehiculos_crear",
+                            Descripcion = "Vehículos: Crear"
+                        },
+                        new
+                        {
+                            Clave = "vehiculos_modificar",
+                            Descripcion = "Vehículos: Modificar"
+                        },
+                        new
+                        {
+                            Clave = "vehiculos_desactivar",
+                            Descripcion = "Vehículos: Desactivar y reactivar"
+                        },
+                        new
+                        {
+                            Clave = "vehiculos_eliminar",
+                            Descripcion = "Vehículos: Eliminar"
+                        },
+                        new
+                        {
+                            Clave = "figuras_crear",
+                            Descripcion = "Figuras de transporte: Crear"
+                        },
+                        new
+                        {
+                            Clave = "figuras_modificar",
+                            Descripcion = "Figuras de transporte: Modificar"
+                        },
+                        new
+                        {
+                            Clave = "figuras_desactivar",
+                            Descripcion = "Figuras de transporte: Desactivar y reactivar"
+                        },
+                        new
+                        {
+                            Clave = "figuras_eliminar",
+                            Descripcion = "Figuras de transporte: Eliminar"
                         },
                         new
                         {
                             Clave = "comprar_timbres",
-                            Descripcion = "Consultar el saldo y comprar paquetes de timbres"
+                            Descripcion = "Timbres"
                         },
                         new
                         {
-                            Clave = "mi_empresa",
-                            Descripcion = "Editar los datos fiscales y los certificados de la empresa"
+                            Clave = "empresa_datos",
+                            Descripcion = "Mi empresa: Datos de la empresa"
                         },
                         new
                         {
-                            Clave = "configuracion",
-                            Descripcion = "Configurar correo, impuestos, logo, Notaría y series de la empresa"
+                            Clave = "empresa_certificados",
+                            Descripcion = "Mi empresa: Certificados"
+                        },
+                        new
+                        {
+                            Clave = "configuracion_general",
+                            Descripcion = "Configuración: General"
+                        },
+                        new
+                        {
+                            Clave = "configuracion_correo",
+                            Descripcion = "Configuración: Correo"
+                        },
+                        new
+                        {
+                            Clave = "configuracion_impuestos",
+                            Descripcion = "Configuración: Impuestos"
                         });
                 });
 

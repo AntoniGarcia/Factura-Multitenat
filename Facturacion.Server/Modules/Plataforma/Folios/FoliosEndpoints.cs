@@ -12,12 +12,30 @@ public static class FoliosEndpoints
         var grupo = rutas.MapGroup("/api/series").WithTags("Series y folios");
 
         // Por endpoint y no en el grupo: RequireAuthorization en el grupo se acumularía sobre
-        // TODOS sus hijos, y '/activas' terminaría exigiendo también 'configuracion'.
+        // TODOS sus hijos, y '/activas' terminaría exigiendo también un permiso de Series.
         grupo.MapGet("/activas", ListarActivas).RequireAuthorization();
 
-        grupo.MapGet("/", Listar).RequireAuthorization(Permisos.Configuracion);
-        grupo.MapPost("/", Crear).RequireAuthorization(Permisos.Configuracion);
-        grupo.MapPut("/{id:guid}", Actualizar).RequireAuthorization(Permisos.Configuracion);
+        grupo.MapGet("/", Listar).RequireAuthorization(Permisos.Politicas.Series);
+        grupo.MapPost("/", Crear).RequireAuthorization(Permisos.SeriesCrear);
+        grupo.MapPut("/{id:guid}", Actualizar).RequireAuthorization(Permisos.SeriesModificar);
+        grupo.MapPost("/{id:guid}/activa", CambiarActiva).RequireAuthorization(Permisos.SeriesDesactivar);
+        grupo.MapDelete("/{id:guid}", Eliminar).RequireAuthorization(Permisos.SeriesEliminar);
+    }
+
+    private static async Task<IResult> CambiarActiva(
+        Guid id, Clientes.PeticionCambiarActivo peticion, ServicioDeSeries series, HttpContext contexto, CancellationToken ct)
+    {
+        var resultado = await series.CambiarActivaAsync(id, peticion.Activo, ct);
+
+        return resultado.EsFallo ? resultado.Error!.AResultado(contexto) : Results.Ok(resultado.Valor);
+    }
+
+    private static async Task<IResult> Eliminar(
+        Guid id, ServicioDeSeries series, HttpContext contexto, CancellationToken ct)
+    {
+        var resultado = await series.EliminarAsync(id, ct);
+
+        return resultado.EsFallo ? resultado.Error!.AResultado(contexto) : Results.NoContent();
     }
 
     private static async Task<IResult> Listar(ServicioDeSeries series, CancellationToken ct)

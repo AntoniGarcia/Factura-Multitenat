@@ -1,13 +1,19 @@
 @page "/empresa/series"
-@attribute [Authorize(Policy = Permisos.Configuracion)]
+@attribute [Authorize(Policy = Permisos.Politicas.Series)]
 @inject ServicioDeEmpresa Empresas
 @inject ServicioDeCatalogos Catalogos
+@inject ServicioDeSesion Sesion
+@inject IServicioDeConfirmacion Confirmacion
 
 <PageTitle>Series de folios</PageTitle>
 <TituloDePagina Texto="Series de folios" />
 
-<TarjetaFormulario Class="tarjeta-formulario-catalogo series-formulario">
 <PanelErrores Problema="_error" />
+
+@* El formulario sirve para crear y, con Modificar, para editar: sin ninguna de las dos no se muestra. *@
+@if (_puedeCrear || _editando is not null)
+{
+<TarjetaFormulario Class="tarjeta-formulario-catalogo series-formulario">
 
 <section class="formulario-catalogo-seccion" aria-labelledby="serie-datos">
 <h2 id="serie-datos" class="seccion-titulo">@(_editando is null ? "Nueva serie" : $"Editar serie {_editando.Prefijo}")</h2>
@@ -30,7 +36,7 @@
         }
     </MudSelect>
 
-    <MudCheckBox @bind-Value="_activa" Label="Serie activa" Disabled="_guardando" />
+    <MudCheckBox @bind-Value="_activa" Label="Serie activa" Disabled="@(_guardando || !_puedeDesactivar)" />
 </div>
 </section>
 
@@ -45,6 +51,7 @@
     </MudButton>
 </div>
 </TarjetaFormulario>
+}
 
 <section class="series-listado" aria-labelledby="series-registradas">
 <h2 id="series-registradas" class="seccion-titulo">Series registradas</h2>
@@ -78,8 +85,23 @@ else
                         </span>
                     </MudTd>
                     <MudTd DataLabel="Acciones">
-                        <MudButton Size="Size.Small" OnClick="() => Editar(serie)" Disabled="_guardando"
-                                   aria-label="@($"Editar serie {serie.Prefijo}")">Editar</MudButton>
+                        @if (_puedeModificar)
+                        {
+                            <MudButton Size="Size.Small" OnClick="() => Editar(serie)" Disabled="_guardando"
+                                       aria-label="@($"Editar serie {serie.Prefijo}")">Editar</MudButton>
+                        }
+                        @if (_puedeDesactivar)
+                        {
+                            <MudButton Size="Size.Small" OnClick="() => CambiarActiva(serie)" Disabled="_guardando">
+                                @(serie.Activa ? "Desactivar" : "Reactivar")
+                            </MudButton>
+                        }
+                        @* Una serie que ya entregó folios no se puede borrar; ni se ofrece. *@
+                        @if (_puedeEliminar && serie.FolioActual < serie.FolioInicial)
+                        {
+                            <MudButton Size="Size.Small" Color="Color.Error" OnClick="() => Eliminar(serie)" Disabled="_guardando"
+                                       aria-label="@($"Eliminar serie {serie.Prefijo}")">Eliminar</MudButton>
+                        }
                     </MudTd>
         </RowTemplate>
     </MudTable>
@@ -97,10 +119,21 @@ else
     private string _tipoComprobante = "I";
     private bool _activa = true;
 
+    // Comodidad visual: lo que el servidor rechazaría ni se ofrece.
+    private bool _puedeCrear, _puedeModificar, _puedeDesactivar, _puedeEliminar;
+
     private string DescripcionTipo(string clave)
         => Catalogos.Obtener("c_TipoDeComprobante").FirstOrDefault(tipo => tipo.Clave == clave)?.Descripcion ?? clave;
 
-    protected override async Task OnInitializedAsync() => await RecargarAsync();
+    protected override async Task OnInitializedAsync()
+    {
+        _puedeCrear = Sesion.TienePermiso(Permisos.SeriesCrear);
+        _puedeModificar = Sesion.TienePermiso(Permisos.SeriesModificar);
+        _puedeDesactivar = Sesion.TienePermiso(Permisos.SeriesDesactivar);
+        _puedeEliminar = Sesion.TienePermiso(Permisos.SeriesEliminar);
+
+        await RecargarAsync();
+    }
 
     private async Task RecargarAsync() => _series = await Empresas.ListarSeriesAsync();
 
@@ -122,6 +155,34 @@ else
         _tipoComprobante = "I";
         _activa = true;
         _error = null;
+    }
+
+    private async Task CambiarActiva(SerieDto serie)
+    {
+        var (_, error) = await Empresas.CambiarSerieActivaAsync(serie.Id, !serie.Activa);
+
+        _error = error;
+
+        if (error is null) await RecargarAsync();
+    }
+
+    /// <summary>Solo prospera si la serie no dio folios ni la usa un borrador; si no, el servidor pide desactivarla.</summary>
+    private async Task Eliminar(SerieDto serie)
+    {
+        var confirmado = await Confirmacion.ConfirmarAsync(
+            "Eliminar serie",
+            $"La serie {serie.Prefijo} se borrará de forma definitiva. Solo es posible si ningún comprobante la usa.",
+            "Eliminar");
+
+        if (!confirmado) return;
+
+        _error = await Empresas.EliminarSerieAsync(serie.Id);
+
+        if (_error is null)
+        {
+            if (_editando?.Id == serie.Id) Limpiar();
+            await RecargarAsync();
+        }
     }
 
     private async Task Guardar()

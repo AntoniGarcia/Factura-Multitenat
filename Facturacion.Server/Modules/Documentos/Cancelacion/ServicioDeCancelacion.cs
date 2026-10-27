@@ -112,6 +112,9 @@ public sealed class ServicioDeCancelacion(
         if (comprobante is null)
             return ErrorNegocio.NoEncontrado("comprobante-no-encontrado", "Ese comprobante no existe.");
 
+        if (PermisoDeEmision.Exigir(contexto, comprobante, Permisos.Acciones.Cancelar) is { } sinPermiso)
+            return sinPermiso;
+
         if (comprobante.Estatus == EstatusComprobante.EnCancelacion.ACadena())
             return ErrorNegocio.Conflicto(
                 "cancelacion-en-curso",

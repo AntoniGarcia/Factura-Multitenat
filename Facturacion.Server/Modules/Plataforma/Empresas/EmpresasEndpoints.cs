@@ -24,34 +24,36 @@ public static class EmpresasEndpoints
         var grupo = rutas.MapGroup("/api/empresa").WithTags("Empresa");
 
         grupo.MapGet("/", Obtener).RequireAuthorization();
-        grupo.MapPut("/", Guardar).RequireAuthorization(Permisos.MiEmpresa);
+        grupo.MapPut("/", Guardar).RequireAuthorization(Permisos.EmpresaDatos);
 
         // Solo exige sesión: quien acaba de registrarse todavía no tiene empresa activa, y
         // es justo la primera la que viene a crear. El servicio exige que sea el titular
         // (ver ServicioDeEmpresa.CrearAsync).
         grupo.MapPost("/", Crear).RequireAuthorization();
 
-        grupo.MapGet("/configuracion", ObtenerConfiguracion).RequireAuthorization(Permisos.Configuracion);
-        grupo.MapPut("/configuracion", GuardarConfiguracion).RequireAuthorization(Permisos.Configuracion);
+        // Leerla solo exige sesión: son las tasas sugeridas que también usa el formulario de
+        // producto. Guardarla exige General o Impuestos; el servicio revisa qué parte cambió.
+        grupo.MapGet("/configuracion", ObtenerConfiguracion).RequireAuthorization();
+        grupo.MapPut("/configuracion", GuardarConfiguracion).RequireAuthorization(Permisos.Politicas.Configuracion);
 
-        grupo.MapGet("/correo", ObtenerCorreo).RequireAuthorization(Permisos.Configuracion);
-        grupo.MapPut("/correo", GuardarCorreo).RequireAuthorization(Permisos.Configuracion);
+        grupo.MapGet("/correo", ObtenerCorreo).RequireAuthorization(Permisos.ConfiguracionCorreo);
+        grupo.MapPut("/correo", GuardarCorreo).RequireAuthorization(Permisos.ConfiguracionCorreo);
 
         // Lectura del logo: basta con tener sesión en la empresa. El endpoint no recibe
         // empresa ni ruta —las saca del claim—, así que no hay forma de pedir el de otra.
         grupo.MapGet("/logo", ObtenerLogo).RequireAuthorization();
 
         grupo.MapPost("/logo", SubirLogo)
-            .RequireAuthorization(Permisos.Configuracion)
+            .RequireAuthorization(Permisos.ConfiguracionGeneral)
             .DisableAntiforgery()
             .WithMetadata(new RequestSizeLimitAttribute(TopeDeSubida));
 
-        grupo.MapDelete("/logo", QuitarLogo).RequireAuthorization(Permisos.Configuracion);
+        grupo.MapDelete("/logo", QuitarLogo).RequireAuthorization(Permisos.ConfiguracionGeneral);
 
-        grupo.MapGet("/certificados", ListarCertificados).RequireAuthorization(Permisos.MiEmpresa);
+        grupo.MapGet("/certificados", ListarCertificados).RequireAuthorization(Permisos.EmpresaCertificados);
 
         grupo.MapPost("/certificados", CargarCertificado)
-            .RequireAuthorization(Permisos.MiEmpresa)
+            .RequireAuthorization(Permisos.EmpresaCertificados)
             .DisableAntiforgery()
             .WithMetadata(new RequestSizeLimitAttribute(TopeDeSubida));
     }

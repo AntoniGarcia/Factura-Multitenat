@@ -24,14 +24,25 @@ public static class ClientesEndpoints
         grupo.MapGet("/exportar", Exportar).RequireAuthorization(Permisos.Politicas.LeerClientesYProductos);
         grupo.MapGet("/{id:guid}", Obtener).RequireAuthorization(Permisos.Politicas.LeerClientesYProductos);
 
-        grupo.MapPost("/", Crear).RequireAuthorization(Permisos.AdministrarClientes);
-        grupo.MapPut("/{id:guid}", Actualizar).RequireAuthorization(Permisos.AdministrarClientes);
-        grupo.MapPost("/{id:guid}/activo", CambiarActivo).RequireAuthorization(Permisos.AdministrarClientes);
+        grupo.MapPost("/", Crear).RequireAuthorization(Permisos.ClientesCrear);
+        grupo.MapPut("/{id:guid}", Actualizar).RequireAuthorization(Permisos.ClientesModificar);
+        grupo.MapPost("/{id:guid}/activo", CambiarActivo).RequireAuthorization(Permisos.ClientesDesactivar);
+        grupo.MapDelete("/{id:guid}", Eliminar).RequireAuthorization(Permisos.ClientesEliminar);
     }
 
+    private static async Task<IResult> Eliminar(
+        Guid id, ServicioDeClientes clientes, HttpContext contexto, CancellationToken ct)
+    {
+        var resultado = await clientes.EliminarAsync(id, ct);
+
+        return resultado.EsFallo ? resultado.Error!.AResultado(contexto) : Results.NoContent();
+    }
+
+    // Sin «activos» se listan todos: así pide el Client el filtro «Todos». Con true por omisión,
+    // «Todos» mostraba solo los activos. Los buscadores de la emisión mandan true explícito.
     private static async Task<IResult> Listar(
         ServicioDeClientes clientes, CancellationToken ct,
-        string? texto = null, bool? activos = true,
+        string? texto = null, bool? activos = null,
         int pagina = 0, int tamano = 25, string? orden = null, bool descendente = false)
     {
         // Tope duro al tamaño de página: sin él, alguien pide un millón de renglones y se
@@ -86,7 +97,7 @@ public static class ClientesEndpoints
     /// los clientes al navegador solo para volver a escribirlos.
     /// </summary>
     private static async Task<IResult> Exportar(
-        ServicioDeClientes clientes, CancellationToken ct, bool? activos = true)
+        ServicioDeClientes clientes, CancellationToken ct, bool? activos = null)
     {
         var lista = await clientes.ListarParaExportarAsync(activos, ct);
 

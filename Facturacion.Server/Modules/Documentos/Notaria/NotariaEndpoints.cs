@@ -11,14 +11,14 @@ public static class NotariaEndpoints
     {
         var grupoConfiguracion = rutas.MapGroup("/api/notaria")
             .WithTags("Notaría")
-            .RequireAuthorization(Permisos.Configuracion);
+            .RequireAuthorization(Permisos.Politicas.PerfilDeNotaria);
 
         grupoConfiguracion.MapGet("/configuracion", Obtener);
         grupoConfiguracion.MapPut("/configuracion", Guardar);
 
         var grupoDocumentos = rutas.MapGroup("/api/notaria/comprobantes")
             .WithTags("Notaría")
-            .RequireAuthorization(Permisos.EmitirNotaria);
+            .RequireAuthorization(Permisos.Politicas.Notaria);
         grupoDocumentos.MapGet("/{comprobanteId:guid}", ObtenerDatos);
         grupoDocumentos.MapPut("/{comprobanteId:guid}", GuardarDatos);
         grupoDocumentos.MapGet("/{comprobanteId:guid}/partes", ObtenerPartes);

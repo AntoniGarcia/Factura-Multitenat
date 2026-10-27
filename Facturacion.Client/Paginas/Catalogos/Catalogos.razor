@@ -112,7 +112,7 @@
 
     private TablaDatos<ProductoEnListaDto>? _tablaProductos;
     private string _textoProductos = string.Empty;
-    private bool? _activosProductos = true;
+    private bool? _activosProductos;
 
     private IReadOnlyList<ColumnaDeTabla<ProductoEnListaDto>> _columnasProductos = [];
     private IReadOnlyList<ColumnaDeTabla<ClienteEnListaDto>> _columnasClientes = [];
@@ -124,8 +124,8 @@
 
     protected override void OnInitialized()
     {
-        _puedeEditarClientes = Sesion.TienePermiso(Permisos.AdministrarClientes);
-        _puedeEditarProductos = Sesion.TienePermiso(Permisos.AdministrarProductos);
+        _puedeEditarClientes = Sesion.TienePermiso(Permisos.Politicas.EditarClientes);
+        _puedeEditarProductos = Sesion.TienePermiso(Permisos.Politicas.EditarProductos);
 
         _columnasProductos =
         [
@@ -255,7 +255,7 @@
 
     private TablaDatos<ClienteEnListaDto>? _tablaClientes;
     private string _textoClientes = string.Empty;
-    private bool? _activosClientes = true;
+    private bool? _activosClientes;
 
     private async Task<ResultadoDePagina<ClienteEnListaDto>> CargarClientesAsync(
         PeticionDePagina peticion, CancellationToken ct)

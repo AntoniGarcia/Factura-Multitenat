@@ -51,6 +51,16 @@ public sealed class ServicioDeClientes(IHttpClientFactory fabrica)
         return await LeerAsync<ClienteDto>(respuesta, ct);
     }
 
+    /// <summary>Borra un cliente que nunca se usó. El servidor rechaza al que ya tiene comprobantes.</summary>
+    public async Task<DetalleProblema?> EliminarAsync(Guid id, CancellationToken ct = default)
+    {
+        using var respuesta = await Cliente.DeleteAsync($"api/clientes/{id}", ct);
+
+        return respuesta.IsSuccessStatusCode
+            ? null
+            : await respuesta.Content.ReadFromJsonAsync<DetalleProblema>(ct);
+    }
+
     /// <summary>Ruta del CSV. La descarga la hace el navegador, no se pasa por memoria del WebAssembly.</summary>
     public static string RutaDeExportacion(bool? activos)
         => $"api/clientes/exportar" + (activos is { } a ? $"?activos={(a ? "true" : "false")}" : "");

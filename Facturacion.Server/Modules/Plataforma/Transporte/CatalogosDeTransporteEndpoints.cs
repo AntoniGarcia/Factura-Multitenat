@@ -1,7 +1,9 @@
 using Facturacion.Server.Data;
 using Facturacion.Server.Data.Entidades.Transporte;
+using Facturacion.Server.Infra.Bitacora;
 using Facturacion.Server.Infra.Errores;
 using Facturacion.Shared.Comun;
+using Facturacion.Shared.Contratos;
 using Facturacion.Shared.Transporte;
 using Microsoft.EntityFrameworkCore;
 
@@ -21,16 +23,20 @@ public static class CatalogosDeTransporteEndpoints
             await db.FigurasTransporte.AsNoTracking().Where(x => activos == null || x.Activo == activos)
                 .OrderBy(x => x.Nombre).Select(x => ADto(x)).ToListAsync(ct)).RequireAuthorization(Permisos.Politicas.LeerTransporte);
 
-        grupo.MapPost("/vehiculos", CrearVehiculo).RequireAuthorization(Permisos.AdministrarVehiculos);
-        grupo.MapPut("/vehiculos/{id:guid}", ActualizarVehiculo).RequireAuthorization(Permisos.AdministrarVehiculos);
-        grupo.MapPost("/vehiculos/{id:guid}/activo", CambiarVehiculoActivo).RequireAuthorization(Permisos.AdministrarVehiculos);
-        grupo.MapPost("/figuras", CrearFigura).RequireAuthorization(Permisos.AdministrarFiguras);
-        grupo.MapPut("/figuras/{id:guid}", ActualizarFigura).RequireAuthorization(Permisos.AdministrarFiguras);
-        grupo.MapPost("/figuras/{id:guid}/activo", CambiarFiguraActiva).RequireAuthorization(Permisos.AdministrarFiguras);
+        grupo.MapPost("/vehiculos", CrearVehiculo).RequireAuthorization(Permisos.VehiculosCrear);
+        grupo.MapPut("/vehiculos/{id:guid}", ActualizarVehiculo).RequireAuthorization(Permisos.VehiculosModificar);
+        grupo.MapPost("/vehiculos/{id:guid}/activo", CambiarVehiculoActivo).RequireAuthorization(Permisos.VehiculosDesactivar);
+        grupo.MapDelete("/vehiculos/{id:guid}", EliminarVehiculo).RequireAuthorization(Permisos.VehiculosEliminar);
+        grupo.MapPost("/figuras", CrearFigura).RequireAuthorization(Permisos.FigurasCrear);
+        grupo.MapPut("/figuras/{id:guid}", ActualizarFigura).RequireAuthorization(Permisos.FigurasModificar);
+        grupo.MapPost("/figuras/{id:guid}/activo", CambiarFiguraActiva).RequireAuthorization(Permisos.FigurasDesactivar);
+        grupo.MapDelete("/figuras/{id:guid}", EliminarFigura).RequireAuthorization(Permisos.FigurasEliminar);
     }
 
-    private static async Task<IResult> CrearVehiculo(PeticionGuardarVehiculo p, AppDbContext db, HttpContext http, CancellationToken ct)
+    private static async Task<IResult> CrearVehiculo(PeticionGuardarVehiculo p, AppDbContext db, IContextoEmpresa contexto, HttpContext http, CancellationToken ct)
     {
+        if (PermisoDeCatalogo.ExigirCambioDeEstado(contexto, Permisos.Catalogos.Vehiculos, true, p.Activo) is { } sinPermiso)
+            return sinPermiso.AResultado(http);
         var error = await ValidarVehiculo(p, db, ct);
         if (error is not null) return error.AResultado(http);
         var entidad = new Vehiculo { Id = Guid.NewGuid(), Clave = p.Clave.Trim(), Descripcion = p.Descripcion.Trim(),
@@ -40,10 +46,12 @@ public static class CatalogosDeTransporteEndpoints
         db.Vehiculos.Add(entidad); await db.SaveChangesAsync(ct); return Results.Ok(ADto(entidad));
     }
 
-    private static async Task<IResult> ActualizarVehiculo(Guid id, PeticionGuardarVehiculo p, AppDbContext db, HttpContext http, CancellationToken ct)
+    private static async Task<IResult> ActualizarVehiculo(Guid id, PeticionGuardarVehiculo p, AppDbContext db, IContextoEmpresa contexto, HttpContext http, CancellationToken ct)
     {
         var entidad = await db.Vehiculos.FirstOrDefaultAsync(x => x.Id == id, ct);
         if (entidad is null) return ErrorNegocio.NoEncontrado("vehiculo-no-encontrado", "No se encontró ese vehículo.").AResultado(http);
+        if (PermisoDeCatalogo.ExigirCambioDeEstado(contexto, Permisos.Catalogos.Vehiculos, entidad.Activo, p.Activo) is { } sinPermiso)
+            return sinPermiso.AResultado(http);
         var error = await ValidarVehiculo(p, db, ct); if (error is not null) return error.AResultado(http);
         entidad.Clave = p.Clave.Trim(); entidad.Descripcion = p.Descripcion.Trim(); entidad.ConfiguracionAutotransporte = p.ConfiguracionAutotransporte;
         entidad.Placa = p.Placa.Trim(); entidad.AnioModelo = p.AnioModelo; entidad.Aseguradora = p.Aseguradora.Trim(); entidad.Poliza = p.Poliza.Trim();
@@ -59,16 +67,20 @@ public static class CatalogosDeTransporteEndpoints
         await db.SaveChangesAsync(ct); return Results.Ok(ADto(vehiculo));
     }
 
-    private static async Task<IResult> CrearFigura(PeticionGuardarFiguraTransporte p, AppDbContext db, HttpContext http, CancellationToken ct)
+    private static async Task<IResult> CrearFigura(PeticionGuardarFiguraTransporte p, AppDbContext db, IContextoEmpresa contexto, HttpContext http, CancellationToken ct)
     {
+        if (PermisoDeCatalogo.ExigirCambioDeEstado(contexto, Permisos.Catalogos.Figuras, true, p.Activo) is { } sinPermiso)
+            return sinPermiso.AResultado(http);
         var error = await ValidarFigura(p, db, ct); if (error is not null) return error.AResultado(http);
         var entidad = AFigura(p); db.FigurasTransporte.Add(entidad); await db.SaveChangesAsync(ct); return Results.Ok(ADto(entidad));
     }
 
-    private static async Task<IResult> ActualizarFigura(Guid id, PeticionGuardarFiguraTransporte p, AppDbContext db, HttpContext http, CancellationToken ct)
+    private static async Task<IResult> ActualizarFigura(Guid id, PeticionGuardarFiguraTransporte p, AppDbContext db, IContextoEmpresa contexto, HttpContext http, CancellationToken ct)
     {
         var entidad = await db.FigurasTransporte.FirstOrDefaultAsync(x => x.Id == id, ct);
         if (entidad is null) return ErrorNegocio.NoEncontrado("figura-no-encontrada", "No se encontró esa figura de transporte.").AResultado(http);
+        if (PermisoDeCatalogo.ExigirCambioDeEstado(contexto, Permisos.Catalogos.Figuras, entidad.Activo, p.Activo) is { } sinPermiso)
+            return sinPermiso.AResultado(http);
         var error = await ValidarFigura(p, db, ct); if (error is not null) return error.AResultado(http);
         Copiar(p, entidad); entidad.FechaModificacionUtc = DateTime.UtcNow; await db.SaveChangesAsync(ct); return Results.Ok(ADto(entidad));
     }
@@ -79,6 +91,39 @@ public static class CatalogosDeTransporteEndpoints
         if (figura is null) return ErrorNegocio.NoEncontrado("figura-no-encontrada", "No se encontró esa figura de transporte.").AResultado(http);
         figura.Activo = p.Activo; figura.FechaModificacionUtc = DateTime.UtcNow;
         await db.SaveChangesAsync(ct); return Results.Ok(ADto(figura));
+    }
+
+    // Borrado físico, solo de lo que ningún traslado usó (AGENTS.md §11). Aquí basta la llave
+    // foránea de TrasladosCartaPorte: SQL Server rechaza el borrado de lo que ya se usó.
+    private static async Task<IResult> EliminarVehiculo(Guid id, AppDbContext db, IServicioDeBitacora bitacora, HttpContext http, CancellationToken ct)
+    {
+        var vehiculo = await db.Vehiculos.FirstOrDefaultAsync(x => x.Id == id, ct);
+        if (vehiculo is null) return ErrorNegocio.NoEncontrado("vehiculo-no-encontrado", "No se encontró ese vehículo.").AResultado(http);
+        bitacora.Registrar(EntidadesDeBitacora.Vehiculo, vehiculo.Id.ToString(), AccionesDeBitacora.VehiculoEliminado, antes: ADto(vehiculo));
+        db.Vehiculos.Remove(vehiculo);
+        return await GuardarBorradoAsync(db, "Este vehículo", http, ct);
+    }
+
+    private static async Task<IResult> EliminarFigura(Guid id, AppDbContext db, IServicioDeBitacora bitacora, HttpContext http, CancellationToken ct)
+    {
+        var figura = await db.FigurasTransporte.FirstOrDefaultAsync(x => x.Id == id, ct);
+        if (figura is null) return ErrorNegocio.NoEncontrado("figura-no-encontrada", "No se encontró esa figura de transporte.").AResultado(http);
+        bitacora.Registrar(EntidadesDeBitacora.FiguraTransporte, figura.Id.ToString(), AccionesDeBitacora.FiguraEliminada, antes: ADto(figura));
+        db.FigurasTransporte.Remove(figura);
+        return await GuardarBorradoAsync(db, "Esta figura de transporte", http, ct);
+    }
+
+    private static async Task<IResult> GuardarBorradoAsync(AppDbContext db, string queEs, HttpContext http, CancellationToken ct)
+    {
+        try
+        {
+            await db.SaveChangesAsync(ct);
+            return Results.NoContent();
+        }
+        catch (DbUpdateException ex) when (PermisoDeCatalogo.EsLlaveForanea(ex))
+        {
+            return PermisoDeCatalogo.EnUso(queEs).AResultado(http);
+        }
     }
 
     private static async Task<ErrorNegocio?> ValidarVehiculo(PeticionGuardarVehiculo p, AppDbContext db, CancellationToken ct)

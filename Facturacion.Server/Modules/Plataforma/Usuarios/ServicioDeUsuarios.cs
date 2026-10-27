@@ -236,9 +236,8 @@ public sealed class ServicioDeUsuarios(
 
     public async Task<Resultado> ActualizarPermisosAsync(Guid usuarioId, IReadOnlyList<string> permisos, CancellationToken ct)
     {
-        var invalido = permisos.FirstOrDefault(p => !Permisos.EsAsignable(p));
-        if (invalido is not null)
-            return ErrorNegocio.Validacion("permiso-invalido", $"«{invalido}» no es un permiso que se pueda asignar.");
+        if (Permisos.ErrorDeAsignacion(permisos) is { } invalido)
+            return ErrorNegocio.Validacion("permiso-invalido", invalido);
 
         if (await ErrorSiEsTitularAsync(usuarioId, ct) is { } titular) return titular;
 
@@ -488,9 +487,8 @@ public sealed class ServicioDeUsuarios(
         if (string.IsNullOrWhiteSpace(nombre))
             errores["nombre"] = ["El nombre es obligatorio."];
 
-        var invalido = permisos.FirstOrDefault(p => !Permisos.EsAsignable(p));
-        if (invalido is not null)
-            errores["permisos"] = [$"«{invalido}» no es un permiso que se pueda asignar."];
+        if (Permisos.ErrorDeAsignacion(permisos) is { } invalido)
+            errores["permisos"] = [invalido];
 
         return errores.Count == 0
             ? null

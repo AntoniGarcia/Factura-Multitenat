@@ -89,6 +89,8 @@ public sealed class ServicioDeComercioExterior(
             return ErrorNegocio.Conflicto("comercio-no-editable", "Los datos de comercio exterior solo se editan en borrador.");
         if (ReglaDeVariante.Exigir(comprobante, VariantesDeFactura.ComercioExterior, "factura de Comercio Exterior") is { } variante)
             return variante;
+        if (PermisoDeEmision.ExigirEdicion(contexto, comprobante) is { } sinPermiso)
+            return sinPermiso;
 
         if (peticion.DomicilioEmisor is null || peticion.DomicilioReceptor is null ||
             !ValidarLongitudes(peticion) ||

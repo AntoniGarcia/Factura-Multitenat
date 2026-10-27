@@ -22,7 +22,7 @@
                                Activos="_activos"
                                ActivosCambiado="AlFiltrarActivos"
                                TextoNuevo="Nuevo cliente"
-                               OnNuevo="@(_puedeEditar ? EventCallback.Factory.Create(this, () => Navegacion.NavigateTo("/clientes/nuevo")) : default)"
+                               OnNuevo="@(_puedeCrear ? EventCallback.Factory.Create(this, () => Navegacion.NavigateTo("/clientes/nuevo")) : default)"
                                OnExportar="Exportar" />
 
     <div class="catalogo-tabla">
@@ -39,18 +39,21 @@
     private TablaDatos<ClienteEnListaDto>? _tabla;
     private DetalleProblema? _error;
     private string _texto = string.Empty;
-    private bool? _activos = true;
+    private bool? _activos;
 
-    // Comodidad visual: sin administrar_clientes el servidor rechaza altas, ediciones y bajas, así
-    // que ni se ofrecen. La protección real es la política del endpoint.
-    private bool _puedeEditar;
+    // Comodidad visual: lo que el servidor rechazaría ni se ofrece. La protección real es la
+    // política de cada endpoint.
+    private bool _puedeCrear, _puedeModificar, _puedeDesactivar, _puedeEliminar;
 
     private IReadOnlyList<ColumnaDeTabla<ClienteEnListaDto>> _columnas = [];
 
     protected override void OnInitialized()
     {
-        _puedeEditar = Sesion.TienePermiso(Permisos.AdministrarClientes);
-        _columnas = _puedeEditar ? [.. Columnas, Acciones] : Columnas;
+        _puedeCrear = Sesion.TienePermiso(Permisos.ClientesCrear);
+        _puedeModificar = Sesion.TienePermiso(Permisos.ClientesModificar);
+        _puedeDesactivar = Sesion.TienePermiso(Permisos.ClientesDesactivar);
+        _puedeEliminar = Sesion.TienePermiso(Permisos.ClientesEliminar);
+        _columnas = _puedeModificar || _puedeDesactivar || _puedeEliminar ? [.. Columnas, Acciones] : Columnas;
     }
 
     private IReadOnlyList<ColumnaDeTabla<ClienteEnListaDto>> Columnas =>
@@ -71,10 +74,20 @@
     ];
 
     private ColumnaDeTabla<ClienteEnListaDto> Acciones => new("", c => @<div class="acciones-renglon">
-                          <MudButton Size="Size.Small" OnClick="@(() => Navegacion.NavigateTo($"/clientes/{c.Id}"))">Editar</MudButton>
-                          <MudButton Size="Size.Small" OnClick="@(() => CambiarActivo(c))">
-                              @(c.Activo ? "Desactivar" : "Reactivar")
-                          </MudButton>
+                          @if (_puedeModificar)
+                          {
+                              <MudButton Size="Size.Small" OnClick="@(() => Navegacion.NavigateTo($"/clientes/{c.Id}"))">Editar</MudButton>
+                          }
+                          @if (_puedeDesactivar)
+                          {
+                              <MudButton Size="Size.Small" OnClick="@(() => CambiarActivo(c))">
+                                  @(c.Activo ? "Desactivar" : "Reactivar")
+                              </MudButton>
+                          }
+                          @if (_puedeEliminar)
+                          {
+                              <MudButton Size="Size.Small" Color="Color.Error" OnClick="@(() => Eliminar(c))">Eliminar</MudButton>
+                          }
                       </div>);
 
     private async Task<ResultadoDePagina<ClienteEnListaDto>> CargarAsync(PeticionDePagina peticion, CancellationToken ct)
@@ -122,6 +135,21 @@
         _error = error;
 
         if (error is null) await RecargarAsync();
+    }
+
+    /// <summary>Solo prospera si ningún comprobante usó al cliente; si no, el servidor pide desactivarlo.</summary>
+    private async Task Eliminar(ClienteEnListaDto cliente)
+    {
+        var confirmado = await Confirmacion.ConfirmarAsync(
+            "Eliminar cliente",
+            $"«{cliente.Nombre}» se borrará de forma definitiva. Solo es posible si ningún comprobante lo usa.",
+            "Eliminar");
+
+        if (!confirmado) return;
+
+        _error = await Clientes.EliminarAsync(cliente.Id);
+
+        if (_error is null) await RecargarAsync();
     }
 
     private void Exportar()

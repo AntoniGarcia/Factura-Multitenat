@@ -117,6 +117,9 @@ public sealed class ServicioDeTrasladosCartaPorte(
         if (traslado is null)
             return ErrorNegocio.NoEncontrado("traslado-no-encontrado", "No se encontró ese traslado Carta Porte.");
 
+        if (PermisoDeEmision.ExigirEdicion(contexto, traslado.Comprobante) is { } sinPermiso)
+            return sinPermiso;
+
         if (traslado.Comprobante.Estatus != EstatusComprobante.Borrador.ACadena())
             return ErrorNegocio.Conflicto("traslado-no-editable", "Solo se puede editar un traslado en borrador.");
 

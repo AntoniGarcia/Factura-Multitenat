@@ -169,6 +169,9 @@ public sealed class ServicioDeEnvioDeComprobantes(
         if (comprobante is null)
             return ErrorNegocio.NoEncontrado("comprobante-no-encontrado", "Ese comprobante no existe.");
 
+        if (PermisoDeEmision.Exigir(contexto, comprobante, Permisos.Acciones.Enviar) is { } sinPermiso)
+            return sinPermiso;
+
         // Un borrador no es un CFDI, y uno cancelado o en cancelación ya no se le entrega a nadie
         // como si estuviera vigente.
         if (comprobante.Estatus != EstatusComprobante.Timbrado.ACadena() || comprobante.Uuid is null)

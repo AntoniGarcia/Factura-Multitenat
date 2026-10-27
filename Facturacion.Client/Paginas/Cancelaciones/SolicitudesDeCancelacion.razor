@@ -1,5 +1,5 @@
 @page "/cancelaciones"
-@attribute [Authorize(Policy = Permisos.Cancelar)]
+@attribute [Authorize(Policy = Permisos.Politicas.Cancelar)]
 @using Facturacion.Client.Servicios.Documentos
 @using Facturacion.Shared.Documentos
 @inject ServicioDeCancelacion Cancelacion

@@ -140,6 +140,9 @@ public sealed class ServicioDeNotaria(
         if (ReglaDeVariante.Exigir(comprobante, VariantesDeFactura.Notaria, "factura notarial") is { } variante)
             return variante;
 
+        if (PermisoDeEmision.ExigirEdicion(contexto, comprobante) is { } sinPermiso)
+            return sinPermiso;
+
         var validacion = await ValidarDatosAsync(peticion, ct);
         if (validacion.EsFallo) return validacion.Error!;
 
@@ -229,6 +232,9 @@ public sealed class ServicioDeNotaria(
             return ErrorNegocio.Conflicto(
                 "comprobante-notarial-no-editable",
                 "Solo se pueden editar vendedores y compradores de una factura en borrador o con error.");
+
+        if (PermisoDeEmision.ExigirEdicion(contexto, datos.Comprobante) is { } sinPermiso)
+            return sinPermiso;
 
         var validacion = ValidarPartes(peticion);
         if (validacion is not null) return validacion;

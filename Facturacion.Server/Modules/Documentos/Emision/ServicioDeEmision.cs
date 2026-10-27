@@ -38,7 +38,7 @@ public sealed class ServicioDeEmision(
         if (!VariantesDeFactura.EsValida(variante))
             return ErrorNegocio.Validacion("variante-desconocida", $"'{variante}' no es una clase de factura conocida.");
 
-        if (PermisoDeEmision.Exigir(contexto, Permisos.ParaVarianteDeFactura(variante)) is { } sinPermiso)
+        if (PermisoDeEmision.Exigir(contexto, Permisos.De(Permisos.TipoDeVarianteDeFactura(variante), Permisos.Acciones.Crear)) is { } sinPermiso)
             return sinPermiso;
 
         if (await ValidarLicenciaDeVarianteAsync(variante, ct) is { } sinLicencia)
@@ -122,7 +122,7 @@ public sealed class ServicioDeEmision(
         if (comprobante is null)
             return ErrorNegocio.NoEncontrado("comprobante-no-encontrado", "Ese comprobante no existe.");
 
-        if (PermisoDeEmision.Exigir(contexto, comprobante) is { } sinPermiso)
+        if (PermisoDeEmision.ExigirEdicion(contexto, comprobante) is { } sinPermiso)
             return sinPermiso;
 
         if (comprobante.TipoDeComprobante != TipoFactura)
@@ -215,7 +215,7 @@ public sealed class ServicioDeEmision(
         if (comprobante is null)
             return ErrorNegocio.NoEncontrado("comprobante-no-encontrado", "Ese comprobante no existe.");
 
-        if (PermisoDeEmision.Exigir(contexto, comprobante) is { } sinPermiso)
+        if (PermisoDeEmision.Exigir(contexto, comprobante, Permisos.Acciones.Eliminar) is { } sinPermiso)
             return sinPermiso;
 
         if (comprobante.Estatus != "borrador")

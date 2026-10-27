@@ -22,11 +22,11 @@
                                Activos="_activos"
                                ActivosCambiado="AlFiltrarActivos"
                                TextoNuevo="Nuevo producto"
-                               OnNuevo="@(_puedeEditar ? EventCallback.Factory.Create(this, () => Navegacion.NavigateTo("/productos/nuevo")) : default)"
+                               OnNuevo="@(_puedeCrear ? EventCallback.Factory.Create(this, () => Navegacion.NavigateTo("/productos/nuevo")) : default)"
                                OnExportar="Exportar"
                                TextoSecundario="Importar CSV"
                                IconoSecundario="@Icons.Material.Filled.UploadFile"
-                               OnSecundario="@(_puedeEditar ? EventCallback.Factory.Create(this, () => Navegacion.NavigateTo("/productos/importar")) : default)" />
+                               OnSecundario="@(_puedeCrear || _puedeModificar ? EventCallback.Factory.Create(this, () => Navegacion.NavigateTo("/productos/importar")) : default)" />
 
     <div class="catalogo-tabla">
         <TablaDatos T="ProductoEnListaDto"
@@ -42,18 +42,22 @@
     private TablaDatos<ProductoEnListaDto>? _tabla;
     private DetalleProblema? _error;
     private string _texto = string.Empty;
-    private bool? _activos = true;
+    private bool? _activos;
 
-    // Comodidad visual: sin administrar_productos el servidor rechaza altas, ediciones y bajas, así
-    // que ni se ofrecen. La protección real es la política del endpoint.
-    private bool _puedeEditar;
+    // Comodidad visual: lo que el servidor rechazaría ni se ofrece. La protección real es la
+    // política de cada endpoint. La importación crea y actualiza: se ofrece con cualquiera de
+    // las dos y el servidor rechaza, renglón por renglón, lo que no se tenga.
+    private bool _puedeCrear, _puedeModificar, _puedeDesactivar, _puedeEliminar;
 
     private IReadOnlyList<ColumnaDeTabla<ProductoEnListaDto>> _columnas = [];
 
     protected override void OnInitialized()
     {
-        _puedeEditar = Sesion.TienePermiso(Permisos.AdministrarProductos);
-        _columnas = _puedeEditar ? [.. Columnas, Acciones] : Columnas;
+        _puedeCrear = Sesion.TienePermiso(Permisos.ProductosCrear);
+        _puedeModificar = Sesion.TienePermiso(Permisos.ProductosModificar);
+        _puedeDesactivar = Sesion.TienePermiso(Permisos.ProductosDesactivar);
+        _puedeEliminar = Sesion.TienePermiso(Permisos.ProductosEliminar);
+        _columnas = _puedeModificar || _puedeDesactivar || _puedeEliminar ? [.. Columnas, Acciones] : Columnas;
     }
 
     private IReadOnlyList<ColumnaDeTabla<ProductoEnListaDto>> Columnas =>
@@ -74,10 +78,20 @@
     ];
 
     private ColumnaDeTabla<ProductoEnListaDto> Acciones => new("", p => @<div class="acciones-renglon">
-                          <MudButton Size="Size.Small" OnClick="@(() => Navegacion.NavigateTo($"/productos/{p.Id}"))">Editar</MudButton>
-                          <MudButton Size="Size.Small" OnClick="@(() => CambiarActivo(p))">
-                              @(p.Activo ? "Desactivar" : "Reactivar")
-                          </MudButton>
+                          @if (_puedeModificar)
+                          {
+                              <MudButton Size="Size.Small" OnClick="@(() => Navegacion.NavigateTo($"/productos/{p.Id}"))">Editar</MudButton>
+                          }
+                          @if (_puedeDesactivar)
+                          {
+                              <MudButton Size="Size.Small" OnClick="@(() => CambiarActivo(p))">
+                                  @(p.Activo ? "Desactivar" : "Reactivar")
+                              </MudButton>
+                          }
+                          @if (_puedeEliminar)
+                          {
+                              <MudButton Size="Size.Small" Color="Color.Error" OnClick="@(() => Eliminar(p))">Eliminar</MudButton>
+                          }
                       </div>);
 
     private async Task<ResultadoDePagina<ProductoEnListaDto>> CargarAsync(PeticionDePagina peticion, CancellationToken ct)
@@ -120,6 +134,21 @@
         _error = error;
 
         if (error is null) await RecargarAsync();
+    }
+
+    /// <summary>Solo prospera si ningún concepto usó el producto; si no, el servidor pide desactivarlo.</summary>
+    private async Task Eliminar(ProductoEnListaDto producto)
+    {
+        var confirmado = await Confirmacion.ConfirmarAsync(
+            "Eliminar producto",
+            $"«{producto.Descripcion}» se borrará de forma definitiva. Solo es posible si ningún comprobante lo usa.",
+            "Eliminar");
+
+        if (!confirmado) return;
+
+        _error = await Productos.EliminarAsync(producto.Id);
+
+        if (_error is null) await RecargarAsync();
     }
 
     private void Exportar()

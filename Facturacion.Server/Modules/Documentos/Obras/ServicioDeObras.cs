@@ -64,6 +64,8 @@ public sealed class ServicioDeObras(
             return ErrorNegocio.Conflicto("obra-no-editable", "Los datos de obra solo se editan en un borrador.");
         if (ReglaDeVariante.Exigir(comprobante, VariantesDeFactura.Obra, "factura de obra") is { } variante)
             return variante;
+        if (PermisoDeEmision.ExigirEdicion(contexto, comprobante) is { } sinPermiso)
+            return sinPermiso;
         if (comprobante.SubTotal <= 0)
             return ErrorNegocio.Validacion("obra-sin-trabajos", "Guarda primero los conceptos de la factura.");
         if (peticion.TipoObra is not (TiposDeObra.Publica or TiposDeObra.Privada))

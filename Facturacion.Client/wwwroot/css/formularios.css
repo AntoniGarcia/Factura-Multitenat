@@ -1293,6 +1293,24 @@
     overflow-y: auto;
 }
 
+/* Selector de permisos de usuarios internos: pestañas por sección sobre el mismo panel. */
+.selector-permisos-pestanas .mud-tabs-panels {
+    padding-top: 0.75rem;
+}
+
+.permiso-casilla {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    column-gap: 0.5rem;
+}
+
+/* Lo concedido por otra casilla: se explica junto a la casilla deshabilitada. */
+.permiso-concedido {
+    color: var(--texto-suave);
+    font-size: 0.75rem;
+}
+
 @media (max-width: 42rem) {
     .selector-permisos-panel {
         grid-template-columns: minmax(0, 1fr);

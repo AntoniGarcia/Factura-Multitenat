@@ -79,7 +79,7 @@ public sealed class ServicioDeTimbrado(
             .FirstOrDefaultAsync(ct);
 
         if (clase is not null &&
-            PermisoDeEmision.Exigir(contexto, PermisoDeEmision.Para(clase.TipoDeComprobante, clase.Variante)) is { } sinPermiso)
+            PermisoDeEmision.Exigir(contexto, PermisoDeEmision.Para(clase.TipoDeComprobante, clase.Variante, Permisos.Acciones.Timbrar)) is { } sinPermiso)
             return sinPermiso;
 
         var apartado = await ApartarAsync(comprobanteId, ct);

@@ -1,6 +1,6 @@
 @page "/productos/nuevo"
 @page "/productos/{Id:guid}"
-@attribute [Authorize(Policy = Permisos.AdministrarProductos)]
+@attribute [Authorize(Policy = Permisos.Politicas.EditarProductos)]
 @using Facturacion.Shared.Contratos
 @inject ServicioDeProductos Productos
 @inject ServicioDeEmpresa Empresas

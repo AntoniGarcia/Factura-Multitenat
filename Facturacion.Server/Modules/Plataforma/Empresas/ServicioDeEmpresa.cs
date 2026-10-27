@@ -208,6 +208,19 @@ public sealed class ServicioDeEmpresa(
         var configuracion = await baseDeDatos.ConfiguracionesEmpresa.FirstOrDefaultAsync(ct);
         var antes = configuracion is null ? null : AConfiguracionDto(configuracion);
 
+        // General e Impuestos viajan en la misma petición, pero son casillas distintas: se
+        // rechaza tocar la parte que no se tiene, en lugar de ignorarla en silencio.
+        var actual = antes ?? peticion;
+
+        if (!contexto.Tiene(Permisos.ConfiguracionImpuestos) && SoloImpuestos(peticion) != SoloImpuestos(actual))
+            return ErrorNegocio.SinPermiso("sin-permiso-impuestos",
+                "No tienes permiso para cambiar los impuestos. Pídeselo al titular de la cuenta.");
+
+        if (!contexto.Tiene(Permisos.ConfiguracionGeneral) &&
+            peticion.DiasAvisoCaducidadCertificado != actual.DiasAvisoCaducidadCertificado)
+            return ErrorNegocio.SinPermiso("sin-permiso-general",
+                "No tienes permiso para cambiar la configuración general. Pídeselo al titular de la cuenta.");
+
         if (configuracion is null)
         {
             // EmpresaId lo pone el interceptor de sellado desde el claim; no se asigna aquí
@@ -232,6 +245,9 @@ public sealed class ServicioDeEmpresa(
 
         return peticion;
     }
+
+    /// <summary>La configuración sin la parte de General, para comparar solo los impuestos.</summary>
+    private static ConfiguracionEmpresaDto SoloImpuestos(ConfiguracionEmpresaDto c) => c with { DiasAvisoCaducidadCertificado = 0 };
 
     private Task<Empresa?> CargarAsync(CancellationToken ct)
         => baseDeDatos.Empresas.FirstOrDefaultAsync(e => e.Id == contexto.EmpresaId, ct);

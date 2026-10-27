@@ -1,6 +1,6 @@
 @page "/facturas/nueva"
 @page "/facturas/{Id:guid}"
-@attribute [Authorize(Policy = Permisos.Politicas.EmitirFacturas)]
+@attribute [Authorize(Policy = Permisos.Politicas.EditarFacturas)]
 @using Facturacion.Client.Servicios.Documentos
 @using Facturacion.Client.Servicios.Plataforma
 @using Facturacion.Client.Componentes.Facturas

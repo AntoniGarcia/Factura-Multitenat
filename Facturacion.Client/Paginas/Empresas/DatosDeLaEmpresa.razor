@@ -1,6 +1,6 @@
 @page "/empresa"
 @page "/empresa/certificados"
-@attribute [Authorize(Policy = Permisos.MiEmpresa)]
+@attribute [Authorize(Policy = Permisos.Politicas.MiEmpresa)]
 @implements IDisposable
 @using Facturacion.Client.Componentes.Empresas
 @using Facturacion.Shared.Contratos
@@ -8,6 +8,7 @@
 @inject ServicioDeCatalogos Catalogos
 @inject IDialogService Dialogos
 @inject NavigationManager Navegacion
+@inject ServicioDeSesion Sesion
 
 <PageTitle>Mi empresa</PageTitle>
 <TituloDePagina Texto="Mi empresa" />
@@ -16,7 +17,7 @@
    la página que tenían antes, y la siguen usando los avisos de Inicio y del panel de actividad. *@
 <TarjetaFormulario Class="tarjeta-formulario-catalogo empresa-formulario">
 <MudTabs @bind-ActivePanelIndex="_pestana">
-    <MudTabPanel Text="Datos de la empresa" Icon="@Icons.Material.Filled.Business">
+    <MudTabPanel Text="Datos de la empresa" Icon="@Icons.Material.Filled.Business" Visible="_datos">
         <PanelErrores Problema="_error" />
 
         @if (_empresa is null)
@@ -158,7 +159,7 @@
         }
     </MudTabPanel>
 
-    <MudTabPanel Text="Certificados" Icon="@Icons.Material.Filled.VerifiedUser">
+    <MudTabPanel Text="Certificados" Icon="@Icons.Material.Filled.VerifiedUser" Visible="_certificados">
         <CertificadosDeSello />
     </MudTabPanel>
 </MudTabs>
@@ -168,6 +169,10 @@
     private const int PestanaCertificados = 1;
 
     private int _pestana;
+
+    // Cada pestaña es una casilla de Mi empresa: solo se muestran las que el usuario tiene.
+    private bool _datos, _certificados;
+
     private EmpresaDto? _empresa;
     private DetalleProblema? _error;
     private bool _guardando;
@@ -198,8 +203,8 @@
     // tiene parámetros, Blazor no vuelve a llamar a OnParametersSet: la pestaña se sigue por la
     // ubicación.
     private void ElegirPestanaPorRuta()
-        => _pestana = Navegacion.ToBaseRelativePath(Navegacion.Uri)
-            .StartsWith("empresa/certificados", StringComparison.OrdinalIgnoreCase) ? PestanaCertificados : 0;
+        => _pestana = !_datos || Navegacion.ToBaseRelativePath(Navegacion.Uri)
+            .StartsWith("empresa/certificados", StringComparison.OrdinalIgnoreCase) && _certificados ? PestanaCertificados : 0;
 
     private void AlCambiarUbicacion(object? remitente, LocationChangedEventArgs e)
     {
@@ -211,6 +216,8 @@
 
     protected override async Task OnInitializedAsync()
     {
+        _datos = Sesion.TienePermiso(Permisos.EmpresaDatos);
+        _certificados = Sesion.TienePermiso(Permisos.EmpresaCertificados);
         ElegirPestanaPorRuta();
         Navegacion.LocationChanged += AlCambiarUbicacion;
 

@@ -41,6 +41,7 @@ public static class AccionesDeBitacora
 
     public const string SerieCreada = "serie_creada";
     public const string SerieActualizada = "serie_actualizada";
+    public const string SerieEliminada = "serie_eliminada";
     public const string FolioReservado = "folio_reservado";
     public const string FolioConfirmado = "folio_confirmado";
 
@@ -55,12 +56,18 @@ public static class AccionesDeBitacora
     public const string ClienteActualizado = "cliente_actualizado";
     public const string ClienteDesactivado = "cliente_desactivado";
     public const string ClienteReactivado = "cliente_reactivado";
+    public const string ClienteEliminado = "cliente_eliminado";
 
     // Productos.
     public const string ProductoCreado = "producto_creado";
     public const string ProductoActualizado = "producto_actualizado";
     public const string ProductoDesactivado = "producto_desactivado";
     public const string ProductoReactivado = "producto_reactivado";
+
+    // Borrado físico de un registro de catálogo que nunca se usó (AGENTS.md §11).
+    public const string ProductoEliminado = "producto_eliminado";
+    public const string VehiculoEliminado = "vehiculo_eliminado";
+    public const string FiguraEliminada = "figura_eliminada";
 
     // Registra movimientos y reservas para explicar los cambios en el saldo de timbres.
     public const string CompraSolicitada = "compra_solicitada";
@@ -162,6 +169,8 @@ public static class EntidadesDeBitacora
     public const string UsuarioEmpresa = "UsuarioEmpresa";
     public const string Perfil = "Perfil";
     public const string TrasladoCartaPorte = "TrasladoCartaPorte";
+    public const string Vehiculo = "Vehiculo";
+    public const string FiguraTransporte = "FiguraTransporte";
     public const string Comprobante = "Comprobante";
 
     // ── Operador del SaaS ────────────────────────────────────────────────────────────────

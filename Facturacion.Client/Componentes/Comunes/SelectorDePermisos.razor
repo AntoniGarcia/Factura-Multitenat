@@ -2,66 +2,80 @@
 @inject ServicioDeEmpresa Empresa
 
 @*
-    Los permisos de un usuario interno en la empresa activa, por sección: la lista de secciones
-    a la izquierda, cada una con su «Marcar todos», y las casillas de la elegida a la derecha.
-    Mismo acomodo que el selector del panel del operador (SelectorDePermisosDePanel). Por
-    permiso, nunca por rol: el «Marcar todos» es solo ayuda de captura, no
-    un permiso más.
+    Los permisos de un usuario interno en la empresa activa: una pestaña por sección. En las
+    secciones con varios renglones (Emitir, Catálogos, Empresa) la lista va a la izquierda, cada
+    renglón con su «Marcar todos», y las casillas del elegido a la derecha; en las de un solo
+    renglón (Documentos, Tienda) las casillas se muestran directo. Por permiso, nunca por rol:
+    el «Marcar todos» es solo ayuda de captura, no un permiso más.
 
-    Las facturas con complemento solo se ofrecen si la empresa tiene la licencia. Si un usuario
-    ya tenía una asignada y la licencia se retiró, se conserva sin mostrarse: quitarla aquí sin
-    que nadie la viera sería un cambio silencioso, y el servidor rechaza la emisión igual.
+    Lo concedido por otra casilla (el listado por Emitir, eliminar en todo por Documentos) se ve
+    marcado y deshabilitado con el motivo: no se guarda, así que al quitar la casilla que lo
+    concede se va solo (Permisos.ConImplicitos).
+
+    Los documentos con complemento solo se ofrecen si la empresa tiene la licencia. Si un usuario
+    ya tenía uno asignado y la licencia se retiró, se conserva sin mostrarse: quitarlo aquí sin
+    que nadie lo viera sería un cambio silencioso, y el servidor rechaza la emisión igual.
 *@
 
-<div class="selector-permisos-panel">
-    <div class="permisos-modulos" role="group" aria-label="Secciones de permisos">
-        @foreach (var seccion in Permisos.Secciones)
-        {
-            var visibles = Visibles(seccion);
-            var activa = SeccionActiva.Titulo == seccion.Titulo;
-            var marcados = visibles.Count(Value.Contains);
+<MudTabs @bind-ActivePanelIndex="_pestana" Class="selector-permisos-pestanas" Elevation="0">
+    @foreach (var seccion in Permisos.Secciones)
+    {
+        var elementos = Visibles(seccion);
 
-            <div class="permiso-modulo @(activa ? "activo" : null)">
-                <MudCheckBox T="bool?"
-                             TriState="true"
-                             Value="@(marcados == 0 ? false : marcados == visibles.Count ? true : null)"
-                             ValueChanged="@(_ => MarcarSeccion(seccion, marcar: marcados < visibles.Count))"
-                             Label="@seccion.Titulo"
-                             Disabled="@Deshabilitado" />
-                <button type="button"
-                        class="permiso-modulo-mostrar"
-                        aria-label="@($"Mostrar permisos de {seccion.Titulo}")"
-                        aria-pressed="@activa"
-                        @onclick="@(() => _seccionActiva = seccion.Titulo)">
-                    <span class="permiso-modulo-cantidad">@marcados</span>
-                    <MudIcon Icon="@Icons.Material.Filled.ChevronRight" Size="Size.Small" />
-                </button>
-            </div>
-        }
-    </div>
-
-    <section class="permisos-detalle" aria-labelledby="permisos-detalle-titulo">
-        <div class="permisos-detalle-encabezado">
-            <h3 id="permisos-detalle-titulo">@SeccionActiva.Titulo</h3>
-            <span>@Visibles(SeccionActiva).Count(Value.Contains) de @Visibles(SeccionActiva).Count</span>
-        </div>
-        @if (Ayuda(SeccionActiva) is { } ayuda)
-        {
-            <p class="permisos-detalle-ayuda">@ayuda</p>
-        }
-        <div class="permisos-acciones" role="group" aria-label="@($"Permisos de {SeccionActiva.Titulo}")">
-            @foreach (var clave in Visibles(SeccionActiva))
+        <MudTabPanel Text="@TituloDePestana(seccion, elementos)">
+            @if (Ayuda(seccion) is { } ayuda)
             {
-                <MudCheckBox T="bool"
-                             @key="clave"
-                             Value="@Value.Contains(clave)"
-                             ValueChanged="@(marcado => Cambiar(clave, marcado))"
-                             Label="@Permisos.EtiquetaCorta(clave)"
-                             Disabled="@Deshabilitado" />
+                <p class="permisos-detalle-ayuda">@ayuda</p>
             }
-        </div>
-    </section>
-</div>
+
+            @if (elementos.Count == 1)
+            {
+                <section class="permisos-detalle" aria-label="@($"Permisos de {seccion.Titulo}")">
+                    @Casillas(elementos[0])
+                </section>
+            }
+            else
+            {
+                var activo = Activo(seccion, elementos);
+
+                <div class="selector-permisos-panel">
+                    <div class="permisos-modulos" role="group" aria-label="@($"{seccion.Titulo}: elige un renglón")">
+                        @foreach (var elemento in elementos)
+                        {
+                            var marcados = Efectivos(elemento);
+                            var seleccionado = elemento.Nombre == activo.Nombre;
+
+                            <div class="permiso-modulo @(seleccionado ? "activo" : null)">
+                                <MudCheckBox T="bool?"
+                                             TriState="true"
+                                             Value="@(marcados == 0 ? false : marcados == elemento.Subpermisos.Count ? true : null)"
+                                             ValueChanged="@(_ => MarcarElemento(seccion, elemento, marcar: marcados < elemento.Subpermisos.Count))"
+                                             Label="@elemento.Etiqueta"
+                                             Disabled="@Deshabilitado" />
+                                <button type="button"
+                                        class="permiso-modulo-mostrar"
+                                        aria-label="@($"Mostrar permisos de {elemento.Etiqueta}")"
+                                        aria-pressed="@seleccionado"
+                                        @onclick="@(() => _activos[seccion.Titulo] = elemento.Nombre)">
+                                    <span class="permiso-modulo-cantidad">@marcados/@elemento.Subpermisos.Count</span>
+                                    <MudIcon Icon="@Icons.Material.Filled.ChevronRight" Size="Size.Small" />
+                                </button>
+                            </div>
+                        }
+                    </div>
+
+                    <section class="permisos-detalle" aria-labelledby="@($"permisos-{activo.Nombre}")">
+                        <div class="permisos-detalle-encabezado">
+                            <h3 id="@($"permisos-{activo.Nombre}")">@activo.Etiqueta</h3>
+                            <span>@Efectivos(activo) de @activo.Subpermisos.Count</span>
+                        </div>
+                        @Casillas(activo)
+                    </section>
+                </div>
+            }
+        </MudTabPanel>
+    }
+</MudTabs>
 
 @code {
     [Parameter, EditorRequired]
@@ -73,52 +87,95 @@
     [Parameter]
     public bool Deshabilitado { get; set; }
 
-    private string _seccionActiva = Permisos.Secciones[0].Titulo;
+    private int _pestana;
+    private readonly Dictionary<string, string> _activos = [];
     private LicenciasDto? _licencias;
-
-    private SeccionDePermisos SeccionActiva =>
-        Permisos.Secciones.FirstOrDefault(s => s.Titulo == _seccionActiva) ?? Permisos.Secciones[0];
 
     protected override async Task OnInitializedAsync()
         => _licencias = (await Empresa.ObtenerAsync())?.Licencias;
 
-    private IReadOnlyList<string> Visibles(SeccionDePermisos seccion)
-        => [.. seccion.Claves.Where(TieneLicencia)];
-
-    private bool TieneLicencia(string clave) => clave switch
+    private RenderFragment Casillas(ElementoDePermisos elemento) => __builder =>
     {
-        Permisos.EmitirNotaria => _licencias?.Notarios == true,
-        Permisos.EmitirComercioExterior => _licencias?.Comercio == true,
-        Permisos.EmitirObra => _licencias?.Obras == true,
+        <div class="permisos-acciones" role="group" aria-label="@($"Permisos de {elemento.Etiqueta}")">
+            @foreach (var subpermiso in elemento.Subpermisos)
+            {
+                var concedido = Permisos.ConcedidoPor(subpermiso.Clave, Value);
+
+                <div class="permiso-casilla" @key="subpermiso.Clave">
+                    <MudCheckBox T="bool"
+                                 Value="@(concedido is not null || Value.Contains(subpermiso.Clave))"
+                                 ValueChanged="@(marcado => Cambiar(subpermiso.Clave, marcado))"
+                                 Label="@subpermiso.Etiqueta"
+                                 Disabled="@(Deshabilitado || concedido is not null)" />
+                    @if (concedido is not null)
+                    {
+                        <span class="permiso-concedido">@concedido</span>
+                    }
+                </div>
+            }
+        </div>
+    };
+
+    private IReadOnlyList<ElementoDePermisos> Visibles(SeccionDePermisos seccion)
+        => [.. seccion.Elementos.Where(TieneLicencia)];
+
+    private bool TieneLicencia(ElementoDePermisos elemento) => elemento.Licencia switch
+    {
+        LicenciasDePermiso.Notarios => _licencias?.Notarios == true,
+        LicenciasDePermiso.Comercio => _licencias?.Comercio == true,
+        LicenciasDePermiso.Obras => _licencias?.Obras == true,
         _ => true
     };
 
+    private ElementoDePermisos Activo(SeccionDePermisos seccion, IReadOnlyList<ElementoDePermisos> elementos)
+        => _activos.TryGetValue(seccion.Titulo, out var nombre) && elementos.FirstOrDefault(e => e.Nombre == nombre) is { } elegido
+            ? elegido
+            : elementos[0];
+
+    /// <summary>Las casillas del renglón que quedan concedidas, asignadas o por otra casilla.</summary>
+    private int Efectivos(ElementoDePermisos elemento)
+        => elemento.Subpermisos.Count(p => Value.Contains(p.Clave) || Permisos.ConcedidoPor(p.Clave, Value) is not null);
+
+    private string TituloDePestana(SeccionDePermisos seccion, IReadOnlyList<ElementoDePermisos> elementos)
+        => elementos.Sum(Efectivos) is > 0 and var marcados ? $"{seccion.Titulo} ({marcados})" : seccion.Titulo;
+
     private static string? Ayuda(SeccionDePermisos seccion) => seccion.Titulo switch
     {
-        "Documentos" => "Solo consulta. Quien tiene cualquier permiso de Emitir también ve el listado y descarga.",
-        "Emitir" => "Las facturas con complemento aparecen solo si la empresa tiene contratado el módulo.",
-        "Catálogos" => "Alta, edición y baja. Consultarlos ya viene con cualquier permiso de Emitir.",
+        "Documentos" => "Cualquier permiso de Emitir incluye el listado y la descarga. Eliminar borradores aplica a todos los tipos de documento.",
+        "Emitir" => "Crear permite editar los borradores propios; Modificar, también los de otros usuarios. " +
+                    "Las facturas con complemento aparecen solo si la empresa tiene contratado el módulo.",
+        "Catálogos" => "Consultarlos ya viene con cualquier permiso de Emitir. Eliminar solo borra lo que ningún comprobante ha usado.",
         _ => null
     };
 
+    // La descarga no tiene sentido sin el listado: marcarla lo marca, y quitar el listado la quita.
     private Task Cambiar(string clave, bool marcado)
     {
-        List<string> nuevo = marcado
-            ? Value.Contains(clave) ? Value : [.. Value, clave]
-            : [.. Value.Where(p => p != clave)];
+        var nuevo = new List<string>(Value);
+
+        if (marcado)
+        {
+            if (!nuevo.Contains(clave)) nuevo.Add(clave);
+            if (clave == Permisos.DocumentosDescarga && !nuevo.Contains(Permisos.DocumentosListado))
+                nuevo.Add(Permisos.DocumentosListado);
+        }
+        else
+        {
+            nuevo.Remove(clave);
+            if (clave == Permisos.DocumentosListado) nuevo.Remove(Permisos.DocumentosDescarga);
+        }
 
         return ValueChanged.InvokeAsync(nuevo);
     }
 
-    /// <summary>Marca o desmarca solo las casillas que se ven: las de una licencia retirada no se tocan.</summary>
-    private Task MarcarSeccion(SeccionDePermisos seccion, bool marcar)
+    private Task MarcarElemento(SeccionDePermisos seccion, ElementoDePermisos elemento, bool marcar)
     {
-        _seccionActiva = seccion.Titulo;
-        var visibles = Visibles(seccion);
+        _activos[seccion.Titulo] = elemento.Nombre;
+        var claves = elemento.Subpermisos.Select(p => p.Clave).ToList();
 
         List<string> nuevo = marcar
-            ? [.. Value.Union(visibles)]
-            : [.. Value.Where(p => !visibles.Contains(p))];
+            ? [.. Value.Union(claves)]
+            : [.. Value.Where(p => !claves.Contains(p))];
 
         return ValueChanged.InvokeAsync(nuevo);
     }

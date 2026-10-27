@@ -155,8 +155,18 @@ else
         }
     }
 
+    // Con decenas de casillas la lista completa no cabe en un renglón: se resume por sección
+    // («Emitir 12 · Catálogos 4»). El detalle está en Editar permisos.
     private static string Etiquetas(IReadOnlyList<string> permisos)
-        => permisos.Count == 0 ? "—" : string.Join(", ", permisos.Select(Permisos.EtiquetaCorta));
+    {
+        var partes = Permisos.Secciones
+            .Select(s => (s.Titulo, Cuenta: s.Elementos.SelectMany(e => e.Subpermisos).Count(p => permisos.Contains(p.Clave))))
+            .Where(x => x.Cuenta > 0)
+            .Select(x => $"{x.Titulo} {x.Cuenta}")
+            .ToList();
+
+        return partes.Count == 0 ? "—" : string.Join(" · ", partes);
+    }
 
     private async Task EditarPermisos(UsuarioDeEmpresaDto usuario)
     {

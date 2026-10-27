@@ -12,7 +12,9 @@ namespace Facturacion.Server.Modules.Plataforma.Productos;
 public sealed class ServicioDeProductos(
     AppDbContext baseDeDatos,
     ValidadorDeProducto validador,
-    IServicioDeBitacora bitacora) : IServicioProductos
+    IServicioDeBitacora bitacora,
+    IContextoEmpresa contexto,
+    IUsoDeCatalogos uso) : IServicioProductos
 {
     public async Task<ProductoParaConceptoDto?> ObtenerParaConceptoAsync(Guid productoId, CancellationToken ct)
     {
@@ -94,6 +96,13 @@ public sealed class ServicioDeProductos(
 
     public async Task<Resultado<ProductoDto>> CrearAsync(PeticionGuardarProducto peticion, CancellationToken ct)
     {
+        // Aquí y no solo en el endpoint: la importación por CSV entra por este método y por
+        // ActualizarAsync, y un renglón sin permiso se rechaza con su mensaje.
+        if (!contexto.Tiene(Permisos.ProductosCrear)) return SinPermiso("crear");
+
+        if (PermisoDeCatalogo.ExigirCambioDeEstado(contexto, Permisos.Catalogos.Productos, true, peticion.Activo) is { } sinPermiso)
+            return sinPermiso;
+
         var error = await validador.ValidarAsync(peticion, ct);
         if (error is not null) return error;
 
@@ -133,6 +142,11 @@ public sealed class ServicioDeProductos(
 
         if (producto is null)
             return ErrorNegocio.NoEncontrado("producto-no-encontrado", "No se encontró ese producto.");
+
+        if (!contexto.Tiene(Permisos.ProductosModificar)) return SinPermiso("modificar");
+
+        if (PermisoDeCatalogo.ExigirCambioDeEstado(contexto, Permisos.Catalogos.Productos, producto.Activo, peticion.Activo) is { } sinPermiso)
+            return sinPermiso;
 
         var error = await validador.ValidarAsync(peticion, ct);
         if (error is not null) return error;
@@ -272,6 +286,36 @@ public sealed class ServicioDeProductos(
 
         return new ResultadoDeImportacion(creados, actualizados, rechazados);
     }
+
+    /// <summary>
+    /// Borrado físico, solo de un producto que ningún concepto usó, ni siquiera en un borrador
+    /// (AGENTS.md §11). El que ya se usó se desactiva. Sus impuestos se van en cascada.
+    /// </summary>
+    public async Task<Resultado> EliminarAsync(Guid id, CancellationToken ct)
+    {
+        var producto = await baseDeDatos.Productos
+            .Include(p => p.Impuestos)
+            .FirstOrDefaultAsync(p => p.Id == id, ct);
+
+        if (producto is null)
+            return ErrorNegocio.NoEncontrado("producto-no-encontrado", "No se encontró ese producto.");
+
+        if (await uso.ProductoUsadoAsync(id, ct))
+            return PermisoDeCatalogo.EnUso("Este producto");
+
+        bitacora.Registrar(
+            EntidadesDeBitacora.Producto, producto.Id.ToString(), AccionesDeBitacora.ProductoEliminado,
+            antes: ADto(producto));
+
+        baseDeDatos.Productos.Remove(producto);
+        await baseDeDatos.SaveChangesAsync(ct);
+
+        return Resultado.Exito();
+    }
+
+    private static ErrorNegocio SinPermiso(string accion)
+        => ErrorNegocio.SinPermiso($"sin-permiso-{accion}-productos",
+            $"No tienes permiso para {accion} productos. Pídeselo al titular de la cuenta.");
 
     /// <summary>
     /// Siguiente consecutivo. Vale lo mismo que en clientes: un código repetido lo ataja el

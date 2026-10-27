@@ -12,7 +12,9 @@ namespace Facturacion.Server.Modules.Plataforma.Clientes;
 public sealed class ServicioDeClientes(
     AppDbContext baseDeDatos,
     ValidadorDeCliente validador,
-    IServicioDeBitacora bitacora) : IServicioClientes
+    IServicioDeBitacora bitacora,
+    IContextoEmpresa contexto,
+    IUsoDeCatalogos uso) : IServicioClientes
 {
     /// <summary>Devuelve una copia de los datos fiscales del cliente para conservarlos en el comprobante.</summary>
     public async Task<ReceptorFiscalDto?> ObtenerParaTimbradoAsync(Guid clienteId, CancellationToken ct)
@@ -104,6 +106,9 @@ public sealed class ServicioDeClientes(
         var error = await validador.ValidarAsync(peticion, rfc, nombre.Normalizado, ct);
         if (error is not null) return error;
 
+        if (PermisoDeCatalogo.ExigirCambioDeEstado(contexto, Permisos.Catalogos.Clientes, true, peticion.Activo) is { } sinPermiso)
+            return sinPermiso;
+
         var repetido = await baseDeDatos.Clientes
             .AsNoTracking()
             .AnyAsync(c => c.Rfc == rfc, ct);
@@ -144,6 +149,9 @@ public sealed class ServicioDeClientes(
 
         if (cliente is null)
             return ErrorNegocio.NoEncontrado("cliente-no-encontrado", "No se encontró ese cliente.");
+
+        if (PermisoDeCatalogo.ExigirCambioDeEstado(contexto, Permisos.Catalogos.Clientes, cliente.Activo, peticion.Activo) is { } sinPermiso)
+            return sinPermiso;
 
         var rfc = (peticion.Rfc ?? string.Empty).Trim().ToUpperInvariant();
         var nombre = NombreFiscal.Normalizar(peticion.Nombre);
@@ -199,6 +207,30 @@ public sealed class ServicioDeClientes(
         await baseDeDatos.SaveChangesAsync(ct);
 
         return ADto(cliente);
+    }
+
+    /// <summary>
+    /// Borrado físico, solo de un cliente que ningún comprobante usó, ni siquiera un borrador
+    /// (AGENTS.md §11). El que ya se usó se desactiva.
+    /// </summary>
+    public async Task<Resultado> EliminarAsync(Guid id, CancellationToken ct)
+    {
+        var cliente = await baseDeDatos.Clientes.FirstOrDefaultAsync(c => c.Id == id, ct);
+
+        if (cliente is null)
+            return ErrorNegocio.NoEncontrado("cliente-no-encontrado", "No se encontró ese cliente.");
+
+        if (await uso.ClienteUsadoAsync(id, ct))
+            return PermisoDeCatalogo.EnUso("Este cliente");
+
+        bitacora.Registrar(
+            EntidadesDeBitacora.Cliente, cliente.Id.ToString(), AccionesDeBitacora.ClienteEliminado,
+            antes: ADto(cliente));
+
+        baseDeDatos.Clientes.Remove(cliente);
+        await baseDeDatos.SaveChangesAsync(ct);
+
+        return Resultado.Exito();
     }
 
     /// <summary>

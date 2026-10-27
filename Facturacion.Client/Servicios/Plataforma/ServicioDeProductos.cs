@@ -48,6 +48,16 @@ public sealed class ServicioDeProductos(IHttpClientFactory fabrica)
         return await LeerAsync<ProductoDto>(respuesta, ct);
     }
 
+    /// <summary>Borra un producto que nunca se usó. El servidor rechaza al que ya está en un concepto.</summary>
+    public async Task<DetalleProblema?> EliminarAsync(Guid id, CancellationToken ct = default)
+    {
+        using var respuesta = await Cliente.DeleteAsync($"api/productos/{id}", ct);
+
+        return respuesta.IsSuccessStatusCode
+            ? null
+            : await respuesta.Content.ReadFromJsonAsync<DetalleProblema>(ct);
+    }
+
     /// <summary>Sube el CSV y devuelve la vista previa. No guarda nada todavía.</summary>
     public async Task<(VistaPreviaDeImportacion? Exito, DetalleProblema? Error)> AnalizarCsvAsync(
         Stream archivo, string nombre, CancellationToken ct = default)

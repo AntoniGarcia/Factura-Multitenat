@@ -279,15 +279,16 @@ public sealed class ServicioDeAutenticacion(
             : empresas.Count == 1 ? empresas[0].Id : null;
 
         // El titular no tiene renglones de permiso: lleva todos en cualquier empresa de su cuenta,
-        // también en la que acaba de dar de alta.
+        // también en la que acaba de dar de alta. Al usuario interno se le suman los implícitos,
+        // que no se guardan: el listado por emitir, eliminar en todo por Documentos, etc.
         IReadOnlyList<string> permisos = activa is not { } empresa
             ? []
             : usuario.EsTitular
                 ? Permisos.Todos
-                : await baseDeDatos.UsuariosEmpresasPermisos
+                : Permisos.ConImplicitos(await baseDeDatos.UsuariosEmpresasPermisos
                     .Where(p => p.UsuarioId == usuario.Id && p.EmpresaId == empresa)
                     .Select(p => p.PermisoClave)
-                    .ToListAsync(ct);
+                    .ToListAsync(ct));
 
         return new SesionDto(
             usuario.Id,
