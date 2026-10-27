@@ -1107,6 +1107,64 @@
     line-height: 1.15rem;
 }
 
+.emision-resumen-productos {
+    padding: 0.75rem 1rem;
+    border-bottom: 1px solid var(--borde);
+}
+
+.emision-resumen-productos h3 {
+    margin: 0 0 0.5rem;
+    color: var(--texto);
+    font-size: 0.8125rem;
+    font-weight: 500;
+}
+
+.emision-resumen-productos .emision-resumen-nota {
+    padding: 0;
+}
+
+.emision-resumen-lista {
+    max-height: min(17rem, 35vh);
+    overflow-y: auto;
+    scrollbar-gutter: stable;
+}
+
+.emision-resumen-producto {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    align-content: center;
+    column-gap: 0.5rem;
+    row-gap: 0.125rem;
+    height: 88px;
+    padding: 0.5rem 0;
+    box-sizing: border-box;
+    border-bottom: 1px solid var(--borde);
+    font-size: 0.75rem;
+    color: var(--texto-suave);
+}
+
+.emision-resumen-producto strong {
+    display: -webkit-box;
+    grid-column: 1 / -1;
+    overflow: hidden;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 2;
+    color: var(--texto);
+    font-size: 0.8125rem;
+    font-weight: 500;
+    line-height: 1.125rem;
+}
+
+.emision-resumen-producto > span:last-of-type {
+    color: var(--texto);
+    text-align: right;
+}
+
+.emision-resumen-producto small {
+    grid-column: 1 / -1;
+    font-size: 0.75rem;
+}
+
 .emision-resumen-acciones {
     display: flex;
     flex-direction: column;

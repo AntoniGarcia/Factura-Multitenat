@@ -66,12 +66,7 @@
                 }
 
                 <div class="catalogo-rejilla catalogo-rejilla-tres">
-                    <MudSelect T="string" @bind-Value="_regimenFiscal" Label="Régimen fiscal">
-                        @foreach (var regimen in Catalogos.Obtener("c_RegimenFiscal"))
-                        {
-                            <MudSelectItem T="string" Value="@regimen.Clave">@regimen.Clave — @regimen.Descripcion</MudSelectItem>
-                        }
-                    </MudSelect>
+<BuscadorCatalogo Catalogo="c_RegimenFiscal" Opciones="@Catalogos.Obtener("c_RegimenFiscal")" @bind-Clave="_regimenFiscal" Label="Régimen fiscal" PuedeLimpiar="false" />
 
                     <MudTextField @bind-Value="_cpExpedicion"
                                   Label="CP de expedición"
@@ -164,6 +159,8 @@
     </MudTabPanel>
 </MudTabs>
 </TarjetaFormulario>
+
+<ActualizadorDeCatalogos AlCambiar="@(() => { })" />
 
 @code {
     private const int PestanaCertificados = 1;

@@ -13,27 +13,29 @@
 <div class="buscador-catalogo-compuesto">
     <MudAutocomplete T="ClaveSatDto"
                       Label="@Label"
-                      Value="@Valor"
-                      ValueChanged="@(v => ValorCambiado.InvokeAsync(v))"
+                      Value="@ValorActual"
+                      ValueChanged="AlElegirAsync"
                       TextChanged="AlCambiarTextoAsync"
                       SearchFunc="Buscar"
                       ToStringFunc="@Formatear"
-                      MinCharacters="@(MostrarOpciones ? 0 : 3)"
+                      MinCharacters="@(Opciones is not null || MostrarOpciones ? 0 : 3)"
+                      MaxItems="@(Opciones is not null ? (int?)null : 50)"
                       DebounceInterval="300"
-                      OpenOnFocus="@MostrarOpciones"
+                      OpenOnFocus="@(Opciones is not null || MostrarOpciones)"
                       ResetValueOnEmptyText="true"
                       CoerceText="false"
-                      Clearable="true"
+                      Strict="@(Opciones is null && !MostrarOpciones)"
+                      Clearable="@PuedeLimpiar"
                       Required="@Requerido"
                       Disabled="@Deshabilitado"
-                      Placeholder="Escribe al menos 3 caracteres…">
+                      Placeholder="@(Opciones is not null || MostrarOpciones ? "Escribe clave o descripción…" : "Escribe al menos 3 caracteres…")">
         <ItemTemplate Context="clave">
             <span class="cifra-tabular buscador-catalogo-clave">@clave.Clave</span>
             <span class="buscador-catalogo-descripcion">@clave.Descripcion</span>
         </ItemTemplate>
     </MudAutocomplete>
 
-    @if (MuestraSelectorEnLista)
+    @if (MuestraSelectorEnLista && Opciones is null)
     {
         <MudIconButton Icon="@Icons.Material.Filled.TableRows"
                        Disabled="@Deshabilitado"
@@ -44,6 +46,34 @@
 </MudTooltip>
 
 @code {
+    [Parameter] public IReadOnlyList<ClaveSatDto>? Opciones { get; set; }
+    [Parameter] public string? Clave { get; set; }
+    [Parameter] public EventCallback<string> ClaveChanged { get; set; }
+    [Parameter] public bool PuedeLimpiar { get; set; } = true;
+    private IReadOnlyList<ClaveSatDto>? _opcionesCargadas;
+    private string? _catalogoCargado;
+
+    protected override async Task OnParametersSetAsync()
+    {
+        if (Opciones is not null || !MostrarOpciones || !ClaveChanged.HasDelegate || _catalogoCargado == Catalogo) return;
+        var catalogo = Catalogo;
+        var opciones = await Busqueda.OpcionesAsync(catalogo, CancellationToken.None);
+        if (Catalogo != catalogo) return;
+        _opcionesCargadas = opciones;
+        _catalogoCargado = catalogo;
+    }
+
+    private ClaveSatDto? ValorActual => ClaveChanged.HasDelegate
+        ? (Opciones ?? _opcionesCargadas)?.FirstOrDefault(x => x.Clave == Clave) ??
+          (string.IsNullOrEmpty(Clave) ? null : new ClaveSatDto(Catalogo, Clave, "Clave guardada", false))
+        : Valor;
+
+    private async Task AlElegirAsync(ClaveSatDto? valor)
+    {
+        if (ClaveChanged.HasDelegate) await ClaveChanged.InvokeAsync(valor?.Clave ?? "");
+        if (ValorCambiado.HasDelegate) await ValorCambiado.InvokeAsync(valor);
+    }
+
     /// <summary>Nombre del catálogo, por ejemplo <c>c_RegimenFiscal</c>.</summary>
     [Parameter, EditorRequired]
     public string Catalogo { get; set; } = default!;
@@ -88,16 +118,30 @@
 
     private async Task<IEnumerable<ClaveSatDto>> Buscar(string texto, CancellationToken ct)
     {
+        if (Opciones is not null)
+            return Opciones.Where(x => string.IsNullOrWhiteSpace(texto) ||
+                Coincide(x.Clave, texto) || Coincide(x.Descripcion, texto));
+
         if (BusquedaPersonalizada is not null)
             return await BusquedaPersonalizada(texto, ct);
 
-        if (string.IsNullOrWhiteSpace(texto))
-            return MostrarOpciones ? await Busqueda.OpcionesAsync(Catalogo, ct) : [];
+        if (MostrarOpciones)
+        {
+            var opciones = await Busqueda.OpcionesAsync(Catalogo, ct);
+            return opciones.Where(x => string.IsNullOrWhiteSpace(texto) ||
+                Coincide(x.Clave, texto) || Coincide(x.Descripcion, texto));
+        }
+
+        if (string.IsNullOrWhiteSpace(texto)) return [];
 
         if (!MostrarOpciones && texto.Length < 3) return [];
 
         return await Busqueda.BuscarAsync(Catalogo, texto, ct);
     }
+
+    private static bool Coincide(string valor, string texto)
+        => System.Globalization.CultureInfo.GetCultureInfo("es-MX").CompareInfo.IndexOf(valor, texto.Trim(),
+            System.Globalization.CompareOptions.IgnoreCase | System.Globalization.CompareOptions.IgnoreNonSpace) >= 0;
 
     private string Formatear(ClaveSatDto? clave)
         => clave is null ? string.Empty : MostrarSoloClave ? clave.Clave : $"{clave.Clave} — {clave.Descripcion}";
@@ -108,6 +152,6 @@
     private async Task AbrirModalAsync()
     {
         var clave = await ModalCatalogo.ElegirAsync(Catalogo, Label);
-        if (clave is not null) await ValorCambiado.InvokeAsync(clave);
+        if (clave is not null) await AlElegirAsync(clave);
     }
 }

@@ -31,6 +31,41 @@ public sealed class ServicioDeEmision(
     /// <summary>Exportación definitiva: la que exige el complemento de Comercio Exterior.</summary>
     private const string ExportacionDefinitiva = "02";
 
+    public async Task<Resultado<VistaPreviaFacturaDto>> CalcularVistaPreviaAsync(
+        Guid id, PeticionGuardarBorrador peticion, CancellationToken ct)
+    {
+        // Esta copia no se adjunta al contexto; calcular no escribe ni altera el borrador.
+        var comprobante = await baseDeDatos.Comprobantes.AsNoTracking().FirstOrDefaultAsync(c => c.Id == id, ct);
+        if (comprobante is null)
+            return ErrorNegocio.NoEncontrado("comprobante-no-encontrado", "Ese comprobante no existe.");
+        if (PermisoDeEmision.ExigirEdicion(contexto, comprobante) is { } sinPermiso) return sinPermiso;
+        if (comprobante.TipoDeComprobante != TipoFactura || comprobante.Estatus is not ("borrador" or "error"))
+            return ErrorNegocio.Conflicto("comprobante-no-editable", "Este documento no admite cambios de captura.");
+        if (peticion.Conceptos is null || peticion.Conceptos.Count is 0 or > 1000)
+            return ErrorNegocio.Validacion("conceptos-invalidos", "La vista previa admite entre 1 y 1000 conceptos.");
+        var decimales = await baseDeDatos.SatMonedas.AsNoTracking().Where(m => m.Clave == peticion.Moneda)
+            .Select(m => (int?)m.Decimales).FirstOrDefaultAsync(ct);
+        if (decimales is null)
+            return ErrorNegocio.Validacion("moneda-desconocida", "Selecciona una moneda válida.");
+        var resueltos = await ResolverConceptosAsync(peticion.Conceptos, ct);
+        if (resueltos.EsFallo) return resueltos.Error!;
+        try
+        {
+            var calculado = MotorDeImpuestos.Calcular(new ComprobanteACalcular(peticion.Moneda,
+                peticion.TipoCambio, [.. resueltos.Valor.Select(c => c.ACalcular)]));
+            if (calculado.EsFallo) return calculado.Error!;
+            AplicarConceptos(comprobante, resueltos.Valor, calculado.Valor);
+            AplicarTotales(comprobante, decimales.Value);
+            return new VistaPreviaFacturaDto(comprobante.SubTotal, comprobante.Descuento,
+                comprobante.TotalImpuestosTrasladados, comprobante.TotalImpuestosRetenidos,
+                comprobante.Total, ADto(comprobante).Conceptos);
+        }
+        catch (OverflowException)
+        {
+            return ErrorNegocio.Validacion("importe-demasiado-grande", "Revisa las cantidades y descuentos; el importe es demasiado grande.");
+        }
+    }
+
     public async Task<Resultado<ComprobanteDto>> CrearBorradorAsync(string? variante, CancellationToken ct)
     {
         variante ??= VariantesDeFactura.Basica;
@@ -317,10 +352,14 @@ public sealed class ServicioDeEmision(
         {
             var texto = busca.Trim();
             var folio = int.TryParse(texto, out var n) ? n : (int?)null;
+            var identificador = Guid.TryParse(texto, out var id) ? id : (Guid?)null;
 
             consulta = consulta.Where(c =>
                 c.ReceptorRfc.Contains(texto) ||
                 c.ReceptorNombre.Contains(texto) ||
+                (identificador != null && (c.Id == identificador || c.Uuid == identificador)) ||
+                (c.Serie != null && c.Serie.Contains(texto)) ||
+                c.Conceptos.Any(concepto => concepto.Descripcion.Contains(texto)) ||
                 (folio != null && c.Folio == folio));
         }
 
@@ -414,6 +453,11 @@ public sealed class ServicioDeEmision(
                     "producto-no-encontrado",
                     $"El producto del renglón {i + 1} no existe o está dado de baja.");
 
+            if (linea.ValorUnitario < 0 || linea.ValorUnitario > 999999999999.999999m ||
+                decimal.Round(linea.ValorUnitario, 6) != linea.ValorUnitario)
+                return ErrorNegocio.Validacion("precio-unitario-invalido",
+                    $"El precio unitario del renglón {i + 1} debe ser positivo o cero, con hasta 12 enteros y 6 decimales.");
+
             if (linea.NoIdentificacion is { Length: > 100 } ||
                 linea.NoIdentificacion?.Contains('|') == true)
                 return ErrorNegocio.Validacion("numero-identificacion-invalido",
@@ -431,10 +475,11 @@ public sealed class ServicioDeEmision(
                 Producto: producto,
                 NoIdentificacion: string.IsNullOrWhiteSpace(linea.NoIdentificacion) ? null : linea.NoIdentificacion.Trim(),
                 Cantidad: linea.Cantidad,
+                ValorUnitario: linea.ValorUnitario,
                 Descuento: linea.Descuento,
                 ACalcular: new ConceptoACalcular(
                     linea.Cantidad,
-                    producto.ValorUnitario,
+                    linea.ValorUnitario,
                     linea.Descuento,
                     producto.ObjetoImp,
                     [.. producto.Impuestos.Select(x =>
@@ -446,7 +491,7 @@ public sealed class ServicioDeEmision(
 
     private sealed record ConceptoResuelto(
         int Orden, ProductoParaConceptoDto Producto, string? NoIdentificacion,
-        decimal Cantidad, decimal Descuento, ConceptoACalcular ACalcular);
+        decimal Cantidad, decimal ValorUnitario, decimal Descuento, ConceptoACalcular ACalcular);
 
     // ── Aplicar al comprobante ──────────────────────────────────────────────────────────
 
@@ -505,7 +550,7 @@ public sealed class ServicioDeEmision(
                 NoIdentificacion = origen.NoIdentificacion,
                 Descripcion = producto.Descripcion,
                 Cantidad = origen.Cantidad,
-                ValorUnitario = producto.ValorUnitario,
+                ValorUnitario = origen.ValorUnitario,
                 Importe = calculo.Importe,
                 Descuento = calculo.Descuento,
                 ObjetoImp = producto.ObjetoImp

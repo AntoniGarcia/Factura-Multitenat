@@ -25,9 +25,16 @@
     <div class="aviso-documentos" role="status">@_aviso</div>
 }
 
-@if (_pago is null)
+@if (_cargando)
 {
     <p class="tabla-datos-estado">Cargando…</p>
+}
+else if (_pago is null)
+{
+    @if (_error is null)
+    {
+        <p class="tabla-datos-estado">No se encontró ese pago. Vuelve al listado de documentos.</p>
+    }
 }
 else
 {
@@ -51,24 +58,18 @@ else
                     <MudTimePicker Label="Hora del pago" @bind-Time="_horaPagoLocal"
                                    Disabled="@(!EsEditable)" Required="true" AmPm="false" />
 
-                    <MudSelect T="string" Label="Forma de pago" @bind-Value="_formaDePago"
-                               Disabled="@(!EsEditable)" Required="true">
-                        @foreach (var forma in Catalogos.Obtener("c_FormaPago"))
-                        {
-                            @if (forma.Clave != "99")
-                            {
-                                <MudSelectItem T="string" Value="@forma.Clave">@forma.Clave — @forma.Descripcion</MudSelectItem>
-                            }
-                        }
-                    </MudSelect>
+                    <BuscadorCatalogo Catalogo="c_FormaPago" Label="Forma de pago" @bind-Clave="_formaDePago"
+                                     Opciones="@Catalogos.Obtener("c_FormaPago").Where(x => x.Clave != "99").ToArray()"
+                                     Deshabilitado="@(!EsEditable)" Requerido="true" PuedeLimpiar="false" />
 
                     <MudSelect T="string" Label="Moneda" @bind-Value="_moneda" Disabled="@(!EsEditable)">
-                        @foreach (var moneda in Catalogos.Obtener("c_Moneda"))
+                        @foreach (var moneda in Catalogos.ObtenerMonedasDeCaptura())
                         {
-                            @if (moneda.Clave != "XXX")
-                            {
-                                <MudSelectItem T="string" Value="@moneda.Clave">@moneda.Clave — @moneda.Descripcion</MudSelectItem>
-                            }
+                            <MudSelectItem T="string" Value="@moneda.Clave">@moneda.Clave — @moneda.Descripcion</MudSelectItem>
+                        }
+                        @if (_moneda is not ("MXN" or "USD"))
+                        {
+                            <MudSelectItem T="string" Value="@_moneda" Disabled="true">@_moneda — Moneda guardada</MudSelectItem>
                         }
                     </MudSelect>
 
@@ -251,11 +252,14 @@ else
 }
 </TarjetaFormulario>
 
+<ActualizadorDeCatalogos AlCambiar="@(() => { })" />
+
 @code {
     [Parameter]
     public Guid? Id { get; set; }
 
     private PagoDto? _pago;
+    private bool _cargando = true;
     private DetalleProblema? _error;
     private string? _aviso;
     private bool _trabajando;
@@ -308,6 +312,21 @@ else
         : "Se asigna al timbrar";
 
     protected override async Task OnParametersSetAsync()
+    {
+        _cargando = true;
+        _pago = null;
+        _error = null;
+        _borradorSinGuardar = null;
+        try { await CargarPagoAsync(); }
+        catch (HttpRequestException)
+        {
+            _error = new DetalleProblema("about:blank", "No se pudo abrir el pago", 0,
+                "Vuelve al listado e inténtalo de nuevo.", null, "", null);
+        }
+        finally { _cargando = false; }
+    }
+
+    private async Task CargarPagoAsync()
     {
         _integracionFiscal = await Emision.ObtenerEstadoDeIntegracionAsync();
 

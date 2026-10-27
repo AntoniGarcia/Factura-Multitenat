@@ -6,24 +6,29 @@ using Facturacion.Shared.Contratos;
 namespace Facturacion.Client.Servicios.Plataforma;
 
 /// <summary>
-/// Precarga los catálogos chicos del SAT al iniciar sesión y los cachea en memoria durante
-/// la sesión, revalidando con ETag. Es el que alimenta selects instantáneos
-/// —régimen fiscal, uso de CFDI, forma de pago...— sin ida y vuelta al servidor; para
-/// autocompletar contra catálogos grandes está <see cref="BuscadorCatalogo"/> con
-/// <see cref="IBusquedaDeCatalogo"/>.
-/// <para>
-/// Solo memoria, nunca <c>localStorage</c>: un catálogo del SAT cacheado y viejo produce
-/// comprobantes mal emitidos, así que se pierde al cerrar la pestaña como el
-/// resto del estado de sesión, y <see cref="Componentes.Comunes.PuertaDeArranque"/> lo vuelve
-/// a pedir en cada arranque.
-/// </para>
+/// Catálogos pequeños en memoria, revalidados con ETag mientras se captura.
 /// </summary>
 public sealed class ServicioDeCatalogos(IHttpClientFactory fabrica)
 {
     private readonly Dictionary<string, IReadOnlyList<ClaveSatDto>> _cache = new();
     private string? _etag;
+    private readonly SemaphoreSlim _exclusividad = new(1, 1);
+    private DateTimeOffset _ultimaConsulta;
+    public long Revision { get; private set; }
 
-    /// <summary>Trae los catálogos precargables. Se llama una vez, desde la puerta de arranque.</summary>
+    public async Task ActualizarSiCorrespondeAsync(CancellationToken ct = default)
+    {
+        await _exclusividad.WaitAsync(ct);
+        try
+        {
+            if (DateTimeOffset.UtcNow - _ultimaConsulta < TimeSpan.FromSeconds(4)) return;
+            await RevalidarAsync(ct);
+            _ultimaConsulta = DateTimeOffset.UtcNow;
+        }
+        finally { _exclusividad.Release(); }
+    }
+
+    /// <summary>Carga inicial de los catálogos pequeños al entrar.</summary>
     public Task InicializarAsync(CancellationToken ct = default) => RevalidarAsync(ct);
 
     /// <summary>
@@ -55,9 +60,15 @@ public sealed class ServicioDeCatalogos(IHttpClientFactory fabrica)
             _cache[catalogo] = claves;
 
         _etag = respuesta.Headers.ETag?.Tag;
+        Revision++;
     }
 
     /// <summary>Claves vigentes del catálogo precargado; devuelve una lista vacía si no está disponible.</summary>
     public IReadOnlyList<ClaveSatDto> Obtener(string catalogo)
         => _cache.GetValueOrDefault(catalogo, []);
+
+    /// <summary>Opciones de captura; no modifica el catálogo SAT ni los documentos guardados.</summary>
+    public IReadOnlyList<ClaveSatDto> ObtenerMonedasDeCaptura()
+        => [.. Obtener("c_Moneda").Where(x => x.Vigente && x.Clave is "MXN" or "USD")
+            .OrderBy(x => x.Clave == "MXN" ? 0 : 1)];
 }

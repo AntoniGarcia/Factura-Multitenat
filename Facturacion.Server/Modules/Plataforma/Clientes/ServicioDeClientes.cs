@@ -19,7 +19,12 @@ public sealed class ServicioDeClientes(
     /// <summary>Devuelve una copia de los datos fiscales del cliente para conservarlos en el comprobante.</summary>
     public async Task<ReceptorFiscalDto?> ObtenerParaTimbradoAsync(Guid clienteId, CancellationToken ct)
     {
-        var cliente = await baseDeDatos.Clientes
+        // Al guardar un documento, el bloqueo impide eliminar al receptor entre la consulta y el guardado.
+        var consulta = baseDeDatos.Database.CurrentTransaction is null
+            ? baseDeDatos.Clientes.AsQueryable()
+            : baseDeDatos.Clientes.FromSqlInterpolated(
+                $"SELECT * FROM [Clientes] WITH (UPDLOCK, HOLDLOCK) WHERE [Id] = {clienteId}");
+        var cliente = await consulta
             .AsNoTracking()
             .FirstOrDefaultAsync(c => c.Id == clienteId, ct);
 
@@ -55,7 +60,10 @@ public sealed class ServicioDeClientes(
         if (!string.IsNullOrWhiteSpace(texto))
         {
             var buscado = texto.Trim();
-            consulta = consulta.Where(c => c.Nombre.Contains(buscado) || c.Rfc.Contains(buscado));
+            var clave = int.TryParse(buscado, out var numero) ? numero : (int?)null;
+            var id = Guid.TryParse(buscado, out var identificador) ? identificador : (Guid?)null;
+            consulta = consulta.Where(c => c.Nombre.Contains(buscado) || c.Rfc.Contains(buscado) ||
+                (c.CorreoPrincipal != null && c.CorreoPrincipal.Contains(buscado)) || c.ClaveInterna == clave || c.Id == id);
         }
 
         var total = await consulta.CountAsync(ct);
@@ -186,7 +194,7 @@ public sealed class ServicioDeClientes(
         return new RespuestaGuardarCliente(ADto(cliente), nombre);
     }
 
-    /// <summary>Baja lógica. Nunca borrado físico.</summary>
+    /// <summary>Desactiva o reactiva al cliente conservando sus documentos.</summary>
     public async Task<Resultado<ClienteDto>> CambiarActivoAsync(Guid id, bool activo, CancellationToken ct)
     {
         var cliente = await baseDeDatos.Clientes.FirstOrDefaultAsync(c => c.Id == id, ct);
@@ -215,7 +223,13 @@ public sealed class ServicioDeClientes(
     /// </summary>
     public async Task<Resultado> EliminarAsync(Guid id, CancellationToken ct)
     {
-        var cliente = await baseDeDatos.Clientes.FirstOrDefaultAsync(c => c.Id == id, ct);
+        // El bloqueo choca con el de ObtenerParaTimbradoAsync: un documento que se guarda al mismo
+        // tiempo espera, o hace esperar al borrado, y nunca queda apuntando a un cliente borrado.
+        await using var transaccion = await baseDeDatos.Database.BeginTransactionAsync(System.Data.IsolationLevel.Serializable, ct);
+
+        var cliente = await baseDeDatos.Clientes
+            .FromSqlInterpolated($"SELECT * FROM [Clientes] WITH (UPDLOCK, HOLDLOCK) WHERE [Id] = {id}")
+            .FirstOrDefaultAsync(ct);
 
         if (cliente is null)
             return ErrorNegocio.NoEncontrado("cliente-no-encontrado", "No se encontró ese cliente.");
@@ -229,6 +243,7 @@ public sealed class ServicioDeClientes(
 
         baseDeDatos.Clientes.Remove(cliente);
         await baseDeDatos.SaveChangesAsync(ct);
+        await transaccion.CommitAsync(ct);
 
         return Resultado.Exito();
     }

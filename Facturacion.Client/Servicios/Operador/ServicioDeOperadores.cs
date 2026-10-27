@@ -10,6 +10,13 @@ public sealed class ServicioDeOperadores(IHttpClientFactory fabrica)
 {
     private HttpClient Cliente => fabrica.CreateClient(ClientesHttp.ApiOperador);
 
+    public async Task<DetalleProblema?> EliminarAsync(Guid id, string contrasena, CancellationToken ct = default)
+    {
+        using var respuesta = await Cliente.PostAsJsonAsync(
+            $"api/operador/operadores/{id}/eliminar", new PeticionEliminarConContrasena(contrasena), ct);
+        return respuesta.IsSuccessStatusCode ? null : await respuesta.Content.ReadFromJsonAsync<DetalleProblema>(ct);
+    }
+
     public async Task<PaginaDeOperadores> ListarAsync(
         string? texto, bool? activos, int pagina, int tamano, CancellationToken ct = default)
     {

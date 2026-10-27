@@ -11,8 +11,10 @@ namespace Facturacion.Server.Modules.Documentos;
 /// </summary>
 public sealed class UsoDeCatalogos(AppDbContext baseDeDatos) : IUsoDeCatalogos
 {
-    public Task<bool> ClienteUsadoAsync(Guid clienteId, CancellationToken ct)
-        => baseDeDatos.Comprobantes.AsNoTracking().AnyAsync(c => c.ClienteId == clienteId, ct);
+    // El destinatario de un traslado Carta Porte no es el receptor del comprobante: se busca aparte.
+    public async Task<bool> ClienteUsadoAsync(Guid clienteId, CancellationToken ct)
+        => await baseDeDatos.Comprobantes.AsNoTracking().AnyAsync(c => c.ClienteId == clienteId, ct) ||
+           await baseDeDatos.TrasladosCartaPorte.AsNoTracking().AnyAsync(t => t.ClienteDestinoId == clienteId, ct);
 
     public Task<bool> ProductoUsadoAsync(Guid productoId, CancellationToken ct)
         => baseDeDatos.Comprobantes.AsNoTracking()

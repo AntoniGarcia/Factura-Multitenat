@@ -26,12 +26,7 @@
 
         <MudTextField @bind-Value="_nombreFiscal" Label="Nombre o razón social" Immediate="true" MaxLength="300" />
 
-        <MudSelect T="string" @bind-Value="_regimenFiscal" Label="Régimen fiscal">
-            @foreach (var r in Catalogos.Obtener("c_RegimenFiscal"))
-            {
-                <MudSelectItem T="string" Value="@r.Clave">@r.Clave — @r.Descripcion</MudSelectItem>
-            }
-        </MudSelect>
+<BuscadorCatalogo Catalogo="c_RegimenFiscal" Opciones="@Catalogos.Obtener("c_RegimenFiscal")" @bind-Clave="_regimenFiscal" Label="Régimen fiscal" PuedeLimpiar="false" />
 
         <MudTextField @bind-Value="_codigoPostal" Label="Código postal de expedición"
                       Immediate="true" MaxLength="5" Class="cifra-tabular" />
@@ -60,6 +55,8 @@
     </div>
 </EditForm>
 </TarjetaFormulario>
+
+<ActualizadorDeCatalogos AlCambiar="@(() => { })" />
 
 @code {
     /// <summary>

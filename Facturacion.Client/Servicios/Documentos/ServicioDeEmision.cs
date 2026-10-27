@@ -20,13 +20,16 @@ public sealed class ServicioDeEmision(IHttpClientFactory fabrica)
         return await LeerAsync<ComprobanteDto>(respuesta, ct);
     }
 
-    public Task<ComprobanteDto?> ObtenerAsync(Guid id, CancellationToken ct = default)
-        => Cliente.GetFromJsonAsync<ComprobanteDto>($"api/documentos/{id}", ct);
+    public async Task<ComprobanteDto?> ObtenerAsync(Guid id, CancellationToken ct = default)
+    {
+        using var respuesta = await Cliente.GetAsync($"api/documentos/{id}", ct);
+        if (respuesta.StatusCode == System.Net.HttpStatusCode.NotFound) return null;
+        respuesta.EnsureSuccessStatusCode();
+        return await respuesta.Content.ReadFromJsonAsync<ComprobanteDto>(ct);
+    }
 
     /// <summary>
-    /// Versión sin excepción para paneles de consulta. El formulario conserva
-    /// <see cref="ObtenerAsync"/> porque ahí un documento inexistente impide continuar; en el
-    /// listado, en cambio, el error debe mostrarse sin desmontar toda la página.
+    /// Consulta con el detalle del error para los paneles de vista previa.
     /// </summary>
     public async Task<(ComprobanteDto? Exito, DetalleProblema? Error)> ObtenerParaVistaPreviaAsync(
         Guid id, CancellationToken ct = default)
@@ -46,6 +49,13 @@ public sealed class ServicioDeEmision(IHttpClientFactory fabrica)
     {
         using var respuesta = await Cliente.PutAsJsonAsync($"api/documentos/{id}", peticion, ct);
         return await LeerAsync<ComprobanteDto>(respuesta, ct);
+    }
+
+    public async Task<(VistaPreviaFacturaDto? Exito, DetalleProblema? Error)> CalcularAsync(
+        Guid id, PeticionGuardarBorrador peticion, CancellationToken ct = default)
+    {
+        using var respuesta = await Cliente.PostAsJsonAsync($"api/documentos/{id}/calcular", peticion, ct);
+        return await LeerAsync<VistaPreviaFacturaDto>(respuesta, ct);
     }
 
     public Task<(ArchivoParaDescarga? Archivo, DetalleProblema? Error)> ObtenerVistaPreviaPdfAsync(

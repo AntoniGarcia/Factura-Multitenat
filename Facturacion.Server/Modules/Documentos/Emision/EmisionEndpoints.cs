@@ -33,6 +33,13 @@ public static class EmisionEndpoints
         grupo.MapGet("/{id:guid}/xml", DescargarXml).RequireAuthorization(Permisos.DocumentosDescarga);
         grupo.MapGet("/{id:guid}/descarga", DescargarZip).RequireAuthorization(Permisos.DocumentosDescarga);
         grupo.MapPut("/{id:guid}", Guardar).RequireAuthorization(Permisos.Politicas.EditarFacturas);
+        grupo.MapPost("/{id:guid}/calcular", async (Guid id, PeticionGuardarBorrador peticion,
+            ServicioDeEmision servicio, HttpContext http, CancellationToken ct) =>
+        {
+            var resultado = await servicio.CalcularVistaPreviaAsync(id, peticion, ct);
+            http.Response.Headers.CacheControl = "no-store";
+            return resultado.EsExito ? Results.Ok(resultado.Valor) : resultado.Error!.AResultado(http);
+        }).RequireAuthorization(Permisos.Politicas.EditarFacturas);
         grupo.MapDelete("/{id:guid}", EliminarBorrador).RequireAuthorization(Permisos.Politicas.Eliminar);
         grupo.MapGet("/relacionados/resolver", ResolverRelacionado).RequireAuthorization(Permisos.DocumentosListado);
     }

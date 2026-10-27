@@ -61,6 +61,7 @@ public static class PermisosDePanel
     public const string CambiarEstadoPaquetes = "panel_cambiar_estado_paquetes";
 
     public const string VerConfiguracion = "panel_ver_configuracion";
+    public const string VerCatalogosSat = "panel_ver_catalogos_sat";
     public const string AdministrarConfiguracion = "panel_administrar_configuracion";
 
     /// <summary>Claves del panel, en el orden de las secciones (ver y luego acciones).</summary>
@@ -90,6 +91,7 @@ public static class PermisosDePanel
         AdministrarOperadores,
         CambiarEstadoOperadores,
         VerConfiguracion,
+        VerCatalogosSat,
         AdministrarConfiguracion
     ];
 
@@ -119,6 +121,7 @@ public static class PermisosDePanel
         [AdministrarOperadores] = "Administrar operadores (todas las acciones)",
         [CambiarEstadoOperadores] = "Desactivar y reactivar operadores",
         [VerConfiguracion] = "Ver configuración",
+        [VerCatalogosSat] = "Consultar catálogos del SAT",
         [AdministrarConfiguracion] = "Administrar configuración"
     };
 
@@ -165,6 +168,7 @@ public static class PermisosDePanel
                 new(AdministrarOperadores, Etiquetas[AdministrarOperadores]),
                 new(CambiarEstadoOperadores, Etiquetas[CambiarEstadoOperadores])
             ]),
+        new("Catálogos del SAT", new(VerCatalogosSat, "Consultar catálogos del SAT"), []),
         new("Configuración",
             new(VerConfiguracion, "Ver configuración"),
             [new(AdministrarConfiguracion, "Administrar configuración")])
@@ -194,6 +198,7 @@ public static class PermisosDePanel
     /// <summary>Los permisos generales anteriores conservan el alcance que ya tenían.</summary>
     public static string? PermisoGeneralQueAutoriza(string clave) => clave switch
     {
+        VerCatalogosSat => VerConfiguracion,
         CambiarEstadoPaquetes => AdministrarPaquetes,
         SoloAcreditarCompras or DescartarCompras => AcreditarCompras,
         EditarContactoCuentas or CambiarEstadoEmpresas or GestionarLicencias or GestionarMembresias => AdministrarClientes,

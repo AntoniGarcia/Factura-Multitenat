@@ -19,7 +19,7 @@
     </DialogContent>
     <DialogActions>
         <MudButton OnClick="Cancelar">Cancelar</MudButton>
-        <MudButton Variant="Variant.Filled" Color="Color.Primary" Disabled="@(!_puedeConfirmar)" OnClick="Confirmar">
+        <MudButton Variant="Variant.Filled" Color="ColorConfirmar" Disabled="@(!_puedeConfirmar)" OnClick="Confirmar">
             @TextoConfirmar
         </MudButton>
     </DialogActions>
@@ -37,6 +37,9 @@
 
     [Parameter]
     public string TextoConfirmar { get; set; } = "Confirmar";
+
+    [Parameter]
+    public Color ColorConfirmar { get; set; } = Color.Primary;
 
     private string _contrasena = string.Empty;
     private bool _ver;

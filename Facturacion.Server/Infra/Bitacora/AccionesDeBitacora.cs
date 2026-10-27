@@ -107,6 +107,8 @@ public static class AccionesDeBitacora
     // exactamente lo que una bitácora no debe permitir.
     public const string CuentaRegistrada = "cuenta_registrada";
     public const string UsuarioCreado = "usuario_creado";
+    public const string UsuarioEliminado = "usuario_eliminado";
+    public const string OperadorEliminado = "operador_eliminado";
     public const string EmpresaCreada = "empresa_creada";
     public const string AccesoOtorgadoDirecto = "acceso_otorgado_directo";
     public const string CorreoCambiado = "correo_cambiado";

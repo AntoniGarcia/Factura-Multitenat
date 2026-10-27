@@ -67,8 +67,9 @@ pruebas. Usar la clave de `tmp/wizard-20261020/cnf/clave-instalacion.txt`, selec
 usuario o contraseña SQL.
 
 Desde el 24 de octubre de 2026 el asistente ya no ofrece confiar en el certificado de
-SQL Server: la conexión siempre valida su identidad, y un certificado autofirmado se
-rechaza. La opción para el certificado se agregará después en la interfaz.
+SQL Server. En Staging la conexión nueva confía en él automáticamente y conserva el
+cifrado; en cualquier otro entorno valida su identidad y rechaza un certificado
+autofirmado. Las conexiones guardadas antes conservan su configuración.
 
 Se probó la conexión integrada contra la base local con cifrado y confianza explícita
 en su certificado: conexión correcta, 83 tablas de usuario visibles. La consulta no

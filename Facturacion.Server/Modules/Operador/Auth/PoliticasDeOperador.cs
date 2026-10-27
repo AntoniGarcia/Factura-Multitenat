@@ -58,6 +58,7 @@ public static class PoliticasDeOperador
     public const string AdministrarOperadores = PermisosDePanel.AdministrarOperadores;
     public const string CambiarEstadoOperadores = PermisosDePanel.CambiarEstadoOperadores;
     public const string VerConfiguracion = PermisosDePanel.VerConfiguracion;
+    public const string VerCatalogosSat = PermisosDePanel.VerCatalogosSat;
     public const string AdministrarConfiguracion = PermisosDePanel.AdministrarConfiguracion;
 
     /// <summary>Todas las políticas de permiso, para iterar si se necesita.</summary>

@@ -9,6 +9,23 @@ public sealed class InstalacionDeConexionPruebas : IDisposable
 {
     private readonly string _directorio = Path.Combine(Path.GetTempPath(), "Facturacion-Instalacion-Pruebas", Guid.NewGuid().ToString("N"));
 
+    [Theory]
+    [InlineData("Staging", true)]
+    [InlineData("Production", false)]
+    [InlineData("Development", false)]
+    public void Confia_en_certificado_solo_en_revision_y_mantiene_tls_al_probar_y_guardar(string entorno, bool confianza)
+    {
+        var constructor = WebApplication.CreateBuilder(new WebApplicationOptions { EnvironmentName = entorno, Args = [] });
+        var parametros = System.Text.Json.JsonSerializer.Deserialize<ParametrosDeConexion>(
+            """{"Servidor":"prueba","BaseDeDatos":"prueba","Usuario":"prueba","Contrasena":"prueba","ConfiarEnCertificado":true}""")!;
+        foreach (var prueba in new[] { true, false })
+        {
+            var cadena = new SqlConnectionStringBuilder(ConexionSqlDeInstalacion.CrearCadena(parametros, constructor.Environment, paraPrueba: prueba));
+            Assert.Equal(confianza, cadena.TrustServerCertificate);
+            Assert.Equal(SqlConnectionEncryptOption.Mandatory, cadena.Encrypt);
+        }
+    }
+
     [Fact]
     public void La_cadena_no_interpreta_la_contrasena_como_parametros_de_conexion()
     {

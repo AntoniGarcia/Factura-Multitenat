@@ -88,6 +88,8 @@
                                           OnClick="@(() => Editar(u))">
                                    Editar
                                </MudButton>
+                               <MudButton Size="Size.Small" Disabled="@_trabajando" Color="Color.Error"
+                                          OnClick="@(() => EliminarAsync(u))">Eliminar</MudButton>
                                }
                                @if (Sesion.TienePermiso(PoliticasDelPanel.CambiarEstadoOperadores))
                                {
@@ -230,5 +232,37 @@
         var resultado = await referencia.Result;
 
         return resultado is { Canceled: false, Data: string contrasena } ? contrasena : null;
+    }
+
+    private async Task EliminarAsync(OperadorDto operador)
+    {
+        if (_trabajando) return;
+        _trabajando = true;
+        _error = null;
+        _aviso = null;
+        try
+        {
+            var parametros = new DialogParameters<DialogoConfirmarContrasenaOperador>
+            {
+                { x => x.Mensaje, $"Eliminar a «{operador.Nombre}». Escribe tu contraseña de operador. Solo se permite si no tiene actividad registrada." },
+                { x => x.TextoConfirmar, "Eliminar" },
+                { x => x.ColorConfirmar, Color.Error }
+            };
+            var referencia = await Dialogos.ShowAsync<DialogoConfirmarContrasenaOperador>("Eliminar operador", parametros,
+                new DialogOptions { BackdropClick = false, MaxWidth = MaxWidth.Small, FullWidth = true });
+            if (await referencia.Result is not { Canceled: false, Data: string contrasena }) return;
+            _error = await Operadores.EliminarAsync(operador.Id, contrasena);
+            if (_error is null)
+            {
+                _aviso = "Operador eliminado.";
+                await RecargarAsync();
+            }
+        }
+        catch (HttpRequestException)
+        {
+            _error = new("about:blank", "No se pudo confirmar la eliminación", 0,
+                "Actualiza la lista antes de intentarlo de nuevo.", null, string.Empty, null);
+        }
+        finally { _trabajando = false; }
     }
 }

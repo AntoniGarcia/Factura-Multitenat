@@ -96,6 +96,30 @@ public sealed class ServicioDeConfiguracionDeCorreo(
         return despues;
     }
 
+    public async Task<Resultado<bool>> ProbarAsync(PeticionGuardarCorreoDeEmpresa peticion, CancellationToken ct)
+    {
+        if (!peticion.Habilitado)
+            return ErrorNegocio.Validacion("smtp-no-habilitado", "Activa tu servidor de correo para probarlo.");
+        var guardado = await baseDeDatos.CorreosDeEmpresa.AsNoTracking().FirstOrDefaultAsync(ct);
+        var contrasena = peticion.Contrasena;
+        if (string.IsNullOrEmpty(contrasena) && !string.IsNullOrEmpty(guardado?.ContrasenaCifrada))
+        {
+            try { contrasena = protector.Descifrar(contexto.EmpresaId, guardado.ContrasenaCifrada); }
+            catch (System.Security.Cryptography.CryptographicException)
+            {
+                return ErrorNegocio.Validacion("smtp-contrasena-ilegible", "No se pudo leer la contraseña guardada. Captúrala de nuevo.");
+            }
+        }
+        var error = Validar(peticion, Limpiar(peticion.Servidor), Limpiar(peticion.Usuario), peticion.Contrasena,
+            Limpiar(peticion.RemitenteNombre), Limpiar(peticion.RemitenteCorreo), !string.IsNullOrEmpty(contrasena))
+            ?? ValidarRemitenteDelSistema(Limpiar(peticion.NombreRemitenteSistema), Limpiar(peticion.ResponderA))
+            ?? ProbadorSmtp.Validar(peticion.Servidor, peticion.Puerto, peticion.Usuario, contrasena,
+                peticion.RemitenteNombre, peticion.RemitenteCorreo);
+        if (error is not null) return error;
+        return await ProbadorSmtp.ProbarAsync(peticion.Servidor!.Trim(), peticion.Puerto,
+            peticion.Usuario!.Trim(), contrasena!, ct);
+    }
+
     private static ErrorNegocio? Validar(
         PeticionGuardarCorreoDeEmpresa peticion, string? servidor, string? usuario, string? contrasena,
         string? remitenteNombre, string? remitenteCorreo, bool tieneContrasena)

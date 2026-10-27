@@ -102,7 +102,8 @@
     <h2 id="operador-config-pac" class="seccion-titulo">Integración fiscal</h2>
     <p role="status">@EstadoDelPac</p>
     </section>
-    <section class="formulario-catalogo-seccion formulario-catalogo-seccion-ancha" aria-labelledby="operador-config-smtp">
+    <section class="formulario-catalogo-seccion formulario-catalogo-seccion-ancha" aria-labelledby="operador-config-smtp"
+             @oninput="LimpiarAvisoSmtp" @onchange="LimpiarAvisoSmtp">
     <h2 id="operador-config-smtp" class="seccion-titulo">Correo saliente</h2>
     <p class="seccion-ayuda">Remitente de registro, acceso y avisos del sistema.</p>
 
@@ -113,20 +114,26 @@
     else
     {
         <div class="catalogo-rejilla catalogo-rejilla-dos">
-            <MudTextField @bind-Value="_servidor" Label="Servidor SMTP" Placeholder="smtp.ejemplo.com" Disabled="@(!PuedeAdministrarSistema)" />
-            <MudTextField @bind-Value="_puertoTexto" Label="Puerto" Class="cifra-tabular" Disabled="@(!PuedeAdministrarSistema)" />
-            <MudTextField @bind-Value="_usuarioSmtp" Label="Usuario" Disabled="@(!PuedeAdministrarSistema)" />
+            <MudTextField @bind-Value="_servidor" Label="Servidor SMTP" Placeholder="smtp.ejemplo.com" MaxLength="253" Disabled="@(!PuedeAdministrarSistema || _trabajando)" />
+            <MudTextField @bind-Value="_puertoTexto" Label="Puerto" HelperText="587 (STARTTLS)." Class="cifra-tabular" Disabled="@(!PuedeAdministrarSistema || _trabajando)" />
+            <MudTextField @bind-Value="_usuarioSmtp" Label="Usuario" MaxLength="254" Disabled="@(!PuedeAdministrarSistema || _trabajando)" />
             <MudTextField @bind-Value="_contrasenaSmtpNueva" Label="Nueva contraseña SMTP"
-                          InputType="InputType.Password" Disabled="@(!PuedeAdministrarSistema)"
+                          InputType="InputType.Password" MaxLength="512" Disabled="@(!PuedeAdministrarSistema || _trabajando)"
                           HelperText="@(_contrasenaSmtpConfigurada ? "Configurada; déjala vacía para conservarla." : "Sin credencial configurada.")" />
             <MudTextField @bind-Value="_remitenteCorreo" Label="Correo del remitente"
-                          InputType="InputType.Email" Disabled="@(!PuedeAdministrarSistema)" />
-            <MudTextField @bind-Value="_remitenteNombre" Label="Nombre del remitente" Disabled="@(!PuedeAdministrarSistema)" />
+                          InputType="InputType.Email" MaxLength="254" Disabled="@(!PuedeAdministrarSistema || _trabajando)" />
+            <MudTextField @bind-Value="_remitenteNombre" Label="Nombre del remitente" MaxLength="128" Disabled="@(!PuedeAdministrarSistema || _trabajando)" />
         </div>
 
         <div class="rejilla-campos">
-            <MudSwitch @bind-Value="_usarTls" Label="Usar conexión segura" Color="Color.Primary" Disabled="@(!PuedeAdministrarSistema)" />
+            <MudSwitch @bind-Value="_usarTls" Label="Usar conexión segura" Color="Color.Primary" Disabled="@(!PuedeAdministrarSistema || _trabajando)" />
         </div>
+        @if (PuedeAdministrarSistema)
+        {
+            <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="ProbarConfiguracionDelSistema" Disabled="@(_trabajando || _sistemaCargando)">
+                @(_trabajando ? "Procesando…" : "Probar conexión")
+            </MudButton>
+        }
     }
     </section>
 
@@ -326,7 +333,12 @@
         Navegacion.NavigateTo("/operador/iniciar-sesion", replace: true);
     }
 
-    private async Task GuardarConfiguracionDelSistema()
+    private void LimpiarAvisoSmtp() => _aviso = null;
+
+    private Task GuardarConfiguracionDelSistema() => ProcesarConfiguracionDelSistema(false);
+    private Task ProbarConfiguracionDelSistema() => ProcesarConfiguracionDelSistema(true);
+
+    private async Task ProcesarConfiguracionDelSistema(bool probar)
     {
         if (_trabajando || _sistemaCargando || !PuedeAdministrarSistema) return;
 
@@ -345,8 +357,8 @@
 
         var parametros = new DialogParameters<DialogoConfirmarContrasenaOperador>
         {
-            { x => x.Mensaje, "Vas a cambiar la configuración del correo saliente, el nombre del sistema y los mensajes del registro. Esto afecta a todos los correos que envía el SaaS." },
-            { x => x.TextoConfirmar, "Guardar cambios" }
+            { x => x.Mensaje, probar ? "Confirma tu contraseña para comprobar el SMTP sin guardar cambios ni enviar correos." : "Vas a cambiar la configuración del correo saliente, el nombre del sistema y los mensajes del registro. Esto afecta a todos los correos que envía el SaaS." },
+            { x => x.TextoConfirmar, probar ? "Probar conexión" : "Guardar cambios" }
         };
 
         var referencia = await Dialogos.ShowAsync<DialogoConfirmarContrasenaOperador>(
@@ -374,9 +386,17 @@
             _cuerpoContrasena.Trim(),
             contrasena);
 
-        _error = await ConfiguracionDelSistema.GuardarAsync(peticion);
+        try
+        {
+            _error = probar ? await ConfiguracionDelSistema.ProbarAsync(peticion) : await ConfiguracionDelSistema.GuardarAsync(peticion);
+        }
+        finally { _trabajando = false; }
 
-        _trabajando = false;
+        if (probar)
+        {
+            if (_error is null) _aviso = "Conexión y autenticación correctas. No se guardaron cambios ni se envió correo.";
+            return;
+        }
 
         if (_error is null)
         {

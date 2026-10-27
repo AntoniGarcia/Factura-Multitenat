@@ -89,12 +89,7 @@
                 <h2 class="seccion-titulo">Impuestos</h2>
 
                 <div class="rejilla-campos">
-                    <MudSelect T="string" @bind-Value="_objetoImp" @bind-Value:after="AlCambiarObjeto" Label="Objeto de impuesto">
-                        @foreach (var o in Catalogos.Obtener("c_ObjetoImp"))
-                        {
-                            <MudSelectItem T="string" Value="@o.Clave">@o.Clave — @o.Descripcion</MudSelectItem>
-                        }
-                    </MudSelect>
+<BuscadorCatalogo Catalogo="c_ObjetoImp" Opciones="@Catalogos.Obtener("c_ObjetoImp")" @bind-Clave="_objetoImp" @bind-Clave:after="AlCambiarObjeto" Label="Objeto de impuesto" PuedeLimpiar="false" />
                 </div>
 
                 @if (!LlevaDesglose)
@@ -168,19 +163,9 @@
 
                     <h3 class="seccion-subtitulo">Agregar otro impuesto</h3>
                     <div class="rejilla-campos">
-                        <MudSelect T="string" @bind-Value="_nuevoImpuesto" Label="Impuesto">
-                            @foreach (var i in Catalogos.Obtener("c_Impuesto"))
-                            {
-                                <MudSelectItem T="string" Value="@i.Clave">@i.Clave — @i.Descripcion</MudSelectItem>
-                            }
-                        </MudSelect>
+<BuscadorCatalogo Catalogo="c_Impuesto" Opciones="@Catalogos.Obtener("c_Impuesto")" @bind-Clave="_nuevoImpuesto" Label="Impuesto" PuedeLimpiar="false" />
 
-                        <MudSelect T="string" @bind-Value="_nuevoFactor" Label="Tipo de factor">
-                            @foreach (var f in Catalogos.Obtener("c_TipoFactor"))
-                            {
-                                <MudSelectItem T="string" Value="@f.Clave">@f.Clave</MudSelectItem>
-                            }
-                        </MudSelect>
+<BuscadorCatalogo Catalogo="c_TipoFactor" Opciones="@Catalogos.Obtener("c_TipoFactor")" @bind-Clave="_nuevoFactor" Label="Tipo de factor" PuedeLimpiar="false" />
 
                         <MudNumericField @bind-Value="_nuevaTasa" Label="Tasa o cuota" Format="0.######"
                                          Class="cifra-tabular" HelperText="0.16 es 16 %. Vacío si es exento." />
@@ -207,6 +192,8 @@
         </MudButton>
     </DialogActions>
 </MudDialog>
+
+<ActualizadorDeCatalogos AlCambiar="@(() => { })" />
 
 @code {
     [CascadingParameter]

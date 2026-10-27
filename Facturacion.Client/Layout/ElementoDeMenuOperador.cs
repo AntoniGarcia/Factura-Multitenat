@@ -42,6 +42,7 @@ public static class MenuDeOperador
         new("/operador/usuarios", "Usuarios", "people", PoliticasDelPanel.VerUsuarios, Grupos.Clientes, false),
         new("/operador/paquetes", "Paquetes", "sell", PoliticasDelPanel.VerPaquetes, Grupos.Comercial, true),
         new("/operador/operadores", "Operadores", "supervisor_account", PoliticasDelPanel.VerOperadores, Grupos.Administracion, false),
-        new("/operador/configuracion", "Configuración", "settings", PoliticasDelPanel.VerConfiguracion, Grupos.Administracion, false)
+        new("/operador/configuracion", "Configuración", "settings", PoliticasDelPanel.VerConfiguracion, Grupos.Administracion, false),
+        new("/operador/catalogos-sat", "Catálogos del SAT", "menu_book", PoliticasDelPanel.VerCatalogosSat, Grupos.Administracion, false)
     ];
 }

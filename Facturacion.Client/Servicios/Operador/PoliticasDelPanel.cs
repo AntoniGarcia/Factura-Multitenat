@@ -35,6 +35,7 @@ public static class PoliticasDelPanel
     public const string AdministrarOperadores = PermisosDePanel.AdministrarOperadores;
     public const string CambiarEstadoOperadores = PermisosDePanel.CambiarEstadoOperadores;
     public const string VerConfiguracion = PermisosDePanel.VerConfiguracion;
+    public const string VerCatalogosSat = PermisosDePanel.VerCatalogosSat;
     public const string AdministrarConfiguracion = PermisosDePanel.AdministrarConfiguracion;
 
     public static IReadOnlyList<string> Permisos { get; } = PermisosDePanel.Todos;

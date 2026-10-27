@@ -19,6 +19,9 @@ Abrir `https://HOSTNAME/operador`. Si el enlace utiliza otro puerto HTTPS,
 incluirlo en la dirección. Capturar los parámetros SQL y crear al primer operador.
 No se pide clave de instalación. Los catálogos faltantes se preparan al arrancar.
 El asistente no crea ni instala el esquema SQL.
+En Staging, las conexiones nuevas confían automáticamente en el certificado SQL
+y mantienen TLS. En otros entornos se valida el certificado; no se cambia desde
+el navegador. Las conexiones guardadas anteriormente conservan su configuración.
 
 La conexión queda legible en `cnf/appsettings.Instalacion.json`.
 El archivo temporal también se crea en `cnf/`; no requiere modificar la carpeta

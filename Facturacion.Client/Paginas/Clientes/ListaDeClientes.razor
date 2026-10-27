@@ -9,6 +9,10 @@
 <TituloDePagina Texto="Clientes" />
 
 <PanelErrores Problema="_error" />
+@if (_aviso is not null)
+{
+    <p class="mensaje-exito" role="status">@_aviso</p>
+}
 
 <section class="catalogo-panel" aria-label="Catálogo de clientes">
     <p class="catalogo-descripcion">
@@ -38,6 +42,8 @@
 @code {
     private TablaDatos<ClienteEnListaDto>? _tabla;
     private DetalleProblema? _error;
+    private string? _aviso;
+    private bool _trabajando;
     private string _texto = string.Empty;
     private bool? _activos;
 
@@ -76,17 +82,17 @@
     private ColumnaDeTabla<ClienteEnListaDto> Acciones => new("", c => @<div class="acciones-renglon">
                           @if (_puedeModificar)
                           {
-                              <MudButton Size="Size.Small" OnClick="@(() => Navegacion.NavigateTo($"/clientes/{c.Id}"))">Editar</MudButton>
+                              <MudButton Size="Size.Small" Disabled="@_trabajando" OnClick="@(() => Navegacion.NavigateTo($"/clientes/{c.Id}"))">Editar</MudButton>
                           }
                           @if (_puedeDesactivar)
                           {
-                              <MudButton Size="Size.Small" OnClick="@(() => CambiarActivo(c))">
+                              <MudButton Size="Size.Small" Disabled="@_trabajando" OnClick="@(() => CambiarActivo(c))">
                                   @(c.Activo ? "Desactivar" : "Reactivar")
                               </MudButton>
                           }
                           @if (_puedeEliminar)
                           {
-                              <MudButton Size="Size.Small" Color="Color.Error" OnClick="@(() => Eliminar(c))">Eliminar</MudButton>
+                              <MudButton Size="Size.Small" Color="Color.Error" Disabled="@_trabajando" OnClick="@(() => Eliminar(c))">Eliminar</MudButton>
                           }
                       </div>);
 
@@ -120,6 +126,7 @@
     /// </summary>
     private async Task CambiarActivo(ClienteEnListaDto cliente)
     {
+        if (_trabajando) return;
         if (cliente.Activo)
         {
             var confirmado = await Confirmacion.ConfirmarAsync(
@@ -140,6 +147,8 @@
     /// <summary>Solo prospera si ningún comprobante usó al cliente; si no, el servidor pide desactivarlo.</summary>
     private async Task Eliminar(ClienteEnListaDto cliente)
     {
+        if (_trabajando) return;
+
         var confirmado = await Confirmacion.ConfirmarAsync(
             "Eliminar cliente",
             $"«{cliente.Nombre}» se borrará de forma definitiva. Solo es posible si ningún comprobante lo usa.",
@@ -147,9 +156,18 @@
 
         if (!confirmado) return;
 
-        _error = await Clientes.EliminarAsync(cliente.Id);
-
-        if (_error is null) await RecargarAsync();
+        _trabajando = true;
+        _aviso = null;
+        try
+        {
+            _error = await Clientes.EliminarAsync(cliente.Id);
+            if (_error is null)
+            {
+                _aviso = "Cliente eliminado.";
+                await RecargarAsync();
+            }
+        }
+        finally { _trabajando = false; }
     }
 
     private void Exportar()

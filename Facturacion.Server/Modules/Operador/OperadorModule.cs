@@ -1,6 +1,7 @@
 using Facturacion.Server.Data.Entidades.Plataforma;
 using Facturacion.Server.Modules.Documentos.Salidas;
 using Facturacion.Server.Modules.Operador.Auth;
+using Facturacion.Server.Modules.Operador.Catalogos;
 using Facturacion.Server.Modules.Operador.Clientes;
 using Facturacion.Server.Modules.Operador.Compras;
 using Facturacion.Server.Modules.Operador.Configuracion;
@@ -34,6 +35,7 @@ public static class OperadorModule
         servicios.AddScoped<ServicioDeAutenticacionDeOperador>();
         servicios.AddScoped<ServicioDePerfilDeOperador>();
         servicios.AddScoped<ServicioDeOperadores>();
+        servicios.AddScoped<ServicioDeCatalogosDeOperador>();
         servicios.AddScoped<ServicioDePaquetesDeOperador>();
         servicios.AddScoped<ServicioDePaquetesPersonalizados>();
         servicios.AddScoped<ServicioDeComprasDeOperador>();
@@ -49,6 +51,7 @@ public static class OperadorModule
     {
         aplicacion.MapOperadorAuth();
         aplicacion.MapOperadores();
+        aplicacion.MapCatalogosDeOperador();
         aplicacion.MapPaquetesDeOperador();
         aplicacion.MapComprasDeOperador();
         aplicacion.MapClientesDePlataforma();
