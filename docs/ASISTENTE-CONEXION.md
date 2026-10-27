@@ -53,10 +53,7 @@ configurada, pero no habilita reemplazarla desde la interfaz.
 3. Pulsar **Probar conexión**. El servidor intenta abrir SQL con un tiempo de espera
    acotado y consulta el número de tablas de usuario visibles. No lee documentos ni
    modifica registros; contar tablas no acredita que las migraciones estén completas.
-4. Si el encargado confirma un certificado SQL autofirmado, puede activarse la opción
-   de confianza. Se conserva el cifrado, pero se omite validar la identidad de ese
-   certificado. Por omisión la opción está desmarcada.
-5. Pulsar **Guardar configuración**. El servidor vuelve a comprobar la conexión y
+4. Pulsar **Guardar configuración**. El servidor vuelve a comprobar la conexión y
    crea el archivo una única vez. Editar datos en pantalla exige volver a probar.
 
 La conexión sale del proceso ASP.NET Core hacia SQL Server. Probarla desde una
@@ -67,8 +64,11 @@ computadora de desarrollo no acredita la conectividad desde el servidor remoto.
 Abrir `http://127.0.0.1:5245/operador` mientras esté ejecutándose el proceso de
 pruebas. Usar la clave de `tmp/wizard-20261020/cnf/clave-instalacion.txt`, seleccionar
 **Autenticación de Windows**, servidor `.` y base `FacturacionDev`. No capturar un
-usuario o contraseña SQL. Si SQL rechaza su certificado local, la opción de confianza
-está disponible en **Certificado de SQL Server** para ese entorno controlado.
+usuario o contraseña SQL.
+
+Desde el 24 de octubre de 2026 el asistente ya no ofrece confiar en el certificado de
+SQL Server: la conexión siempre valida su identidad, y un certificado autofirmado se
+rechaza. La opción para el certificado se agregará después en la interfaz.
 
 Se probó la conexión integrada contra la base local con cifrado y confianza explícita
 en su certificado: conexión correcta, 83 tablas de usuario visibles. La consulta no

@@ -75,8 +75,7 @@
             baseDeDatos: porId("base").value,
             usuario: porId("usuario").value,
             contrasena: porId("contrasena").value,
-            usarAutenticacionWindows: porId("autenticacion").value === "windows",
-            confiarEnCertificado: porId("confiar").checked
+            usarAutenticacionWindows: porId("autenticacion").value === "windows"
         };
     }
 
