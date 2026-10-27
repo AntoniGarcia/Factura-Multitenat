@@ -30,6 +30,13 @@ reciclarlo, y sin decirlo la mitad B iba a suponer lo contrario.
 La mitad B genera el PDF y necesita el logo. Sin este método tendría que leer el almacén
 de archivos de la mitad A por su cuenta, que es justo lo que la frontera existe para evitar.
 
+## Ampliaciones posteriores al congelamiento
+
+**`IUsoDeCatalogos` (27 de octubre de 2026).**
+El permiso Eliminar de Clientes, Productos y Series (AGENTS.md §11) solo borra lo que ningún
+comprobante usó. Esa respuesta vive en la mitad B y no hay llave foránea que la sustituya:
+la mitad A pregunta por aquí en lugar de leer las tablas de Documentos.
+
 ## Convenciones
 
 - Todos los DTO son `record` inmutables y viven en el mismo archivo que su interfaz.
