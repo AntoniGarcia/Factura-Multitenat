@@ -1,4 +1,5 @@
 @using Facturacion.Shared.Comun
+@using Facturacion.Shared.Plataforma
 @inject ServicioDeEmpresa Empresa
 
 @*
@@ -12,9 +13,14 @@
     marcado y deshabilitado con el motivo: no se guarda, así que al quitar la casilla que lo
     concede se va solo (Permisos.ConImplicitos).
 
-    Los documentos con complemento solo se ofrecen si la empresa tiene la licencia. Si un usuario
-    ya tenía uno asignado y la licencia se retiró, se conserva sin mostrarse: quitarlo aquí sin
-    que nadie lo viera sería un cambio silencioso, y el servidor rechaza la emisión igual.
+    Los documentos con complemento solo se ofrecen si alguna de las empresas elegidas tiene la
+    licencia. Si un usuario ya tenía uno asignado y la licencia se retiró, se conserva sin
+    mostrarse: quitarlo aquí sin que nadie lo viera sería un cambio silencioso, y el servidor
+    rechaza la emisión igual.
+
+    Con Empresas, la última pestaña dice a cuáles entra el usuario. Los permisos son los mismos
+    en todas (AGENTS.md §11). Con una sola empresa en la cuenta no hay nada que elegir y la
+    pestaña no se muestra.
 *@
 
 <MudTabs @bind-ActivePanelIndex="_pestana" Class="selector-permisos-pestanas" Elevation="0">
@@ -75,6 +81,30 @@
             }
         </MudTabPanel>
     }
+
+    @if (Empresas is { Count: > 1 })
+    {
+        <MudTabPanel Text="@($"Acceso a empresas ({EmpresasElegidas.Count})")">
+            <p class="permisos-detalle-ayuda">
+                Entra solo a las empresas marcadas, con los mismos permisos en todas.
+            </p>
+            <section class="permisos-detalle" aria-label="Empresas a las que entra">
+                <div class="permisos-acciones" role="group" aria-label="Empresas de la cuenta">
+                    @foreach (var empresa in Empresas)
+                    {
+                        <div class="permiso-casilla" @key="empresa.Id">
+                            <MudCheckBox T="bool"
+                                         Value="@EmpresasElegidas.Contains(empresa.Id)"
+                                         ValueChanged="@(marcada => CambiarEmpresa(empresa.Id, marcada))"
+                                         Label="@empresa.NombreFiscal"
+                                         Disabled="@Deshabilitado" />
+                            <span class="permiso-concedido cifra-tabular">@empresa.Rfc</span>
+                        </div>
+                    }
+                </div>
+            </section>
+        </MudTabPanel>
+    }
 </MudTabs>
 
 @code {
@@ -87,12 +117,37 @@
     [Parameter]
     public bool Deshabilitado { get; set; }
 
+    /// <summary>Las empresas de la cuenta. Sin ellas, las licencias son las de la empresa activa.</summary>
+    [Parameter]
+    public IReadOnlyList<EmpresaParaAccesoDto>? Empresas { get; set; }
+
+    [Parameter]
+    public List<Guid> EmpresasElegidas { get; set; } = [];
+
+    [Parameter]
+    public EventCallback<List<Guid>> EmpresasElegidasChanged { get; set; }
+
     private int _pestana;
     private readonly Dictionary<string, string> _activos = [];
-    private LicenciasDto? _licencias;
+    private LicenciasDto? _licenciasDeLaActiva;
 
     protected override async Task OnInitializedAsync()
-        => _licencias = (await Empresa.ObtenerAsync())?.Licencias;
+    {
+        if (Empresas is null) _licenciasDeLaActiva = (await Empresa.ObtenerAsync())?.Licencias;
+    }
+
+    private IEnumerable<LicenciasDto> Licencias => Empresas is null
+        ? _licenciasDeLaActiva is { } activa ? [activa] : []
+        : Empresas.Where(e => EmpresasElegidas.Contains(e.Id)).Select(e => e.Licencias);
+
+    private Task CambiarEmpresa(Guid empresaId, bool marcada)
+    {
+        List<Guid> nuevas = marcada
+            ? [.. EmpresasElegidas.Append(empresaId).Distinct()]
+            : [.. EmpresasElegidas.Where(id => id != empresaId)];
+
+        return EmpresasElegidasChanged.InvokeAsync(nuevas);
+    }
 
     private RenderFragment Casillas(ElementoDePermisos elemento) => __builder =>
     {
@@ -121,9 +176,9 @@
 
     private bool TieneLicencia(ElementoDePermisos elemento) => elemento.Licencia switch
     {
-        LicenciasDePermiso.Notarios => _licencias?.Notarios == true,
-        LicenciasDePermiso.Comercio => _licencias?.Comercio == true,
-        LicenciasDePermiso.Obras => _licencias?.Obras == true,
+        LicenciasDePermiso.Notarios => Licencias.Any(l => l.Notarios),
+        LicenciasDePermiso.Comercio => Licencias.Any(l => l.Comercio),
+        LicenciasDePermiso.Obras => Licencias.Any(l => l.Obras),
         _ => true
     };
 
@@ -143,7 +198,7 @@
     {
         "Documentos" => "Cualquier permiso de Emitir incluye el listado y la descarga. Eliminar borradores aplica a todos los tipos de documento.",
         "Emitir" => "Crear permite editar los borradores propios; Modificar, también los de otros usuarios. " +
-                    "Las facturas con complemento aparecen solo si la empresa tiene contratado el módulo.",
+                    "Las facturas con complemento aparecen solo si alguna empresa elegida tiene contratado el módulo.",
         "Catálogos" => "Consultarlos ya viene con cualquier permiso de Emitir. Eliminar solo borra lo que ningún comprobante ha usado.",
         _ => null
     };

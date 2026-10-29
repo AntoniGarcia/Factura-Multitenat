@@ -48,7 +48,24 @@ public sealed record UsuarioDeCuentaDto(
 /// </summary>
 public sealed record DetalleDeCuentaDto(
     CuentaEnListaDto Cuenta,
-    IReadOnlyList<EmpresaDeCuentaDto> Empresas);
+    IReadOnlyList<EmpresaDeCuentaDto> Empresas,
+    LimitesDeCuentaDto Limites);
+
+/// <summary>
+/// Cuántos usuarios activos y cuántas empresas admite la cuenta, y cuántos usa. Un usuario
+/// cuenta una sola vez aunque entre a varias empresas.
+/// </summary>
+public sealed record LimitesDeCuentaDto(
+    int LimiteDeUsuarios,
+    int UsuariosActivos,
+    int LimiteDeEmpresas,
+    int Empresas);
+
+/// <summary>Nuevos límites de una cuenta. No pueden quedar por debajo de lo que ya usa.</summary>
+public sealed record PeticionCambiarLimitesDeCuenta(
+    [property: System.ComponentModel.DataAnnotations.Range(1, 999)] int LimiteDeUsuarios,
+    [property: System.ComponentModel.DataAnnotations.Range(1, 999)] int LimiteDeEmpresas,
+    [property: System.ComponentModel.DataAnnotations.Required] string ContrasenaDelOperador);
 
 /// <summary>Una página de cuentas y cuántas hay en total con ese filtro.</summary>
 public sealed record PaginaDeCuentas(

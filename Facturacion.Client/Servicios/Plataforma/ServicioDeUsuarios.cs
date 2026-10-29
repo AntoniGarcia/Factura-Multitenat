@@ -4,7 +4,10 @@ using Facturacion.Shared.Plataforma;
 
 namespace Facturacion.Client.Servicios.Plataforma;
 
-/// <summary>Llama a <c>/api/usuarios</c>. La empresa nunca viaja: va en el token.</summary>
+/// <summary>
+/// Llama a <c>/api/usuarios</c>. La empresa activa va en el token; las únicas empresas que
+/// viajan son las elegidas para el acceso del usuario (AGENTS.md §11).
+/// </summary>
 public sealed class ServicioDeUsuarios(IHttpClientFactory fabrica)
 {
     private HttpClient Cliente => fabrica.CreateClient(ClientesHttp.Api);
@@ -16,9 +19,9 @@ public sealed class ServicioDeUsuarios(IHttpClientFactory fabrica)
         return respuesta.IsSuccessStatusCode ? null : await respuesta.Content.ReadFromJsonAsync<DetalleProblema>(ct);
     }
 
-    public async Task<UsuariosDeLaEmpresaDto> ListarAsync(CancellationToken ct = default)
-        => await Cliente.GetFromJsonAsync<UsuariosDeLaEmpresaDto>("api/usuarios", ct)
-           ?? new UsuariosDeLaEmpresaDto([], 3);
+    public async Task<UsuariosDeLaCuentaDto> ListarAsync(CancellationToken ct = default)
+        => await Cliente.GetFromJsonAsync<UsuariosDeLaCuentaDto>("api/usuarios", ct)
+           ?? new UsuariosDeLaCuentaDto([], 0, 0, []);
 
     public async Task<(RespuestaCrearUsuario? Exito, DetalleProblema? Error)> CrearAsync(
         PeticionCrearUsuario peticion, CancellationToken ct = default)
@@ -46,21 +49,21 @@ public sealed class ServicioDeUsuarios(IHttpClientFactory fabrica)
     }
 
     public async Task<DetalleProblema?> ActualizarPermisosAsync(
-        Guid usuarioId, IReadOnlyList<string> permisos, CancellationToken ct = default)
+        Guid usuarioId, IReadOnlyList<string> permisos, IReadOnlyList<Guid> empresas, CancellationToken ct = default)
     {
         using var respuesta = await Cliente.PutAsJsonAsync(
-            $"api/usuarios/{usuarioId}/permisos", new PeticionActualizarPermisos(permisos), ct);
+            $"api/usuarios/{usuarioId}/permisos", new PeticionActualizarPermisos(permisos, empresas), ct);
 
         return respuesta.IsSuccessStatusCode ? null : await respuesta.Content.ReadFromJsonAsync<DetalleProblema>(ct);
     }
 
-    public async Task<(UsuarioDeEmpresaDto? Exito, DetalleProblema? Error)> CambiarActivoAsync(
+    public async Task<(UsuarioDeLaCuentaDto? Exito, DetalleProblema? Error)> CambiarActivoAsync(
         Guid usuarioId, bool activo, CancellationToken ct = default)
     {
         using var respuesta = await Cliente.PostAsJsonAsync(
             $"api/usuarios/{usuarioId}/activo", new PeticionCambiarActivoUsuario(activo), ct);
 
-        return await LeerAsync<UsuarioDeEmpresaDto>(respuesta, ct);
+        return await LeerAsync<UsuarioDeLaCuentaDto>(respuesta, ct);
     }
 
     private static async Task<(T? Exito, DetalleProblema? Error)> LeerAsync<T>(

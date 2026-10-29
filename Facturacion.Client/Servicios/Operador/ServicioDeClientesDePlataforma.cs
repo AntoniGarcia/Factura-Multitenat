@@ -56,6 +56,17 @@ public sealed class ServicioDeClientesDePlataforma(IHttpClientFactory fabrica)
             : (null, await respuesta.Content.ReadFromJsonAsync<DetalleProblema>(ct));
     }
 
+    public async Task<DetalleProblema?> CambiarLimitesAsync(
+        Guid cuentaId, PeticionCambiarLimitesDeCuenta peticion, CancellationToken ct = default)
+    {
+        using var respuesta = await Cliente.PostAsJsonAsync(
+            $"api/operador/cuentas/{cuentaId}/limites", peticion, ct);
+
+        return respuesta.IsSuccessStatusCode
+            ? null
+            : await respuesta.Content.ReadFromJsonAsync<DetalleProblema>(ct);
+    }
+
     public async Task<DetalleProblema?> CambiarCorreoDeContactoDeCuentaAsync(
         Guid cuentaId, PeticionCambiarCorreoDeContactoDeCuenta peticion, CancellationToken ct = default)
     {

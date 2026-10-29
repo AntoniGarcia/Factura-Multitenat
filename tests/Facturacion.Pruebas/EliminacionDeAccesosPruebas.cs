@@ -92,8 +92,13 @@ public sealed class EliminacionDeAccesosPruebas : IAsyncLifetime
             otroDb.UsuariosEmpresas.Add(new UsuarioEmpresa { UsuarioId = id, EmpresaId = otraEmpresa });
             await otroDb.SaveChangesAsync();
         }
-        Assert.Equal("usuario-en-otras-empresas", (await servicio.EliminarAsync(id, Contrasena, default)).Error?.Codigo);
-        await db.UsuariosEmpresas.IgnoreQueryFilters().Where(x => x.UsuarioId == id && x.EmpresaId == otraEmpresa).ExecuteDeleteAsync();
+        var otraCuenta = Guid.NewGuid();
+        var ajeno = Usuario(Guid.NewGuid());
+        ajeno.CuentaId = otraCuenta;
+        db.Cuentas.Add(new Cuenta { Id = otraCuenta, Nombre = "Ajena", CorreoContacto = "ajena@example.com" });
+        db.Users.Add(ajeno);
+        await db.SaveChangesAsync();
+        Assert.Equal("usuario-no-encontrado", (await servicio.EliminarAsync(ajeno.Id, Contrasena, default)).Error?.Codigo);
 
         var historico = Guid.NewGuid();
         db.Users.Add(Usuario(historico));

@@ -48,25 +48,40 @@ else
                 <a href="@($"mailto:{_detalle.Cuenta.CorreoContacto}")">@_detalle.Cuenta.CorreoContacto</a>
             </div>
 
-            @if (Sesion.TienePermiso(PoliticasDelPanel.EditarContactoCuentas))
-            {
-                <MudButton Variant="Variant.Outlined"
-                           StartIcon="@Icons.Material.Filled.Edit"
-                           Disabled="@_trabajando"
-                           OnClick="EditarCorreoDeContacto">
-                    Editar contacto
-                </MudButton>
-            }
+            <div class="ficha-cuenta-acciones">
+                @if (Sesion.TienePermiso(PoliticasDelPanel.GestionarLimites))
+                {
+                    <MudButton Variant="Variant.Outlined"
+                               StartIcon="@Icons.Material.Filled.Tune"
+                               Disabled="@_trabajando"
+                               OnClick="EditarLimites">
+                        Editar límites
+                    </MudButton>
+                }
+                @if (Sesion.TienePermiso(PoliticasDelPanel.EditarContactoCuentas))
+                {
+                    <MudButton Variant="Variant.Outlined"
+                               StartIcon="@Icons.Material.Filled.Edit"
+                               Disabled="@_trabajando"
+                               OnClick="EditarCorreoDeContacto">
+                        Editar contacto
+                    </MudButton>
+                }
+            </div>
         </div>
 
         <dl class="ficha-cuenta-metricas">
             <div>
                 <dt>Empresas</dt>
-                <dd class="cifra-tabular">@_detalle.Cuenta.Empresas.ToString("N0")</dd>
+                <dd class="cifra-tabular">
+                    @_detalle.Limites.Empresas.ToString("N0") de @_detalle.Limites.LimiteDeEmpresas.ToString("N0")
+                </dd>
             </div>
             <div>
-                <dt>Usuarios</dt>
-                <dd class="cifra-tabular">@_detalle.Cuenta.Usuarios.ToString("N0")</dd>
+                <dt>Usuarios activos</dt>
+                <dd class="cifra-tabular">
+                    @_detalle.Limites.UsuariosActivos.ToString("N0") de @_detalle.Limites.LimiteDeUsuarios.ToString("N0")
+                </dd>
             </div>
             <div>
                 <dt>Timbres disponibles</dt>
@@ -334,6 +349,31 @@ else
         _error = null;
 
         _error = await Suscripciones.CancelarMembresiaAsync(membresia.Id);
+
+        _trabajando = false;
+
+        if (_error is null) await CargarAsync();
+    }
+
+    private async Task EditarLimites()
+    {
+        if (_trabajando || _detalle is null) return;
+
+        var parametros = new DialogParameters<DialogoDeLimitesDeCuenta>
+        {
+            { x => x.NombreCuenta, _detalle.Cuenta.Nombre },
+            { x => x.Limites, _detalle.Limites }
+        };
+
+        var referencia = await Dialogos.ShowAsync<DialogoDeLimitesDeCuenta>("Editar límites", parametros);
+        var resultado = await referencia.Result;
+
+        if (resultado is not { Canceled: false, Data: PeticionCambiarLimitesDeCuenta peticion }) return;
+
+        _trabajando = true;
+        _error = null;
+
+        _error = await Clientes.CambiarLimitesAsync(Id, peticion);
 
         _trabajando = false;
 

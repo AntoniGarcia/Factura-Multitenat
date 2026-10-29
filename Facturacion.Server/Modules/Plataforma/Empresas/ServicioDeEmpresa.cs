@@ -2,9 +2,11 @@ using Facturacion.Server.Data;
 using Facturacion.Server.Data.Entidades.Plataforma;
 using Facturacion.Server.Infra.Bitacora;
 using Facturacion.Server.Infra.Tenencia;
+using Facturacion.Server.Modules.Plataforma.Usuarios;
 using Facturacion.Shared.Comun;
 using Facturacion.Shared.Plataforma;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Options;
 
 namespace Facturacion.Server.Modules.Plataforma.Empresas;
 
@@ -18,7 +20,8 @@ namespace Facturacion.Server.Modules.Plataforma.Empresas;
 public sealed class ServicioDeEmpresa(
     AppDbContext baseDeDatos,
     IContextoEmpresaInterno contexto,
-    IServicioDeBitacora bitacora)
+    IServicioDeBitacora bitacora,
+    IOptions<OpcionesDeSoporte> opcionesSoporte)
 {
     public async Task<EmpresaDto?> ObtenerAsync(CancellationToken ct)
     {
@@ -70,6 +73,16 @@ public sealed class ServicioDeEmpresa(
                 "sin-permiso-para-crear-empresa",
                 "Solo el titular de la cuenta puede dar de alta empresas.");
 
+        // La transacción sostiene el bloqueo de la cuenta: dos altas simultáneas no rebasan el límite.
+        await using var transaccion = await baseDeDatos.Database.BeginTransactionAsync(ct);
+
+        var cuenta = await LimitesDeCuenta.BloquearAsync(baseDeDatos, cuentaId, ct);
+        if (cuenta is null)
+            return ErrorNegocio.NoEncontrado("cuenta-no-encontrada", "Tu cuenta ya no existe.");
+
+        if (await LimitesDeCuenta.EmpresasEnUsoAsync(baseDeDatos, cuentaId, ct) >= cuenta.LimiteDeEmpresas)
+            return LimitesDeCuenta.ErrorDeEmpresas(cuenta.LimiteDeEmpresas, opcionesSoporte.Value);
+
         // IgnoreQueryFilters justificado: el filtro global recorta por la empresa activa, y
         // aquí se busca justo entre las de la cuenta, incluida la que aún no existe.
         var repetido = await baseDeDatos.Empresas
@@ -119,6 +132,7 @@ public sealed class ServicioDeEmpresa(
             empresaId: empresa.Id);
 
         await baseDeDatos.SaveChangesAsync(ct);
+        await transaccion.CommitAsync(ct);
 
         return AEmpresaDto(empresa);
     }

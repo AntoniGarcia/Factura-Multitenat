@@ -2447,6 +2447,12 @@ namespace Facturacion.Server.Migrations
                     b.Property<DateTime>("FechaAltaUtc")
                         .HasColumnType("datetime2");
 
+                    b.Property<int>("LimiteDeEmpresas")
+                        .HasColumnType("int");
+
+                    b.Property<int>("LimiteDeUsuarios")
+                        .HasColumnType("int");
+
                     b.Property<string>("Nombre")
                         .IsRequired()
                         .HasMaxLength(254)

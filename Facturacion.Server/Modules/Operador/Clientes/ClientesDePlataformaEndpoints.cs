@@ -33,6 +33,8 @@ public static class ClientesDePlataformaEndpoints
             .RequireAuthorization(PoliticasDeOperador.GestionarLicencias);
         grupo.MapPost("/{id:guid}/correo-contacto", CambiarCorreoDeContacto)
             .RequireAuthorization(PoliticasDeOperador.EditarContactoCuentas);
+        grupo.MapPost("/{id:guid}/limites", CambiarLimites)
+            .RequireAuthorization(PoliticasDeOperador.GestionarLimites);
         grupo.MapPost("/{id:guid}/empresas/{empresaId:guid}/paquetes", CrearPaquete)
             .RequireAuthorization(PoliticasDeOperador.AsignarTimbres);
         grupo.MapPut("/{id:guid}/empresas/{empresaId:guid}/paquetes/{paqueteId:guid}", ActualizarPaquete)
@@ -112,6 +114,22 @@ public static class ClientesDePlataformaEndpoints
 
         return resultado.EsExito
             ? Results.NoContent()
+            : resultado.Error!.AResultado(contexto);
+    }
+
+    private static async Task<IResult> CambiarLimites(
+        Guid id,
+        PeticionCambiarLimitesDeCuenta peticion,
+        ServicioDeClientesDePlataforma clientes,
+        HttpContext contexto,
+        CancellationToken ct)
+    {
+        if (!TryOperador(contexto, out var operadorId)) return Results.Unauthorized();
+
+        var resultado = await clientes.CambiarLimitesAsync(operadorId, id, peticion, ct);
+
+        return resultado.EsExito
+            ? Results.Ok(resultado.Valor)
             : resultado.Error!.AResultado(contexto);
     }
 

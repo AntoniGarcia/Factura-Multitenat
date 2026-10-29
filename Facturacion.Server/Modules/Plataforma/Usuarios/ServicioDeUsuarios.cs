@@ -12,7 +12,12 @@ using Microsoft.Extensions.Options;
 
 namespace Facturacion.Server.Modules.Plataforma.Usuarios;
 
-/// <summary>Administra accesos de la empresa. El titular crea usuarios o vincula usuarios de la misma cuenta sin cambiar sus contraseñas. El alta directa no verifica el correo y el creador conoce la contraseña inicial; queda registrada en bitácora. El titular no se modifica desde esta pantalla.</summary>
+/// <summary>
+/// Los usuarios de la cuenta, administrados por su titular. Cada usuario tiene un solo juego de
+/// permisos, el mismo en todas las empresas a las que entra (AGENTS.md §11, 27 de octubre de
+/// 2026). El alta directa no verifica el correo y el creador conoce la contraseña inicial;
+/// queda registrada en bitácora. El titular no se modifica desde esta pantalla.
+/// </summary>
 public sealed class ServicioDeUsuarios(
     AppDbContext baseDeDatos,
     UserManager<Usuario> usuarios,
@@ -22,8 +27,6 @@ public sealed class ServicioDeUsuarios(
     IOptions<OpcionesDeSoporte> opcionesSoporte,
     IControlDeIntentos intentos)
 {
-    public const int LimitePorEmpresa = 3;
-
     public async Task<Resultado> EliminarAsync(Guid usuarioId, string contrasena, CancellationToken ct)
     {
         var confirmacion = await ConfirmacionDeTitular.ValidarAsync(usuarios, contexto, intentos, contrasena);
@@ -31,18 +34,12 @@ public sealed class ServicioDeUsuarios(
         var titular = confirmacion.Valor;
 
         await using var transaccion = await baseDeDatos.Database.BeginTransactionAsync(System.Data.IsolationLevel.Serializable, ct);
-        var miembro = await baseDeDatos.UsuariosEmpresas
-            .Include(x => x.Usuario).Include(x => x.Permisos)
-            .SingleOrDefaultAsync(x => x.UsuarioId == usuarioId && x.EmpresaId == contexto.EmpresaId &&
-                x.Usuario.CuentaId == titular.CuentaId, ct);
-        if (miembro is null)
-            return ErrorNegocio.NoEncontrado("usuario-no-encontrado", "Ese usuario no pertenece a esta empresa.");
-        if (usuarioId == titular.Id || miembro.Usuario.EsTitular || !miembro.Usuario.CreadoPorAdministrador)
+        var usuario = await baseDeDatos.Users
+            .SingleOrDefaultAsync(x => x.Id == usuarioId && x.CuentaId == titular.CuentaId, ct);
+        if (usuario is null)
+            return ErrorNegocio.NoEncontrado("usuario-no-encontrado", "Ese usuario no pertenece a tu cuenta.");
+        if (usuarioId == titular.Id || usuario.EsTitular || !usuario.CreadoPorAdministrador)
             return ErrorNegocio.Regla("usuario-protegido", "No puedes eliminar este usuario.");
-
-        if (await baseDeDatos.UsuariosEmpresas.IgnoreQueryFilters()
-            .AnyAsync(x => x.UsuarioId == usuarioId && x.EmpresaId != contexto.EmpresaId, ct))
-            return ErrorNegocio.Regla("usuario-en-otras-empresas", "Tiene acceso a otras empresas. Desactiva su acceso aquí.");
 
         // Se revisa toda su actividad, no solo la de la empresa abierta.
         var id = usuarioId.ToString();
@@ -61,36 +58,51 @@ public sealed class ServicioDeUsuarios(
         if (tieneHistorial)
             return ErrorNegocio.Regla("usuario-con-historial", "Tiene actividad registrada. Desactívalo para conservar su historial.");
 
+        var accesos = await baseDeDatos.UsuariosEmpresas
+            .Include(x => x.Permisos)
+            .Where(x => x.UsuarioId == usuarioId)
+            .ToListAsync(ct);
+
         bitacora.Registrar(EntidadesDeBitacora.UsuarioEmpresa, id, AccionesDeBitacora.UsuarioEliminado,
-            antes: new { miembro.Usuario.Nombre, miembro.Usuario.Email }, usuarioId: titular.Id);
-        baseDeDatos.UsuariosEmpresasPermisos.RemoveRange(miembro.Permisos);
-        baseDeDatos.UsuariosEmpresas.Remove(miembro);
-        baseDeDatos.Users.Remove(miembro.Usuario);
+            antes: new { usuario.Nombre, usuario.Email }, usuarioId: titular.Id);
+        baseDeDatos.UsuariosEmpresasPermisos.RemoveRange(accesos.SelectMany(x => x.Permisos));
+        baseDeDatos.UsuariosEmpresas.RemoveRange(accesos);
+        baseDeDatos.Users.Remove(usuario);
         await baseDeDatos.SaveChangesAsync(ct);
         await transaccion.CommitAsync(ct);
         return Resultado.Exito();
     }
 
-    public async Task<UsuariosDeLaEmpresaDto> ListarAsync(CancellationToken ct)
+    public async Task<UsuariosDeLaCuentaDto> ListarAsync(CancellationToken ct)
     {
-        var empresaId = contexto.EmpresaId;
+        var cuentaId = await CuentaDeLaEmpresaAsync(contexto.EmpresaId, ct);
+        var empresas = await EmpresasParaAccesoAsync(cuentaId, ct);
 
-        var miembros = await baseDeDatos.UsuariosEmpresas
+        var filas = await baseDeDatos.Users
             .AsNoTracking()
-            .Where(ue => ue.EmpresaId == empresaId)
-            .OrderBy(ue => ue.Usuario.Nombre)
-            .Select(ue => new UsuarioDeEmpresaDto(
-                ue.UsuarioId,
-                ue.Usuario.Nombre,
-                ue.Usuario.Email!,
-                ue.Activo && ue.Usuario.Activo,
-                ue.UsuarioId == contexto.UsuarioActual,
-                ue.Usuario.CreadoPorAdministrador,
-                ue.Permisos.Select(p => p.PermisoClave).ToList(),
-                ue.Usuario.EsTitular))
+            .Where(u => u.CuentaId == cuentaId)
+            .OrderBy(u => u.Nombre)
+            .Select(u => new FilaDeUsuario(
+                u.Id, u.Nombre, u.Email!, u.Activo, u.CreadoPorAdministrador, u.EsTitular,
+                baseDeDatos.UsuariosEmpresas
+                    .Where(ue => ue.UsuarioId == u.Id && ue.Activo)
+                    .Select(ue => ue.EmpresaId)
+                    .ToList(),
+                baseDeDatos.UsuariosEmpresasPermisos
+                    .Where(p => p.UsuarioId == u.Id)
+                    .Select(p => p.PermisoClave)
+                    .Distinct()
+                    .ToList()))
             .ToListAsync(ct);
 
-        return new UsuariosDeLaEmpresaDto([.. miembros.Select(ConPermisosDeTitular)], LimitePorEmpresa);
+        var limite = await baseDeDatos.Cuentas
+            .AsNoTracking()
+            .Where(c => c.Id == cuentaId)
+            .Select(c => c.LimiteDeUsuarios)
+            .FirstOrDefaultAsync(ct);
+        var enUso = await LimitesDeCuenta.UsuariosQueCuentan(baseDeDatos, cuentaId).CountAsync(ct);
+
+        return new UsuariosDeLaCuentaDto([.. filas.Select(f => ADto(f, empresas))], limite, enUso, empresas);
     }
 
     public async Task<Resultado<RespuestaCrearUsuario>> CrearAsync(PeticionCrearUsuario peticion, CancellationToken ct)
@@ -101,32 +113,29 @@ public sealed class ServicioDeUsuarios(
         var error = ValidarDatosBasicos(correo, nombre, peticion.Permisos);
         if (error is not null) return error;
 
-        var empresaId = contexto.EmpresaId;
+        // La transacción sostiene el bloqueo de la cuenta hasta el final del alta.
+        await using var transaccion = await baseDeDatos.Database.BeginTransactionAsync(ct);
 
-        if (await EstaEnElLimiteAsync(empresaId, ct)) return ErrorDeLimite();
-
-        var existente = await usuarios.FindByEmailAsync(correo);
-
-        if (existente is not null)
-            return await DarAccesoDirectoAsync(existente, empresaId, peticion.Permisos, ct);
-
-        // La cuenta sale de la empresa activa y no del claim: es la misma, pero así el
-        // usuario nuevo queda colgado justo de la cuenta a la que se le está dando acceso,
-        // sin depender de que el token traiga el claim bien puesto.
-        var cuentaId = await baseDeDatos.Empresas
-            .AsNoTracking()
-            .Where(e => e.Id == empresaId)
-            .Select(e => e.CuentaId)
-            .FirstOrDefaultAsync(ct);
-
-        if (cuentaId == Guid.Empty)
+        var cuenta = await BloquearCuentaAsync(ct);
+        if (cuenta is null)
             return ErrorNegocio.NoEncontrado("empresa-no-encontrada", "La empresa activa ya no existe.");
+
+        var elegidas = await ValidarEmpresasAsync(cuenta.Id, peticion.Empresas, ct);
+        if (elegidas.EsFallo) return elegidas.Error!;
+
+        if (await usuarios.FindByEmailAsync(correo) is { } existente)
+            return existente.CuentaId == cuenta.Id
+                ? ErrorNegocio.Conflicto("usuario-existente",
+                    "Ese correo ya es de un usuario de tu cuenta. Búscalo en la lista para cambiar sus empresas o sus permisos.")
+                : ErrorNegocio.Conflicto("correo-en-uso", "Ese correo ya está en uso por otra cuenta.");
+
+        if (await EstaEnElLimiteAsync(cuenta, ct)) return ErrorDeLimite(cuenta);
 
         var usuario = new Usuario
         {
             Id = Guid.NewGuid(),
             Nombre = nombre,
-            CuentaId = cuentaId,
+            CuentaId = cuenta.Id,
             UserName = correo,
             Email = correo,
             // Se marca confirmado sin que nadie lo haya confirmado: no hay ida y vuelta por
@@ -147,20 +156,23 @@ public sealed class ServicioDeUsuarios(
                     ["contrasena"] = [.. alta.Errors.Select(e => e.Description)]
                 });
 
-        OtorgarAcceso(usuario.Id, empresaId, peticion.Permisos, contexto.UsuarioActual);
+        var ahora = DateTime.UtcNow;
+        foreach (var empresaId in elegidas.Valor)
+            baseDeDatos.UsuariosEmpresas.Add(new UsuarioEmpresa { UsuarioId = usuario.Id, EmpresaId = empresaId, FechaAltaUtc = ahora });
+
+        FijarPermisos(usuario.Id, elegidas.Valor, [], peticion.Permisos);
 
         // La contraseña NO se registra, ni cifrada ni truncada ni en forma de pista: la
         // bitácora se lee en una auditoría y no es sitio para material de acceso.
         bitacora.Registrar(
             EntidadesDeBitacora.UsuarioEmpresa, usuario.Id.ToString(), AccionesDeBitacora.UsuarioCreado,
-            despues: new { correo, nombre, EmpresaId = empresaId, Permisos = peticion.Permisos },
+            despues: new { correo, nombre, Empresas = elegidas.Valor, Permisos = peticion.Permisos },
             usuarioId: usuario.Id);
 
         await baseDeDatos.SaveChangesAsync(ct);
+        await transaccion.CommitAsync(ct);
 
-        return new RespuestaCrearUsuario(
-            AccesoDirecto: false,
-            Mensaje: $"{nombre} ya puede entrar con su correo y la contraseña que acabas de fijar.");
+        return new RespuestaCrearUsuario($"{nombre} ya puede entrar con su correo y la contraseña que acabas de fijar.");
     }
 
     /// <summary>
@@ -176,15 +188,9 @@ public sealed class ServicioDeUsuarios(
 
         if (await ErrorSiEsTitularAsync(usuarioId, ct) is { } titular) return titular;
 
-        var pertenece = await baseDeDatos.UsuariosEmpresas
-            .AnyAsync(ue => ue.UsuarioId == usuarioId && ue.EmpresaId == contexto.EmpresaId, ct);
-
-        if (!pertenece)
-            return ErrorNegocio.NoEncontrado("usuario-no-encontrado", "Ese usuario no pertenece a esta empresa.");
-
-        var usuario = await usuarios.FindByIdAsync(usuarioId.ToString());
+        var usuario = await UsuarioDeLaCuentaAsync(usuarioId, ct);
         if (usuario is null)
-            return ErrorNegocio.NoEncontrado("usuario-no-encontrado", "Ese usuario no existe.");
+            return ErrorNegocio.NoEncontrado("usuario-no-encontrado", "Ese usuario no pertenece a tu cuenta.");
 
         if (string.Equals(usuario.Email, correo, StringComparison.OrdinalIgnoreCase))
             return Resultado.Exito();
@@ -239,15 +245,9 @@ public sealed class ServicioDeUsuarios(
 
         if (await ErrorSiEsTitularAsync(usuarioId, ct) is { } titular) return titular;
 
-        var pertenece = await baseDeDatos.UsuariosEmpresas
-            .AnyAsync(ue => ue.UsuarioId == usuarioId && ue.EmpresaId == contexto.EmpresaId, ct);
-
-        if (!pertenece)
-            return ErrorNegocio.NoEncontrado("usuario-no-encontrado", "Ese usuario no pertenece a esta empresa.");
-
-        var usuario = await usuarios.FindByIdAsync(usuarioId.ToString());
+        var usuario = await UsuarioDeLaCuentaAsync(usuarioId, ct);
         if (usuario is null)
-            return ErrorNegocio.NoEncontrado("usuario-no-encontrado", "Ese usuario no existe.");
+            return ErrorNegocio.NoEncontrado("usuario-no-encontrado", "Ese usuario no pertenece a tu cuenta.");
 
         if (!usuario.CreadoPorAdministrador)
             return ErrorNegocio.Regla(
@@ -283,243 +283,268 @@ public sealed class ServicioDeUsuarios(
         return Resultado.Exito();
     }
 
-    public async Task<Resultado> ActualizarPermisosAsync(Guid usuarioId, IReadOnlyList<string> permisos, CancellationToken ct)
+    /// <summary>
+    /// Fija las empresas a las que entra el usuario y sus permisos, los mismos en todas. Una
+    /// empresa desmarcada conserva el renglón inactivo: volver a marcarla no crea otro.
+    /// </summary>
+    public async Task<Resultado> ActualizarPermisosAsync(
+        Guid usuarioId, PeticionActualizarPermisos peticion, CancellationToken ct)
     {
-        if (Permisos.ErrorDeAsignacion(permisos) is { } invalido)
+        if (Permisos.ErrorDeAsignacion(peticion.Permisos) is { } invalido)
             return ErrorNegocio.Validacion("permiso-invalido", invalido);
 
         if (await ErrorSiEsTitularAsync(usuarioId, ct) is { } titular) return titular;
 
-        var empresaId = contexto.EmpresaId;
+        // Ganar la primera empresa activa hace que el usuario ocupe lugar: cuenta contra el límite.
+        await using var transaccion = await baseDeDatos.Database.BeginTransactionAsync(ct);
 
-        var pertenece = await baseDeDatos.UsuariosEmpresas
-            .AnyAsync(ue => ue.UsuarioId == usuarioId && ue.EmpresaId == empresaId, ct);
+        var cuenta = await BloquearCuentaAsync(ct);
+        if (cuenta is null)
+            return ErrorNegocio.NoEncontrado("empresa-no-encontrada", "La empresa activa ya no existe.");
 
-        if (!pertenece)
-            return ErrorNegocio.NoEncontrado("usuario-no-encontrado", "Ese usuario no pertenece a esta empresa.");
+        var usuario = await UsuarioDeLaCuentaAsync(usuarioId, ct);
+        if (usuario is null)
+            return ErrorNegocio.NoEncontrado("usuario-no-encontrado", "Ese usuario no pertenece a tu cuenta.");
 
-        var actuales = await baseDeDatos.UsuariosEmpresasPermisos
-            .Where(p => p.UsuarioId == usuarioId && p.EmpresaId == empresaId)
+        var elegidas = await ValidarEmpresasAsync(cuenta.Id, peticion.Empresas, ct);
+        if (elegidas.EsFallo) return elegidas.Error!;
+
+        if (!await OcupaLugarAsync(cuenta, usuarioId, ct) && usuario.Activo && await EstaEnElLimiteAsync(cuenta, ct))
+            return ErrorDeLimite(cuenta);
+
+        var accesos = await baseDeDatos.UsuariosEmpresas
+            .Include(ue => ue.Empresa)
+            .Where(ue => ue.UsuarioId == usuarioId)
+            .ToListAsync(ct);
+        var permisosActuales = await baseDeDatos.UsuariosEmpresasPermisos
+            .Where(p => p.UsuarioId == usuarioId)
             .ToListAsync(ct);
 
-        var clavesActuales = actuales.Select(p => p.PermisoClave).ToList();
-        var clavesNuevas = permisos.Distinct().ToList();
+        var empresasAntes = accesos.Where(ue => ue.Activo).Select(ue => ue.EmpresaId).ToList();
+        var clavesAntes = permisosActuales.Select(p => p.PermisoClave).Distinct().ToList();
 
-        var aQuitar = actuales.Where(p => !clavesNuevas.Contains(p.PermisoClave)).ToList();
-        var aAgregar = clavesNuevas.Except(clavesActuales).Select(clave => new UsuarioEmpresaPermiso
+        // Las empresas que el operador desactivó no se ofrecen en la pantalla; su acceso se
+        // deja como estaba en lugar de leer su ausencia como «desmarcada».
+        foreach (var acceso in accesos.Where(ue => ue.Empresa.Activa))
+            acceso.Activo = elegidas.Valor.Contains(acceso.EmpresaId);
+
+        var ahora = DateTime.UtcNow;
+        foreach (var empresaId in elegidas.Valor.Where(id => accesos.All(ue => ue.EmpresaId != id)))
         {
-            UsuarioId = usuarioId,
-            EmpresaId = empresaId,
-            PermisoClave = clave,
-            OtorgadoUtc = DateTime.UtcNow,
-            OtorgadoPorUsuarioId = contexto.UsuarioActual
-        }).ToList();
+            var nuevo = new UsuarioEmpresa { UsuarioId = usuarioId, EmpresaId = empresaId, FechaAltaUtc = ahora };
+            baseDeDatos.UsuariosEmpresas.Add(nuevo);
+            accesos.Add(nuevo);
+        }
 
-        if (aQuitar.Count == 0 && aAgregar.Count == 0) return Resultado.Exito();
+        // También en los accesos inactivos: si se reactivan, entran ya con el juego vigente.
+        FijarPermisos(usuarioId, [.. accesos.Select(ue => ue.EmpresaId)], permisosActuales, peticion.Permisos);
 
-        baseDeDatos.UsuariosEmpresasPermisos.RemoveRange(aQuitar);
-        baseDeDatos.UsuariosEmpresasPermisos.AddRange(aAgregar);
+        var empresasDespues = accesos.Where(ue => ue.Activo).Select(ue => ue.EmpresaId).ToList();
+        var clavesDespues = peticion.Permisos.Distinct().ToList();
 
-        bitacora.Registrar(
-            EntidadesDeBitacora.UsuarioEmpresa, usuarioId.ToString(), AccionesDeBitacora.PermisosActualizados,
-            antes: new { Permisos = clavesActuales }, despues: new { Permisos = clavesNuevas },
-            usuarioId: usuarioId);
+        if (!empresasAntes.ToHashSet().SetEquals(empresasDespues) || !clavesAntes.ToHashSet().SetEquals(clavesDespues))
+            bitacora.Registrar(
+                EntidadesDeBitacora.UsuarioEmpresa, usuarioId.ToString(), AccionesDeBitacora.PermisosActualizados,
+                antes: new { Empresas = empresasAntes, Permisos = clavesAntes },
+                despues: new { Empresas = empresasDespues, Permisos = clavesDespues },
+                usuarioId: usuarioId);
 
         await baseDeDatos.SaveChangesAsync(ct);
+        await transaccion.CommitAsync(ct);
 
         return Resultado.Exito();
     }
 
-    public async Task<Resultado<UsuarioDeEmpresaDto>> CambiarActivoAsync(Guid usuarioId, bool activo, CancellationToken ct)
+    /// <summary>
+    /// Desactiva o reactiva al usuario en toda la cuenta. A qué empresas entra se decide en sus
+    /// permisos; aquí solo se le abre o se le cierra la puerta.
+    /// </summary>
+    public async Task<Resultado<UsuarioDeLaCuentaDto>> CambiarActivoAsync(Guid usuarioId, bool activo, CancellationToken ct)
     {
-        var empresaId = contexto.EmpresaId;
-
         if (!activo && usuarioId == contexto.UsuarioActual)
             return ErrorNegocio.Regla("no-autodesactivar", "No puedes desactivarte a ti mismo. Pide a otro administrador que lo haga.");
 
         if (await ErrorSiEsTitularAsync(usuarioId, ct) is { } titular) return titular;
 
-        var miembro = await baseDeDatos.UsuariosEmpresas
-            .Include(ue => ue.Usuario)
-            .FirstOrDefaultAsync(ue => ue.UsuarioId == usuarioId && ue.EmpresaId == empresaId, ct);
+        // Reactivar cuenta contra el límite igual que dar de alta. Sin esto había un camino
+        // para pasarse: con el cupo lleno, desactivar a uno, aprovechar el hueco para crear a
+        // otro, y reactivar al primero.
+        await using var transaccion = await baseDeDatos.Database.BeginTransactionAsync(ct);
 
-        if (miembro is null)
-            return ErrorNegocio.NoEncontrado("usuario-no-encontrado", "Ese usuario no pertenece a esta empresa.");
+        var cuenta = await BloquearCuentaAsync(ct);
+        if (cuenta is null)
+            return ErrorNegocio.NoEncontrado("empresa-no-encontrada", "La empresa activa ya no existe.");
 
-        if (miembro.Activo == activo)
-            return await ADtoAsync(miembro, ct);
+        var usuario = await UsuarioDeLaCuentaAsync(usuarioId, ct);
+        if (usuario is null)
+            return ErrorNegocio.NoEncontrado("usuario-no-encontrado", "Ese usuario no pertenece a tu cuenta.");
 
-        // Reactivar suma un acceso, así que cuenta contra el límite igual que dar de alta.
-        // Sin esto había un camino para pasarse: con el cupo lleno, desactivar a uno,
-        // aprovechar el hueco para crear a otro, y reactivar al primero. Tres más uno.
-        if (activo && await EstaEnElLimiteAsync(empresaId, ct))
-            return ErrorDeLimite();
-
-        miembro.Activo = activo;
+        var conAcceso = await baseDeDatos.UsuariosEmpresas
+            .AnyAsync(ue => ue.UsuarioId == usuarioId && ue.Activo && ue.Empresa.Activa, ct);
 
         if (activo)
         {
-            // Reactivar en cualquier empresa levanta también la cuenta completa: quedó
-            // apagada solo porque se había quedado sin ninguna, y sigue siendo la misma persona.
-            miembro.Usuario.Activo = true;
+            if (!conAcceso)
+                return ErrorNegocio.Regla("sin-empresas",
+                    $"{usuario.Nombre} no tiene acceso a ninguna empresa. Márcale al menos una en sus permisos antes de reactivarlo.");
+
+            if (usuario.Activo) return await ADtoAsync(usuario, cuenta.Id, ct);
+
+            if (await EstaEnElLimiteAsync(cuenta, ct)) return ErrorDeLimite(cuenta);
+
+            usuario.Activo = true;
 
             bitacora.Registrar(
                 EntidadesDeBitacora.UsuarioEmpresa, usuarioId.ToString(), AccionesDeBitacora.UsuarioReactivado,
-                despues: new { EmpresaId = empresaId }, usuarioId: usuarioId);
+                usuarioId: usuarioId);
         }
         else
         {
-            var tieneOtraEmpresaActiva = await baseDeDatos.UsuariosEmpresas
-                .AsNoTracking()
-                .AnyAsync(ue => ue.UsuarioId == usuarioId && ue.EmpresaId != empresaId && ue.Activo, ct);
+            if (!usuario.Activo) return await ADtoAsync(usuario, cuenta.Id, ct);
+
+            usuario.Activo = false;
 
             bitacora.Registrar(
                 EntidadesDeBitacora.UsuarioEmpresa, usuarioId.ToString(), AccionesDeBitacora.UsuarioDesactivado,
-                despues: new { EmpresaId = empresaId, SinNingunaEmpresa = !tieneOtraEmpresaActiva }, usuarioId: usuarioId);
+                usuarioId: usuarioId);
 
-            if (!tieneOtraEmpresaActiva)
-            {
-                miembro.Usuario.Activo = false;
-
-                await refrescos.InvalidarTodasLasFamiliasDelUsuarioAsync(
-                    usuarioId, "usuario desactivado: sin acceso a ninguna empresa", ct);
-            }
+            await refrescos.InvalidarTodasLasFamiliasDelUsuarioAsync(usuarioId, "usuario desactivado", ct);
         }
 
         await baseDeDatos.SaveChangesAsync(ct);
+        await transaccion.CommitAsync(ct);
 
-        return await ADtoAsync(miembro, ct);
+        return await ADtoAsync(usuario, cuenta.Id, ct);
     }
 
     // ── Interno ─────────────────────────────────────────────────────────────────────────
 
-    /// <summary>
-    /// Cuenta solo accesos activos. Antes sumaba las invitaciones pendientes para que dos
-    /// invitaciones seguidas no rebasaran el límite antes de aceptarse; sin invitaciones no
-    /// hay estado intermedio que contar: el alta es inmediata.
-    /// </summary>
-    private async Task<bool> EstaEnElLimiteAsync(Guid empresaId, CancellationToken ct)
-        => await baseDeDatos.UsuariosEmpresas.CountAsync(ue => ue.EmpresaId == empresaId && ue.Activo, ct)
-           >= LimitePorEmpresa;
+    private sealed record FilaDeUsuario(
+        Guid Id, string Nombre, string Correo, bool Activo, bool CreadoPorAdministrador, bool EsTitular,
+        List<Guid> Empresas, List<string> Permisos);
 
-    private ErrorNegocio ErrorDeLimite()
+    // La cuenta sale de la empresa activa y no del claim: es la misma, pero así el usuario
+    // queda colgado justo de la cuenta a la que se le está dando acceso, sin depender de que
+    // el token traiga el claim bien puesto.
+    private Task<Guid> CuentaDeLaEmpresaAsync(Guid empresaId, CancellationToken ct)
+        => baseDeDatos.Empresas
+            .AsNoTracking()
+            .Where(e => e.Id == empresaId)
+            .Select(e => e.CuentaId)
+            .FirstOrDefaultAsync(ct);
+
+    private async Task<Cuenta?> BloquearCuentaAsync(CancellationToken ct)
     {
-        var soporte = opcionesSoporte.Value;
-
-        var contacto = (soporte.Correo, soporte.Telefono) switch
-        {
-            ({ } correo, { } telefono) => $" Comunícate a {correo} o al {telefono}.",
-            ({ } correo, null) => $" Comunícate a {correo}.",
-            (null, { } telefono) => $" Comunícate al {telefono}.",
-            _ => string.Empty
-        };
-
-        return ErrorNegocio.LimiteExcedido(
-            "limite-de-usuarios",
-            $"Esta empresa ya tiene el máximo de {LimitePorEmpresa} usuarios (tú más dos auxiliares). " +
-            $"Para agregar más, contacta a soporte.{contacto}");
+        var cuentaId = await CuentaDeLaEmpresaAsync(contexto.EmpresaId, ct);
+        return cuentaId == Guid.Empty ? null : await LimitesDeCuenta.BloquearAsync(baseDeDatos, cuentaId, ct);
     }
 
-    private async Task<Resultado<RespuestaCrearUsuario>> DarAccesoDirectoAsync(
-        Usuario usuarioExistente, Guid empresaId, IReadOnlyList<string> permisos, CancellationToken ct)
+    private async Task<Usuario?> UsuarioDeLaCuentaAsync(Guid usuarioId, CancellationToken ct)
     {
-        if (usuarioExistente.CuentaId != contexto.CuentaActual)
-            return ErrorNegocio.Conflicto("correo-en-uso", "Ese correo ya está en uso por otra cuenta.");
-
-        if (usuarioExistente.EsTitular)
-            return ErrorNegocio.Conflicto("titular-no-modificable",
-                "Ese correo es del titular de la cuenta: ya tiene acceso a todas sus empresas.");
-
-        var existente = await baseDeDatos.UsuariosEmpresas
-            .FirstOrDefaultAsync(ue => ue.UsuarioId == usuarioExistente.Id && ue.EmpresaId == empresaId, ct);
-
-        if (existente is { Activo: true })
-            return ErrorNegocio.Conflicto("ya-tiene-acceso", "Ese usuario ya tiene acceso a esta empresa.");
-
-        if (existente is not null)
-        {
-            // Ya había pertenecido y se le había quitado el acceso: se reactiva en vez de
-            // crear un segundo renglón, y se le dejan los permisos que se acaban de elegir.
-            existente.Activo = true;
-            usuarioExistente.Activo = true;
-
-            await ReemplazarPermisosAsync(usuarioExistente.Id, empresaId, permisos, ct);
-        }
-        else
-        {
-            OtorgarAcceso(usuarioExistente.Id, empresaId, permisos, contexto.UsuarioActual);
-        }
-
-        bitacora.Registrar(
-            EntidadesDeBitacora.UsuarioEmpresa, usuarioExistente.Id.ToString(), AccionesDeBitacora.AccesoOtorgadoDirecto,
-            despues: new { EmpresaId = empresaId, Permisos = permisos }, usuarioId: usuarioExistente.Id);
-
-        await baseDeDatos.SaveChangesAsync(ct);
-
-        return new RespuestaCrearUsuario(
-            AccesoDirecto: true,
-            Mensaje: $"{usuarioExistente.Nombre} ya tenía cuenta aquí y ahora tiene acceso a esta empresa. " +
-                     "Su contraseña no cambió: entra con la que ya usaba.");
+        var cuentaId = await CuentaDeLaEmpresaAsync(contexto.EmpresaId, ct);
+        return await baseDeDatos.Users.FirstOrDefaultAsync(u => u.Id == usuarioId && u.CuentaId == cuentaId, ct);
     }
 
-    private void OtorgarAcceso(Guid usuarioId, Guid empresaId, IReadOnlyList<string> permisos, Guid? otorgadoPor)
-    {
-        baseDeDatos.UsuariosEmpresas.Add(new UsuarioEmpresa
-        {
-            UsuarioId = usuarioId,
-            EmpresaId = empresaId,
-            FechaAltaUtc = DateTime.UtcNow
-        });
-
-        var ahora = DateTime.UtcNow;
-
-        baseDeDatos.UsuariosEmpresasPermisos.AddRange(permisos.Distinct().Select(clave => new UsuarioEmpresaPermiso
-        {
-            UsuarioId = usuarioId,
-            EmpresaId = empresaId,
-            PermisoClave = clave,
-            OtorgadoUtc = ahora,
-            OtorgadoPorUsuarioId = otorgadoPor
-        }));
-    }
-
-    private async Task ReemplazarPermisosAsync(Guid usuarioId, Guid empresaId, IReadOnlyList<string> permisos, CancellationToken ct)
-    {
-        var actuales = await baseDeDatos.UsuariosEmpresasPermisos
-            .Where(p => p.UsuarioId == usuarioId && p.EmpresaId == empresaId)
+    private Task<List<EmpresaParaAccesoDto>> EmpresasParaAccesoAsync(Guid cuentaId, CancellationToken ct)
+        => baseDeDatos.Empresas
+            .AsNoTracking()
+            .Where(e => e.CuentaId == cuentaId && e.Activa)
+            .OrderBy(e => e.NombreFiscal)
+            .Select(e => new EmpresaParaAccesoDto(
+                e.Id, e.NombreFiscal, e.Rfc, new LicenciasDto(e.LicNotarios, e.LicObras, e.LicComercio, e.LicINE)))
             .ToListAsync(ct);
 
-        baseDeDatos.UsuariosEmpresasPermisos.RemoveRange(actuales);
+    /// <summary>
+    /// Las empresas llegan del navegador (AGENTS.md §11): cada una tiene que ser una empresa
+    /// activa de la cuenta. Una ajena responde igual que una inexistente.
+    /// </summary>
+    private async Task<Resultado<List<Guid>>> ValidarEmpresasAsync(
+        Guid cuentaId, IReadOnlyList<Guid>? empresas, CancellationToken ct)
+    {
+        var elegidas = (empresas ?? []).Distinct().ToList();
 
-        var ahora = DateTime.UtcNow;
+        if (elegidas.Count == 0)
+            return ErrorNegocio.Validacion("sin-empresas", "Elige al menos una empresa a la que entrará.");
 
-        baseDeDatos.UsuariosEmpresasPermisos.AddRange(permisos.Distinct().Select(clave => new UsuarioEmpresaPermiso
-        {
-            UsuarioId = usuarioId,
-            EmpresaId = empresaId,
-            PermisoClave = clave,
-            OtorgadoUtc = ahora,
-            OtorgadoPorUsuarioId = contexto.UsuarioActual
-        }));
+        var validas = await baseDeDatos.Empresas
+            .CountAsync(e => e.CuentaId == cuentaId && e.Activa && elegidas.Contains(e.Id), ct);
+
+        return validas == elegidas.Count
+            ? elegidas
+            : ErrorNegocio.NoEncontrado("empresa-no-disponible", "Alguna de las empresas elegidas ya no está disponible.");
     }
 
-    private async Task<UsuarioDeEmpresaDto> ADtoAsync(UsuarioEmpresa miembro, CancellationToken ct)
+    /// <summary>
+    /// Deja el mismo juego de permisos en cada empresa indicada. Conserva los renglones que no
+    /// cambian, con quién y cuándo los otorgó.
+    /// </summary>
+    private void FijarPermisos(
+        Guid usuarioId, IReadOnlyList<Guid> empresas, IReadOnlyList<UsuarioEmpresaPermiso> actuales, IReadOnlyList<string> permisos)
     {
+        var claves = permisos.Distinct().ToList();
+        var ahora = DateTime.UtcNow;
+
+        baseDeDatos.UsuariosEmpresasPermisos.RemoveRange(actuales.Where(p => !claves.Contains(p.PermisoClave)));
+
+        foreach (var empresaId in empresas)
+            baseDeDatos.UsuariosEmpresasPermisos.AddRange(claves
+                .Where(clave => !actuales.Any(p => p.EmpresaId == empresaId && p.PermisoClave == clave))
+                .Select(clave => new UsuarioEmpresaPermiso
+                {
+                    UsuarioId = usuarioId,
+                    EmpresaId = empresaId,
+                    PermisoClave = clave,
+                    OtorgadoUtc = ahora,
+                    OtorgadoPorUsuarioId = contexto.UsuarioActual
+                }));
+    }
+
+    private async Task<bool> EstaEnElLimiteAsync(Cuenta cuenta, CancellationToken ct)
+        => await LimitesDeCuenta.UsuariosQueCuentan(baseDeDatos, cuenta.Id).CountAsync(ct) >= cuenta.LimiteDeUsuarios;
+
+    /// <summary>Quien ya tiene acceso activo a alguna empresa de la cuenta no ocupa un lugar nuevo.</summary>
+    private Task<bool> OcupaLugarAsync(Cuenta cuenta, Guid usuarioId, CancellationToken ct)
+        => LimitesDeCuenta.UsuariosQueCuentan(baseDeDatos, cuenta.Id).AnyAsync(u => u.Id == usuarioId, ct);
+
+    private ErrorNegocio ErrorDeLimite(Cuenta cuenta)
+        => LimitesDeCuenta.ErrorDeUsuarios(cuenta.LimiteDeUsuarios, opcionesSoporte.Value);
+
+    private async Task<UsuarioDeLaCuentaDto> ADtoAsync(Usuario usuario, Guid cuentaId, CancellationToken ct)
+    {
+        var empresas = await EmpresasParaAccesoAsync(cuentaId, ct);
+        var accesos = await baseDeDatos.UsuariosEmpresas
+            .AsNoTracking()
+            .Where(ue => ue.UsuarioId == usuario.Id && ue.Activo)
+            .Select(ue => ue.EmpresaId)
+            .ToListAsync(ct);
         var permisos = await baseDeDatos.UsuariosEmpresasPermisos
             .AsNoTracking()
-            .Where(p => p.UsuarioId == miembro.UsuarioId && p.EmpresaId == miembro.EmpresaId)
+            .Where(p => p.UsuarioId == usuario.Id)
             .Select(p => p.PermisoClave)
+            .Distinct()
             .ToListAsync(ct);
 
-        return ConPermisosDeTitular(new UsuarioDeEmpresaDto(
-            miembro.UsuarioId, miembro.Usuario.Nombre, miembro.Usuario.Email!,
-            miembro.Activo && miembro.Usuario.Activo, miembro.UsuarioId == contexto.UsuarioActual,
-            miembro.Usuario.CreadoPorAdministrador, permisos, miembro.Usuario.EsTitular));
+        return ADto(new FilaDeUsuario(usuario.Id, usuario.Nombre, usuario.Email!, usuario.Activo,
+            usuario.CreadoPorAdministrador, usuario.EsTitular, accesos, permisos), empresas);
     }
 
-    // El titular no tiene renglones de permiso: la lista los muestra todos, como el token.
-    private static UsuarioDeEmpresaDto ConPermisosDeTitular(UsuarioDeEmpresaDto usuario)
-        => usuario.EsTitular ? usuario with { Permisos = Permisos.Asignables } : usuario;
+    // El titular no tiene renglones de permiso: la lista los muestra todos, como el token, y
+    // entra a todas las empresas de su cuenta.
+    private UsuarioDeLaCuentaDto ADto(FilaDeUsuario fila, IReadOnlyList<EmpresaParaAccesoDto> empresasDeLaCuenta)
+    {
+        var empresas = fila.EsTitular
+            ? [.. empresasDeLaCuenta.Select(e => e.Id)]
+            : fila.Empresas.Where(id => empresasDeLaCuenta.Any(e => e.Id == id)).ToList();
+
+        return new UsuarioDeLaCuentaDto(
+            fila.Id, fila.Nombre, fila.Correo,
+            fila.Activo && empresas.Count > 0,
+            fila.Id == contexto.UsuarioActual,
+            fila.CreadoPorAdministrador,
+            fila.EsTitular ? Permisos.Asignables : fila.Permisos,
+            fila.EsTitular,
+            empresas);
+    }
 
     private async Task<ErrorNegocio?> ErrorSiEsTitularAsync(Guid usuarioId, CancellationToken ct)
         => await baseDeDatos.Users.AsNoTracking().AnyAsync(u => u.Id == usuarioId && u.EsTitular, ct)

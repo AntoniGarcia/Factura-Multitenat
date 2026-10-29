@@ -143,6 +143,7 @@ public static class AccionesDeBitacora
     public const string LicenciasDeEmpresaActualizadasPorOperador = "licencias_de_empresa_actualizadas_por_operador";
     public const string TimbresAsignados = "timbres_asignados_por_operador";
     public const string CorreoDeCuentaCambiadoPorOperador = "correo_de_cuenta_cambiado_por_operador";
+    public const string LimitesDeCuentaCambiadosPorOperador = "limites_de_cuenta_cambiados_por_operador";
     public const string CorreoDeUsuarioCambiadoPorOperador = "correo_de_usuario_cambiado_por_operador";
     public const string AccesoAEmpresaEliminadoPorOperador = "acceso_a_empresa_eliminado_por_operador";
 }

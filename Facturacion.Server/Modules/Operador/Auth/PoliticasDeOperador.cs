@@ -48,6 +48,7 @@ public static class PoliticasDeOperador
     public const string CambiarEstadoEmpresas = PermisosDePanel.CambiarEstadoEmpresas;
     public const string GestionarLicencias = PermisosDePanel.GestionarLicencias;
     public const string GestionarMembresias = PermisosDePanel.GestionarMembresias;
+    public const string GestionarLimites = PermisosDePanel.GestionarLimites;
     public const string VerUsuarios = PermisosDePanel.VerUsuarios;
     public const string AdministrarUsuarios = PermisosDePanel.AdministrarUsuarios;
     public const string RestablecerContrasenasUsuarios = PermisosDePanel.RestablecerContrasenasUsuarios;

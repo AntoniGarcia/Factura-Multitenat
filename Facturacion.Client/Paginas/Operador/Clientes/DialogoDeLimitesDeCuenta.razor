@@ -1,0 +1,59 @@
+@using Facturacion.Shared.Operador
+
+<MudDialog>
+    <DialogContent>
+        <p class="seccion-ayuda">
+            Define cuántos usuarios activos y cuántas empresas puede tener <strong>@NombreCuenta</strong>.
+            El titular cuenta como usuario. El cambio queda registrado en la bitácora.
+        </p>
+
+        <section class="operador-dialogo-bloque" aria-labelledby="cuenta-limites">
+        <h2 id="cuenta-limites" class="seccion-titulo">Límites</h2>
+        <div class="operador-dialogo-campos operador-dialogo-campos-dos">
+            <MudNumericField T="int" @bind-Value="_usuarios" Label="Usuarios activos"
+                             Min="@Math.Max(1, Limites.UsuariosActivos)" Max="999"
+                             HelperText="@($"Usa {Limites.UsuariosActivos} ahora")" />
+            <MudNumericField T="int" @bind-Value="_empresas" Label="Empresas"
+                             Min="@Math.Max(1, Limites.Empresas)" Max="999"
+                             HelperText="@($"Tiene {Limites.Empresas} ahora")" />
+        </div>
+        </section>
+
+        <section class="operador-dialogo-bloque" aria-labelledby="cuenta-limites-confirmacion">
+        <h2 id="cuenta-limites-confirmacion" class="seccion-titulo">Confirmar cambios</h2>
+        <MudTextField @bind-Value="_contrasena" Label="Tu contraseña de operador"
+                      InputType="@(_verContrasena ? InputType.Text : InputType.Password)"
+                      Adornment="Adornment.End"
+                      AdornmentIcon="@(_verContrasena ? Icons.Material.Filled.VisibilityOff : Icons.Material.Filled.Visibility)"
+                      OnAdornmentClick="@(() => _verContrasena = !_verContrasena)"
+                      Immediate="true" MaxLength="128" Required="true" />
+        </section>
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="Cancelar">Cancelar</MudButton>
+        <MudButton Variant="Variant.Filled" Color="Color.Primary" Disabled="@(_contrasena.Length < 12)" OnClick="Guardar">
+            Guardar límites
+        </MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter] private IMudDialogInstance Dialogo { get; set; } = default!;
+    [Parameter] public string NombreCuenta { get; set; } = string.Empty;
+    [Parameter] public LimitesDeCuentaDto Limites { get; set; } = new(1, 0, 1, 0);
+
+    private int _usuarios, _empresas;
+    private bool _verContrasena;
+    private string _contrasena = string.Empty;
+
+    protected override void OnInitialized()
+    {
+        _usuarios = Limites.LimiteDeUsuarios;
+        _empresas = Limites.LimiteDeEmpresas;
+    }
+
+    private void Guardar() => Dialogo.Close(DialogResult.Ok(
+        new PeticionCambiarLimitesDeCuenta(_usuarios, _empresas, _contrasena)));
+
+    private void Cancelar() => Dialogo.Cancel();
+}

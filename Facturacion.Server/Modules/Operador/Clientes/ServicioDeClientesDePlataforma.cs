@@ -2,6 +2,7 @@ using Facturacion.Server.Data;
 using Facturacion.Server.Data.Entidades.Plataforma;
 using Facturacion.Server.Infra.Bitacora;
 using Facturacion.Server.Modules.Operador.Auth;
+using Facturacion.Server.Modules.Plataforma;
 using Facturacion.Shared.Comun;
 using Facturacion.Shared.Operador;
 using Microsoft.AspNetCore.Identity;
@@ -131,7 +132,67 @@ public sealed class ServicioDeClientesDePlataforma(
                     .Count(c => c.EmpresaId == e.Id && c.Estado == EstadosDeCompra.PendienteDePago)))
             .ToListAsync(ct);
 
-        return new DetalleDeCuentaDto(cuenta, empresas);
+        var limites = await baseDeDatos.Cuentas
+            .AsNoTracking()
+            .Where(c => c.Id == cuentaId)
+            .Select(c => new { c.LimiteDeUsuarios, c.LimiteDeEmpresas })
+            .SingleAsync(ct);
+        var usuariosActivos = await LimitesDeCuenta.UsuariosQueCuentan(baseDeDatos, cuentaId).CountAsync(ct);
+
+        return new DetalleDeCuentaDto(cuenta, empresas, new LimitesDeCuentaDto(
+            limites.LimiteDeUsuarios, usuariosActivos, limites.LimiteDeEmpresas, cuenta.Empresas));
+    }
+
+    /// <summary>
+    /// Fija cuántos usuarios activos y cuántas empresas admite la cuenta. No se baja de lo que
+    /// ya usa: una cuenta pasada de su límite no podría ni reactivar a quien ya tenía.
+    /// </summary>
+    public async Task<Resultado<LimitesDeCuentaDto>> CambiarLimitesAsync(
+        Guid operadorId, Guid cuentaId, PeticionCambiarLimitesDeCuenta peticion, CancellationToken ct)
+    {
+        if (await ContrasenaDelOperadorEsIncorrecta(operadorId, peticion.ContrasenaDelOperador, ct))
+            return ErrorNegocio.Validacion("contrasena-incorrecta", "Tu contraseña de operador no es correcta.");
+
+        if (peticion.LimiteDeUsuarios is < 1 or > LimitesDeCuenta.Maximo ||
+            peticion.LimiteDeEmpresas is < 1 or > LimitesDeCuenta.Maximo)
+            return ErrorNegocio.Validacion("limite-invalido", $"Los límites van de 1 a {LimitesDeCuenta.Maximo}.");
+
+        // El mismo bloqueo que toman las altas de usuarios y empresas: nadie entra mientras se mide.
+        await using var transaccion = await baseDeDatos.Database.BeginTransactionAsync(ct);
+
+        var cuenta = await LimitesDeCuenta.BloquearAsync(baseDeDatos, cuentaId, ct);
+        if (cuenta is null)
+            return ErrorNegocio.NoEncontrado("cuenta-no-encontrada", "Esa cuenta no existe.");
+
+        var usuarios = await LimitesDeCuenta.UsuariosQueCuentan(baseDeDatos, cuentaId).CountAsync(ct);
+        var empresas = await LimitesDeCuenta.EmpresasEnUsoAsync(baseDeDatos, cuentaId, ct);
+
+        if (peticion.LimiteDeUsuarios < usuarios)
+            return ErrorNegocio.Regla("limite-menor-al-uso",
+                $"La cuenta tiene {usuarios} usuarios activos. El titular debe desactivar alguno antes de bajar el límite.");
+
+        if (peticion.LimiteDeEmpresas < empresas)
+            return ErrorNegocio.Regla("limite-menor-al-uso",
+                $"La cuenta tiene {empresas} empresas. El límite no puede quedar por debajo de eso.");
+
+        var antes = new { cuenta.LimiteDeUsuarios, cuenta.LimiteDeEmpresas };
+
+        cuenta.LimiteDeUsuarios = peticion.LimiteDeUsuarios;
+        cuenta.LimiteDeEmpresas = peticion.LimiteDeEmpresas;
+
+        bitacora.Registrar(
+            EntidadesDeBitacora.Cuenta,
+            cuenta.Id.ToString(),
+            AccionesDeBitacora.LimitesDeCuentaCambiadosPorOperador,
+            antes: antes,
+            despues: new { cuenta.LimiteDeUsuarios, cuenta.LimiteDeEmpresas },
+            cuentaId: cuentaId,
+            operadorId: operadorId);
+
+        await baseDeDatos.SaveChangesAsync(ct);
+        await transaccion.CommitAsync(ct);
+
+        return new LimitesDeCuentaDto(cuenta.LimiteDeUsuarios, usuarios, cuenta.LimiteDeEmpresas, empresas);
     }
 
     /// <summary>

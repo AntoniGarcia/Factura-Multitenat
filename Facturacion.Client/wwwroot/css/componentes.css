@@ -1340,6 +1340,12 @@
     padding: 1rem 1.25rem;
 }
 
+.ficha-cuenta-acciones {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+}
+
 .ficha-cuenta-contacto {
     display: flex;
     flex-direction: column;

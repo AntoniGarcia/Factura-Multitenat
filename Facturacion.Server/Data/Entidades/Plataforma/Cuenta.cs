@@ -13,7 +13,17 @@ public sealed class Cuenta
 
     public required string CorreoContacto { get; set; }
 
+    public const int UsuariosPorOmision = 3;
+
+    public const int EmpresasPorOmision = 1;
+
     public bool Activa { get; set; } = true;
+
+    /// <summary>Usuarios con acceso activo, contando al titular. Lo fija el operador.</summary>
+    public int LimiteDeUsuarios { get; set; } = UsuariosPorOmision;
+
+    /// <summary>Empresas que puede dar de alta el titular, activas o no. Lo fija el operador.</summary>
+    public int LimiteDeEmpresas { get; set; } = EmpresasPorOmision;
 
     public DateTime FechaAltaUtc { get; set; }
 

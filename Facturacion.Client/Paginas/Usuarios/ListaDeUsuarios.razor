@@ -28,7 +28,7 @@ else
 {
     <div class="resumen-importacion">
         <span class="indicador-estado indicador-estado-@(_enElLimite ? "cancelada" : "timbrada")">
-            @_datos.Usuarios.Count(u => u.Activo) de @_datos.LimitePorEmpresa usuarios
+            @_datos.UsuariosEnLaCuenta de @_datos.LimiteDeUsuarios usuarios en tu cuenta
         </span>
     </div>
 
@@ -41,11 +41,11 @@ else
     @if (_enElLimite)
     {
         <p class="seccion-ayuda">
-            Ya llegaste al máximo de @_datos.LimitePorEmpresa. Para agregar más, contacta a soporte.
+            Tu cuenta ya llegó al máximo de @_datos.LimiteDeUsuarios usuarios. Para agregar más, contacta a soporte.
         </p>
     }
 
-    <h2 class="seccion-titulo">Con acceso</h2>
+    <h2 class="seccion-titulo">Usuarios de tu cuenta</h2>
 
     <MudSimpleTable Dense="true" Hover="true">
         <thead>
@@ -53,6 +53,10 @@ else
                 <th>Nombre</th>
                 <th>Correo</th>
                 <th>Permisos</th>
+                @if (_datos.Empresas.Count > 1)
+                {
+                    <th>Empresas</th>
+                }
                 <th>Estado</th>
                 <th></th>
             </tr>
@@ -77,6 +81,10 @@ else
                         }
                     </td>
                     <td>@(usuario.EsTitular ? "Todos" : Etiquetas(usuario.Permisos))</td>
+                    @if (_datos.Empresas.Count > 1)
+                    {
+                        <td>@(usuario.EsTitular ? "Todas" : NombresDeEmpresas(usuario.Empresas))</td>
+                    }
                     <td>
                         <span class="indicador-estado indicador-estado-@(usuario.Activo ? "timbrada" : "borrador")">
                             @(usuario.Activo ? "Activo" : "Inactivo")
@@ -121,7 +129,7 @@ else
 }
 
 @code {
-    private UsuariosDeLaEmpresaDto? _datos;
+    private UsuariosDeLaCuentaDto? _datos;
     private DetalleProblema? _error;
     private string? _aviso;
 
@@ -130,7 +138,7 @@ else
     private bool _dialogoAbierto;
 
     private bool _enElLimite =>
-        _datos is not null && _datos.Usuarios.Count(u => u.Activo) >= _datos.LimitePorEmpresa;
+        _datos is not null && _datos.UsuariosEnLaCuenta >= _datos.LimiteDeUsuarios;
 
     protected override Task OnInitializedAsync() => CargarAsync();
 
@@ -174,9 +182,15 @@ else
         return partes.Count == 0 ? "—" : string.Join(" · ", partes);
     }
 
-    private async Task EditarPermisos(UsuarioDeEmpresaDto usuario)
+    private string NombresDeEmpresas(IReadOnlyList<Guid> empresas)
     {
-        if (_dialogoAbierto) return;
+        var nombres = _datos!.Empresas.Where(e => empresas.Contains(e.Id)).Select(e => e.NombreFiscal).ToList();
+        return nombres.Count == 0 ? "—" : string.Join(" · ", nombres);
+    }
+
+    private async Task EditarPermisos(UsuarioDeLaCuentaDto usuario)
+    {
+        if (_dialogoAbierto || _datos is null) return;
         _dialogoAbierto = true;
         try
         {
@@ -184,10 +198,13 @@ else
             {
                 { x => x.UsuarioId, usuario.UsuarioId },
                 { x => x.NombreUsuario, usuario.Nombre },
-                { x => x.PermisosActuales, usuario.Permisos }
+                { x => x.PermisosActuales, usuario.Permisos },
+                { x => x.Empresas, _datos.Empresas },
+                { x => x.EmpresasActuales, usuario.Empresas }
             };
 
-            var referencia = await Dialogos.ShowAsync<EditarPermisosDialogo>("Editar permisos", parametros);
+            var opciones = new DialogOptions { MaxWidth = MaxWidth.Medium, FullWidth = true };
+            var referencia = await Dialogos.ShowAsync<EditarPermisosDialogo>("Permisos y empresas", parametros, opciones);
             var resultado = await referencia.Result;
 
             if (resultado is { Canceled: false }) await CargarAsync();
@@ -198,7 +215,7 @@ else
         }
     }
 
-    private async Task EditarCorreo(UsuarioDeEmpresaDto usuario)
+    private async Task EditarCorreo(UsuarioDeLaCuentaDto usuario)
     {
         if (_dialogoAbierto) return;
         _dialogoAbierto = true;
@@ -222,7 +239,7 @@ else
         }
     }
 
-    private async Task CambiarContrasena(UsuarioDeEmpresaDto usuario)
+    private async Task CambiarContrasena(UsuarioDeLaCuentaDto usuario)
     {
         if (_dialogoAbierto) return;
         _dialogoAbierto = true;
@@ -243,14 +260,14 @@ else
         }
     }
 
-    private async Task CambiarActivo(UsuarioDeEmpresaDto usuario)
+    private async Task CambiarActivo(UsuarioDeLaCuentaDto usuario)
     {
         if (_dialogoAbierto) return;
         if (usuario.Activo)
         {
             var confirmado = await Confirmacion.ConfirmarAsync(
                 "Desactivar usuario",
-                $"«{usuario.Nombre}» ya no podrá iniciar sesión con acceso a esta empresa. " +
+                $"«{usuario.Nombre}» ya no podrá iniciar sesión en ninguna empresa de la cuenta. " +
                 "Su acceso se corta en un máximo de 15 minutos, cuando expire el token actual.",
                 "Desactivar", esPeligrosa: true);
 
@@ -263,7 +280,7 @@ else
         if (error is null) await CargarAsync();
     }
 
-    private async Task EliminarAsync(UsuarioDeEmpresaDto usuario)
+    private async Task EliminarAsync(UsuarioDeLaCuentaDto usuario)
     {
         if (_dialogoAbierto) return;
         _dialogoAbierto = true;
@@ -273,7 +290,7 @@ else
         {
             var parametros = new DialogParameters<DialogoConfirmarContrasenaOperador>
             {
-                { x => x.Mensaje, $"Eliminar a «{usuario.Nombre}». Escribe tu contraseña. Solo se permite si no tiene actividad ni acceso a otras empresas." },
+                { x => x.Mensaje, $"Eliminar a «{usuario.Nombre}». Escribe tu contraseña. Se quita de todas las empresas de la cuenta. Solo se permite si no tiene actividad registrada." },
                 { x => x.TextoConfirmar, "Eliminar" },
                 { x => x.ColorConfirmar, Color.Error }
             };
