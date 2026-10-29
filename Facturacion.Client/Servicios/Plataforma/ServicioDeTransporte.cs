@@ -36,6 +36,18 @@ public sealed class ServicioDeTransporte(IHttpClientFactory fabrica)
     public Task<(FiguraTransporteDto? Exito, DetalleProblema? Error)> CambiarActivoFiguraAsync(Guid id, bool activo, CancellationToken ct = default)
         => EnviarAsync<FiguraTransporteDto>(Cliente.PostAsJsonAsync($"api/transporte/figuras/{id}/activo", new { activo }, ct), ct);
 
+    public Task<DetalleProblema?> EliminarVehiculoAsync(Guid id, CancellationToken ct = default)
+        => EliminarAsync($"api/transporte/vehiculos/{id}", ct);
+
+    public Task<DetalleProblema?> EliminarFiguraAsync(Guid id, CancellationToken ct = default)
+        => EliminarAsync($"api/transporte/figuras/{id}", ct);
+
+    private async Task<DetalleProblema?> EliminarAsync(string ruta, CancellationToken ct)
+    {
+        using var respuesta = await Cliente.DeleteAsync(ruta, ct);
+        return respuesta.IsSuccessStatusCode ? null : await respuesta.Content.ReadFromJsonAsync<DetalleProblema>(ct);
+    }
+
     private static string Filtro(bool? activos) => activos is null ? "" : $"?activos={activos.Value.ToString().ToLowerInvariant()}";
     private static async Task<(T? Exito, DetalleProblema? Error)> EnviarAsync<T>(Task<HttpResponseMessage> envio, CancellationToken ct)
     {

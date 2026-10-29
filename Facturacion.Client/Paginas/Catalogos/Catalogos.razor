@@ -23,7 +23,7 @@
     <MudTabPanel Text="Clientes" Icon="@Icons.Material.Filled.Groups">
         <section class="catalogo-panel mt-3" aria-label="Catálogo de clientes">
             <p class="catalogo-descripcion">
-                Receptores disponibles para facturar en la empresa activa. Los inactivos conservan su historial.
+                Receptores de tu cuenta: todas sus empresas pueden facturarles. Los inactivos conservan su historial.
             </p>
 
             <BarraHerramientasCatalogo Texto="@_textoClientes"
@@ -32,6 +32,9 @@
                                        MuestraEstatus="true"
                                        Activos="_activosClientes"
                                        ActivosCambiado="AlFiltrarActivosClientes"
+                                       Empresas="@Sesion.Sesion?.Empresas"
+                                       Empresa="_empresaClientes"
+                                       EmpresaCambiada="AlFiltrarEmpresaClientes"
                                        TextoNuevo="Nuevo cliente"
                                        OnNuevo="@(_puedeEditarClientes ? EventCallback.Factory.Create(this, AbrirNuevoClienteAsync) : default)"
                                        OnExportar="ExportarClientes"
@@ -53,15 +56,18 @@
     <MudTabPanel Text="Productos y servicios" Icon="@Icons.Material.Filled.Inventory2">
         <section class="catalogo-panel mt-3" aria-label="Catálogo de productos y servicios">
             <p class="catalogo-descripcion">
-                Conceptos reutilizables con sus claves del SAT, precio e impuestos configurados.
+                Conceptos reutilizables de tu cuenta con sus claves del SAT, precio e impuestos configurados.
             </p>
 
             <BarraHerramientasCatalogo Texto="@_textoProductos"
                                        TextoCambiado="AlBuscarProductos"
-                                       Placeholder="Buscar por código, descripción o clave SAT…"
+                                       Placeholder="Buscar por código, nombre, ID interno o clave SAT…"
                                        MuestraEstatus="true"
                                        Activos="_activosProductos"
                                        ActivosCambiado="AlFiltrarActivosProductos"
+                                       Empresas="@Sesion.Sesion?.Empresas"
+                                       Empresa="_empresaProductos"
+                                       EmpresaCambiada="AlFiltrarEmpresaProductos"
                                        TextoNuevo="Nuevo producto"
                                        OnNuevo="@(_puedeEditarProductos ? EventCallback.Factory.Create(this, AbrirNuevoProductoAsync) : default)"
                                        OnExportar="ExportarProductos"
@@ -112,7 +118,8 @@
 
     private TablaDatos<ProductoEnListaDto>? _tablaProductos;
     private string _textoProductos = string.Empty;
-    private bool? _activosProductos = true;
+    private bool? _activosProductos;
+    private Guid? _empresaProductos;
 
     private IReadOnlyList<ColumnaDeTabla<ProductoEnListaDto>> _columnasProductos = [];
     private IReadOnlyList<ColumnaDeTabla<ClienteEnListaDto>> _columnasClientes = [];
@@ -124,15 +131,15 @@
 
     protected override void OnInitialized()
     {
-        _puedeEditarClientes = Sesion.TienePermiso(Permisos.AdministrarClientes);
-        _puedeEditarProductos = Sesion.TienePermiso(Permisos.AdministrarProductos);
+        _puedeEditarClientes = Sesion.TienePermiso(Permisos.Politicas.EditarClientes);
+        _puedeEditarProductos = Sesion.TienePermiso(Permisos.Politicas.EditarProductos);
 
         _columnasProductos =
         [
             new("Código", p => @<span class="cifra-tabular">@p.CodigoInterno</span>, ClaveOrden: "codigo", Tabular: true),
             new("Producto o servicio", p => @<div class="catalogo-celda-principal">
                                                 <strong>@p.Descripcion</strong>
-                                                <span>@p.UnidadTexto</span>
+                                                <span>@(p.IdInterno is { } id ? $"{id} · {p.UnidadTexto}" : p.UnidadTexto)</span>
                                             </div>, ClaveOrden: "descripcion"),
             new("Clave SAT", p => @<span class="cifra-tabular">@p.ClaveProdServ</span>, Tabular: true),
             new("Precio", p => @<div class="catalogo-celda-precio">
@@ -183,7 +190,7 @@
         PeticionDePagina peticion, CancellationToken ct)
     {
         var pagina = await Productos.ListarAsync(
-            _textoProductos, _activosProductos, peticion.Pagina, peticion.TamanoPagina,
+            _textoProductos, _activosProductos, _empresaProductos, peticion.Pagina, peticion.TamanoPagina,
             peticion.ClaveOrden, peticion.Descendente, ct);
 
         return new ResultadoDePagina<ProductoEnListaDto>(pagina.Elementos, pagina.Total);
@@ -198,6 +205,12 @@
     private async Task AlFiltrarActivosProductos(bool? activos)
     {
         _activosProductos = activos;
+        await RecargarProductosAsync();
+    }
+
+    private async Task AlFiltrarEmpresaProductos(Guid? empresa)
+    {
+        _empresaProductos = empresa;
         await RecargarProductosAsync();
     }
 
@@ -223,7 +236,7 @@
     }
 
     private void ExportarProductos()
-        => Navegacion.NavigateTo(ServicioDeProductos.RutaDeExportacion(_activosProductos), forceLoad: true);
+        => Navegacion.NavigateTo(ServicioDeProductos.RutaDeExportacion(_activosProductos, _empresaProductos), forceLoad: true);
 
     // Mismo patrón que DialogoDeCliente: /productos/nuevo y /productos/{Id} siguen
     // existiendo por si algo más las enlaza directo; Catálogos ya no navega ahí.
@@ -255,13 +268,14 @@
 
     private TablaDatos<ClienteEnListaDto>? _tablaClientes;
     private string _textoClientes = string.Empty;
-    private bool? _activosClientes = true;
+    private bool? _activosClientes;
+    private Guid? _empresaClientes;
 
     private async Task<ResultadoDePagina<ClienteEnListaDto>> CargarClientesAsync(
         PeticionDePagina peticion, CancellationToken ct)
     {
         var pagina = await Clientes.ListarAsync(
-            _textoClientes, _activosClientes, peticion.Pagina, peticion.TamanoPagina,
+            _textoClientes, _activosClientes, _empresaClientes, peticion.Pagina, peticion.TamanoPagina,
             peticion.ClaveOrden, peticion.Descendente, ct);
 
         return new ResultadoDePagina<ClienteEnListaDto>(pagina.Elementos, pagina.Total);
@@ -276,6 +290,12 @@
     private async Task AlFiltrarActivosClientes(bool? activos)
     {
         _activosClientes = activos;
+        await RecargarClientesAsync();
+    }
+
+    private async Task AlFiltrarEmpresaClientes(Guid? empresa)
+    {
+        _empresaClientes = empresa;
         await RecargarClientesAsync();
     }
 
@@ -306,7 +326,7 @@
     }
 
     private void ExportarClientes()
-        => Navegacion.NavigateTo(ServicioDeClientes.RutaDeExportacion(_activosClientes), forceLoad: true);
+        => Navegacion.NavigateTo(ServicioDeClientes.RutaDeExportacion(_activosClientes, _empresaClientes), forceLoad: true);
 
     // El mismo ancho para crear y editar: el formulario es idéntico, solo cambia si Id
     // llega precargado. /clientes/nuevo y /clientes/{Id} siguen existiendo por si algo más

@@ -12,21 +12,24 @@
 
 <section class="catalogo-panel" aria-label="Catálogo de productos y servicios">
     <p class="catalogo-descripcion">
-        Conceptos reutilizables con sus claves del SAT, precio e impuestos configurados.
+        Conceptos reutilizables de tu cuenta con sus claves del SAT, precio e impuestos configurados.
     </p>
 
     <BarraHerramientasCatalogo Texto="@_texto"
                                TextoCambiado="AlBuscar"
-                               Placeholder="Buscar por código, descripción o clave SAT…"
+                               Placeholder="Buscar por código, nombre, ID interno o clave SAT…"
                                MuestraEstatus="true"
                                Activos="_activos"
                                ActivosCambiado="AlFiltrarActivos"
+                               Empresas="@Sesion.Sesion?.Empresas"
+                               Empresa="_empresa"
+                               EmpresaCambiada="AlFiltrarEmpresa"
                                TextoNuevo="Nuevo producto"
-                               OnNuevo="@(_puedeEditar ? EventCallback.Factory.Create(this, () => Navegacion.NavigateTo("/productos/nuevo")) : default)"
+                               OnNuevo="@(_puedeCrear ? EventCallback.Factory.Create(this, () => Navegacion.NavigateTo("/productos/nuevo")) : default)"
                                OnExportar="Exportar"
                                TextoSecundario="Importar CSV"
                                IconoSecundario="@Icons.Material.Filled.UploadFile"
-                               OnSecundario="@(_puedeEditar ? EventCallback.Factory.Create(this, () => Navegacion.NavigateTo("/productos/importar")) : default)" />
+                               OnSecundario="@(_puedeCrear || _puedeModificar ? EventCallback.Factory.Create(this, () => Navegacion.NavigateTo("/productos/importar")) : default)" />
 
     <div class="catalogo-tabla">
         <TablaDatos T="ProductoEnListaDto"
@@ -42,18 +45,23 @@
     private TablaDatos<ProductoEnListaDto>? _tabla;
     private DetalleProblema? _error;
     private string _texto = string.Empty;
-    private bool? _activos = true;
+    private bool? _activos;
+    private Guid? _empresa;
 
-    // Comodidad visual: sin administrar_productos el servidor rechaza altas, ediciones y bajas, así
-    // que ni se ofrecen. La protección real es la política del endpoint.
-    private bool _puedeEditar;
+    // Comodidad visual: lo que el servidor rechazaría ni se ofrece. La protección real es la
+    // política de cada endpoint. La importación crea y actualiza: se ofrece con cualquiera de
+    // las dos y el servidor rechaza, renglón por renglón, lo que no se tenga.
+    private bool _puedeCrear, _puedeModificar, _puedeDesactivar, _puedeEliminar;
 
     private IReadOnlyList<ColumnaDeTabla<ProductoEnListaDto>> _columnas = [];
 
     protected override void OnInitialized()
     {
-        _puedeEditar = Sesion.TienePermiso(Permisos.AdministrarProductos);
-        _columnas = _puedeEditar ? [.. Columnas, Acciones] : Columnas;
+        _puedeCrear = Sesion.TienePermiso(Permisos.ProductosCrear);
+        _puedeModificar = Sesion.TienePermiso(Permisos.ProductosModificar);
+        _puedeDesactivar = Sesion.TienePermiso(Permisos.ProductosDesactivar);
+        _puedeEliminar = Sesion.TienePermiso(Permisos.ProductosEliminar);
+        _columnas = _puedeModificar || _puedeDesactivar || _puedeEliminar ? [.. Columnas, Acciones] : Columnas;
     }
 
     private IReadOnlyList<ColumnaDeTabla<ProductoEnListaDto>> Columnas =>
@@ -61,7 +69,7 @@
         new("Código", p => @<span class="cifra-tabular">@p.CodigoInterno</span>, ClaveOrden: "codigo", Tabular: true),
         new("Producto o servicio", p => @<div class="catalogo-celda-principal">
                                             <strong>@p.Descripcion</strong>
-                                            <span>@p.UnidadTexto</span>
+                                            <span>@(p.IdInterno is { } id ? $"{id} · {p.UnidadTexto}" : p.UnidadTexto)</span>
                                         </div>, ClaveOrden: "descripcion"),
         new("Clave SAT", p => @<span class="cifra-tabular">@p.ClaveProdServ</span>, Tabular: true),
         new("Precio", p => @<div class="catalogo-celda-precio">
@@ -74,16 +82,26 @@
     ];
 
     private ColumnaDeTabla<ProductoEnListaDto> Acciones => new("", p => @<div class="acciones-renglon">
-                          <MudButton Size="Size.Small" OnClick="@(() => Navegacion.NavigateTo($"/productos/{p.Id}"))">Editar</MudButton>
-                          <MudButton Size="Size.Small" OnClick="@(() => CambiarActivo(p))">
-                              @(p.Activo ? "Desactivar" : "Reactivar")
-                          </MudButton>
+                          @if (_puedeModificar)
+                          {
+                              <MudButton Size="Size.Small" OnClick="@(() => Navegacion.NavigateTo($"/productos/{p.Id}"))">Editar</MudButton>
+                          }
+                          @if (_puedeDesactivar)
+                          {
+                              <MudButton Size="Size.Small" OnClick="@(() => CambiarActivo(p))">
+                                  @(p.Activo ? "Desactivar" : "Reactivar")
+                              </MudButton>
+                          }
+                          @if (_puedeEliminar)
+                          {
+                              <MudButton Size="Size.Small" Color="Color.Error" OnClick="@(() => Eliminar(p))">Eliminar</MudButton>
+                          }
                       </div>);
 
     private async Task<ResultadoDePagina<ProductoEnListaDto>> CargarAsync(PeticionDePagina peticion, CancellationToken ct)
     {
         var pagina = await Productos.ListarAsync(
-            _texto, _activos, peticion.Pagina, peticion.TamanoPagina,
+            _texto, _activos, _empresa, peticion.Pagina, peticion.TamanoPagina,
             peticion.ClaveOrden, peticion.Descendente, ct);
 
         return new ResultadoDePagina<ProductoEnListaDto>(pagina.Elementos, pagina.Total);
@@ -98,6 +116,12 @@
     private async Task AlFiltrarActivos(bool? activos)
     {
         _activos = activos;
+        await RecargarAsync();
+    }
+
+    private async Task AlFiltrarEmpresa(Guid? empresa)
+    {
+        _empresa = empresa;
         await RecargarAsync();
     }
 
@@ -122,6 +146,21 @@
         if (error is null) await RecargarAsync();
     }
 
+    /// <summary>Solo prospera si ningún concepto usó el producto; si no, el servidor pide desactivarlo.</summary>
+    private async Task Eliminar(ProductoEnListaDto producto)
+    {
+        var confirmado = await Confirmacion.ConfirmarAsync(
+            "Eliminar producto",
+            $"«{producto.Descripcion}» se borrará de forma definitiva. Solo es posible si ningún comprobante lo usa.",
+            "Eliminar");
+
+        if (!confirmado) return;
+
+        _error = await Productos.EliminarAsync(producto.Id);
+
+        if (_error is null) await RecargarAsync();
+    }
+
     private void Exportar()
-        => Navegacion.NavigateTo(ServicioDeProductos.RutaDeExportacion(_activos), forceLoad: true);
+        => Navegacion.NavigateTo(ServicioDeProductos.RutaDeExportacion(_activos, _empresa), forceLoad: true);
 }

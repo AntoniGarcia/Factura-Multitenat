@@ -1,7 +1,8 @@
 namespace Facturacion.Server.Data.Entidades.Plataforma;
 
 /// <summary>
-/// Saldo de timbres de una empresa. Hay exactamente un renglón por empresa.
+/// Saldo de timbres de una cuenta. Hay exactamente un renglón por cuenta y lo comparten todas
+/// sus empresas (AGENTS.md §11): los timbres se compran y se gastan por cuenta.
 ///
 /// <para><b>Por qué existe si el saldo es la suma de los movimientos</b></para>
 /// La verdad contable son los <see cref="MovimientoTimbre"/>: este renglón es esa suma ya
@@ -23,13 +24,13 @@ namespace Facturacion.Server.Data.Entidades.Plataforma;
 /// invariante <c>SUM(DeltaDisponible) = Disponibles</c> y <c>SUM(DeltaReservado) =
 /// Reservados</c> se puede comprobar en cualquier momento, y las pruebas la comprueban.
 /// </summary>
-public sealed class BolsaTimbres : IEntidadDeEmpresa
+public sealed class BolsaTimbres : IEntidadDeCuenta
 {
     public Guid Id { get; set; }
 
-    public Guid EmpresaId { get; set; }
+    public Guid CuentaId { get; set; }
 
-    public Empresa Empresa { get; set; } = null!;
+    public Cuenta Cuenta { get; set; } = null!;
 
     /// <summary>Timbres utilizables ahora mismo. No incluye los apartados.</summary>
     public int Disponibles { get; set; }

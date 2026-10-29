@@ -26,7 +26,7 @@ public sealed class ServicioDePaquetesDeOperador(
     public async Task<IReadOnlyList<PaqueteDeOperadorDto>> ListarAsync(CancellationToken ct)
         => await baseDeDatos.Paquetes
             .AsNoTracking()
-            .Where(p => p.EmpresaId == null)
+            .Where(p => p.CuentaId == null)
             .OrderBy(p => p.Orden)
             .Select(p => new PaqueteDeOperadorDto(
                 p.Id, p.Nombre, p.CantidadTimbres, p.PrecioPorTimbre, p.PrecioTotal,
@@ -40,7 +40,7 @@ public sealed class ServicioDePaquetesDeOperador(
     public async Task<PaqueteDeOperadorDto?> ObtenerAsync(Guid id, CancellationToken ct)
         => await baseDeDatos.Paquetes
             .AsNoTracking()
-            .Where(p => p.Id == id && p.EmpresaId == null)
+            .Where(p => p.Id == id && p.CuentaId == null)
             .Select(p => new PaqueteDeOperadorDto(
                 p.Id, p.Nombre, p.CantidadTimbres, p.PrecioPorTimbre, p.PrecioTotal,
                 p.VigenciaMeses, p.Activo, p.Orden,
@@ -57,7 +57,7 @@ public sealed class ServicioDePaquetesDeOperador(
         var paquete = new Paquete
         {
             Id = Guid.NewGuid(),
-            EmpresaId = null,
+            CuentaId = null,
             Nombre = peticion.Nombre.Trim(),
             CantidadTimbres = peticion.CantidadTimbres,
             PrecioTotal = peticion.PrecioTotal,
@@ -89,7 +89,7 @@ public sealed class ServicioDePaquetesDeOperador(
         if (Validar(peticion) is { } error) return error;
 
         var paquete = await baseDeDatos.Paquetes
-            .SingleOrDefaultAsync(p => p.Id == id && p.EmpresaId == null, ct);
+            .SingleOrDefaultAsync(p => p.Id == id && p.CuentaId == null, ct);
 
         if (paquete is null)
             return ErrorNegocio.NoEncontrado("paquete-no-encontrado", "Ese paquete no existe.");
@@ -123,7 +123,7 @@ public sealed class ServicioDePaquetesDeOperador(
         Guid id, bool activo, CancellationToken ct)
     {
         var paquete = await baseDeDatos.Paquetes
-            .SingleOrDefaultAsync(p => p.Id == id && p.EmpresaId == null, ct);
+            .SingleOrDefaultAsync(p => p.Id == id && p.CuentaId == null, ct);
 
         if (paquete is null)
             return ErrorNegocio.NoEncontrado("paquete-no-encontrado", "Ese paquete no existe.");

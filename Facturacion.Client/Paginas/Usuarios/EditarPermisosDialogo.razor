@@ -1,15 +1,17 @@
 @using Facturacion.Client.Componentes.Comunes
 @using Facturacion.Client.Servicios.Plataforma
 @using Facturacion.Shared.Comun
+@using Facturacion.Shared.Plataforma
 @inject ServicioDeUsuarios Usuarios
 
 <MudDialog>
     <DialogContent>
-        <p class="seccion-ayuda">Permisos de @NombreUsuario en esta empresa.</p>
+        <p class="seccion-ayuda">Permisos de @NombreUsuario. Son los mismos en todas las empresas a las que entra.</p>
 
         <PanelErrores Problema="_error" />
 
-        <SelectorDePermisos @bind-Value="_permisos" Deshabilitado="@_guardando" />
+        <SelectorDePermisos @bind-Value="_permisos" Empresas="Empresas" @bind-EmpresasElegidas="_empresas"
+                            Deshabilitado="@_guardando" />
     </DialogContent>
     <DialogActions>
         <MudButton OnClick="Cancelar">Cancelar</MudButton>
@@ -32,16 +34,27 @@
     [Parameter, EditorRequired]
     public IReadOnlyList<string> PermisosActuales { get; set; } = [];
 
+    [Parameter, EditorRequired]
+    public IReadOnlyList<EmpresaParaAccesoDto> Empresas { get; set; } = [];
+
+    [Parameter, EditorRequired]
+    public IReadOnlyList<Guid> EmpresasActuales { get; set; } = [];
+
     private List<string> _permisos = [];
+    private List<Guid> _empresas = [];
     private DetalleProblema? _error;
     private bool _guardando;
 
-    protected override void OnInitialized() => _permisos = [.. PermisosActuales];
+    protected override void OnInitialized()
+    {
+        _permisos = [.. PermisosActuales];
+        _empresas = Empresas.Count == 1 ? [Empresas[0].Id] : [.. EmpresasActuales];
+    }
 
     private async Task Guardar()
     {
         _guardando = true;
-        _error = await Usuarios.ActualizarPermisosAsync(UsuarioId, _permisos);
+        _error = await Usuarios.ActualizarPermisosAsync(UsuarioId, _permisos, _empresas);
         _guardando = false;
 
         if (_error is null) Dialogo.Close(DialogResult.Ok(true));

@@ -1,8 +1,9 @@
 namespace Facturacion.Server.Data.Entidades.Plataforma;
 
 /// <summary>
-/// Una compra de un paquete de timbres. Es de la empresa que la hizo, porque la bolsa que va
-/// a recibir los timbres es por empresa.
+/// Una compra de un paquete de timbres. Es de la cuenta, porque la bolsa que recibe los
+/// timbres es de la cuenta; conserva la empresa que la solicitó, a cuyo nombre se emite el
+/// comprobante de compra.
 ///
 /// <para><b>Los datos del paquete se copian, no se referencian</b></para>
 /// <see cref="PaqueteId"/> queda para poder rastrear, pero el nombre, la cantidad y los
@@ -14,10 +15,13 @@ namespace Facturacion.Server.Data.Entidades.Plataforma;
 /// La compra nace en <see cref="EstadosDeCompra.PendienteDePago"/> y no toca la bolsa. Los
 /// timbres entran cuando se acredita el pago, y ese es el único punto donde se crea saldo.
 /// </summary>
-public sealed class CompraTimbres : IEntidadDeEmpresa
+public sealed class CompraTimbres : IEntidadDeCuenta
 {
     public Guid Id { get; set; }
 
+    public Guid CuentaId { get; set; }
+
+    /// <summary>Empresa que la solicitó. Es un dato, no tenencia.</summary>
     public Guid EmpresaId { get; set; }
 
     public Guid PaqueteId { get; set; }

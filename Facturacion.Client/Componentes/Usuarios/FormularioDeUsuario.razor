@@ -1,5 +1,6 @@
 @using Facturacion.Shared.Plataforma
 @inject ServicioDeUsuarios Usuarios
+@inject ServicioDeSesion Sesion
 
 @*
     El alta de usuario, sin marco: lo usan la página /usuarios/nuevo y DialogoDeUsuario. Cada
@@ -16,7 +17,7 @@
     <div class="formulario-catalogo-secciones">
     <section class="formulario-catalogo-seccion formulario-catalogo-seccion-ancha" aria-labelledby="usuario-acceso-titulo">
         <h2 id="usuario-acceso-titulo" class="seccion-titulo">Datos de acceso</h2>
-        <p class="seccion-ayuda">Hasta tres usuarios por empresa: titular y dos auxiliares. Si el correo ya tiene cuenta, se conserva su contraseña.</p>
+        <p class="seccion-ayuda">Cuenta contra el límite de usuarios de tu cuenta, igual que tú.</p>
     <div class="catalogo-rejilla catalogo-rejilla-dos">
         <MudTextField @bind-Value="_correo" Label="Correo" Immediate="true" InputType="InputType.Email" MaxLength="254" />
         <MudTextField @bind-Value="_nombre" Label="Nombre" Immediate="true" MaxLength="128" />
@@ -36,9 +37,12 @@
     </section>
 
     <section class="formulario-catalogo-seccion formulario-catalogo-seccion-ancha" aria-labelledby="usuario-permisos-titulo">
-    <h2 id="usuario-permisos-titulo" class="seccion-titulo">Permisos en esta empresa</h2>
+    <h2 id="usuario-permisos-titulo" class="seccion-titulo">Permisos</h2>
     <p class="seccion-ayuda">Selecciona una sección para revisar sus permisos. Marca solo los accesos necesarios.</p>
-    <SelectorDePermisos @bind-Value="_permisos" />
+    @if (_empresas is not null)
+    {
+        <SelectorDePermisos @bind-Value="_permisos" Empresas="_empresas" @bind-EmpresasElegidas="_elegidas" />
+    }
     </section>
     </div>
 
@@ -51,10 +55,7 @@
 </EditForm>
 
 @code {
-    /// <summary>
-    /// Se invoca con la respuesta del servidor. Su mensaje no es decorativo: si el correo ya
-    /// tenía cuenta, es lo que explica que se dio acceso sin cambiar la contraseña.
-    /// </summary>
+    /// <summary>Se invoca con la respuesta del servidor, que trae el mensaje para el titular.</summary>
     [Parameter]
     public EventCallback<RespuestaCrearUsuario> AlCrear { get; set; }
 
@@ -66,8 +67,19 @@
     private string _contrasena = string.Empty;
     private bool _verContrasena;
     private List<string> _permisos = [];
+    private IReadOnlyList<EmpresaParaAccesoDto>? _empresas;
+    private List<Guid> _elegidas = [];
     private DetalleProblema? _error;
     private bool _enviando;
+
+    // Arranca con la empresa activa marcada; con una sola empresa en la cuenta es la única.
+    protected override async Task OnInitializedAsync()
+    {
+        _empresas = (await Usuarios.ListarAsync()).Empresas;
+        _elegidas = _empresas.Count == 1
+            ? [_empresas[0].Id]
+            : [.. _empresas.Where(e => e.Id == Sesion.Sesion?.EmpresaActivaId).Select(e => e.Id)];
+    }
 
     private async Task Crear()
     {
@@ -75,7 +87,7 @@
         _error = null;
 
         var (exito, error) = await Usuarios.CrearAsync(
-            new PeticionCrearUsuario(_correo, _nombre, _contrasena, _permisos));
+            new PeticionCrearUsuario(_correo, _nombre, _contrasena, _permisos, _elegidas));
 
         _error = error;
         _enviando = false;

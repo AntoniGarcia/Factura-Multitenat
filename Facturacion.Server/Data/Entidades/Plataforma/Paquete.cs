@@ -1,13 +1,13 @@
 namespace Facturacion.Server.Data.Entidades.Plataforma;
 
-/// <summary>Oferta general si EmpresaId es nulo; exclusiva de una empresa si tiene valor. El servidor obtiene el precio a partir del identificador del paquete.</summary>
+/// <summary>Oferta general si CuentaId es nulo; exclusiva de una cuenta si tiene valor. El servidor obtiene el precio a partir del identificador del paquete.</summary>
 public sealed class Paquete
 {
     public Guid Id { get; set; }
 
-    public Guid? EmpresaId { get; set; }
+    public Guid? CuentaId { get; set; }
 
-    public Empresa? Empresa { get; set; }
+    public Cuenta? Cuenta { get; set; }
 
     public required string Nombre { get; set; }
 

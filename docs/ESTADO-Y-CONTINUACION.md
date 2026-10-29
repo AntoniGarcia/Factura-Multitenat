@@ -2,7 +2,8 @@
 
 > **Archivo histórico (19 de agosto de 2026).** Describe un corte anterior del proyecto.
 > No se debe usar para decidir el estado actual, los próximos pasos ni el despliegue.
-> Ver [el reporte vigente](../REPORTE_ESTADO_SISTEMA.md).
+> Ver [el reporte vigente](../REPORTE_ESTADO_SISTEMA.md). Lo único que sigue vigente es la
+> tabla de qué no leer (§2), con la corrección de la fila de `AGENTS.md`.
 
 Traspaso de contexto para retomar el proyecto en una sesión nueva.
 **Corte: 19 de agosto de 2026, rama `develop`.**
@@ -48,7 +49,7 @@ sin leer eso.**
 | No leer | Por qué |
 |---|---|
 | **`docs/UI_Funcional.md`** — 41 KB, 1 133 líneas | Especificación del sistema de escritorio viejo. Solo se consulta **una sección puntual** cuando un prompt la cita por número. **Usa `grep -n "^## §27" docs/UI_Funcional.md` y lee solo ese bloque.** Nunca completo, nunca «para tener contexto». |
-| **`AGENTS.md`** — 17 KB | Copia literal de `ARQUITECTURA.md` salvo la primera línea. Leer uno de los dos, jamás los dos. |
+| **`ARQUITECTURA.md`** | Era una copia de `AGENTS.md`; desde octubre de 2026 ya no coinciden (§6 y §11 difieren). **`AGENTS.md` es el que manda** y se lee completo; `ARQUITECTURA.md` no hace falta. |
 | **`Sistema anterior/`** — 31 capturas, 2.2 MB | Ya están inventariadas en `docs/AUDITORIA-2026-08-19.md` §B. **No abras las imágenes**: cada una cuesta más que la tabla que las resume. Solo si una tarea pide un detalle visual que la tabla no cubre, y entonces esa captura, no la carpeta. Las 10, 11, 15 a 26 son de carta porte, constructoras, comercio exterior y notaría: quedaron fuera del MVP original pero se agregaron después al alcance, así que se abren solo cuando la tarea trabaje ese módulo, y nunca la carpeta entera. |
 | **`Facturacion.Server/Migrations/*`** — 1 MB, 33 archivos | Autogenerado. `AppDbContextModelSnapshot.cs` solo son ~2 700 líneas. No se leen ni se editan a mano: se generan con `dotnet ef migrations add`. Para el esquema, lee `Data/Entidades/` y `Data/Configurations/`, que son cortos y están comentados. |
 | **`PROMPT-FASES-A.md`** — 31 KB | La mitad A está cerrada. Solo sirve para auditar por qué algo quedó así. |
@@ -61,7 +62,7 @@ sin leer eso.**
 
 ### Lo que sí hay que leer, y nada más
 
-1. **`ARQUITECTURA.md`** — completo, siempre, antes de escribir una línea. Es la única lectura no negociable.
+1. **`AGENTS.md`** — completo, siempre, antes de escribir una línea, incluida su §11, que prevalece sobre las secciones de arriba. Es la única lectura no negociable.
 2. **Este documento.**
 3. **`docs/AUDITORIA-2026-08-19.md`** — completo la primera vez; después, solo la sección que toca la tarea.
 4. **La sección de la fase en curso** de `PROMPT-FASES-B.md`.
@@ -263,20 +264,9 @@ que pase la tanda de 50.
 
 ## 8. Prompt para arrancar la sesión nueva
 
+El prompt que estaba aquí mandaba no leer `AGENTS.md` y ya no aplica. El vigente es:
+
 ```
-Lee ARQUITECTURA.md completo, docs/ESTADO-Y-CONTINUACION.md y docs/AUDITORIA-2026-08-19.md.
-
-NO leas: docs/UI_Funcional.md (solo secciones puntuales con grep cuando una fase las
-cite), AGENTS.md (es copia de ARQUITECTURA.md), Facturacion.Server/Migrations/*,
-PROMPT-FASES-A.md, la carpeta "Sistema anterior" (las capturas ya están inventariadas
-en la auditoría; abrirlas cuesta más que leer la tabla), ni la carpeta "Sistema de
-Facturacion" (bóveda de Obsidian, no es código).
-
-Trabajo las dos mitades. La A está cerrada. De la B están commiteadas B0, B1, B3, B4 y
-B5. B2, B7, B8 y B9 están construidas pero sin commitear, y con los pendientes que
-describe la auditoría. B6 no ha empezado.
-
-Empieza por commitear: hay 111 archivos en el árbol de trabajo. Propón cómo partirlos
-en cuatro commits por fase, corre dotnet build y dotnet test, y dime qué encontraste.
-Luego espera.
+Lee AGENTS.md completo (la §11 prevalece), tu memoria y REPORTE_ESTADO_SISTEMA.md.
+Dónde quedó: [rama y último commit] · [tarea en curso] · [lo que falta verificar].
 ```

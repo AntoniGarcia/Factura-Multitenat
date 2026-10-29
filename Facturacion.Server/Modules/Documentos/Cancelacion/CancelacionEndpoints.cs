@@ -12,7 +12,7 @@ public static class CancelacionEndpoints
     {
         var grupo = rutas.MapGroup("/api/documentos")
             .WithTags("Documentos")
-            .RequireAuthorization(Permisos.Cancelar);
+            .RequireAuthorization(Permisos.Politicas.Cancelar);
 
         grupo.MapPost("/{id:guid}/cancelar", Cancelar)
             .AddEndpointFilter<FiltroDeIdempotencia>();
@@ -21,7 +21,7 @@ public static class CancelacionEndpoints
 
         var solicitudes = rutas.MapGroup("/api/cancelaciones")
             .WithTags("Documentos")
-            .RequireAuthorization(Permisos.Cancelar);
+            .RequireAuthorization(Permisos.Politicas.Cancelar);
 
         solicitudes.MapGet("", ListarSolicitudes);
         solicitudes.MapPost("/verificar", VerificarAbiertas);

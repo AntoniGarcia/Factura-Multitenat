@@ -2,6 +2,7 @@ using Facturacion.Server.Data;
 using Facturacion.Server.Data.Entidades.Plataforma;
 using Facturacion.Server.Infra.Bitacora;
 using Facturacion.Shared.Comun;
+using Facturacion.Shared.Contratos;
 using Facturacion.Shared.Plataforma;
 using Microsoft.EntityFrameworkCore;
 
@@ -11,7 +12,8 @@ namespace Facturacion.Server.Modules.Plataforma.Folios;
 /// Administración de las series de folios de la empresa activa. La reserva vive aparte, en
 /// <see cref="ServicioDeFolios"/>: aquí solo se define la serie, nunca se mueve su contador.
 /// </summary>
-public sealed class ServicioDeSeries(AppDbContext baseDeDatos, IServicioDeBitacora bitacora)
+public sealed class ServicioDeSeries(
+    AppDbContext baseDeDatos, IServicioDeBitacora bitacora, IContextoEmpresa contexto, IUsoDeCatalogos uso)
 {
     public async Task<IReadOnlyList<SerieDto>> ListarAsync(CancellationToken ct)
         => await baseDeDatos.Series
@@ -38,6 +40,9 @@ public sealed class ServicioDeSeries(AppDbContext baseDeDatos, IServicioDeBitaco
     {
         var error = await ValidarAsync(peticion, serieExistente: null, ct);
         if (error is not null) return error;
+
+        if (PermisoDeCatalogo.ExigirCambioDeEstado(contexto, Permisos.Catalogos.Series, true, peticion.Activa) is { } sinPermiso)
+            return sinPermiso;
 
         var serie = new Serie
         {
@@ -73,6 +78,9 @@ public sealed class ServicioDeSeries(AppDbContext baseDeDatos, IServicioDeBitaco
         var error = await ValidarAsync(peticion, serie, ct);
         if (error is not null) return error;
 
+        if (PermisoDeCatalogo.ExigirCambioDeEstado(contexto, Permisos.Catalogos.Series, serie.Activa, peticion.Activa) is { } sinPermiso)
+            return sinPermiso;
+
         var antes = ADto(serie);
 
         serie.Prefijo = peticion.Prefijo.Trim();
@@ -94,6 +102,58 @@ public sealed class ServicioDeSeries(AppDbContext baseDeDatos, IServicioDeBitaco
         await baseDeDatos.SaveChangesAsync(ct);
 
         return ADto(serie);
+    }
+
+    /// <summary>
+    /// Desactivar o reactivar sin pasar por el formulario: así basta la casilla Desactivar, como
+    /// en los demás catálogos.
+    /// </summary>
+    public async Task<Resultado<SerieDto>> CambiarActivaAsync(Guid id, bool activa, CancellationToken ct)
+    {
+        var serie = await baseDeDatos.Series.FirstOrDefaultAsync(s => s.Id == id, ct);
+
+        if (serie is null)
+            return ErrorNegocio.NoEncontrado("serie-no-encontrada", "No se encontró esa serie.");
+
+        if (serie.Activa == activa) return ADto(serie);
+
+        var antes = ADto(serie);
+        serie.Activa = activa;
+
+        bitacora.Registrar(
+            EntidadesDeBitacora.Serie, serie.Id.ToString(), AccionesDeBitacora.SerieActualizada,
+            antes, ADto(serie));
+
+        await baseDeDatos.SaveChangesAsync(ct);
+
+        return ADto(serie);
+    }
+
+    /// <summary>
+    /// Borrado físico, solo de una serie que no ha dado ningún folio ni la usa ningún comprobante,
+    /// ni siquiera un borrador (AGENTS.md §11). Una serie con folios se desactiva: borrarla
+    /// dejaría sin explicación la numeración ya emitida.
+    /// </summary>
+    public async Task<Resultado> EliminarAsync(Guid id, CancellationToken ct)
+    {
+        var serie = await baseDeDatos.Series.FirstOrDefaultAsync(s => s.Id == id, ct);
+
+        if (serie is null)
+            return ErrorNegocio.NoEncontrado("serie-no-encontrada", "No se encontró esa serie.");
+
+        if (serie.FolioActual >= serie.FolioInicial ||
+            await baseDeDatos.ReservasFolio.AnyAsync(r => r.SerieId == id, ct) ||
+            await uso.SerieUsadaAsync(id, ct))
+            return PermisoDeCatalogo.EnUso("Esta serie");
+
+        bitacora.Registrar(
+            EntidadesDeBitacora.Serie, serie.Id.ToString(), AccionesDeBitacora.SerieEliminada,
+            antes: ADto(serie));
+
+        baseDeDatos.Series.Remove(serie);
+        await baseDeDatos.SaveChangesAsync(ct);
+
+        return Resultado.Exito();
     }
 
     private async Task<ErrorNegocio?> ValidarAsync(

@@ -46,6 +46,7 @@ public static class PermisosDePanel
     public const string CambiarEstadoEmpresas = "panel_cambiar_estado_empresas";
     public const string GestionarLicencias = "panel_gestionar_licencias";
     public const string GestionarMembresias = "panel_gestionar_membresias";
+    public const string GestionarLimites = "panel_gestionar_limites";
 
     public const string VerUsuarios = "panel_ver_usuarios";
     public const string AdministrarUsuarios = "panel_administrar_usuarios";
@@ -81,6 +82,7 @@ public static class PermisosDePanel
         CambiarEstadoEmpresas,
         GestionarLicencias,
         GestionarMembresias,
+        GestionarLimites,
         VerUsuarios,
         AdministrarUsuarios,
         RestablecerContrasenasUsuarios,
@@ -111,6 +113,7 @@ public static class PermisosDePanel
         [CambiarEstadoEmpresas] = "Desactivar y reactivar empresas",
         [GestionarLicencias] = "Gestionar módulos de empresas",
         [GestionarMembresias] = "Gestionar membresías",
+        [GestionarLimites] = "Cambiar límites de usuarios y empresas",
         [VerUsuarios] = "Ver usuarios",
         [AdministrarUsuarios] = "Administrar usuarios (todas las acciones)",
         [RestablecerContrasenasUsuarios] = "Restablecer contraseñas",
@@ -151,7 +154,8 @@ public static class PermisosDePanel
                 new(EditarContactoCuentas, Etiquetas[EditarContactoCuentas]),
                 new(CambiarEstadoEmpresas, Etiquetas[CambiarEstadoEmpresas]),
                 new(GestionarLicencias, Etiquetas[GestionarLicencias]),
-                new(GestionarMembresias, Etiquetas[GestionarMembresias])
+                new(GestionarMembresias, Etiquetas[GestionarMembresias]),
+                new(GestionarLimites, Etiquetas[GestionarLimites])
             ]),
         new("Usuarios",
             new(VerUsuarios, "Ver usuarios"),
@@ -186,7 +190,7 @@ public static class PermisosDePanel
         SoloAcreditarCompras or DescartarCompras => VerCompras,
         AdministrarClientes => VerClientes,
         AsignarTimbres => VerClientes,
-        EditarContactoCuentas or CambiarEstadoEmpresas or GestionarLicencias or GestionarMembresias => VerClientes,
+        EditarContactoCuentas or CambiarEstadoEmpresas or GestionarLicencias or GestionarMembresias or GestionarLimites => VerClientes,
         AdministrarUsuarios => VerUsuarios,
         RestablecerContrasenasUsuarios or CambiarCorreosUsuarios or CambiarEstadoUsuarios or QuitarAccesoUsuarios => VerUsuarios,
         AdministrarOperadores => VerOperadores,
@@ -201,7 +205,7 @@ public static class PermisosDePanel
         VerCatalogosSat => VerConfiguracion,
         CambiarEstadoPaquetes => AdministrarPaquetes,
         SoloAcreditarCompras or DescartarCompras => AcreditarCompras,
-        EditarContactoCuentas or CambiarEstadoEmpresas or GestionarLicencias or GestionarMembresias => AdministrarClientes,
+        EditarContactoCuentas or CambiarEstadoEmpresas or GestionarLicencias or GestionarMembresias or GestionarLimites => AdministrarClientes,
         RestablecerContrasenasUsuarios or CambiarCorreosUsuarios or CambiarEstadoUsuarios or QuitarAccesoUsuarios => AdministrarUsuarios,
         CambiarEstadoOperadores => AdministrarOperadores,
         _ => null

@@ -56,27 +56,27 @@
 
         List<Opcion> opciones = [];
 
-        if (Sesion.TienePermiso(Permisos.EmitirFactura))
+        if (Sesion.TienePermiso(Permisos.FacturaCrear))
             opciones.Add(new(RutaDeFactura(VariantesDeFactura.Basica), Icons.Material.Filled.ReceiptLong,
                 "Factura básica", "Ingreso por venta de productos o servicios estándar"));
 
-        if (licencias?.Notarios == true && Sesion.TienePermiso(Permisos.EmitirNotaria))
+        if (licencias?.Notarios == true && Sesion.TienePermiso(Permisos.NotariaCrear))
             opciones.Add(new(RutaDeFactura(VariantesDeFactura.Notaria), Icons.Material.Filled.Gavel,
                 "Factura con complemento Notaría", "Ingreso por operaciones de fe pública e inmuebles"));
 
-        if (licencias?.Comercio == true && Sesion.TienePermiso(Permisos.EmitirComercioExterior))
+        if (licencias?.Comercio == true && Sesion.TienePermiso(Permisos.ComercioExteriorCrear))
             opciones.Add(new(RutaDeFactura(VariantesDeFactura.ComercioExterior), Icons.Material.Filled.Public,
                 "Factura con complemento Comercio Exterior", "Ingreso de exportación con datos aduanales"));
 
-        if (licencias?.Obras == true && Sesion.TienePermiso(Permisos.EmitirObra))
+        if (licencias?.Obras == true && Sesion.TienePermiso(Permisos.ObraCrear))
             opciones.Add(new(RutaDeFactura(VariantesDeFactura.Obra), Icons.Material.Filled.Construction,
                 "Factura de obra", "Ingreso con amortización, retenciones e impuestos locales de obra"));
 
-        if (Sesion.TienePermiso(Permisos.EmitirPago))
+        if (Sesion.TienePermiso(Permisos.PagoCrear))
             opciones.Add(new("/pagos/nuevo", Icons.Material.Filled.Payments,
                 "Complemento de pago", "Cobro de facturas en parcialidades o diferidas"));
 
-        if (Sesion.TienePermiso(Permisos.EmitirCartaPorte))
+        if (Sesion.TienePermiso(Permisos.CartaPorteCrear))
             opciones.Add(new("/traslados-carta-porte/nuevo", Icons.Material.Filled.LocalShipping,
                 "Carta Porte", "Movimiento de mercancía propia, sin importe"));
 

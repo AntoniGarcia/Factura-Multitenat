@@ -68,13 +68,13 @@ public static class MenuPrincipal
     public static IReadOnlyList<ElementoDeMenu> Catalogos { get; } =
     [
         // Cada uno conserva su propio permiso: Clientes y Productos los ve quien emite o quien
-        // los administra; Series, quien configura la empresa; Transporte, quien hace Carta Porte
+        // los administra; Series, quien tiene alguna casilla de Series; Transporte, quien hace Carta Porte
         // o administra vehículos y figuras.
         new("/clientes", "Clientes", "groups", Permisos.Politicas.LeerClientesYProductos,
             Descripcion: "Receptores de tus comprobantes"),
         new("/productos", "Productos", "inventory", Permisos.Politicas.LeerClientesYProductos,
             Descripcion: "Precios, claves del SAT e impuestos"),
-        new("/empresa/series", "Series y folios", "tag", Permisos.Configuracion,
+        new("/empresa/series", "Series y folios", "tag", Permisos.Politicas.Series,
             Descripcion: "Numeración de cada tipo de comprobante"),
         new("/empresa/transporte", "Transporte", "local_shipping", Permisos.Politicas.LeerTransporte,
             Descripcion: "Vehículos y figuras de Carta Porte"),
@@ -88,7 +88,7 @@ public static class MenuPrincipal
         // que ya se emitió, y desde ahí se crea. Tener «Nueva factura» y «Documentos» como
         // hermanas obligaba a elegir entre dos puertas al mismo cuarto antes de saber
         // cuál de las dos se quería.
-        new("/documentos", "Documentos", "description", Permisos.Politicas.Documentos),
+        new("/documentos", "Documentos", "description", Permisos.DocumentosListado),
         // Aparte de Documentos porque es otro permiso y otro trabajo: dar seguimiento a lo que
         // sigue esperando la respuesta del receptor o del SAT (§30).
         //new("/catalogos", "Catálogos", "catalogo", Permiso: null),

@@ -5,6 +5,7 @@ using Facturacion.Server.Data.Entidades.Transporte;
 using Facturacion.Server.Infra.Bitacora;
 using Facturacion.Server.Infra.Seguridad;
 using Facturacion.Server.Infra.Tenencia;
+using Facturacion.Server.Modules.Documentos;
 using Facturacion.Server.Modules.Operador.Auth;
 using Facturacion.Server.Modules.Plataforma.Auth;
 using Facturacion.Server.Modules.Plataforma.Usuarios;
@@ -74,7 +75,7 @@ public sealed class EliminacionDeAccesosPruebas : IAsyncLifetime
         db.Users.Add(Usuario(id));
         db.UsuariosEmpresas.Add(new UsuarioEmpresa { UsuarioId = id, EmpresaId = _empresa });
         db.UsuariosEmpresasPermisos.Add(new UsuarioEmpresaPermiso { UsuarioId = id, EmpresaId = _empresa,
-            PermisoClave = Facturacion.Shared.Comun.Permisos.VerDocumentos, OtorgadoPorUsuarioId = _titular });
+            PermisoClave = Facturacion.Shared.Comun.Permisos.DocumentosListado, OtorgadoPorUsuarioId = _titular });
         bitacora.Registrar(EntidadesDeBitacora.UsuarioEmpresa, id.ToString(), AccionesDeBitacora.UsuarioCreado, usuarioId: id);
         await db.SaveChangesAsync();
         Assert.Equal("contrasena-incorrecta", (await servicio.EliminarAsync(id, "incorrecta", default)).Error?.Codigo);
@@ -91,8 +92,13 @@ public sealed class EliminacionDeAccesosPruebas : IAsyncLifetime
             otroDb.UsuariosEmpresas.Add(new UsuarioEmpresa { UsuarioId = id, EmpresaId = otraEmpresa });
             await otroDb.SaveChangesAsync();
         }
-        Assert.Equal("usuario-en-otras-empresas", (await servicio.EliminarAsync(id, Contrasena, default)).Error?.Codigo);
-        await db.UsuariosEmpresas.IgnoreQueryFilters().Where(x => x.UsuarioId == id && x.EmpresaId == otraEmpresa).ExecuteDeleteAsync();
+        var otraCuenta = Guid.NewGuid();
+        var ajeno = Usuario(Guid.NewGuid());
+        ajeno.CuentaId = otraCuenta;
+        db.Cuentas.Add(new Cuenta { Id = otraCuenta, Nombre = "Ajena", CorreoContacto = "ajena@example.com" });
+        db.Users.Add(ajeno);
+        await db.SaveChangesAsync();
+        Assert.Equal("usuario-no-encontrado", (await servicio.EliminarAsync(ajeno.Id, Contrasena, default)).Error?.Codigo);
 
         var historico = Guid.NewGuid();
         db.Users.Add(Usuario(historico));
@@ -135,21 +141,18 @@ public sealed class EliminacionDeAccesosPruebas : IAsyncLifetime
     }
 
     [Fact]
-    public async Task Cliente_exige_contrasena_y_bloquea_documentos_y_otra_empresa()
+    public async Task Cliente_bloquea_documentos_de_cualquier_empresa_traslados_y_otra_cuenta()
     {
         await using var db = Abrir();
         var contexto = new ContextoEmpresaFijo(_empresa, _cuenta, _titular);
         var bitacora = new ServicioDeBitacora(db, contexto, ContextoDeOperadorFijo.SinOperador, new HttpContextAccessor());
-        using var memoria = new MemoryCache(new MemoryCacheOptions());
-        var servicios = new ServiceCollection().AddLogging().AddSingleton(db);
-        servicios.AddIdentityCore<Usuario>().AddEntityFrameworkStores<AppDbContext>();
-        using var proveedor = servicios.BuildServiceProvider();
         var servicio = new ServicioDeClientes(db, new ValidadorDeCliente(db, new ServicioCatalogosSat(db)), bitacora,
-            proveedor.GetRequiredService<UserManager<Usuario>>(), contexto, new ControlDeIntentos(memoria));
+            contexto, new UsoDeCatalogos(db));
         var libre = Cliente(1);
         var conFactura = Cliente(2);
         var conTraslado = Cliente(3);
-        db.Clientes.AddRange(libre, conFactura, conTraslado);
+        var usadoEnOtraEmpresa = Cliente(4);
+        db.Clientes.AddRange(libre, conFactura, conTraslado, usadoEnOtraEmpresa);
         db.Comprobantes.Add(Comprobante(conFactura.Id));
         var vehiculo = new Vehiculo { Id = Guid.NewGuid(), Clave = "1", Descripcion = "Prueba", ConfiguracionAutotransporte = "C2",
             Placa = "ABC123", Aseguradora = "Prueba", Poliza = "1", TipoPermiso = "TPAF01", NumeroPermiso = "1" };
@@ -161,24 +164,41 @@ public sealed class EliminacionDeAccesosPruebas : IAsyncLifetime
             VehiculoId = vehiculo.Id, FiguraTransporteId = figura.Id, ClienteDestinoId = conTraslado.Id });
         bitacora.Registrar(EntidadesDeBitacora.Cliente, libre.Id.ToString(), AccionesDeBitacora.ClienteCreado);
         await db.SaveChangesAsync();
-        Assert.Equal("contrasena-incorrecta", (await servicio.EliminarAsync(libre.Id, "incorrecta", default)).Error?.Codigo);
-        Assert.True(await db.Clientes.AnyAsync(x => x.Id == libre.Id));
-        Assert.Equal("cliente-con-movimientos", (await servicio.EliminarAsync(conFactura.Id, Contrasena, default)).Error?.Codigo);
-        Assert.Equal("cliente-con-movimientos", (await servicio.EliminarAsync(conTraslado.Id, Contrasena, default)).Error?.Codigo);
+        Assert.Equal("catalogo-en-uso", (await servicio.EliminarAsync(conFactura.Id, default)).Error?.Codigo);
+        Assert.Equal("catalogo-en-uso", (await servicio.EliminarAsync(conTraslado.Id, default)).Error?.Codigo);
 
+        // Los clientes son de la cuenta: una factura de otra empresa de la misma cuenta también lo usa.
         var otraEmpresa = Guid.NewGuid();
         db.Empresas.Add(Empresa(otraEmpresa));
         await db.SaveChangesAsync();
-        var ajeno = Cliente(1);
+        var deOtraEmpresa = new ContextoEmpresaFijo(otraEmpresa, _cuenta);
         await using (var otroDb = new AppDbContext(new DbContextOptionsBuilder<AppDbContext>().Configurar(
-            db.Database.GetConnectionString(), new ContextoEmpresaFijo(otraEmpresa)).Options, new ContextoEmpresaFijo(otraEmpresa)))
+            db.Database.GetConnectionString(), deOtraEmpresa).Options, deOtraEmpresa))
+        {
+            otroDb.Comprobantes.Add(Comprobante(usadoEnOtraEmpresa.Id));
+            await otroDb.SaveChangesAsync();
+        }
+        Assert.Equal("catalogo-en-uso", (await servicio.EliminarAsync(usadoEnOtraEmpresa.Id, default)).Error?.Codigo);
+
+        // Un cliente de otra cuenta ni siquiera se encuentra.
+        var otraCuenta = Guid.NewGuid();
+        var empresaAjena = Guid.NewGuid();
+        db.Cuentas.Add(new Cuenta { Id = otraCuenta, Nombre = "Ajena", CorreoContacto = "ajena@example.com" });
+        var empresa = Empresa(empresaAjena);
+        empresa.CuentaId = otraCuenta;
+        db.Empresas.Add(empresa);
+        await db.SaveChangesAsync();
+        var ajeno = Cliente(1);
+        var deOtraCuenta = new ContextoEmpresaFijo(empresaAjena, otraCuenta);
+        await using (var otroDb = new AppDbContext(new DbContextOptionsBuilder<AppDbContext>().Configurar(
+            db.Database.GetConnectionString(), deOtraCuenta).Options, deOtraCuenta))
         {
             otroDb.Clientes.Add(ajeno);
             await otroDb.SaveChangesAsync();
         }
-        Assert.Equal("cliente-no-encontrado", (await servicio.EliminarAsync(ajeno.Id, Contrasena, default)).Error?.Codigo);
+        Assert.Equal("cliente-no-encontrado", (await servicio.EliminarAsync(ajeno.Id, default)).Error?.Codigo);
         Assert.True(await db.Clientes.IgnoreQueryFilters().AnyAsync(x => x.Id == ajeno.Id));
-        Assert.True((await servicio.EliminarAsync(libre.Id, Contrasena, default)).EsExito);
+        Assert.True((await servicio.EliminarAsync(libre.Id, default)).EsExito);
         Assert.False(await db.Clientes.AnyAsync(x => x.Id == libre.Id));
         Assert.True(await db.Bitacora.AnyAsync(x => x.EntidadId == libre.Id.ToString() && x.Accion == AccionesDeBitacora.ClienteCreado));
         Assert.True(await db.Bitacora.AnyAsync(x => x.EntidadId == libre.Id.ToString() && x.Accion == AccionesDeBitacora.ClienteEliminado));
@@ -190,22 +210,18 @@ public sealed class EliminacionDeAccesosPruebas : IAsyncLifetime
         await using var db = Abrir();
         var contexto = new ContextoEmpresaFijo(_empresa, _cuenta, _titular);
         var bitacora = new ServicioDeBitacora(db, contexto, ContextoDeOperadorFijo.SinOperador, new HttpContextAccessor());
-        using var memoria = new MemoryCache(new MemoryCacheOptions());
-        var servicios = new ServiceCollection().AddLogging().AddSingleton(db);
-        servicios.AddIdentityCore<Usuario>().AddEntityFrameworkStores<AppDbContext>();
-        using var proveedor = servicios.BuildServiceProvider();
         var servicio = new ServicioDeClientes(db, new ValidadorDeCliente(db, new ServicioCatalogosSat(db)), bitacora,
-            proveedor.GetRequiredService<UserManager<Usuario>>(), contexto, new ControlDeIntentos(memoria));
+            contexto, new UsoDeCatalogos(db));
         var cliente = Cliente(1);
         db.Clientes.Add(cliente);
         await db.SaveChangesAsync();
 
         await using var guardando = Abrir();
         var servicioGuardando = new ServicioDeClientes(guardando, new ValidadorDeCliente(guardando, new ServicioCatalogosSat(guardando)),
-            bitacora, proveedor.GetRequiredService<UserManager<Usuario>>(), contexto, new ControlDeIntentos(memoria));
+            bitacora, contexto, new UsoDeCatalogos(guardando));
         await using var transaccion = await guardando.Database.BeginTransactionAsync();
         Assert.NotNull(await servicioGuardando.ObtenerParaTimbradoAsync(cliente.Id, default));
-        var eliminacion = servicio.EliminarAsync(cliente.Id, Contrasena, default);
+        var eliminacion = servicio.EliminarAsync(cliente.Id, default);
         try
         {
             Assert.NotSame(eliminacion, await Task.WhenAny(eliminacion, Task.Delay(200)));
@@ -217,7 +233,7 @@ public sealed class EliminacionDeAccesosPruebas : IAsyncLifetime
         {
             await transaccion.DisposeAsync();
         }
-        Assert.Equal("cliente-con-movimientos", (await eliminacion).Error?.Codigo);
+        Assert.Equal("catalogo-en-uso", (await eliminacion).Error?.Codigo);
         Assert.True(await db.Clientes.AnyAsync(x => x.Id == cliente.Id));
     }
 

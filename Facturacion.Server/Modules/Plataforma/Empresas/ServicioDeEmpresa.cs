@@ -2,9 +2,11 @@ using Facturacion.Server.Data;
 using Facturacion.Server.Data.Entidades.Plataforma;
 using Facturacion.Server.Infra.Bitacora;
 using Facturacion.Server.Infra.Tenencia;
+using Facturacion.Server.Modules.Plataforma.Usuarios;
 using Facturacion.Shared.Comun;
 using Facturacion.Shared.Plataforma;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Options;
 
 namespace Facturacion.Server.Modules.Plataforma.Empresas;
 
@@ -18,7 +20,8 @@ namespace Facturacion.Server.Modules.Plataforma.Empresas;
 public sealed class ServicioDeEmpresa(
     AppDbContext baseDeDatos,
     IContextoEmpresaInterno contexto,
-    IServicioDeBitacora bitacora)
+    IServicioDeBitacora bitacora,
+    IOptions<OpcionesDeSoporte> opcionesSoporte)
 {
     public async Task<EmpresaDto?> ObtenerAsync(CancellationToken ct)
     {
@@ -70,6 +73,16 @@ public sealed class ServicioDeEmpresa(
                 "sin-permiso-para-crear-empresa",
                 "Solo el titular de la cuenta puede dar de alta empresas.");
 
+        // La transacción sostiene el bloqueo de la cuenta: dos altas simultáneas no rebasan el límite.
+        await using var transaccion = await baseDeDatos.Database.BeginTransactionAsync(ct);
+
+        var cuenta = await LimitesDeCuenta.BloquearAsync(baseDeDatos, cuentaId, ct);
+        if (cuenta is null)
+            return ErrorNegocio.NoEncontrado("cuenta-no-encontrada", "Tu cuenta ya no existe.");
+
+        if (await LimitesDeCuenta.EmpresasEnUsoAsync(baseDeDatos, cuentaId, ct) >= cuenta.LimiteDeEmpresas)
+            return LimitesDeCuenta.ErrorDeEmpresas(cuenta.LimiteDeEmpresas, opcionesSoporte.Value);
+
         // IgnoreQueryFilters justificado: el filtro global recorta por la empresa activa, y
         // aquí se busca justo entre las de la cuenta, incluida la que aún no existe.
         var repetido = await baseDeDatos.Empresas
@@ -119,6 +132,7 @@ public sealed class ServicioDeEmpresa(
             empresaId: empresa.Id);
 
         await baseDeDatos.SaveChangesAsync(ct);
+        await transaccion.CommitAsync(ct);
 
         return AEmpresaDto(empresa);
     }
@@ -208,6 +222,19 @@ public sealed class ServicioDeEmpresa(
         var configuracion = await baseDeDatos.ConfiguracionesEmpresa.FirstOrDefaultAsync(ct);
         var antes = configuracion is null ? null : AConfiguracionDto(configuracion);
 
+        // General e Impuestos viajan en la misma petición, pero son casillas distintas: se
+        // rechaza tocar la parte que no se tiene, en lugar de ignorarla en silencio.
+        var actual = antes ?? peticion;
+
+        if (!contexto.Tiene(Permisos.ConfiguracionImpuestos) && SoloImpuestos(peticion) != SoloImpuestos(actual))
+            return ErrorNegocio.SinPermiso("sin-permiso-impuestos",
+                "No tienes permiso para cambiar los impuestos. Pídeselo al titular de la cuenta.");
+
+        if (!contexto.Tiene(Permisos.ConfiguracionGeneral) &&
+            peticion.DiasAvisoCaducidadCertificado != actual.DiasAvisoCaducidadCertificado)
+            return ErrorNegocio.SinPermiso("sin-permiso-general",
+                "No tienes permiso para cambiar la configuración general. Pídeselo al titular de la cuenta.");
+
         if (configuracion is null)
         {
             // EmpresaId lo pone el interceptor de sellado desde el claim; no se asigna aquí
@@ -232,6 +259,9 @@ public sealed class ServicioDeEmpresa(
 
         return peticion;
     }
+
+    /// <summary>La configuración sin la parte de General, para comparar solo los impuestos.</summary>
+    private static ConfiguracionEmpresaDto SoloImpuestos(ConfiguracionEmpresaDto c) => c with { DiasAvisoCaducidadCertificado = 0 };
 
     private Task<Empresa?> CargarAsync(CancellationToken ct)
         => baseDeDatos.Empresas.FirstOrDefaultAsync(e => e.Id == contexto.EmpresaId, ct);

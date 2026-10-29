@@ -1,53 +1,21 @@
 using Facturacion.Server.Data;
 using Facturacion.Server.Data.Entidades.Plataforma;
 using Facturacion.Server.Infra.Bitacora;
-using Facturacion.Server.Infra.Seguridad;
-using Facturacion.Server.Infra.Tenencia;
 using Facturacion.Shared.Comun;
 using Facturacion.Shared.Contratos;
 using Facturacion.Shared.Plataforma;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.AspNetCore.Identity;
 
 namespace Facturacion.Server.Modules.Plataforma.Clientes;
 
-/// <summary>Administra los clientes de la empresa activa y expone sus datos al módulo de emisión. EF aplica el filtro de empresa.</summary>
+/// <summary>Administra los clientes de la cuenta, que comparten todas sus empresas, y expone sus datos al módulo de emisión. EF aplica el filtro de cuenta.</summary>
 public sealed class ServicioDeClientes(
     AppDbContext baseDeDatos,
     ValidadorDeCliente validador,
     IServicioDeBitacora bitacora,
-    UserManager<Usuario> usuarios,
-    IContextoEmpresaInterno contexto,
-    IControlDeIntentos intentos) : IServicioClientes
+    IContextoEmpresa contexto,
+    IUsoDeCatalogos uso) : IServicioClientes
 {
-    public async Task<Resultado> EliminarAsync(Guid id, string contrasena, CancellationToken ct)
-    {
-        var confirmacion = await ConfirmacionDeTitular.ValidarAsync(usuarios, contexto, intentos, contrasena);
-        if (confirmacion.EsFallo) return confirmacion.Error!;
-        var empresaValida = await baseDeDatos.Empresas.AsNoTracking().AnyAsync(x =>
-            x.Id == contexto.EmpresaId && x.CuentaId == confirmacion.Valor.CuentaId && x.Activa, ct);
-        if (!empresaValida)
-            return ErrorNegocio.Regla("acceso-no-autorizado", "La empresa activa no está disponible.");
-
-        await using var transaccion = await baseDeDatos.Database.BeginTransactionAsync(System.Data.IsolationLevel.Serializable, ct);
-        var cliente = await baseDeDatos.Clientes
-            .FromSqlInterpolated($"SELECT * FROM [Clientes] WITH (UPDLOCK, HOLDLOCK) WHERE [Id] = {id}")
-            .FirstOrDefaultAsync(ct);
-        if (cliente is null)
-            return ErrorNegocio.NoEncontrado("cliente-no-encontrado", "No se encontró ese cliente.");
-
-        if (await baseDeDatos.Comprobantes.AnyAsync(x => x.ClienteId == id, ct) ||
-            await baseDeDatos.TrasladosCartaPorte.AnyAsync(x => x.ClienteDestinoId == id, ct))
-            return ErrorNegocio.Regla("cliente-con-movimientos", "Tiene documentos relacionados. Desactívalo para conservar su historial.");
-
-        bitacora.Registrar(EntidadesDeBitacora.Cliente, id.ToString(), AccionesDeBitacora.ClienteEliminado,
-            antes: ADto(cliente), usuarioId: confirmacion.Valor.Id);
-        baseDeDatos.Clientes.Remove(cliente);
-        await baseDeDatos.SaveChangesAsync(ct);
-        await transaccion.CommitAsync(ct);
-        return Resultado.Exito();
-    }
-
     /// <summary>Devuelve una copia de los datos fiscales del cliente para conservarlos en el comprobante.</summary>
     public async Task<ReceptorFiscalDto?> ObtenerParaTimbradoAsync(Guid clienteId, CancellationToken ct)
     {
@@ -79,9 +47,15 @@ public sealed class ServicioDeClientes(
     }
 
     public async Task<PaginaDeClientes> ListarAsync(
-        string? texto, bool? activos, int pagina, int tamano, string? orden, bool descendente, CancellationToken ct)
+        string? texto, bool? activos, Guid? empresaAlta, int pagina, int tamano, string? orden, bool descendente,
+        CancellationToken ct)
     {
         var consulta = baseDeDatos.Clientes.AsNoTracking();
+
+    // Filtro informativo por la empresa que lo dio de alta. El identificador viene del
+    // navegador, pero el filtro global ya acota a la cuenta: uno ajeno no devuelve nada.
+        if (empresaAlta is { } empresa)
+            consulta = consulta.Where(c => c.EmpresaAltaId == empresa);
 
         // Tres estados y no dos: null trae todos, true solo los activos y false solo los
         // dados de baja. Aislar los inactivos es lo que permite encontrar al cliente que
@@ -128,11 +102,12 @@ public sealed class ServicioDeClientes(
     }
 
     /// <summary>Todos los clientes para exportar. Sin paginar: el CSV es del catálogo completo.</summary>
-    public Task<List<Cliente>> ListarParaExportarAsync(bool? activos, CancellationToken ct)
+    public Task<List<Cliente>> ListarParaExportarAsync(bool? activos, Guid? empresaAlta, CancellationToken ct)
     {
         var consulta = baseDeDatos.Clientes.AsNoTracking();
 
         if (activos is { } valor) consulta = consulta.Where(c => c.Activo == valor);
+        if (empresaAlta is { } empresa) consulta = consulta.Where(c => c.EmpresaAltaId == empresa);
 
         return consulta.OrderBy(c => c.ClaveInterna).ToListAsync(ct);
     }
@@ -146,19 +121,23 @@ public sealed class ServicioDeClientes(
         var error = await validador.ValidarAsync(peticion, rfc, nombre.Normalizado, ct);
         if (error is not null) return error;
 
+        if (PermisoDeCatalogo.ExigirCambioDeEstado(contexto, Permisos.Catalogos.Clientes, true, peticion.Activo) is { } sinPermiso)
+            return sinPermiso;
+
         var repetido = await baseDeDatos.Clientes
             .AsNoTracking()
             .AnyAsync(c => c.Rfc == rfc, ct);
 
         if (repetido && !Shared.Comun.Rfc.EsGenerico(rfc))
             return ErrorNegocio.Conflicto("rfc-repetido",
-                $"Ya existe un cliente con el RFC {rfc} en esta empresa. " +
+                $"Ya existe un cliente con el RFC {rfc} en tu cuenta. " +
                 "Si está dado de baja, reactívalo en vez de crear otro.");
 
         var cliente = new Cliente
         {
             Id = Guid.NewGuid(),
             ClaveInterna = await SiguienteClaveAsync(ct),
+            EmpresaAltaId = contexto.EmpresaId,
             Rfc = rfc,
             Nombre = nombre.Normalizado,
             RegimenFiscal = peticion.RegimenFiscal,
@@ -187,6 +166,9 @@ public sealed class ServicioDeClientes(
         if (cliente is null)
             return ErrorNegocio.NoEncontrado("cliente-no-encontrado", "No se encontró ese cliente.");
 
+        if (PermisoDeCatalogo.ExigirCambioDeEstado(contexto, Permisos.Catalogos.Clientes, cliente.Activo, peticion.Activo) is { } sinPermiso)
+            return sinPermiso;
+
         var rfc = (peticion.Rfc ?? string.Empty).Trim().ToUpperInvariant();
         var nombre = NombreFiscal.Normalizar(peticion.Nombre);
 
@@ -199,7 +181,7 @@ public sealed class ServicioDeClientes(
 
         if (repetido && !Shared.Comun.Rfc.EsGenerico(rfc))
             return ErrorNegocio.Conflicto("rfc-repetido",
-                $"Ya existe otro cliente con el RFC {rfc} en esta empresa.");
+                $"Ya existe otro cliente con el RFC {rfc} en tu cuenta.");
 
         var antes = ADto(cliente);
 
@@ -244,13 +226,121 @@ public sealed class ServicioDeClientes(
     }
 
     /// <summary>
-    /// Siguiente consecutivo de la empresa.
+    /// Borrado físico, solo de un cliente que ningún comprobante usó, ni siquiera un borrador
+    /// (AGENTS.md §11). El que ya se usó se desactiva.
+    /// </summary>
+    public async Task<Resultado> EliminarAsync(Guid id, CancellationToken ct)
+    {
+        // El bloqueo choca con el de ObtenerParaTimbradoAsync: un documento que se guarda al mismo
+        // tiempo espera, o hace esperar al borrado, y nunca queda apuntando a un cliente borrado.
+        await using var transaccion = await baseDeDatos.Database.BeginTransactionAsync(System.Data.IsolationLevel.Serializable, ct);
+
+        var cliente = await baseDeDatos.Clientes
+            .FromSqlInterpolated($"SELECT * FROM [Clientes] WITH (UPDLOCK, HOLDLOCK) WHERE [Id] = {id}")
+            .FirstOrDefaultAsync(ct);
+
+        if (cliente is null)
+            return ErrorNegocio.NoEncontrado("cliente-no-encontrado", "No se encontró ese cliente.");
+
+        if (await uso.ClienteUsadoAsync(id, ct))
+            return PermisoDeCatalogo.EnUso("Este cliente");
+
+        bitacora.Registrar(
+            EntidadesDeBitacora.Cliente, cliente.Id.ToString(), AccionesDeBitacora.ClienteEliminado,
+            antes: ADto(cliente));
+
+        baseDeDatos.Clientes.Remove(cliente);
+        await baseDeDatos.SaveChangesAsync(ct);
+        await transaccion.CommitAsync(ct);
+
+        return Resultado.Exito();
+    }
+
+    /// <summary>
+    /// Guarda los renglones válidos de una importación ya revisada. Un RFC que ya existe en la
+    /// cuenta se actualiza; los genéricos, que se repiten, se reconocen además por el nombre.
+    /// Un campo vacío en el CSV no borra lo que el cliente ya tiene, y el domicilio de entrega,
+    /// que no viaja en el archivo, se conserva.
+    /// </summary>
+    public async Task<ResultadoDeImportacionDeClientes> ImportarAsync(
+        IReadOnlyList<RenglonDeImportacionDeCliente> renglones, CancellationToken ct)
+    {
+        var creados = 0;
+        var actualizados = 0;
+        var rechazados = new List<RenglonDeImportacionDeCliente>();
+
+        foreach (var renglon in renglones)
+        {
+            if (renglon.Cliente is not { } peticion)
+            {
+                rechazados.Add(renglon);
+                continue;
+            }
+
+            var rfc = (peticion.Rfc ?? string.Empty).Trim().ToUpperInvariant();
+            var nombre = NombreFiscal.Normalizar(peticion.Nombre).Normalizado;
+
+            var existente = await baseDeDatos.Clientes
+                .AsNoTracking()
+                .FirstOrDefaultAsync(c => c.Rfc == rfc && (!Shared.Comun.Rfc.EsGenerico(rfc) || c.Nombre == nombre), ct);
+
+            // El permiso se revisa por renglón: el endpoint acepta a quien puede crear o modificar.
+            if (existente is null ? !contexto.Tiene(Permisos.ClientesCrear) : !contexto.Tiene(Permisos.ClientesModificar))
+            {
+                rechazados.Add(renglon with
+                {
+                    Error = existente is null
+                        ? "No tienes permiso para crear clientes."
+                        : "Ese cliente ya existe y no tienes permiso para modificarlo."
+                });
+                continue;
+            }
+
+            var resultado = existente is null
+                ? await CrearAsync(peticion, ct)
+                : await ActualizarAsync(existente.Id, Combinar(peticion, existente, renglon.ActivoExplicito), ct);
+
+            if (resultado.EsFallo)
+                rechazados.Add(renglon with { Error = resultado.Error!.Mensaje });
+            else if (existente is null)
+                creados++;
+            else
+                actualizados++;
+        }
+
+        return new ResultadoDeImportacionDeClientes(creados, actualizados, rechazados);
+    }
+
+    private static PeticionGuardarCliente Combinar(PeticionGuardarCliente p, Cliente c, bool activoExplicito) => p with
+    {
+        ResidenciaFiscal = p.ResidenciaFiscal ?? c.ResidenciaFiscal,
+        NumRegIdTrib = p.NumRegIdTrib ?? c.NumRegIdTrib,
+        UsoCfdiPreferido = p.UsoCfdiPreferido ?? c.UsoCfdiPreferido,
+        MetodoPagoPreferido = p.MetodoPagoPreferido ?? c.MetodoPagoPreferido,
+        FormaPagoPreferida = p.FormaPagoPreferida ?? c.FormaPagoPreferida,
+        Telefono = p.Telefono ?? c.Telefono,
+        CorreoPrincipal = p.CorreoPrincipal ?? c.CorreoPrincipal,
+        Calle = c.Calle,
+        NumeroExterior = c.NumeroExterior,
+        NumeroInterior = c.NumeroInterior,
+        Colonia = c.Colonia,
+        Localidad = c.Localidad,
+        Referencia = c.Referencia,
+        Municipio = c.Municipio,
+        Estado = c.Estado,
+        Pais = c.Pais,
+        CodigoPostal = c.CodigoPostal,
+        Activo = activoExplicito ? p.Activo : c.Activo
+    };
+
+    /// <summary>
+    /// Siguiente consecutivo de la cuenta.
     ///
     /// <para><b>Por qué aquí sí basta con MAX + 1, y en folios no</b></para>
     /// Dos altas simultáneas pueden calcular la misma clave. La diferencia está en la
     /// consecuencia: un folio repetido es un comprobante que el SAT rechaza, y por eso vive
     /// en un procedimiento almacenado con bloqueo de renglón. Una clave interna repetida la
-    /// ataja el índice único <c>IX_Clientes_ClaveInternaPorEmpresa</c>, la segunda alta
+    /// ataja el índice único <c>IX_Clientes_ClaveInternaPorCuenta</c>, la segunda alta
     /// falla, el usuario reintenta y ya. No tiene efecto fiscal: es una etiqueta para buscar.
     /// </para>
     /// </summary>

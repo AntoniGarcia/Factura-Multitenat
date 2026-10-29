@@ -1,5 +1,5 @@
 @page "/documentos"
-@attribute [Authorize(Policy = Permisos.Politicas.Documentos)]
+@attribute [Authorize(Policy = Permisos.DocumentosListado)]
 @using Facturacion.Client.Componentes.Documentos
 @using Facturacion.Client.Servicios.Documentos
 @using Facturacion.Shared.Comun
@@ -23,7 +23,7 @@
     <div class="aviso-documentos" role="status">@_aviso</div>
 }
 
-<SiTienePermiso Permiso="@Permisos.Politicas.Emitir">
+<SiTienePermiso Permiso="@Permisos.Politicas.Crear">
     <div class="documentos-cabecera-acciones">
         <MudButton Variant="Variant.Filled" Color="Color.Primary"
                    StartIcon="@Icons.Material.Filled.Add"
@@ -200,7 +200,8 @@
                     Abrir
                 </MudButton>
 
-                @if (seleccionado.Estatus == EstatusComprobante.Borrador && _detalleSeleccionado is not null)
+                @if (seleccionado.Estatus == EstatusComprobante.Borrador && _detalleSeleccionado is not null &&
+                     PuedeEn(Permisos.Acciones.Timbrar))
                 {
                     <MudButton Variant="Variant.Outlined" Color="Color.Primary"
                                StartIcon="@Icons.Material.Filled.Verified"
@@ -211,7 +212,8 @@
                     </MudButton>
                 }
 
-                @if (_detalleSeleccionado is { } detalleFiscal && TienePdfFiscal(detalleFiscal))
+                @if (_detalleSeleccionado is { } detalleFiscal && TienePdfFiscal(detalleFiscal) &&
+                     Sesion.TienePermiso(Permisos.DocumentosDescarga))
                 {
                     <MudButton Variant="Variant.Outlined"
                                StartIcon="@Icons.Material.Filled.PictureAsPdf"
@@ -221,7 +223,8 @@
                     </MudButton>
                 }
 
-                @if (_detalleSeleccionado is { } detalleConXml && EsCfdiFiscal(detalleConXml))
+                @if (_detalleSeleccionado is { } detalleConXml && EsCfdiFiscal(detalleConXml) &&
+                     Sesion.TienePermiso(Permisos.DocumentosDescarga))
                 {
                     <MudButton Variant="Variant.Text"
                                StartIcon="@Icons.Material.Filled.Code"
@@ -232,7 +235,7 @@
                 }
 
                 @if (_detalleSeleccionado is { } detalleEnviable && EsEnviable(detalleEnviable) &&
-                     Sesion.TienePermiso(Permisos.EnviarCorreo))
+                     PuedeEn(Permisos.Acciones.Enviar))
                 {
                     <MudButton Variant="Variant.Text"
                                StartIcon="@Icons.Material.Filled.Email"
@@ -242,8 +245,9 @@
                     </MudButton>
                 }
 
-                <SiTienePermiso Permiso="@Permisos.Cancelar">
-                    @if (seleccionado.Estatus == EstatusComprobante.Timbrado)
+                @if (PuedeEn(Permisos.Acciones.Cancelar))
+                {
+                    if (seleccionado.Estatus == EstatusComprobante.Timbrado)
                     {
                         <MudButton Variant="Variant.Outlined" Color="Color.Error"
                                    Disabled="@_dialogoAbierto" OnClick="@(() => Cancelar(seleccionado))">
@@ -251,7 +255,7 @@
                         </MudButton>
                     }
 
-                    @if (seleccionado.Estatus == EstatusComprobante.EnCancelacion)
+                    if (seleccionado.Estatus == EstatusComprobante.EnCancelacion)
                     {
                         <MudButton Variant="Variant.Outlined"
                                    StartIcon="@Icons.Material.Filled.CancelPresentation"
@@ -260,13 +264,13 @@
                         </MudButton>
                     }
 
-                    @if (seleccionado.Uuid is not null)
+                    if (seleccionado.Uuid is not null)
                     {
                         <MudButton Variant="Variant.Text" OnClick="@(() => VerificarAnteSat(seleccionado))">
                             Verificar SAT
                         </MudButton>
                     }
-                </SiTienePermiso>
+                }
             </footer>
         </aside>
     }
@@ -288,6 +292,11 @@
     private EstadoDeIntegracionFiscalDto? _integracionFiscal;
 
     private bool PuedeTimbrar => _integracionFiscal?.TimbradoDisponible == true;
+
+    // La casilla que cuenta es la del tipo de documento seleccionado: cancelar facturas no
+    // abre cancelar pagos. El servidor rechaza igual; esto solo evita ofrecer el botón.
+    private bool PuedeEn(string accion) => _detalleSeleccionado is { } d &&
+        Sesion.TienePermiso(Permisos.De(Permisos.TipoDeDocumento(d.TipoDeComprobante, d.Variante), accion));
 
     // Evita apilar diálogos de cancelación al doble clic.
     private bool _dialogoAbierto;

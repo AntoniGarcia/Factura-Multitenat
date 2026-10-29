@@ -56,6 +56,17 @@ public sealed class ServicioDeClientesDePlataforma(IHttpClientFactory fabrica)
             : (null, await respuesta.Content.ReadFromJsonAsync<DetalleProblema>(ct));
     }
 
+    public async Task<DetalleProblema?> CambiarLimitesAsync(
+        Guid cuentaId, PeticionCambiarLimitesDeCuenta peticion, CancellationToken ct = default)
+    {
+        using var respuesta = await Cliente.PostAsJsonAsync(
+            $"api/operador/cuentas/{cuentaId}/limites", peticion, ct);
+
+        return respuesta.IsSuccessStatusCode
+            ? null
+            : await respuesta.Content.ReadFromJsonAsync<DetalleProblema>(ct);
+    }
+
     public async Task<DetalleProblema?> CambiarCorreoDeContactoDeCuentaAsync(
         Guid cuentaId, PeticionCambiarCorreoDeContactoDeCuenta peticion, CancellationToken ct = default)
     {
@@ -68,11 +79,11 @@ public sealed class ServicioDeClientesDePlataforma(IHttpClientFactory fabrica)
     }
 
     public async Task<DetalleProblema?> CrearPaquetePersonalizadoAsync(
-        Guid cuentaId, Guid empresaId, PeticionGuardarPaquetePersonalizado peticion,
+        Guid cuentaId, PeticionGuardarPaquetePersonalizado peticion,
         CancellationToken ct = default)
     {
         using var respuesta = await Cliente.PostAsJsonAsync(
-            $"api/operador/cuentas/{cuentaId}/empresas/{empresaId}/paquetes", peticion, ct);
+            $"api/operador/cuentas/{cuentaId}/paquetes", peticion, ct);
 
         return respuesta.IsSuccessStatusCode
             ? null
@@ -80,11 +91,11 @@ public sealed class ServicioDeClientesDePlataforma(IHttpClientFactory fabrica)
     }
 
     public async Task<DetalleProblema?> ActualizarPaquetePersonalizadoAsync(
-        Guid cuentaId, Guid empresaId, Guid paqueteId,
+        Guid cuentaId, Guid paqueteId,
         PeticionGuardarPaquetePersonalizado peticion, CancellationToken ct = default)
     {
         using var respuesta = await Cliente.PutAsJsonAsync(
-            $"api/operador/cuentas/{cuentaId}/empresas/{empresaId}/paquetes/{paqueteId}", peticion, ct);
+            $"api/operador/cuentas/{cuentaId}/paquetes/{paqueteId}", peticion, ct);
 
         return respuesta.IsSuccessStatusCode
             ? null
@@ -92,10 +103,10 @@ public sealed class ServicioDeClientesDePlataforma(IHttpClientFactory fabrica)
     }
 
     public async Task<DetalleProblema?> CambiarActivoPaquetePersonalizadoAsync(
-        Guid cuentaId, Guid empresaId, Guid paqueteId, bool activo, CancellationToken ct = default)
+        Guid cuentaId, Guid paqueteId, bool activo, CancellationToken ct = default)
     {
         using var respuesta = await Cliente.PostAsJsonAsync(
-            $"api/operador/cuentas/{cuentaId}/empresas/{empresaId}/paquetes/{paqueteId}/activo",
+            $"api/operador/cuentas/{cuentaId}/paquetes/{paqueteId}/activo",
             new PeticionCambiarActivoPaquete(activo), ct);
 
         return respuesta.IsSuccessStatusCode

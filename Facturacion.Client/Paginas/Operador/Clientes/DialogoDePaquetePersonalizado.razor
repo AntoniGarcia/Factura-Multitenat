@@ -4,7 +4,7 @@
 <MudDialog>
     <DialogContent>
         <p class="seccion-ayuda">
-            Exclusivo para <strong>@NombreEmpresa</strong>. La compra queda pendiente hasta confirmar el pago.
+            Exclusivo para <strong>@NombreCuenta</strong> y todas sus empresas. La compra queda pendiente hasta confirmar el pago.
         </p>
 
         <div class="formulario-catalogo-secciones">
@@ -60,7 +60,7 @@
     private IMudDialogInstance Dialogo { get; set; } = default!;
 
     [Parameter]
-    public string NombreEmpresa { get; set; } = string.Empty;
+    public string NombreCuenta { get; set; } = string.Empty;
 
     [Parameter]
     public PaquetePersonalizadoDto? Paquete { get; set; }

@@ -1,16 +1,18 @@
 # Estado actual del sistema de facturación
 
-**Corte documental: 8 de octubre de 2026.** Este archivo sustituye el reporte del
-24 de agosto, que describía la mitad B como un módulo vacío. Para comprobar el estado de
-un entorno concreto, se deben revisar su versión desplegada, sus migraciones y sus pruebas:
-un cambio en `develop` no demuestra por sí solo que Azure ya lo esté ejecutando.
+**Corte documental: 28 de octubre de 2026.** Las secciones fechadas el 7 y el 8 de octubre
+se conservan como historia de esas revisiones. Para comprobar el estado de un entorno
+concreto, se deben revisar su versión desplegada, sus migraciones y sus pruebas: un cambio
+en `develop` no demuestra por sí solo que el servidor de entrega ya lo esté ejecutando.
 
 ## Alcance y estado verificable
 
 El repositorio contiene una aplicación CFDI 4.0 multiempresa con cliente Blazor
-WebAssembly, API ASP.NET Core y SQL Server. Están implementados la identidad, las
-empresas emisoras, los usuarios y permisos, los catálogos SAT, los clientes, los
-productos, las series y folios, y la bolsa de timbres. El panel del operador permite
+WebAssembly, API ASP.NET Core y SQL Server (compatible desde SQL Server 2014). Están
+implementados la identidad, las empresas emisoras, los usuarios y permisos —por sección y
+por acción, con titular de la cuenta (AGENTS.md §11)—, los catálogos SAT, los clientes y
+productos —compartidos por las empresas de la cuenta—, las series y folios, y la bolsa de
+timbres, también por cuenta. El panel del operador permite
 gestionar cuentas, paquetes y compras; las compras pueden quedar pendientes y un
 operador puede acreditar el pago manualmente.
 
@@ -34,12 +36,136 @@ integración de pago.
 
 ## Evidencia de la última entrega de código
 
-Al cierre previo a este documento, `develop` estaba sincronizada con `origin/develop`.
-Los últimos cambios publicados fueron `46305d6`, `8796b99`, `f7e64f4` y `ebadbca`:
-impuestos y salidas de obra; Carta Porte; reimportación de productos y tasas; avisos
-de interfaz. La compilación Release pasó sin errores ni advertencias nuevas; la suite
-registró 115 pruebas aprobadas y una omitida. Esa verificación es de código local:
-**no confirma** migraciones aplicadas, configuración ni funcionamiento de Azure.
+Al 28 de octubre, además, el árbol de trabajo tiene sin commit los cambios del 27 y 28 de
+octubre descritos abajo. Con ellos, la compilación Release pasa sin advertencias nuevas y la
+suite registra **194 pruebas aprobadas y dos omitidas**.
+
+Al 27 de octubre, `develop` local está **17 commits por delante** de `origin/develop`, sin
+publicar. Además de lo del 24 de octubre, incluye los subpermisos por acción (`9c0910a`), el
+contrato `IUsoDeCatalogos` en su commit dedicado (`157092b`) y el merge de `origin/develop`
+(`517082f`), que trae búsquedas por clave y nombre, vista previa de la captura, eliminación
+de usuarios y clientes sin movimientos, consulta de catálogos SAT en el panel y prueba de
+conexión SMTP. La compilación Release pasa sin errores y solo con las advertencias de auditoría de NuGet; la suite registra **193 pruebas aprobadas y dos omitidas**. Esa verificación es de código local: **no confirma**
+migraciones aplicadas, configuración ni funcionamiento del servidor de entrega.
+
+## Cambios del 27 y 28 de octubre de 2026 (sin commit)
+
+Reglas en AGENTS.md §11, entradas del 28 de octubre. Todo está en el árbol de trabajo de
+`develop`, sin commit.
+
+**La cuenta como unidad de trabajo**
+
+- Límites de usuarios activos y de empresas por cuenta, que el operador edita en la ficha de
+  la cuenta con el permiso «Cambiar límites de usuarios y empresas».
+- Un usuario interno tiene los mismos permisos en todas sus empresas; la pestaña «Acceso a
+  empresas» del selector decide a cuáles entra. La pantalla Usuarios lista toda la cuenta.
+- Timbres por cuenta: una bolsa por cuenta y procedimientos que la encuentran por la empresa
+  que timbra; compras y movimientos conservan la empresa de origen. Los paquetes exclusivos y
+  el saldo pasaron de la ficha de empresa a la de cuenta en el panel.
+- Clientes y productos compartidos por las empresas de la cuenta, con filtro global por
+  cuenta (`IEntidadDeCuenta`). Eliminar revisa los comprobantes de todas las empresas.
+- Filtro «Dado de alta en» en los catálogos de clientes y productos.
+
+**Clientes, productos y conceptos**
+
+- Un solo formulario de cliente (orden: datos fiscales, contacto, domicilio y preferencias
+  plegadas) e importación de clientes por CSV.
+- Con `XAXX010101000` el nombre se puede cambiar; la factura global exige `PUBLICO EN GENERAL`.
+- Producto con nombre, ID interno y descripción, un solo formulario y el modal de claves SAT
+  con alto fijo. El CSV de productos cambió de columnas (Nombre, IdInterno, Descripcion).
+- En la factura, el No. de identificación se ve en todos los tipos y se precarga con el ID
+  interno; la descripción del concepto se precarga con «nombre — descripción» y es editable.
+
+**Migraciones** (todas probadas en una copia de la base: subir, bajar y volver a subir)
+
+- `20261027_B_LimitesPorCuenta`, `20261027_C_PermisosIgualesPorEmpresa`,
+  `20261028_A_TimbresPorCuenta`, `20261028_B_CatalogosPorCuenta`,
+  `20261028_C_EmpresaDeAltaEnCatalogos` y `20261029_A_IdInternoYDetalleDeProducto`.
+- Aplicadas en FacturacionDev y comprobadas contra el esquema y los datos esperados (bolsas
+  que cuadran con sus movimientos, ningún comprobante con cliente inexistente, permisos
+  iguales entre empresas).
+- `docs/sql/Facturacion.Instalacion.sql` se regeneró hasta la última. Se probó en una base
+  vacía con nivel de compatibilidad 120 y sobre una copia de FacturationWebAppDB, que estaba
+  en la migración del 9 de octubre.
+
+**Sin verificar:** las pantallas del panel del operador (límites, paquetes exclusivos, saldo
+por cuenta), por falta de credenciales de operador en las pruebas.
+
+## Cambios del 25 al 27 de octubre de 2026
+
+**Subpermisos por acción** (`9c0910a`, 27 oct; regla en AGENTS.md §11)
+
+- 65 permisos asignables en cinco pestañas: Documentos (listado, descarga, eliminar);
+  Emitir, con crear, modificar, cancelar, timbrar, enviar y eliminar por cada tipo de
+  documento; Catálogos, con crear, modificar, desactivar y eliminar por catálogo (Series y
+  folios se movió aquí); Tienda, y Empresa (datos, certificados, configuración general,
+  correo e impuestos).
+- El selector de permisos es por pestañas: la lista de elementos a la izquierda y sus
+  acciones a la derecha. Los permisos implícitos se ven marcados y deshabilitados.
+- Eliminar en catálogos borra solo lo que ningún comprobante usó; la mitad A lo pregunta por
+  `IUsoDeCatalogos`. Series tiene ahora activar, desactivar y eliminar.
+- Los listados de catálogos abren con el filtro en «Todos»; antes, «Todos» devolvía solo los
+  activos.
+- Migración `20261027_A_SubpermisosPorTipo`: convierte los permisos de los usuarios internos
+  sin quitarles acceso; cancelar y enviar pasan a los tipos que cada usuario emitía. Se probó
+  en una copia de la base (subir, bajar y volver a subir) y está aplicada en FacturacionDev.
+  **No se ha verificado en el navegador** un usuario interno con permisos limitados.
+
+## Cambios del 8 al 24 de octubre de 2026
+
+**Notaría y conceptos** (`703735e`, 8 oct)
+
+- Los inmuebles notariales no se guardaban: el estado se validaba con 2 caracteres y
+  `c_Estado` tiene 3. La base guarda la clave de `c_Estado` y el XML la traduce a la clave
+  01–32 que exige el complemento de Notarios Públicos (`EntidadesNotariales.cs`).
+- La unidad del concepto respeta el límite del SAT (20 caracteres, sin «|») al guardar el
+  producto, al importarlo por CSV y al guardar el borrador. La factura notarial valida el
+  XML completo antes de apartar folio y timbre.
+- El buscador de catálogos ordena por relevancia antes del tope de 50 resultados
+  («metro cuadrado» ahora muestra `MTK` primero).
+- Un usuario sin permiso para una pantalla ve una notificación y vuelve a Inicio, en lugar
+  de terminar en el inicio de sesión; los botones que no puede usar no se muestran.
+
+**Permisos por sección y titular** (`693058b`, 9 oct; regla en AGENTS.md §11)
+
+- Dieciséis permisos por sección en lugar de seis. El titular de la cuenta lleva todos en
+  el token, es el único que administra usuarios y da de alta empresas, y nadie lo modifica.
+- Migración `20261009_A_PermisosPorSeccionYTitular`, probada en una copia de la base de
+  desarrollo antes de aplicarla: marca al titular y convierte los permisos de los usuarios
+  internos sin quitarles acceso.
+- Se comprobaron por la API las reglas del titular (no modificable, permisos no asignables
+  rechazados). **No se ha verificado en el navegador** el selector por secciones, el
+  renglón del titular en Usuarios ni un usuario interno con permisos limitados.
+
+**Interfaz** (9 al 24 oct)
+
+- En móvil, la barra inferior es una sola fila (Inicio, Documentos, Catálogos y Más) y se
+  oculta mientras se escribe; el tema oscuro ya no muestra la barra de desplazamiento
+  blanca.
+- Se reorganizaron los formularios de catálogos, empresa, series, transporte, Notaría,
+  complemento de pagos y configuración del operador (`596677f`, `f3c5a08`, `732de3e`).
+- La pantalla y el asistente ya no muestran el `traceId` ni la referencia de soporte de un
+  error; queda solo en el registro del servidor (`c8c58bb`, `711c5f6`). **Esto contradice
+  AGENTS.md §4** («traceId, visible en pantalla para soporte») y todavía no tiene entrada
+  en §11.
+
+**Instalación y despliegue** (13 al 24 oct)
+
+- La entrega se hace por FTP a carpetas del servidor que administra otra persona; IIS,
+  SQL Server, HTTPS y los secretos le corresponden a ese administrador.
+- Asistente de conexión (`d742503`, documentado en `docs/ASISTENTE-CONEXION.md`): sin
+  cadena de conexión, el servidor abre un modo de instalación en `/operador` que comprueba
+  y guarda la conexión y crea el primer operador principal; los catálogos se cargan solos.
+- Instalador para sitios IIS existentes y guías de prueba local en `herramientas/`
+  (`49818b0`); la configuración se guarda en `cnf` sin tocar la raíz (`b34fe8c`).
+- Script de instalación de la base (`docs/sql/Facturacion.Instalacion.sql`) regenerado y
+  probado en una base de nivel de compatibilidad 120 (SQL Server 2014). La carpeta
+  `Despliegue/` queda fuera del repositorio.
+- El 13 de octubre se hizo un ensayo local completo (FTP, sitio IIS, base y acceso desde
+  otra PC de la red). Hallazgo: los permisos de SQL para la aplicación necesitan también
+  `GRANT EXECUTE` sobre los procedimientos de folios y timbres; ya están en
+  `herramientas/entrega-iis/Permisos-Aplicacion.sql.ejemplo`. **No se ha acreditado**
+  todavía la instalación en el servidor real.
 
 ## Pendientes antes de llamar al sistema completo
 
@@ -149,9 +275,10 @@ entorno local, no acredita la existencia de un CFDI certificado por el SAT.
 1. Validar manualmente, con datos representativos y por empresa, los flujos completos
    de factura estándar, Carta Porte, Comercio Exterior, Notaría y Constructoras;
    verificar borrador, impuestos, XML/PDF y errores de validación.
-2. Completar la preparación de entrega local: configuración obligatoria, almacenamiento
-   persistente, migraciones y versiones de los catálogos SAT. Azure está descartado
-   para el trabajo actual; la guía de despliegue queda como referencia histórica.
+2. Completar la instalación en el servidor real con su administrador: sitio de IIS que
+   apunte a la carpeta del FTP, Hosting Bundle de .NET 10, HTTPS, base de datos con los
+   permisos de la plantilla, secretos por un canal seguro y carga de catálogos. Azure está
+   descartado; `docs/DESPLIEGUE.md` queda como referencia histórica.
 3. Retomar la auditoría de aislamiento entre inquilinos y sus correcciones pendientes
    que se pospusieron expresamente. No declarar cerrada la seguridad multiempresa
    basándose solo en los filtros o pruebas existentes.
@@ -160,6 +287,17 @@ entorno local, no acredita la existencia de un CFDI certificado por el SAT.
    autorizado antes de pasar a producción.
 5. Decidir la pasarela de pagos y diseñar la acreditación automática por separado.
    No simular un cobro ni liberar timbres por pulsar «comprar».
+6. Pospuesto el 27 de octubre: rediseñar el correo de envío de comprobantes con el logo de
+   la empresa, con estructura parecida a la de los correos de GitHub. El logo va incrustado (CID), no como URL
+   pública, porque los logos se sirven con autorización (AGENTS.md §4).
+7. Decidir si el `traceId` deja de mostrarse en pantalla y, si se mantiene así,
+   registrarlo en AGENTS.md §11.
+8. Hacer los commits de los cambios del 27 y 28 de octubre, publicar `develop` y revisar
+   antes de cada commit que no queden marcadores de conflicto.
+9. Actualizar FacturationWebAppDB (la base del ensayo local de IIS), que sigue en la migración
+   del 9 de octubre, y la del servidor real cuando exista, con el script regenerado.
+10. Corregir el renglón de concepto de la factura: con ventanas de unos 1000 px sus columnas
+    fijas son más anchas que la tarjeta y el botón de quitar y la descripción se salen.
 
 El objetivo de entrega indicado en [AGENTS.md](AGENTS.md) es el **5 de diciembre de
 2026**. Los planes originales de [PROMPT-FASES-A.md](PROMPT-FASES-A.md),

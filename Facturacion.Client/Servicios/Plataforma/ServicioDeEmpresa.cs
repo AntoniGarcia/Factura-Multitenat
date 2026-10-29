@@ -128,6 +128,23 @@ public sealed class ServicioDeEmpresa(IHttpClientFactory fabrica)
         return await LeerAsync<SerieDto>(respuesta, ct);
     }
 
+    public async Task<(SerieDto? Exito, DetalleProblema? Error)> CambiarSerieActivaAsync(
+        Guid id, bool activo, CancellationToken ct = default)
+    {
+        using var respuesta = await Cliente.PostAsJsonAsync($"api/series/{id}/activa", new { activo }, ct);
+        return await LeerAsync<SerieDto>(respuesta, ct);
+    }
+
+    /// <summary>Borra una serie que no ha dado folios. El servidor rechaza la que ya se usó.</summary>
+    public async Task<DetalleProblema?> EliminarSerieAsync(Guid id, CancellationToken ct = default)
+    {
+        using var respuesta = await Cliente.DeleteAsync($"api/series/{id}", ct);
+
+        return respuesta.IsSuccessStatusCode
+            ? null
+            : await respuesta.Content.ReadFromJsonAsync<DetalleProblema>(ct);
+    }
+
     /// <summary>
     /// Separa la respuesta correcta de los errores que muestra PanelErrores.
     /// </summary>

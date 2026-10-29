@@ -22,30 +22,43 @@ public static class ProductosEndpoints
 
         grupo.MapGet("/", Listar).RequireAuthorization(Permisos.Politicas.LeerClientesYProductos);
         grupo.MapGet("/exportar", Exportar).RequireAuthorization(Permisos.Politicas.LeerClientesYProductos);
-        grupo.MapGet("/plantilla-csv", PlantillaCsv).RequireAuthorization(Permisos.AdministrarProductos);
+        grupo.MapGet("/plantilla-csv", PlantillaCsv).RequireAuthorization(Permisos.Politicas.EditarProductos);
         grupo.MapGet("/{id:guid}", Obtener).RequireAuthorization(Permisos.Politicas.LeerClientesYProductos);
 
-        grupo.MapPost("/", Crear).RequireAuthorization(Permisos.AdministrarProductos);
-        grupo.MapPut("/{id:guid}", Actualizar).RequireAuthorization(Permisos.AdministrarProductos);
-        grupo.MapPost("/{id:guid}/activo", CambiarActivo).RequireAuthorization(Permisos.AdministrarProductos);
+        grupo.MapPost("/", Crear).RequireAuthorization(Permisos.ProductosCrear);
+        grupo.MapPut("/{id:guid}", Actualizar).RequireAuthorization(Permisos.ProductosModificar);
+        grupo.MapPost("/{id:guid}/activo", CambiarActivo).RequireAuthorization(Permisos.ProductosDesactivar);
+        grupo.MapDelete("/{id:guid}", Eliminar).RequireAuthorization(Permisos.ProductosEliminar);
 
         // Analizar y confirmar van separados a propósito: el primero no toca la base, y es
-        // lo que permite enseñar la vista previa antes de que el usuario se comprometa.
+        // lo que permite enseñar la vista previa antes de que el usuario se comprometa. La
+        // importación crea y actualiza: entra con cualquiera de las dos y el servicio rechaza,
+        // renglón por renglón, lo que no se tenga.
         grupo.MapPost("/importar/analizar", AnalizarCsv)
-            .RequireAuthorization(Permisos.AdministrarProductos)
+            .RequireAuthorization(Permisos.Politicas.EditarProductos)
             .DisableAntiforgery()
             .WithMetadata(new RequestSizeLimitAttribute(TopeDeSubida));
 
         grupo.MapPost("/importar/confirmar", ConfirmarImportacion)
-            .RequireAuthorization(Permisos.AdministrarProductos);
+            .RequireAuthorization(Permisos.Politicas.EditarProductos);
     }
 
+    private static async Task<IResult> Eliminar(
+        Guid id, ServicioDeProductos productos, HttpContext contexto, CancellationToken ct)
+    {
+        var resultado = await productos.EliminarAsync(id, ct);
+
+        return resultado.EsFallo ? resultado.Error!.AResultado(contexto) : Results.NoContent();
+    }
+
+    // Sin «activos» se listan todos: así pide el Client el filtro «Todos». Con true por omisión,
+    // «Todos» mostraba solo los activos. Los buscadores de la emisión mandan true explícito.
     private static async Task<IResult> Listar(
         ServicioDeProductos productos, CancellationToken ct,
-        string? texto = null, bool? activos = true,
+        string? texto = null, bool? activos = null, Guid? empresa = null,
         int pagina = 0, int tamano = 25, string? orden = null, bool descendente = false)
         => Results.Ok(await productos.ListarAsync(
-            texto, activos, Math.Max(pagina, 0), Math.Clamp(tamano, 1, 100), orden, descendente, ct));
+            texto, activos, empresa, Math.Max(pagina, 0), Math.Clamp(tamano, 1, 100), orden, descendente, ct));
 
     private static async Task<IResult> Obtener(Guid id, ServicioDeProductos productos, CancellationToken ct)
     {
@@ -118,9 +131,9 @@ public static class ProductosEndpoints
     }
 
     private static async Task<IResult> Exportar(
-        ServicioDeProductos productos, CancellationToken ct, bool? activos = true)
+        ServicioDeProductos productos, CancellationToken ct, bool? activos = null, Guid? empresa = null)
     {
-        var lista = await productos.ListarParaExportarAsync(activos, ct);
+        var lista = await productos.ListarParaExportarAsync(activos, empresa, ct);
 
         var csv = new StringBuilder();
         csv.AppendLine(string.Join(',',
@@ -143,7 +156,7 @@ public static class ProductosEndpoints
                 Campo(p.ClaveProdServ), Campo(p.ClaveUnidad), Campo(p.UnidadTexto), Campo(p.Descripcion),
                 p.ValorUnitario.ToString("0.######", CultureInfo.InvariantCulture),
                 p.PesoKg?.ToString("0.######", CultureInfo.InvariantCulture) ?? string.Empty,
-                Campo(p.ObjetoImp), Campo(iva),
+                Campo(p.ObjetoImp), Campo(iva), Campo(p.IdInterno), Campo(p.Detalle),
                 p.Activo ? "Sí" : "No"));
         }
 
@@ -157,8 +170,8 @@ public static class ProductosEndpoints
     {
         var csv = new StringBuilder();
         csv.AppendLine(string.Join(',', LectorDeCsvDeProductos.Columnas));
-        csv.AppendLine("01010101,H87,Pieza,Ejemplo de producto,100.00,1.5,02,16");
-        csv.AppendLine("01010101,E48,Servicio,Ejemplo de servicio exento,250.00,,02,exento");
+        csv.AppendLine("01010101,H87,Pieza,Ejemplo de producto,100.00,1.5,02,16,SKU-001,Presentación de 500 g");
+        csv.AppendLine("01010101,E48,Servicio,Ejemplo de servicio exento,250.00,,02,exento,,");
 
         var bytes = Encoding.UTF8.GetPreamble().Concat(Encoding.UTF8.GetBytes(csv.ToString())).ToArray();
 

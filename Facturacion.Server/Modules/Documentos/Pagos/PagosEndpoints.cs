@@ -12,13 +12,14 @@ public static class PagosEndpoints
     {
         var grupo = rutas.MapGroup("/api/pagos")
             .WithTags("Documentos")
-            .RequireAuthorization(Permisos.EmitirPago);
+            .RequireAuthorization(Permisos.Politicas.Pagos);
 
-        grupo.MapPost("/borradores", CrearBorrador);
+        // Se suman a la del grupo. Guardar decide en el servicio: Crear basta para el borrador propio.
+        grupo.MapPost("/borradores", CrearBorrador).RequireAuthorization(Permisos.PagoCrear);
         grupo.MapGet("/{id:guid}", Obtener);
         grupo.MapPut("/{id:guid}", Guardar);
         grupo.MapGet("/por-pagar", ConsultarSaldo);
-        grupo.MapDelete("/{id:guid}", EliminarBorrador);
+        grupo.MapDelete("/{id:guid}", EliminarBorrador).RequireAuthorization(Permisos.PagoEliminar);
     }
 
     private static async Task<IResult> CrearBorrador(ServicioDePagos pagos, HusoDeEmpresa huso, CancellationToken ct)

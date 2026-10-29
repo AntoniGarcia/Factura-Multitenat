@@ -5,7 +5,7 @@ using Facturacion.Shared.Plataforma;
 namespace Facturacion.Server.Modules.Plataforma.Usuarios;
 
 /// <summary>
-/// Usuarios de la empresa activa. Todo es solo del titular de la cuenta; el perfil propio
+/// Usuarios de la cuenta. Todo es solo del titular de la cuenta; el perfil propio
 /// vive aparte, en <see cref="PerfilEndpoints"/>, abierto a cualquier usuario.
 ///
 /// <para>
@@ -72,7 +72,7 @@ public static class UsuariosEndpoints
         Guid usuarioId, PeticionActualizarPermisos peticion, ServicioDeUsuarios usuarios,
         HttpContext contexto, CancellationToken ct)
     {
-        var resultado = await usuarios.ActualizarPermisosAsync(usuarioId, peticion.Permisos, ct);
+        var resultado = await usuarios.ActualizarPermisosAsync(usuarioId, peticion, ct);
         return resultado.EsFallo ? resultado.Error!.AResultado(contexto) : Results.NoContent();
     }
 

@@ -49,7 +49,8 @@ public static class SembradoDeDesarrollo
             Id = Guid.NewGuid(),
             Nombre = "Cuenta de desarrollo",
             CorreoContacto = correo,
-            FechaAltaUtc = ahora
+            FechaAltaUtc = ahora,
+            LimiteDeEmpresas = 2
         };
 
         var llantera = NuevaEmpresa(cuenta.Id, "LLANTERA DEL CENTRO", "LCE010101AA1", ahora);

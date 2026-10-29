@@ -358,3 +358,89 @@ certificados» y §6 «Correo»).
   servidor y la conexión va a la IP ya validada.
 - Si el SMTP de la empresa falla, el envío falla con un error claro; **no** se reenvía en
   silencio por el SMTP del SaaS.
+
+**9 de octubre de 2026 — Permisos por sección y titular de la cuenta** (modifica §4
+«Autorización»).
+
+- Los permisos asignables son dieciséis, agrupados por sección:
+  - Documentos: `ver_documentos` (listado y descarga, solo consulta).
+  - Emitir: `emitir_factura`, `emitir_notaria`, `emitir_carta_porte`,
+    `emitir_comercio_exterior`, `emitir_obra`, `emitir_pago`, `cancelar` y `enviar_correo`.
+    Reemplazan a `timbrar`.
+  - Catálogos: `administrar_clientes`, `administrar_productos`, `administrar_vehiculos` y
+    `administrar_figuras`.
+  - Tienda: `comprar_timbres`.
+  - Empresa: `mi_empresa` (datos y certificados) y `configuracion` (general, correo,
+    impuestos, logo, perfil de Notaría y series y folios). Reemplazan a `configurar_empresa`.
+- `ver_reportes` se retira mientras no exista ningún reporte.
+- No hay dependencias entre casillas. Cualquier permiso de Emitir abre también el listado y
+  la descarga, y la consulta de los catálogos que necesita para emitir. Emitir una variante
+  con licencia (Notaría, Comercio Exterior, Obra) exige además la licencia de la empresa.
+- Cada cuenta tiene un **titular**: el usuario que la registró o el del sembrado. Lleva en el
+  token todos los permisos de cualquier empresa de su cuenta, sin guardarlos, y es el único
+  que administra usuarios y da de alta empresas. `administrar_usuarios` deja de ser una
+  casilla. Nadie modifica al titular, y los usuarios que él crea nunca administran usuarios.
+- Jerarquía: operador principal (1) → operadores (1.1) → titular (2) → usuarios internos (3).
+  Si el operador llega a dar de alta cuentas, el usuario que cree será un titular (2).
+
+**27 de octubre de 2026 — Subpermisos por tipo de documento y por catálogo** (modifica §4
+«Autorización», §5 «Nada se borra» y la entrada del 9 de octubre).
+
+- Los permisos asignables son 65, en cinco pestañas:
+  - Documentos: `documentos_listado`, `documentos_descarga` y `documentos_eliminar`.
+  - Emitir: por cada tipo (factura, notaría, carta porte, comercio exterior, obra y pago),
+    crear, modificar, cancelar, timbrar, enviar y eliminar (`factura_crear`, `pago_cancelar`…).
+    Reemplazan a `emitir_*`, `cancelar` y `enviar_correo`.
+  - Catálogos: por cada catálogo (clientes, productos, series, vehículos y figuras), crear,
+    modificar, desactivar y eliminar. Reemplazan a `administrar_*`. Series y folios sale de
+    Configuración.
+  - Tienda: `comprar_timbres`.
+  - Empresa: Mi empresa (`empresa_datos`, `empresa_certificados`) y Configuración
+    (`configuracion_general`, `configuracion_correo`, `configuracion_impuestos`).
+- Crear permite editar los borradores propios; modificar, también los de otros usuarios.
+- Los implícitos no se guardan; se agregan al armar el token. Cualquier casilla de Emitir da
+  el listado y la descarga; la descarga da el listado; `documentos_eliminar` da eliminar en
+  todos los tipos. No se guarda la descarga sin el listado.
+- Eliminar en catálogos es un borrado físico y solo procede si ningún comprobante, ni
+  siquiera un borrador, usa el registro; lo usado se desactiva. Eliminar en documentos sigue
+  siendo solo de borradores nunca timbrados. Todo borrado queda en la bitácora con los
+  valores anteriores.
+- Crear empresas y administrar usuarios siguen siendo exclusivos del titular.
+
+**28 de octubre de 2026 — La cuenta como unidad de trabajo** (modifica §1 «Multiempresa»,
+§4 «Tenencia», §5 «Aislamiento», «Nada se borra» e «Índices únicos con filtro», y la entrada
+del 9 de octubre).
+
+- Cada cuenta tiene un límite de usuarios activos, que incluye al titular, y uno de empresas.
+  Los fija el operador; por omisión son 3 y 1.
+- Un usuario interno tiene un solo juego de permisos, el mismo en todas las empresas a las que
+  entra. El titular elige a cuáles en «Acceso a empresas». Desactivar a un usuario lo saca de
+  toda la cuenta. El titular puede eliminar, con su contraseña, a un usuario interno sin
+  actividad registrada.
+- La bolsa de timbres, las compras, los movimientos y los paquetes exclusivos son de la cuenta.
+  Movimientos y compras conservan la empresa que los originó.
+- Clientes y productos son de la cuenta y los comparten sus empresas. El RFC de cliente, la
+  clave de cliente y el código de producto son únicos por cuenta. Comprobantes, series y folios,
+  vehículos, figuras y configuración siguen siendo de cada empresa. Al unir los catálogos, los
+  clientes con el mismo RFC se fusionaron en el más antiguo y se renumeraron las claves que
+  chocaban; las dos cosas quedaron en la bitácora.
+- Lo que es de la cuenta lleva `CuentaId`, con filtro global y sellado alimentados por el claim
+  de cuenta, igual que lo de empresa.
+- Excepciones a «el Client nunca envía un identificador de empresa»:
+  - El alta y los permisos de un usuario reciben la lista de empresas a las que entrará. No
+    cambian la empresa activa, y el servidor rechaza cualquiera que no sea una empresa activa
+    de la cuenta del titular.
+  - El filtro «Dado de alta en» de clientes y productos recibe una empresa. Solo filtra datos
+    que ya son de la cuenta: una empresa ajena no devuelve nada.
+
+**28 de octubre de 2026 — Público en general, productos y conceptos** (modifica §7 «Reglas de
+CFDI 4.0 que rompen timbrados»).
+
+- Con el RFC `XAXX010101000`, el régimen 616 y el uso S01 siguen fijos, pero el nombre puede
+  ser otro para ventas sueltas. El formulario lo precarga como `PUBLICO EN GENERAL`. La factura
+  con información global sí exige ese nombre, y el servidor rechaza otro.
+- Un producto tiene nombre, que es lo que va al CFDI; un ID interno opcional (hasta 100
+  caracteres, sin «|»), que precarga el `NoIdentificacion` del concepto; y una descripción
+  opcional.
+- La descripción del concepto se precarga con «nombre — descripción» del producto y se puede
+  editar en cada factura. El servidor guarda la del renglón, con hasta 1000 caracteres y sin «|».

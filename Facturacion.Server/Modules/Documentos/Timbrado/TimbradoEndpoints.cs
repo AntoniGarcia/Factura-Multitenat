@@ -19,8 +19,8 @@ public static class TimbradoEndpoints
             .RequireAuthorization();
 
         grupo.MapPost("/{id:guid}/timbrar", Timbrar)
-            // Cualquier permiso de emisión entra; el servicio exige el del tipo de documento.
-            .RequireAuthorization(Permisos.Politicas.Emitir)
+            // Quien timbra algún tipo entra; el servicio exige el del tipo de documento.
+            .RequireAuthorization(Permisos.Politicas.Timbrar)
             .AddEndpointFilter<FiltroDeIdempotencia>();
     }
 

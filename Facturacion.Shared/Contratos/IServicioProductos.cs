@@ -7,7 +7,7 @@ public interface IServicioProductos
 {
     /// <summary>
     /// Devuelve el producto listo para convertirse en concepto del comprobante.
-    /// Devuelve <c>null</c> si no existe o no es de la empresa activa.
+    /// Devuelve <c>null</c> si no existe o no es de la cuenta de la empresa activa.
     /// </summary>
     Task<ProductoParaConceptoDto?> ObtenerParaConceptoAsync(Guid productoId, CancellationToken ct);
 }

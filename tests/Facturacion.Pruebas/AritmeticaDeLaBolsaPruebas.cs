@@ -11,7 +11,7 @@ using Microsoft.EntityFrameworkCore;
 
 namespace Facturacion.Pruebas;
 
-/// <summary>Comprueba saldo, movimientos y reserva concurrente del último timbre en SQL Server. La suma de movimientos debe coincidir con los saldos disponible y reservado.</summary>
+/// <summary>Comprueba saldo, movimientos y reserva concurrente del último timbre en SQL Server. La suma de movimientos debe coincidir con los saldos disponible y reservado. La bolsa es de la cuenta y la comparten sus empresas.</summary>
 public sealed class AritmeticaDeLaBolsaPruebas : IAsyncLifetime
 {
     private const string Conexion =
@@ -21,10 +21,15 @@ public sealed class AritmeticaDeLaBolsaPruebas : IAsyncLifetime
 
     private readonly Guid _cuenta = Guid.NewGuid();
     private readonly Guid _empresa = Guid.NewGuid();
+    private readonly Guid _otraEmpresa = Guid.NewGuid();
+    private readonly Guid _otraCuenta = Guid.NewGuid();
+    private readonly Guid _empresaDeOtraCuenta = Guid.NewGuid();
 
-    private static AppDbContext Contexto(Guid? empresa)
+    private Guid CuentaDe(Guid empresa) => empresa == _empresaDeOtraCuenta ? _otraCuenta : _cuenta;
+
+    private AppDbContext Contexto(Guid? empresa)
     {
-        var tenencia = new ContextoEmpresaFijo(empresa);
+        var tenencia = new ContextoEmpresaFijo(empresa, empresa is { } id ? CuentaDe(id) : null);
         var opciones = new DbContextOptionsBuilder<AppDbContext>()
             .Configurar(Conexion, tenencia)
             .Options;
@@ -32,15 +37,15 @@ public sealed class AritmeticaDeLaBolsaPruebas : IAsyncLifetime
         return new AppDbContext(opciones, tenencia);
     }
 
-    private static ServicioDeTimbres Timbres(AppDbContext db, Guid empresa)
+    private ServicioDeTimbres Timbres(AppDbContext db, Guid empresa)
     {
-        var tenencia = new ContextoEmpresaFijo(empresa);
+        var tenencia = new ContextoEmpresaFijo(empresa, CuentaDe(empresa));
         return new ServicioDeTimbres(db, tenencia, new ServicioDeBitacora(db, tenencia, ContextoDeOperadorFijo.SinOperador, new HttpContextAccessor()));
     }
 
     private ServicioDeCompras Compras(AppDbContext db, Guid empresa)
     {
-        var tenencia = new ContextoEmpresaFijo(empresa, _cuenta);
+        var tenencia = new ContextoEmpresaFijo(empresa, CuentaDe(empresa));
         return new ServicioDeCompras(db, tenencia, new ServicioDeBitacora(db, tenencia, ContextoDeOperadorFijo.SinOperador, new HttpContextAccessor()));
     }
 
@@ -50,28 +55,29 @@ public sealed class AritmeticaDeLaBolsaPruebas : IAsyncLifetime
         await db.Database.EnsureDeletedAsync();
         await db.Database.MigrateAsync();
 
-        db.Cuentas.Add(new Cuenta
-        {
-            Id = _cuenta,
-            Nombre = "Cuenta de prueba",
-            CorreoContacto = "pruebas@ejemplo.mx",
-            FechaAltaUtc = DateTime.UtcNow
-        });
+        db.Cuentas.AddRange(
+            new Cuenta { Id = _cuenta, Nombre = "Cuenta de prueba", CorreoContacto = "pruebas@ejemplo.mx", FechaAltaUtc = DateTime.UtcNow },
+            new Cuenta { Id = _otraCuenta, Nombre = "Otra cuenta", CorreoContacto = "otra@ejemplo.mx", FechaAltaUtc = DateTime.UtcNow });
 
-        db.Empresas.Add(new Empresa
-        {
-            Id = _empresa,
-            CuentaId = _cuenta,
-            Rfc = "CBA010101BB2",
-            NombreFiscal = "EMPRESA DE PRUEBA",
-            RegimenFiscal = "601",
-            CodigoPostalExpedicion = "42000",
-            ZonaHoraria = "Central Standard Time (Mexico)",
-            FechaAltaUtc = DateTime.UtcNow
-        });
+        db.Empresas.AddRange(
+            Empresa(_empresa, _cuenta, "CBA010101BB2", "EMPRESA DE PRUEBA"),
+            Empresa(_otraEmpresa, _cuenta, "LCE010101AA1", "OTRA EMPRESA DE LA CUENTA"),
+            Empresa(_empresaDeOtraCuenta, _otraCuenta, "TDG651229C70", "EMPRESA DE OTRA CUENTA"));
 
         await db.SaveChangesAsync();
     }
+
+    private static Empresa Empresa(Guid id, Guid cuenta, string rfc, string nombre) => new()
+    {
+        Id = id,
+        CuentaId = cuenta,
+        Rfc = rfc,
+        NombreFiscal = nombre,
+        RegimenFiscal = "601",
+        CodigoPostalExpedicion = "42000",
+        ZonaHoraria = "Central Standard Time (Mexico)",
+        FechaAltaUtc = DateTime.UtcNow
+    };
 
     public async Task DisposeAsync()
     {
@@ -143,6 +149,46 @@ public sealed class AritmeticaDeLaBolsaPruebas : IAsyncLifetime
              TiposDeMovimientoTimbre.Consumo, TiposDeMovimientoTimbre.Reserva,
              TiposDeMovimientoTimbre.Devolucion],
             tipos);
+    }
+
+    /// <summary>
+    /// La bolsa es de la cuenta: lo que compra una empresa lo gasta otra de la misma cuenta, y
+    /// cada movimiento conserva la empresa que lo originó. Una empresa de otra cuenta no ve ni
+    /// toca ese saldo.
+    /// </summary>
+    [Fact]
+    public async Task Las_empresas_de_una_cuenta_comparten_la_bolsa_y_otra_cuenta_no()
+    {
+        await using var db = Contexto(_empresa);
+        await AcreditarUnPaquete(db);
+
+        await using var otra = Contexto(_otraEmpresa);
+        var timbresDeOtra = Timbres(otra, _otraEmpresa);
+
+        var reserva = await timbresDeOtra.ReservarAsync(Guid.NewGuid(), CancellationToken.None);
+        await timbresDeOtra.ConfirmarAsync(reserva.ReservaId, CancellationToken.None);
+
+        Assert.Equal(499, reserva.DisponiblesDespues);
+        Assert.Equal(499, await Timbres(db, _empresa).DisponiblesAsync(CancellationToken.None));
+        await ComprobarSaldo(disponibles: 499, reservados: 0);
+
+        await using var comprobacion = Contexto(_empresa);
+        var origen = await comprobacion.MovimientosTimbre.AsNoTracking()
+            .ToDictionaryAsync(m => m.Tipo == TiposDeMovimientoTimbre.Compra ? "compra" : m.Tipo + m.Id, m => m.EmpresaId);
+
+        Assert.Equal(_empresa, origen["compra"]);
+        Assert.All(origen.Where(o => o.Key != "compra"), o => Assert.Equal(_otraEmpresa, o.Value));
+
+        await using var ajena = Contexto(_empresaDeOtraCuenta);
+        var timbresAjenos = Timbres(ajena, _empresaDeOtraCuenta);
+
+        Assert.Equal(0, await timbresAjenos.DisponiblesAsync(CancellationToken.None));
+        var excepcion = await Assert.ThrowsAsync<ErrorDeNegocioExcepcion>(
+            () => timbresAjenos.ReservarAsync(Guid.NewGuid(), CancellationToken.None));
+        Assert.Equal("sin-timbres", excepcion.Error.Codigo);
+        Assert.Empty(await ajena.MovimientosTimbre.AsNoTracking().ToListAsync());
+
+        await ComprobarSaldo(disponibles: 499, reservados: 0);
     }
 
     /// <summary>
@@ -276,7 +322,7 @@ public sealed class AritmeticaDeLaBolsaPruebas : IAsyncLifetime
 
         // Lo que de verdad importa: el saldo nunca cruzó el cero.
         await using var comprobacion = Contexto(_empresa);
-        var bolsa = await comprobacion.BolsasTimbres.AsNoTracking().SingleAsync(b => b.EmpresaId == _empresa);
+        var bolsa = await comprobacion.BolsasTimbres.AsNoTracking().SingleAsync(b => b.CuentaId == _cuenta);
 
         Assert.Equal(0, bolsa.Disponibles);
         Assert.Equal(Rondas, bolsa.Reservados);
@@ -304,7 +350,7 @@ public sealed class AritmeticaDeLaBolsaPruebas : IAsyncLifetime
     {
         await using var ajuste = Contexto(_empresa);
 
-        var bolsa = await ajuste.BolsasTimbres.SingleAsync(b => b.EmpresaId == _empresa);
+        var bolsa = await ajuste.BolsasTimbres.SingleAsync(b => b.CuentaId == _cuenta);
 
         var delta = 1 - bolsa.Disponibles;
 
@@ -316,6 +362,7 @@ public sealed class AritmeticaDeLaBolsaPruebas : IAsyncLifetime
         ajuste.MovimientosTimbre.Add(new MovimientoTimbre
         {
             Id = Guid.NewGuid(),
+            CuentaId = _cuenta,
             EmpresaId = _empresa,
             Tipo = TiposDeMovimientoTimbre.Ajuste,
             DeltaDisponible = delta,
@@ -330,7 +377,7 @@ public sealed class AritmeticaDeLaBolsaPruebas : IAsyncLifetime
     }
 
     /// <summary>
-    /// Una empresa que nunca acreditó una compra no tiene renglón de bolsa: eso es un saldo
+    /// Una cuenta que nunca acreditó una compra no tiene renglón de bolsa: eso es un saldo
     /// de cero, no una falla. Por eso se compara contra el par (0,0) en vez de exigir que el
     /// renglón exista.
     /// </summary>
@@ -338,7 +385,7 @@ public sealed class AritmeticaDeLaBolsaPruebas : IAsyncLifetime
     {
         await using var db = Contexto(_empresa);
 
-        var bolsa = await db.BolsasTimbres.AsNoTracking().FirstOrDefaultAsync(b => b.EmpresaId == _empresa);
+        var bolsa = await db.BolsasTimbres.AsNoTracking().FirstOrDefaultAsync(b => b.CuentaId == _cuenta);
 
         Assert.Equal(disponibles, bolsa?.Disponibles ?? 0);
         Assert.Equal(reservados, bolsa?.Reservados ?? 0);
@@ -346,12 +393,12 @@ public sealed class AritmeticaDeLaBolsaPruebas : IAsyncLifetime
         await ComprobarInvariante();
     }
 
-    /// <summary>El saldo tiene que ser la suma de los movimientos, en las dos columnas.</summary>
+    /// <summary>El saldo tiene que ser la suma de los movimientos de la cuenta, en las dos columnas.</summary>
     private async Task ComprobarInvariante()
     {
         await using var db = Contexto(_empresa);
 
-        var bolsa = await db.BolsasTimbres.AsNoTracking().FirstOrDefaultAsync(b => b.EmpresaId == _empresa);
+        var bolsa = await db.BolsasTimbres.AsNoTracking().FirstOrDefaultAsync(b => b.CuentaId == _cuenta);
 
         var sumaDisponible = await db.MovimientosTimbre.AsNoTracking().SumAsync(m => m.DeltaDisponible);
         var sumaReservado = await db.MovimientosTimbre.AsNoTracking().SumAsync(m => m.DeltaReservado);

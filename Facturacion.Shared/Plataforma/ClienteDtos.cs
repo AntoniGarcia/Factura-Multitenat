@@ -69,6 +69,28 @@ public sealed record PeticionGuardarCliente(
     bool Activo);
 
 /// <summary>
+/// Un renglón del CSV de clientes ya analizado, igual que el de productos: trae el resultado de
+/// la validación antes de confirmar.
+/// </summary>
+public sealed record RenglonDeImportacionDeCliente(
+    int Numero,
+    PeticionGuardarCliente? Cliente,
+    string? Error,
+    bool ActivoExplicito = false);
+
+public sealed record VistaPreviaDeImportacionDeClientes(
+    IReadOnlyList<RenglonDeImportacionDeCliente> Renglones,
+    int Validos,
+    int ConError);
+
+public sealed record ResultadoDeImportacionDeClientes(
+    int Creados,
+    int Actualizados,
+    IReadOnlyList<RenglonDeImportacionDeCliente> Rechazados);
+
+public sealed record PeticionConfirmarImportacionDeClientes(IReadOnlyList<RenglonDeImportacionDeCliente> Renglones);
+
+/// <summary>
 /// Respuesta al guardar: el cliente ya guardado y qué se le cambió al nombre para cumplir
 /// con CFDI 4.0, para explicárselo al usuario en vez de corregirlo a escondidas.
 /// </summary>

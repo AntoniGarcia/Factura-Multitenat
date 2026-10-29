@@ -1,7 +1,6 @@
 using Facturacion.Server.Data;
 using Facturacion.Server.Data.Entidades.Plataforma;
 using Facturacion.Server.Infra.Correo;
-using Facturacion.Server.Infra.Tenencia;
 using Facturacion.Shared.Comun;
 using Microsoft.EntityFrameworkCore;
 
@@ -11,18 +10,18 @@ public sealed record ArchivoDeComprobanteDeCompra(byte[] Contenido, string Nombr
 
 /// <summary>
 /// Lee una compra pagada y genera su comprobante. Tiene dos entradas explícitas porque el
-/// inquilino depende del filtro global de empresa y el operador necesita cruzarlo.
+/// inquilino depende del filtro global de cuenta y el operador necesita cruzarlo. Cualquier
+/// empresa de la cuenta descarga cualquiera de sus compras: los timbres son de la cuenta.
 /// </summary>
 public sealed class ServicioDeComprobantesDeCompra(
     AppDbContext baseDeDatos,
-    IContextoEmpresaInterno contexto,
     IProveedorDeConfiguracionDelSistema configuracion,
     GeneradorDeComprobanteDeCompraPdf generador)
 {
     public Task<Resultado<ArchivoDeComprobanteDeCompra>> GenerarParaEmpresaAsync(
         Guid compraId, CancellationToken ct)
         => GenerarAsync(
-            baseDeDatos.ComprasTimbres.AsNoTracking().Where(c => c.EmpresaId == contexto.EmpresaId),
+            baseDeDatos.ComprasTimbres.AsNoTracking(),
             compraId,
             ct);
 

@@ -23,7 +23,7 @@ public sealed class ServicioModalCatalogo(IDialogService dialogos) : IServicioMo
         try
         {
             var parametros = new DialogParameters<ModalCatalogo> { { x => x.Catalogo, catalogo } };
-            var opciones = new DialogOptions { CloseOnEscapeKey = true, FullWidth = true };
+            var opciones = new DialogOptions { CloseOnEscapeKey = true, FullWidth = true, MaxWidth = MaxWidth.Medium };
 
             var referencia = await dialogos.ShowAsync<ModalCatalogo>(titulo, parametros, opciones);
             var resultado = await referencia.Result;

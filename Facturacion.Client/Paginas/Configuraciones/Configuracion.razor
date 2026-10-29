@@ -1,7 +1,8 @@
 @page "/configuracion"
-@attribute [Authorize(Policy = Permisos.Configuracion)]
+@attribute [Authorize(Policy = Permisos.Politicas.Configuracion)]
 @inject ServicioDeEmpresa Empresas
 @inject IServicioDeConfirmacion Confirmacion
+@inject ServicioDeSesion Sesion
 
 @* El logo se guarda al seleccionarlo; los demás cambios se envían con Guardar. *@
 
@@ -19,7 +20,7 @@ else
 {
     <MudTabs @bind-ActivePanelIndex="_pestana">
 
-        <MudTabPanel Text="General" Icon="@Icons.Material.Filled.Tune">
+        <MudTabPanel Text="General" Icon="@Icons.Material.Filled.Tune" Visible="_general">
             <div class="formulario-catalogo-secciones">
             <section class="formulario-catalogo-seccion formulario-catalogo-seccion-ancha" aria-labelledby="cliente-config-logo">
             <h2 id="cliente-config-logo" class="seccion-titulo">Logo de la empresa</h2>
@@ -71,7 +72,7 @@ else
             </div>
         </MudTabPanel>
 
-        <MudTabPanel Text="Correo" Icon="@Icons.Material.Filled.Email">
+        <MudTabPanel Text="Correo" Icon="@Icons.Material.Filled.Email" Visible="_verCorreo">
             <section class="formulario-catalogo-seccion" aria-labelledby="cliente-config-correo"
                      @oninput="LimpiarPruebaSmtp" @onchange="LimpiarPruebaSmtp">
             <h2 id="cliente-config-correo" class="seccion-titulo">Envío de comprobantes</h2>
@@ -151,7 +152,7 @@ else
             </section>
         </MudTabPanel>
 
-        <MudTabPanel Text="Impuestos" Icon="@Icons.Material.Filled.Percent">
+        <MudTabPanel Text="Impuestos" Icon="@Icons.Material.Filled.Percent" Visible="_impuestos">
             <p class="seccion-ayuda">
                 Tasas sugeridas para productos. Cada factura usa los impuestos guardados en sus conceptos.
             </p>
@@ -237,6 +238,10 @@ else
     private string? _nombreRemitenteSistema, _responderA;
     private int _puerto;
 
+    // Cada pestaña es una casilla de Configuración: solo se muestran, y solo se cargan, las que
+    // el usuario tiene. El servidor rechaza igual tocar la parte que no tiene.
+    private bool _general, _verCorreo, _impuestos;
+
     private void LimpiarPruebaSmtp()
     {
         _avisoSmtp = null;
@@ -261,16 +266,22 @@ else
 
     protected override async Task OnInitializedAsync()
     {
+        _general = Sesion.TienePermiso(Permisos.ConfiguracionGeneral);
+        _verCorreo = Sesion.TienePermiso(Permisos.ConfiguracionCorreo);
+        _impuestos = Sesion.TienePermiso(Permisos.ConfiguracionImpuestos);
+        _pestana = _general ? 0 : _verCorreo ? 1 : 2;
+
         try
         {
             var configuracion = Empresas.ObtenerConfiguracionAsync();
-            var correo = Empresas.ObtenerCorreoAsync();
-            var logo = CargarLogoAsync();
+            var correo = _verCorreo ? Empresas.ObtenerCorreoAsync() : Task.FromResult<CorreoDeEmpresaDto?>(null);
+            var logo = _general ? CargarLogoAsync() : Task.CompletedTask;
 
             await Task.WhenAll(configuracion, correo, logo);
 
             AplicarConfiguracion((await configuracion)!);
-            AplicarCorreo((await correo)!);
+
+            if (await correo is { } guardado) AplicarCorreo(guardado);
         }
         finally
         {
@@ -401,10 +412,11 @@ else
     private bool ConfiguracionCambio => ConfiguracionCapturada != _configuracion;
 
     private bool CorreoCambio
-        => _habilitado != _correo.Habilitado || _puerto != _correo.Puerto || !string.IsNullOrEmpty(_contrasena) ||
-           Distinto(_servidor, _correo.Servidor) || Distinto(_usuario, _correo.Usuario) ||
-           Distinto(_remitenteNombre, _correo.RemitenteNombre) || Distinto(_remitenteCorreo, _correo.RemitenteCorreo) ||
-           Distinto(_nombreRemitenteSistema, _correo.NombreRemitenteSistema) || Distinto(_responderA, _correo.ResponderA);
+        => _verCorreo && _correo is not null &&
+           (_habilitado != _correo.Habilitado || _puerto != _correo.Puerto || !string.IsNullOrEmpty(_contrasena) ||
+            Distinto(_servidor, _correo.Servidor) || Distinto(_usuario, _correo.Usuario) ||
+            Distinto(_remitenteNombre, _correo.RemitenteNombre) || Distinto(_remitenteCorreo, _correo.RemitenteCorreo) ||
+            Distinto(_nombreRemitenteSistema, _correo.NombreRemitenteSistema) || Distinto(_responderA, _correo.ResponderA));
 
     private bool HayCambios => ConfiguracionCambio || CorreoCambio;
 
@@ -474,7 +486,7 @@ else
         _error = null;
         _guardado = false;
         AplicarConfiguracion(_configuracion);
-        AplicarCorreo(_correo);
+        if (_correo is not null) AplicarCorreo(_correo);
     }
 
     private void AplicarConfiguracion(ConfiguracionEmpresaDto c)

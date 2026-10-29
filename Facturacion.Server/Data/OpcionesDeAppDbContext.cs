@@ -20,7 +20,9 @@ public static class OpcionesDeAppDbContext
         string? cadenaDeConexion,
         IContextoEmpresaInterno contexto)
         => constructor
-            .UseSqlServer(cadenaDeConexion)
+            // 120 es SQL Server 2014. Sin esto EF traduce los Contains de una lista con OPENJSON,
+            // que no existe antes de 2016; con 120 los manda como IN (...), que sirve en todas.
+            .UseSqlServer(cadenaDeConexion, sql => sql.UseCompatibilityLevel(120))
             // El orden importa: el sellado pone EmpresaId, que en ConfiguracionEmpresa y
             // CorreoDeEmpresa es la clave, antes de que se revise que ninguna alta llegue sin ella.
             .AddInterceptors(new SelladoDeEmpresaInterceptor(contexto), AltaSinClaveInterceptor.Instancia);

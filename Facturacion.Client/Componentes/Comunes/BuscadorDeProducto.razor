@@ -22,7 +22,7 @@
                   ResetValueOnEmptyText="true"
                   CoerceText="false"
                   Clearable="true"
-                  Placeholder="Escribe código o descripción…">
+                  Placeholder="Escribe código, nombre o ID interno…">
     <ItemTemplate Context="producto">
         <span class="cifra-tabular buscador-catalogo-clave">@producto.CodigoInterno</span>
         <span class="buscador-catalogo-descripcion">@producto.Descripcion</span>
@@ -38,7 +38,7 @@
 
     private async Task<IEnumerable<ProductoEnListaDto>> Buscar(string texto, CancellationToken ct)
     {
-        var pagina = await Productos.ListarAsync(texto, activos: true, 0, 25, null, false, ct);
+        var pagina = await Productos.ListarAsync(texto, activos: true, empresa: null, 0, 25, null, false, ct);
         return pagina.Elementos;
     }
 

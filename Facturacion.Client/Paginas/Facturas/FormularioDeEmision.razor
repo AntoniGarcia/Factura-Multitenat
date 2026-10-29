@@ -1,6 +1,6 @@
 @page "/facturas/nueva"
 @page "/facturas/{Id:guid}"
-@attribute [Authorize(Policy = Permisos.Politicas.EmitirFacturas)]
+@attribute [Authorize(Policy = Permisos.Politicas.EditarFacturas)]
 @using Facturacion.Client.Servicios.Documentos
 @using Facturacion.Client.Servicios.Plataforma
 @using Facturacion.Client.Componentes.Facturas
@@ -136,20 +136,32 @@ else
                             <div class="concepto-editor-identidad">
                                 <span class="concepto-editor-numero">@(indice + 1)</span>
                                 <div>
-                                    <strong>@renglon.Descripcion</strong>
-                                    <span><span class="cifra-tabular">@renglon.ClaveProdServ</span> · @renglon.UnidadTexto</span>
+                                    <strong class="cifra-tabular">@renglon.ClaveProdServ</strong>
+                                    <span>@renglon.UnidadTexto</span>
                                 </div>
                             </div>
+
+                            <MudTextField @bind-Value="renglon.Descripcion" Label="Descripción" MaxLength="1000"
+                                          Lines="2" Class="concepto-editor-descripcion"
+                                          HelperText="Así sale en la factura. Se precarga con el nombre y la descripción del producto." />
 
                             <MudNumericField T="decimal" Value="@renglon.Cantidad" ValueChanged="async v => { renglon.Cantidad = v; await ActualizarVistaPreviaAsync(); }"
                                              Label="Cantidad" Format="N2" Min="0.000001m" Immediate="true"
                                              Class="concepto-editor-cantidad cifra-tabular" />
 
+                            @* Visible en todas: lo precarga el ID interno del producto y va al XML, así
+                               que el capturista tiene que poder verlo y cambiarlo. *@
                             @if (EsFacturaComercio)
                             {
                                 <MudTextField @bind-Value="renglon.NoIdentificacion"
                                               Label="Identificador de mercancía" MaxLength="100"
                                               HelperText="Debe coincidir con el NoIdentificacion del CFDI." />
+                            }
+                            else
+                            {
+                                <MudTextField @bind-Value="renglon.NoIdentificacion"
+                                              Label="No. de identificación" MaxLength="100"
+                                              HelperText="Opcional. Se precarga con el ID interno del producto." />
                             }
 
                             <MudNumericField T="decimal" Value="@renglon.ValorUnitario" ValueChanged="async v => { renglon.ValorUnitario = v; await ActualizarVistaPreviaAsync(); }"
@@ -632,12 +644,24 @@ else
         renglon.ClaveProdServ = producto.ClaveProdServ;
         renglon.ClaveUnidad = producto.ClaveUnidad;
         renglon.UnidadTexto = producto.UnidadTexto;
-        renglon.Descripcion = producto.Descripcion;
+        renglon.Descripcion = DescripcionDeConcepto(producto);
+        // El ID interno del producto precarga el No. de identificación; se puede cambiar.
+        if (producto.IdInterno is { } idInterno) renglon.NoIdentificacion = idInterno;
         renglon.ObjetoImp = producto.ObjetoImp;
         renglon.ValorUnitario = producto.ValorUnitario;
         renglon.Impuestos = [.. producto.Impuestos.Select(i =>
             new ImpuestoDeConceptoDto(i.Impuesto, i.TipoFactor, i.TasaOCuota, i.EsRetencion))];
         await ActualizarVistaPreviaAsync();
+    }
+
+    /// <summary>Nombre y descripción del producto, recortados al tope del SAT para el concepto.</summary>
+    private static string DescripcionDeConcepto(ProductoDto producto)
+    {
+        var texto = string.IsNullOrWhiteSpace(producto.Detalle)
+            ? producto.Descripcion
+            : $"{producto.Descripcion} — {producto.Detalle}";
+
+        return texto.Length <= 1000 ? texto : texto[..1000];
     }
 
     private async Task QuitarConceptoAsync(int indice)

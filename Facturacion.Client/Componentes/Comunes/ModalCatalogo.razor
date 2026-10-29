@@ -25,6 +25,7 @@
                        DebounceInterval="300"
                        Class="modal-catalogo-buscador" />
 
+        <div class="modal-catalogo-cuerpo">
         @if (_buscando)
         {
             <p class="modal-catalogo-estado">Buscando…</p>
@@ -57,6 +58,7 @@
                 }
             </MudList>
         }
+        </div>
     </DialogContent>
     <DialogActions>
         <MudButton OnClick="Cancelar">Cancelar</MudButton>

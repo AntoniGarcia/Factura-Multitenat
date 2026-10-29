@@ -1,7 +1,8 @@
 namespace Facturacion.Server.Data.Entidades.Plataforma;
 
 /// <summary>
-/// Cada cambio del saldo de timbres de una empresa, con su motivo, su usuario y su momento.
+/// Cada cambio del saldo de timbres de una cuenta, con su motivo, su usuario, la empresa que
+/// lo originó y su momento.
 /// Es el libro contable de la bolsa: <see cref="BolsaTimbres"/> es su suma, no al revés.
 ///
 /// <para><b>Dos deltas, no una cantidad</b></para>
@@ -15,10 +16,13 @@ namespace Facturacion.Server.Data.Entidades.Plataforma;
 /// Un movimiento equivocado se compensa con otro de <see cref="TiposDeMovimientoTimbre.Ajuste"/>
 /// y su motivo. Borrar un renglón dejaría el saldo sin explicación.
 /// </summary>
-public sealed class MovimientoTimbre : IEntidadDeEmpresa
+public sealed class MovimientoTimbre : IEntidadDeCuenta
 {
     public Guid Id { get; set; }
 
+    public Guid CuentaId { get; set; }
+
+    /// <summary>Empresa que lo originó: la que compró o la que timbró. Es un dato, no tenencia.</summary>
     public Guid EmpresaId { get; set; }
 
     /// <summary>Uno de <see cref="TiposDeMovimientoTimbre"/>.</summary>

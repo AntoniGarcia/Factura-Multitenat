@@ -170,6 +170,9 @@ public sealed class ServicioDePagos(
         if (comprobante is null)
             return ErrorNegocio.NoEncontrado("comprobante-no-encontrado", "Ese comprobante no existe.");
 
+        if (PermisoDeEmision.ExigirEdicion(contexto, comprobante) is { } sinPermiso)
+            return sinPermiso;
+
         if (comprobante.Estatus is not ("borrador" or "error"))
             return ErrorNegocio.Conflicto(
                 "comprobante-no-editable",

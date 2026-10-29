@@ -47,6 +47,7 @@ else
             <tr>
                 <th class="cifra-tabular">Momento</th>
                 <th>Tipo</th>
+                <th>Empresa</th>
                 <th class="cifra-tabular">Disponible</th>
                 <th class="cifra-tabular">Apartado</th>
                 <th class="cifra-tabular">Saldo</th>
@@ -63,6 +64,7 @@ else
                             @Texto(movimiento.Tipo)
                         </span>
                     </td>
+                    <td>@(movimiento.Empresa ?? "—")</td>
                     <td class="cifra-tabular">@ConSigno(movimiento.DeltaDisponible)</td>
                     <td class="cifra-tabular">@ConSigno(movimiento.DeltaReservado)</td>
                     <td class="cifra-tabular">@movimiento.DisponiblesDespues</td>

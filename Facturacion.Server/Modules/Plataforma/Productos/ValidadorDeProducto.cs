@@ -21,7 +21,18 @@ public sealed class ValidadorDeProducto(AppDbContext baseDeDatos)
     public async Task<ErrorNegocio?> ValidarAsync(PeticionGuardarProducto peticion, CancellationToken ct)
     {
         if (string.IsNullOrWhiteSpace(peticion.Descripcion))
-            return ErrorNegocio.Validacion("descripcion-vacia", "Escribe la descripción del producto.");
+            return ErrorNegocio.Validacion("descripcion-vacia", "Escribe el nombre del producto.");
+
+        if (peticion.Descripcion.Trim().Length > 1000)
+            return ErrorNegocio.Validacion("nombre-largo", "El nombre del producto no puede pasar de 1000 caracteres.");
+
+        // Mismas reglas que el SAT pone a NoIdentificacion, porque de aquí se precarga.
+        if (peticion.IdInterno is { } idInterno && (idInterno.Trim().Length > 100 || idInterno.Contains('|')))
+            return ErrorNegocio.Validacion("id-interno-invalido",
+                "El ID interno puede tener hasta 100 caracteres y no puede llevar «|».");
+
+        if (peticion.Detalle?.Trim().Length > 1000)
+            return ErrorNegocio.Validacion("detalle-largo", "La descripción no puede pasar de 1000 caracteres.");
 
         if (string.IsNullOrWhiteSpace(peticion.UnidadTexto))
             return ErrorNegocio.Validacion("unidad-vacia",

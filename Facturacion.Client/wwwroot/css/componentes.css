@@ -81,6 +81,12 @@
     margin-bottom: 0.75rem;
 }
 
+/* Alto fijo: el modal no crece ni brinca con cada búsqueda, y los resultados se desplazan. */
+.modal-catalogo-cuerpo {
+    height: min(26rem, 55vh);
+    overflow-y: auto;
+}
+
 .modal-catalogo-ayuda,
 .modal-catalogo-resultados {
     color: var(--texto-suave);
@@ -115,7 +121,8 @@
     border-top: 1px solid var(--borde);
 }
 
-.modal-catalogo-renglon .mud-list-item-text {
+/* MudBlazor envuelve el contenido en un <p>: la rejilla va sobre él. */
+.modal-catalogo-renglon .mud-list-item-text > .mud-typography {
     display: grid;
     grid-template-columns: minmax(7rem, 9rem) minmax(0, 1fr);
     align-items: baseline;
@@ -129,7 +136,7 @@
 }
 
 @media (max-width: 32rem) {
-    .modal-catalogo-renglon .mud-list-item-text {
+    .modal-catalogo-renglon .mud-list-item-text > .mud-typography {
         grid-template-columns: minmax(0, 1fr);
         gap: 0.125rem;
     }
@@ -152,6 +159,11 @@
 .barra-herramientas-estatus {
     min-width: 8rem;
     max-width: 10rem;
+}
+
+.barra-herramientas-empresa {
+    min-width: 10rem;
+    max-width: 16rem;
 }
 
 /* Los catálogos se leen como una sola herramienta: contexto, filtros y resultados dentro
@@ -227,7 +239,8 @@
         max-width: none;
     }
 
-    .barra-herramientas-estatus {
+    .barra-herramientas-estatus,
+    .barra-herramientas-empresa {
         flex: 1 1 8rem;
         max-width: none;
     }
@@ -1338,6 +1351,12 @@
     justify-content: space-between;
     gap: 1rem;
     padding: 1rem 1.25rem;
+}
+
+.ficha-cuenta-acciones {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
 }
 
 .ficha-cuenta-contacto {

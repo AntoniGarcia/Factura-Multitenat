@@ -1,6 +1,6 @@
 @page "/traslados-carta-porte/nuevo"
 @page "/traslados-carta-porte/{Id:guid}"
-@attribute [Authorize(Policy = Permisos.EmitirCartaPorte)]
+@attribute [Authorize(Policy = Permisos.Politicas.EditarCartaPorte)]
 @using Facturacion.Client.Servicios.Documentos
 @using Facturacion.Client.Servicios.Plataforma
 @using Facturacion.Shared.Comun

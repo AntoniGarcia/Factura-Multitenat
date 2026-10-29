@@ -41,6 +41,7 @@ public static class AccionesDeBitacora
 
     public const string SerieCreada = "serie_creada";
     public const string SerieActualizada = "serie_actualizada";
+    public const string SerieEliminada = "serie_eliminada";
     public const string FolioReservado = "folio_reservado";
     public const string FolioConfirmado = "folio_confirmado";
 
@@ -52,16 +53,25 @@ public static class AccionesDeBitacora
 
     // Clientes.
     public const string ClienteCreado = "cliente_creado";
-    public const string ClienteEliminado = "cliente_eliminado";
     public const string ClienteActualizado = "cliente_actualizado";
     public const string ClienteDesactivado = "cliente_desactivado";
     public const string ClienteReactivado = "cliente_reactivado";
+    public const string ClienteEliminado = "cliente_eliminado";
+    // Solo las escribe la migración que unió los catálogos de las empresas de cada cuenta.
+    public const string ClienteFusionado = "cliente_fusionado";
+    public const string ClienteRenumerado = "cliente_renumerado";
 
     // Productos.
     public const string ProductoCreado = "producto_creado";
     public const string ProductoActualizado = "producto_actualizado";
     public const string ProductoDesactivado = "producto_desactivado";
     public const string ProductoReactivado = "producto_reactivado";
+
+    // Borrado físico de un registro de catálogo que nunca se usó (AGENTS.md §11).
+    public const string ProductoEliminado = "producto_eliminado";
+    public const string ProductoRenumerado = "producto_renumerado";
+    public const string VehiculoEliminado = "vehiculo_eliminado";
+    public const string FiguraEliminada = "figura_eliminada";
 
     // Registra movimientos y reservas para explicar los cambios en el saldo de timbres.
     public const string CompraSolicitada = "compra_solicitada";
@@ -137,6 +147,7 @@ public static class AccionesDeBitacora
     public const string LicenciasDeEmpresaActualizadasPorOperador = "licencias_de_empresa_actualizadas_por_operador";
     public const string TimbresAsignados = "timbres_asignados_por_operador";
     public const string CorreoDeCuentaCambiadoPorOperador = "correo_de_cuenta_cambiado_por_operador";
+    public const string LimitesDeCuentaCambiadosPorOperador = "limites_de_cuenta_cambiados_por_operador";
     public const string CorreoDeUsuarioCambiadoPorOperador = "correo_de_usuario_cambiado_por_operador";
     public const string AccesoAEmpresaEliminadoPorOperador = "acceso_a_empresa_eliminado_por_operador";
 }
@@ -165,6 +176,8 @@ public static class EntidadesDeBitacora
     public const string UsuarioEmpresa = "UsuarioEmpresa";
     public const string Perfil = "Perfil";
     public const string TrasladoCartaPorte = "TrasladoCartaPorte";
+    public const string Vehiculo = "Vehiculo";
+    public const string FiguraTransporte = "FiguraTransporte";
     public const string Comprobante = "Comprobante";
 
     // ── Operador del SaaS ────────────────────────────────────────────────────────────────

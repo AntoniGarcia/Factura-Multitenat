@@ -1,16 +1,22 @@
 namespace Facturacion.Server.Data.Entidades.Plataforma;
 
-/// <summary>Datos del receptor. El código postal fiscal corresponde a la constancia; el de entrega se utiliza para la dirección informativa. Los comprobantes conservan copias de estos datos.</summary>
-public sealed class Cliente : IEntidadDeEmpresa
+/// <summary>Datos del receptor. El código postal fiscal corresponde a la constancia; el de entrega se utiliza para la dirección informativa. Los comprobantes conservan copias de estos datos. El catálogo es de la cuenta y lo comparten sus empresas (AGENTS.md §11).</summary>
+public sealed class Cliente : IEntidadDeCuenta
 {
     public Guid Id { get; set; }
 
-    public Guid EmpresaId { get; set; }
+    public Guid CuentaId { get; set; }
 
-    public Empresa Empresa { get; set; } = null!;
+    public Cuenta Cuenta { get; set; } = null!;
 
     /// <summary>
-    /// Consecutivo por empresa. No tiene valor fiscal, pero los contadores se la memorizan y
+    /// Empresa desde la que se dio de alta. Es un dato para filtrar el catálogo, no tenencia:
+    /// todas las empresas de la cuenta lo ven y lo usan. Nulo si no quedó registro.
+    /// </summary>
+    public Guid? EmpresaAltaId { get; set; }
+
+    /// <summary>
+    /// Consecutivo por cuenta. No tiene valor fiscal, pero los contadores se la memorizan y
     /// la usan para buscar: el sistema viejo la tenía y quitarla obligaría a reaprender el
     /// catálogo.
     /// </summary>

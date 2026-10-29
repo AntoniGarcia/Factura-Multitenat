@@ -38,7 +38,7 @@ public sealed class ServicioDeEmision(
         var comprobante = await baseDeDatos.Comprobantes.AsNoTracking().FirstOrDefaultAsync(c => c.Id == id, ct);
         if (comprobante is null)
             return ErrorNegocio.NoEncontrado("comprobante-no-encontrado", "Ese comprobante no existe.");
-        if (PermisoDeEmision.Exigir(contexto, comprobante) is { } sinPermiso) return sinPermiso;
+        if (PermisoDeEmision.ExigirEdicion(contexto, comprobante) is { } sinPermiso) return sinPermiso;
         if (comprobante.TipoDeComprobante != TipoFactura || comprobante.Estatus is not ("borrador" or "error"))
             return ErrorNegocio.Conflicto("comprobante-no-editable", "Este documento no admite cambios de captura.");
         if (peticion.Conceptos is null || peticion.Conceptos.Count is 0 or > 1000)
@@ -73,7 +73,7 @@ public sealed class ServicioDeEmision(
         if (!VariantesDeFactura.EsValida(variante))
             return ErrorNegocio.Validacion("variante-desconocida", $"'{variante}' no es una clase de factura conocida.");
 
-        if (PermisoDeEmision.Exigir(contexto, Permisos.ParaVarianteDeFactura(variante)) is { } sinPermiso)
+        if (PermisoDeEmision.Exigir(contexto, Permisos.De(Permisos.TipoDeVarianteDeFactura(variante), Permisos.Acciones.Crear)) is { } sinPermiso)
             return sinPermiso;
 
         if (await ValidarLicenciaDeVarianteAsync(variante, ct) is { } sinLicencia)
@@ -157,7 +157,7 @@ public sealed class ServicioDeEmision(
         if (comprobante is null)
             return ErrorNegocio.NoEncontrado("comprobante-no-encontrado", "Ese comprobante no existe.");
 
-        if (PermisoDeEmision.Exigir(contexto, comprobante) is { } sinPermiso)
+        if (PermisoDeEmision.ExigirEdicion(contexto, comprobante) is { } sinPermiso)
             return sinPermiso;
 
         if (comprobante.TipoDeComprobante != TipoFactura)
@@ -186,6 +186,14 @@ public sealed class ServicioDeEmision(
 
         var receptor = await ResolverReceptorAsync(peticion.ClienteId, ct);
         if (receptor.EsFallo) return receptor.Error!;
+
+        // El cliente con RFC genérico puede llevar otro nombre para ventas sueltas, pero el SAT
+        // exige PUBLICO EN GENERAL en la factura global (AGENTS.md §11).
+        if (receptor.Valor is { Rfc: "XAXX010101000" } publico && peticion.GlobalPeriodicidad is not null
+            && publico.Nombre != "PUBLICO EN GENERAL")
+            return ErrorNegocio.Validacion("global-nombre",
+                $"La factura global va a nombre de PUBLICO EN GENERAL y el cliente elegido se llama «{publico.Nombre}». " +
+                "Elige el cliente PUBLICO EN GENERAL o quita la información global.");
 
         var conceptosResueltos = await ResolverConceptosAsync(peticion.Conceptos, ct);
         if (conceptosResueltos.EsFallo) return conceptosResueltos.Error!;
@@ -250,7 +258,7 @@ public sealed class ServicioDeEmision(
         if (comprobante is null)
             return ErrorNegocio.NoEncontrado("comprobante-no-encontrado", "Ese comprobante no existe.");
 
-        if (PermisoDeEmision.Exigir(contexto, comprobante) is { } sinPermiso)
+        if (PermisoDeEmision.Exigir(contexto, comprobante, Permisos.Acciones.Eliminar) is { } sinPermiso)
             return sinPermiso;
 
         if (comprobante.Estatus != "borrador")
@@ -463,6 +471,17 @@ public sealed class ServicioDeEmision(
                 return ErrorNegocio.Validacion("numero-identificacion-invalido",
                     $"El identificador del renglón {i + 1} debe tener hasta 100 caracteres y no contener '|'.");
 
+            // La descripción es la del renglón: se precarga con el nombre y la descripción del
+            // producto y el capturista la ajusta en cada factura. Vacía, vale el nombre. Los saltos
+            // de línea se vuelven espacios, que es como los deja la cadena original del SAT.
+            var descripcion = string.IsNullOrWhiteSpace(linea.Descripcion)
+                ? producto.Descripcion
+                : string.Join(' ', linea.Descripcion.Split((char[]?)null, StringSplitOptions.RemoveEmptyEntries));
+
+            if (descripcion.Length > 1000 || descripcion.Contains('|'))
+                return ErrorNegocio.Validacion("descripcion-de-concepto-invalida",
+                    $"La descripción del renglón {i + 1} debe tener hasta 1000 caracteres y no contener «|».");
+
             // El concepto copia la unidad del producto en cada guardado: basta con corregir el
             // producto. Detenerlo aquí evita que el error aparezca al timbrar, con el folio ya apartado.
             if (!UnidadDeConcepto.EsValida(producto.UnidadTexto))
@@ -473,6 +492,7 @@ public sealed class ServicioDeEmision(
             resueltos.Add(new ConceptoResuelto(
                 Orden: i + 1,
                 Producto: producto,
+                Descripcion: descripcion,
                 NoIdentificacion: string.IsNullOrWhiteSpace(linea.NoIdentificacion) ? null : linea.NoIdentificacion.Trim(),
                 Cantidad: linea.Cantidad,
                 ValorUnitario: linea.ValorUnitario,
@@ -490,7 +510,7 @@ public sealed class ServicioDeEmision(
     }
 
     private sealed record ConceptoResuelto(
-        int Orden, ProductoParaConceptoDto Producto, string? NoIdentificacion,
+        int Orden, ProductoParaConceptoDto Producto, string Descripcion, string? NoIdentificacion,
         decimal Cantidad, decimal ValorUnitario, decimal Descuento, ConceptoACalcular ACalcular);
 
     // ── Aplicar al comprobante ──────────────────────────────────────────────────────────
@@ -548,7 +568,7 @@ public sealed class ServicioDeEmision(
                 ClaveUnidad = producto.ClaveUnidad,
                 UnidadTexto = producto.UnidadTexto,
                 NoIdentificacion = origen.NoIdentificacion,
-                Descripcion = producto.Descripcion,
+                Descripcion = origen.Descripcion,
                 Cantidad = origen.Cantidad,
                 ValorUnitario = origen.ValorUnitario,
                 Importe = calculo.Importe,

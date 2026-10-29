@@ -251,8 +251,12 @@ namespace Facturacion.Server.Migrations
             // Por qué recibe @EmpresaId: la empresa viene del claim del token, nunca del
             // cliente (ARQUITECTURA.md §4). El procedimiento la exige en el WHERE, así que una
             // serie de otra empresa sencillamente no coincide y no entrega folio.
+            //
+            // Borrar y crear en vez de CREATE OR ALTER: ese no existe antes de SQL Server 2016 SP1.
             migrationBuilder.Sql("""
-                CREATE OR ALTER PROCEDURE dbo.ReservarFolio
+                IF OBJECT_ID(N'dbo.ReservarFolio', N'P') IS NOT NULL DROP PROCEDURE dbo.ReservarFolio;
+                GO
+                CREATE PROCEDURE dbo.ReservarFolio
                     @SerieId    uniqueidentifier,
                     @EmpresaId  uniqueidentifier,
                     @ReservaId  uniqueidentifier,

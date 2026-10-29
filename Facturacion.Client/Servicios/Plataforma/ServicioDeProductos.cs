@@ -10,13 +10,14 @@ public sealed class ServicioDeProductos(IHttpClientFactory fabrica)
     private HttpClient Cliente => fabrica.CreateClient(ClientesHttp.Api);
 
     public async Task<PaginaDeProductos> ListarAsync(
-        string? texto, bool? activos, int pagina, int tamano,
+        string? texto, bool? activos, Guid? empresa, int pagina, int tamano,
         string? orden, bool descendente, CancellationToken ct = default)
     {
         // El filtro de estatus se omite de la URL cuando es "todos": un &activos= vacío
         // lo ata el enlazador del servidor a false, que es justo lo contrario.
         var url = $"api/productos?pagina={pagina}&tamano={tamano}" +
                   (activos is { } a ? $"&activos={(a ? "true" : "false")}" : "") +
+                  (empresa is { } e ? $"&empresa={e}" : "") +
                   $"&descendente={descendente}" +
                   (string.IsNullOrWhiteSpace(texto) ? "" : $"&texto={Uri.EscapeDataString(texto)}") +
                   (string.IsNullOrWhiteSpace(orden) ? "" : $"&orden={Uri.EscapeDataString(orden)}");
@@ -48,6 +49,16 @@ public sealed class ServicioDeProductos(IHttpClientFactory fabrica)
         return await LeerAsync<ProductoDto>(respuesta, ct);
     }
 
+    /// <summary>Borra un producto que nunca se usó. El servidor rechaza al que ya está en un concepto.</summary>
+    public async Task<DetalleProblema?> EliminarAsync(Guid id, CancellationToken ct = default)
+    {
+        using var respuesta = await Cliente.DeleteAsync($"api/productos/{id}", ct);
+
+        return respuesta.IsSuccessStatusCode
+            ? null
+            : await respuesta.Content.ReadFromJsonAsync<DetalleProblema>(ct);
+    }
+
     /// <summary>Sube el CSV y devuelve la vista previa. No guarda nada todavía.</summary>
     public async Task<(VistaPreviaDeImportacion? Exito, DetalleProblema? Error)> AnalizarCsvAsync(
         Stream archivo, string nombre, CancellationToken ct = default)
@@ -67,8 +78,12 @@ public sealed class ServicioDeProductos(IHttpClientFactory fabrica)
         return await LeerAsync<ResultadoDeImportacion>(respuesta, ct);
     }
 
-    public static string RutaDeExportacion(bool? activos)
-        => $"api/productos/exportar" + (activos is { } a ? $"?activos={(a ? "true" : "false")}" : "");
+    public static string RutaDeExportacion(bool? activos, Guid? empresa = null)
+        => "api/productos/exportar?" + string.Join("&", new[]
+        {
+            activos is { } a ? $"activos={(a ? "true" : "false")}" : null,
+            empresa is { } e ? $"empresa={e}" : null
+        }.Where(p => p is not null));
 
     public static string RutaDePlantilla() => "api/productos/plantilla-csv";
 
