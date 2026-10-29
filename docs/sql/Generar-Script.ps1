@@ -5,7 +5,12 @@ $raizProyecto = Split-Path (Split-Path $PSScriptRoot -Parent) -Parent
 $rutaSql = Join-Path $PSScriptRoot 'Facturacion.Instalacion.sql'
 Push-Location (Join-Path $raizProyecto 'Facturacion.Server')
 try {
-    dotnet ef migrations script 0 --idempotent --configuration Release --no-build --project .\Facturacion.Server.csproj --startup-project .\Facturacion.Server.csproj --output $rutaSql
+    # Las advertencias de NuGet salen por stderr, y en PowerShell 5 con «Stop» cortarían el
+    # script aunque la generación termine bien. Lo que decide es el código de salida.
+    $ErrorActionPreference = 'Continue'
+    dotnet ef migrations script 0 --idempotent --configuration Release --no-build --project .\Facturacion.Server.csproj --startup-project .\Facturacion.Server.csproj --output $rutaSql 2>&1 |
+        Where-Object { "$_" -notmatch 'warning NU\d+' }
+    $ErrorActionPreference = 'Stop'
     if ($LASTEXITCODE -ne 0) { throw 'No se pudo generar el script de migraciones.' }
 }
 finally { Pop-Location }
