@@ -5717,3 +5717,71 @@ END;
 COMMIT;
 GO
 
+BEGIN TRANSACTION;
+IF NOT EXISTS (
+    SELECT * FROM [__EFMigrationsHistory]
+    WHERE [MigrationId] = N'20261029220708_20261029_B_MonedasDeEmpresa'
+)
+BEGIN
+    EXEC(N'CREATE TABLE [MonedasDeEmpresa] (
+        [EmpresaId] uniqueidentifier NOT NULL,
+        [Moneda] varchar(3) NOT NULL,
+        [Activa] bit NOT NULL,
+        [ModificadaUtc] datetime2 NOT NULL,
+        CONSTRAINT [PK_MonedasDeEmpresa] PRIMARY KEY ([EmpresaId], [Moneda]),
+        CONSTRAINT [FK_MonedasDeEmpresa_Empresas_EmpresaId] FOREIGN KEY ([EmpresaId]) REFERENCES [Empresas] ([Id]) ON DELETE NO ACTION
+    );');
+END;
+
+IF NOT EXISTS (
+    SELECT * FROM [__EFMigrationsHistory]
+    WHERE [MigrationId] = N'20261029220708_20261029_B_MonedasDeEmpresa'
+)
+BEGIN
+    EXEC(N'IF EXISTS (SELECT * FROM [sys].[identity_columns] WHERE [name] IN (N''Clave'', N''Descripcion'') AND [object_id] = OBJECT_ID(N''[Permisos]''))
+        SET IDENTITY_INSERT [Permisos] ON;
+    EXEC(N''INSERT INTO [Permisos] ([Clave], [Descripcion])
+    VALUES (N''''configuracion_monedas'''', N''''Configuración: Monedas'''')'');
+    IF EXISTS (SELECT * FROM [sys].[identity_columns] WHERE [name] IN (N''Clave'', N''Descripcion'') AND [object_id] = OBJECT_ID(N''[Permisos]''))
+        SET IDENTITY_INSERT [Permisos] OFF;');
+END;
+
+IF NOT EXISTS (
+    SELECT * FROM [__EFMigrationsHistory]
+    WHERE [MigrationId] = N'20261029220708_20261029_B_MonedasDeEmpresa'
+)
+BEGIN
+    EXEC(N'INSERT INTO MonedasDeEmpresa (EmpresaId, Moneda, Activa, ModificadaUtc)
+    SELECT u.EmpresaId, u.Moneda, 1, SYSUTCDATETIME()
+    FROM (SELECT EmpresaId, Moneda FROM Comprobantes
+          UNION
+          SELECT EmpresaId, MonedaP FROM Pagos) AS u
+    WHERE u.Moneda NOT IN (''MXN'', ''XXX'');');
+END;
+
+IF NOT EXISTS (
+    SELECT * FROM [__EFMigrationsHistory]
+    WHERE [MigrationId] = N'20261029220708_20261029_B_MonedasDeEmpresa'
+)
+BEGIN
+    EXEC(N'INSERT INTO UsuariosEmpresasPermisos (UsuarioId, EmpresaId, PermisoClave, OtorgadoUtc, OtorgadoPorUsuarioId)
+    SELECT p.UsuarioId, p.EmpresaId, ''configuracion_monedas'', p.OtorgadoUtc, p.OtorgadoPorUsuarioId
+    FROM UsuariosEmpresasPermisos p
+    WHERE p.PermisoClave = ''configuracion_general''
+      AND NOT EXISTS (SELECT 1 FROM UsuariosEmpresasPermisos x
+                      WHERE x.UsuarioId = p.UsuarioId AND x.EmpresaId = p.EmpresaId
+                        AND x.PermisoClave = ''configuracion_monedas'');');
+END;
+
+IF NOT EXISTS (
+    SELECT * FROM [__EFMigrationsHistory]
+    WHERE [MigrationId] = N'20261029220708_20261029_B_MonedasDeEmpresa'
+)
+BEGIN
+    EXEC(N'INSERT INTO [__EFMigrationsHistory] ([MigrationId], [ProductVersion])
+    VALUES (N''20261029220708_20261029_B_MonedasDeEmpresa'', N''10.0.10'');');
+END;
+
+COMMIT;
+GO
+

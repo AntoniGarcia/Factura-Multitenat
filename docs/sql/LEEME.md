@@ -1,7 +1,7 @@
 # Instalación de la base de datos
 
 `Facturacion.Instalacion.sql` contiene las migraciones desde la primera hasta
-`20261028213928_20261029_A_IdInternoYDetalleDeProducto`. Incluye tablas, índices,
+`20261029220708_20261029_B_MonedasDeEmpresa`. Incluye tablas, índices,
 procedimientos y los datos iniciales definidos por las migraciones. No exporta
 usuarios, empresas, documentos, certificados ni contraseñas del entorno local.
 
