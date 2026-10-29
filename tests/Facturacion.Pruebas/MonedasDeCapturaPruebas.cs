@@ -19,15 +19,15 @@ public sealed class MonedasDeCapturaPruebas
         var catalogos = new ServicioDeCatalogos(proveedor.GetRequiredService<IHttpClientFactory>());
         await catalogos.InicializarAsync();
         Assert.Equal(1, catalogos.Revision);
-        Assert.Equal(2, catalogos.ObtenerMonedasDeCaptura().Count);
+        Assert.Equal(2, catalogos.ObtenerMonedasDeCaptura(["USD"]).Count);
         await catalogos.RevalidarAsync();
         Assert.Equal(1, catalogos.Revision);
         await catalogos.RevalidarAsync();
         Assert.Equal(1, catalogos.Revision);
-        Assert.Equal(2, catalogos.ObtenerMonedasDeCaptura().Count);
+        Assert.Equal(2, catalogos.ObtenerMonedasDeCaptura(["USD"]).Count);
         await catalogos.RevalidarAsync();
         Assert.Equal(2, catalogos.Revision);
-        Assert.Equal("MXN", Assert.Single(catalogos.ObtenerMonedasDeCaptura()).Clave);
+        Assert.Equal("MXN", Assert.Single(catalogos.ObtenerMonedasDeCaptura(["USD"])).Clave);
         Assert.Equal("Peso actualizado", Assert.Single(catalogos.Obtener("c_Moneda")).Descripcion);
         await catalogos.ActualizarSiCorrespondeAsync();
         await catalogos.ActualizarSiCorrespondeAsync();
@@ -54,7 +54,7 @@ public sealed class MonedasDeCapturaPruebas
     }
 
     [Fact]
-    public async Task Solo_ofrece_peso_y_dolar_sin_recortar_catalogo_ni_otras_claves()
+    public async Task Solo_ofrece_el_peso_y_las_monedas_de_la_empresa_sin_recortar_catalogo_ni_otras_claves()
     {
         var datos = new Dictionary<string, IReadOnlyList<ClaveSatDto>>
         {
@@ -68,7 +68,8 @@ public sealed class MonedasDeCapturaPruebas
         using var proveedor = servicios.BuildServiceProvider();
         var catalogos = new ServicioDeCatalogos(proveedor.GetRequiredService<IHttpClientFactory>());
         await catalogos.InicializarAsync();
-        Assert.Equal(["MXN", "USD"], catalogos.ObtenerMonedasDeCaptura().Select(x => x.Clave).ToArray());
+        Assert.Equal(["MXN"], catalogos.ObtenerMonedasDeCaptura([]).Select(x => x.Clave).ToArray());
+        Assert.Equal(["MXN", "EUR", "USD"], catalogos.ObtenerMonedasDeCaptura(["USD", "EUR", "MXN"]).Select(x => x.Clave).ToArray());
         Assert.Equal(4, catalogos.Obtener("c_Moneda").Count);
         Assert.Contains(catalogos.Obtener("c_Moneda"), x => x.Clave == "EUR");
         Assert.Contains(catalogos.Obtener("c_Moneda"), x => x.Clave == "XXX");
@@ -87,9 +88,9 @@ public sealed class MonedasDeCapturaPruebas
             .ConfigurePrimaryHttpMessageHandler(() => new CatalogosHttp(datos));
         using var proveedor = servicios.BuildServiceProvider();
         var catalogos = new ServicioDeCatalogos(proveedor.GetRequiredService<IHttpClientFactory>());
-        Assert.Empty(catalogos.ObtenerMonedasDeCaptura());
+        Assert.Empty(catalogos.ObtenerMonedasDeCaptura(["EUR"]));
         await catalogos.InicializarAsync();
-        Assert.Empty(catalogos.ObtenerMonedasDeCaptura());
+        Assert.Equal("EUR", Assert.Single(catalogos.ObtenerMonedasDeCaptura(["EUR"])).Clave);
     }
 
     private sealed class CatalogosHttp(Dictionary<string, IReadOnlyList<ClaveSatDto>> datos) : HttpMessageHandler

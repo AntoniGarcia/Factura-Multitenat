@@ -4,11 +4,13 @@
 @using Facturacion.Client.Servicios.Documentos
 @using Facturacion.Client.Servicios.Plataforma
 @using Facturacion.Shared.Comun
+@using Facturacion.Shared.Contratos
 @using Facturacion.Shared.Documentos
 @using Facturacion.Shared.Plataforma
 @inject ServicioDePagos Pagos
 @inject ServicioDeEmision Emision
 @inject ServicioDeCatalogos Catalogos
+@inject ServicioDeEmpresa Empresa
 @inject ServicioDeClientes Clientes
 @inject IDialogService Dialogos
 @inject NavigationManager Navegacion
@@ -63,11 +65,11 @@ else
                                      Deshabilitado="@(!EsEditable)" Requerido="true" PuedeLimpiar="false" />
 
                     <MudSelect T="string" Label="Moneda" @bind-Value="_moneda" Disabled="@(!EsEditable)">
-                        @foreach (var moneda in Catalogos.ObtenerMonedasDeCaptura())
+                        @foreach (var moneda in _monedasDeCaptura)
                         {
                             <MudSelectItem T="string" Value="@moneda.Clave">@moneda.Clave — @moneda.Descripcion</MudSelectItem>
                         }
-                        @if (_moneda is not ("MXN" or "USD"))
+                        @if (_monedasDeCaptura.All(m => m.Clave != _moneda))
                         {
                             <MudSelectItem T="string" Value="@_moneda" Disabled="true">@_moneda — Moneda guardada</MudSelectItem>
                         }
@@ -273,6 +275,7 @@ else
     private TimeSpan? _horaPagoLocal;
     private string _formaDePago = "03";
     private string _moneda = "MXN";
+    private IReadOnlyList<ClaveSatDto> _monedasDeCaptura = [];
     private decimal? _tipoCambio;
     private decimal _monto;
     private string? _numOperacion;
@@ -317,7 +320,11 @@ else
         _pago = null;
         _error = null;
         _borradorSinGuardar = null;
-        try { await CargarPagoAsync(); }
+        try
+        {
+            _monedasDeCaptura = Catalogos.ObtenerMonedasDeCaptura((await Empresa.ObtenerMonedasAsync())?.Monedas ?? []);
+            await CargarPagoAsync();
+        }
         catch (HttpRequestException)
         {
             _error = new DetalleProblema("about:blank", "No se pudo abrir el pago", 0,

@@ -40,6 +40,16 @@ public sealed class ServicioDeEmpresa(IHttpClientFactory fabrica)
         return await LeerAsync<ConfiguracionEmpresaDto>(respuesta, ct);
     }
 
+    public Task<MonedasDeEmpresaDto?> ObtenerMonedasAsync(CancellationToken ct = default)
+        => Cliente.GetFromJsonAsync<MonedasDeEmpresaDto>("api/empresa/monedas", ct);
+
+    public async Task<(MonedasDeEmpresaDto? Exito, DetalleProblema? Error)> GuardarMonedasAsync(
+        MonedasDeEmpresaDto peticion, CancellationToken ct = default)
+    {
+        using var respuesta = await Cliente.PutAsJsonAsync("api/empresa/monedas", peticion, ct);
+        return await LeerAsync<MonedasDeEmpresaDto>(respuesta, ct);
+    }
+
     public Task<CorreoDeEmpresaDto?> ObtenerCorreoAsync(CancellationToken ct = default)
         => Cliente.GetFromJsonAsync<CorreoDeEmpresaDto>("api/empresa/correo", ct);
 

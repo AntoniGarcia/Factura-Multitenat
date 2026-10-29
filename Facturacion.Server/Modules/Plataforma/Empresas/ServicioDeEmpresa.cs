@@ -263,6 +263,77 @@ public sealed class ServicioDeEmpresa(
     /// <summary>La configuración sin la parte de General, para comparar solo los impuestos.</summary>
     private static ConfiguracionEmpresaDto SoloImpuestos(ConfiguracionEmpresaDto c) => c with { DiasAvisoCaducidadCertificado = 0 };
 
+    // ── Monedas ─────────────────────────────────────────────────────────────────────────
+
+    /// <summary>Tope de monedas por empresa: ninguna factura en más de un puñado de divisas.</summary>
+    private const int TopeDeMonedas = 30;
+
+    public async Task<MonedasDeEmpresaDto> ObtenerMonedasAsync(CancellationToken ct)
+        => new(await baseDeDatos.MonedasDeEmpresa.AsNoTracking()
+            .Where(m => m.Activa)
+            .OrderBy(m => m.Moneda)
+            .Select(m => m.Moneda)
+            .ToListAsync(ct));
+
+    /// <summary>
+    /// Deja activas exactamente las monedas recibidas. El peso no se guarda: siempre está.
+    /// Quitar una no afecta a los documentos ya guardados, que conservan su moneda; un
+    /// borrador en esa moneda ya no se podrá volver a guardar hasta agregarla otra vez.
+    /// </summary>
+    public async Task<Resultado<MonedasDeEmpresaDto>> GuardarMonedasAsync(
+        MonedasDeEmpresaDto peticion, CancellationToken ct)
+    {
+        var pedidas = (peticion.Monedas ?? [])
+            .Select(m => (m ?? string.Empty).Trim().ToUpperInvariant())
+            .Where(m => m != "MXN")
+            .Distinct()
+            .ToList();
+
+        if (pedidas.Count > TopeDeMonedas)
+            return ErrorNegocio.Validacion("demasiadas-monedas", $"Una empresa puede usar hasta {TopeDeMonedas} monedas además del peso.");
+
+        if (pedidas.Contains("XXX"))
+            return ErrorNegocio.Validacion("moneda-invalida",
+                "XXX no es una moneda: el SAT la reserva para comprobantes sin importe.");
+
+        var vigentes = await baseDeDatos.SatMonedas.AsNoTracking()
+            .Where(m => m.Vigente && pedidas.Contains(m.Clave))
+            .Select(m => m.Clave)
+            .ToListAsync(ct);
+
+        if (pedidas.FirstOrDefault(m => !vigentes.Contains(m)) is { } desconocida)
+            return ErrorNegocio.Validacion("moneda-desconocida",
+                $"«{desconocida}» no es una moneda vigente del catálogo del SAT.");
+
+        var guardadas = await baseDeDatos.MonedasDeEmpresa.ToListAsync(ct);
+        var antes = new MonedasDeEmpresaDto([.. guardadas.Where(m => m.Activa).Select(m => m.Moneda).Order()]);
+        var ahora = DateTime.UtcNow;
+
+        foreach (var guardada in guardadas)
+        {
+            var activa = pedidas.Contains(guardada.Moneda);
+            if (guardada.Activa == activa) continue;
+
+            guardada.Activa = activa;
+            guardada.ModificadaUtc = ahora;
+        }
+
+        // EmpresaId lo pone el interceptor de sellado desde el claim, como en la configuración.
+        foreach (var nueva in pedidas.Where(m => guardadas.All(g => g.Moneda != m)))
+            baseDeDatos.MonedasDeEmpresa.Add(new MonedaDeEmpresa { Moneda = nueva, ModificadaUtc = ahora });
+
+        var despues = new MonedasDeEmpresaDto([.. pedidas.Order()]);
+
+        if (!antes.Monedas.SequenceEqual(despues.Monedas))
+            bitacora.Registrar(
+                EntidadesDeBitacora.MonedasDeEmpresa, contexto.EmpresaId.ToString(),
+                AccionesDeBitacora.MonedasActualizadas, antes, despues);
+
+        await baseDeDatos.SaveChangesAsync(ct);
+
+        return despues;
+    }
+
     private Task<Empresa?> CargarAsync(CancellationToken ct)
         => baseDeDatos.Empresas.FirstOrDefaultAsync(e => e.Id == contexto.EmpresaId, ct);
 

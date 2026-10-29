@@ -36,6 +36,10 @@ public static class EmpresasEndpoints
         grupo.MapGet("/configuracion", ObtenerConfiguracion).RequireAuthorization();
         grupo.MapPut("/configuracion", GuardarConfiguracion).RequireAuthorization(Permisos.Politicas.Configuracion);
 
+        // Leerlas solo exige sesión: las necesitan los formularios de factura y de pago.
+        grupo.MapGet("/monedas", ObtenerMonedas).RequireAuthorization();
+        grupo.MapPut("/monedas", GuardarMonedas).RequireAuthorization(Permisos.ConfiguracionMonedas);
+
         grupo.MapGet("/correo", ObtenerCorreo).RequireAuthorization(Permisos.ConfiguracionCorreo);
         grupo.MapPut("/correo", GuardarCorreo).RequireAuthorization(Permisos.ConfiguracionCorreo);
         grupo.MapPost("/correo/probar", async (PeticionGuardarCorreoDeEmpresa peticion,
@@ -97,6 +101,19 @@ public static class EmpresasEndpoints
         ConfiguracionEmpresaDto peticion, ServicioDeEmpresa empresas, HttpContext contexto, CancellationToken ct)
     {
         var resultado = await empresas.GuardarConfiguracionAsync(peticion, ct);
+
+        return resultado.EsFallo
+            ? resultado.Error!.AResultado(contexto)
+            : Results.Ok(resultado.Valor);
+    }
+
+    private static async Task<IResult> ObtenerMonedas(ServicioDeEmpresa empresas, CancellationToken ct)
+        => Results.Ok(await empresas.ObtenerMonedasAsync(ct));
+
+    private static async Task<IResult> GuardarMonedas(
+        MonedasDeEmpresaDto peticion, ServicioDeEmpresa empresas, HttpContext contexto, CancellationToken ct)
+    {
+        var resultado = await empresas.GuardarMonedasAsync(peticion, ct);
 
         return resultado.EsFallo
             ? resultado.Error!.AResultado(contexto)

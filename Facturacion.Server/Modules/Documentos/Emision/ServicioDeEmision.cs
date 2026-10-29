@@ -224,6 +224,9 @@ public sealed class ServicioDeEmision(
             return ErrorNegocio.Validacion("moneda-desconocida",
                 "La moneda no está en el catálogo del SAT. Selecciona una moneda válida antes de guardar.");
 
+        if (await MonedaHabilitada.ExigirAsync(baseDeDatos, peticion.Moneda, ct) is { } monedaNoHabilitada)
+            return monedaNoHabilitada;
+
         // Sin ModificadoUtc el borrador nunca se guardó: no hay valor anterior que valga la
         // pena conservar, y el registro queda como alta.
         var antes = comprobante.ModificadoUtc is null ? null : ADto(comprobante);

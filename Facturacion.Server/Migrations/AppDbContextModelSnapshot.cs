@@ -2643,6 +2643,27 @@ namespace Facturacion.Server.Migrations
                     b.ToTable("Membresias", (string)null);
                 });
 
+            modelBuilder.Entity("Facturacion.Server.Data.Entidades.Plataforma.MonedaDeEmpresa", b =>
+                {
+                    b.Property<Guid>("EmpresaId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("Moneda")
+                        .HasMaxLength(3)
+                        .IsUnicode(false)
+                        .HasColumnType("varchar(3)");
+
+                    b.Property<bool>("Activa")
+                        .HasColumnType("bit");
+
+                    b.Property<DateTime>("ModificadaUtc")
+                        .HasColumnType("datetime2");
+
+                    b.HasKey("EmpresaId", "Moneda");
+
+                    b.ToTable("MonedasDeEmpresa", (string)null);
+                });
+
             modelBuilder.Entity("Facturacion.Server.Data.Entidades.Plataforma.MovimientoTimbre", b =>
                 {
                     b.Property<Guid>("Id")
@@ -3186,6 +3207,11 @@ namespace Facturacion.Server.Migrations
                         {
                             Clave = "configuracion_impuestos",
                             Descripcion = "Configuración: Impuestos"
+                        },
+                        new
+                        {
+                            Clave = "configuracion_monedas",
+                            Descripcion = "Configuración: Monedas"
                         });
                 });
 
@@ -4453,6 +4479,17 @@ namespace Facturacion.Server.Migrations
                         .IsRequired();
 
                     b.Navigation("Cuenta");
+                });
+
+            modelBuilder.Entity("Facturacion.Server.Data.Entidades.Plataforma.MonedaDeEmpresa", b =>
+                {
+                    b.HasOne("Facturacion.Server.Data.Entidades.Plataforma.Empresa", "Empresa")
+                        .WithMany()
+                        .HasForeignKey("EmpresaId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("Empresa");
                 });
 
             modelBuilder.Entity("Facturacion.Server.Data.Entidades.Plataforma.Paquete", b =>

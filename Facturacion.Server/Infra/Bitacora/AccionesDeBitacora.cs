@@ -22,6 +22,7 @@ public static class AccionesDeBitacora
     // Empresa, certificados y folios.
     public const string EmpresaActualizada = "empresa_actualizada";
     public const string ConfiguracionActualizada = "configuracion_actualizada";
+    public const string MonedasActualizadas = "monedas_actualizadas";
     public const string CorreoDeEmpresaActualizado = "correo_de_empresa_actualizado";
     public const string ConfiguracionNotarioActualizada = "configuracion_notario_actualizada";
     public const string DatosNotariaActualizados = "datos_notaria_actualizados";
@@ -159,6 +160,7 @@ public static class EntidadesDeBitacora
     public const string RefreshToken = "RefreshToken";
     public const string Empresa = "Empresa";
     public const string ConfiguracionEmpresa = "ConfiguracionEmpresa";
+    public const string MonedasDeEmpresa = "MonedasDeEmpresa";
     public const string CorreoDeEmpresa = "CorreoDeEmpresa";
     public const string ConfiguracionNotario = "ConfiguracionNotario";
     public const string DatosNotaria = "DatosNotaria";

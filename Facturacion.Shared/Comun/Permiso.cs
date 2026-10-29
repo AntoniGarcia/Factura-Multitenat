@@ -31,7 +31,7 @@ public enum Permiso
     ComprarTimbres,
 
     EmpresaDatos, EmpresaCertificados,
-    ConfiguracionGeneral, ConfiguracionCorreo, ConfiguracionImpuestos,
+    ConfiguracionGeneral, ConfiguracionCorreo, ConfiguracionImpuestos, ConfiguracionMonedas,
 
     Titular
 }
@@ -161,6 +161,7 @@ public static class Permisos
     public const string ConfiguracionGeneral = "configuracion_general";
     public const string ConfiguracionCorreo = "configuracion_correo";
     public const string ConfiguracionImpuestos = "configuracion_impuestos";
+    public const string ConfiguracionMonedas = "configuracion_monedas";
 
     public const string Titular = "titular";
 
@@ -281,7 +282,8 @@ public static class Permisos
             [
                 new(ConfiguracionGeneral, "General"),
                 new(ConfiguracionCorreo, "Correo"),
-                new(ConfiguracionImpuestos, "Impuestos")
+                new(ConfiguracionImpuestos, "Impuestos"),
+                new(ConfiguracionMonedas, "Monedas")
             ])
         ])
     ];
@@ -448,7 +450,7 @@ public static class Permisos
                 [EditarProductos] = [ProductosCrear, ProductosModificar],
                 [Series] = DelElemento(Catalogos.Series),
                 [MiEmpresa] = [EmpresaDatos, EmpresaCertificados],
-                [Configuracion] = [ConfiguracionGeneral, ConfiguracionCorreo, ConfiguracionImpuestos],
+                [Configuracion] = [ConfiguracionGeneral, ConfiguracionCorreo, ConfiguracionImpuestos, ConfiguracionMonedas],
                 [PerfilDeNotaria] = [EmpresaDatos, ConfiguracionGeneral]
             };
     }

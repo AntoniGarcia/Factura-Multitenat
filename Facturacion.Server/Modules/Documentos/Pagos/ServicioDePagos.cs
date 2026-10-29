@@ -293,6 +293,9 @@ public sealed class ServicioDePagos(
         if (decimales is null)
             return ErrorNegocio.Validacion("moneda-invalida", "Selecciona una moneda vigente del catálogo SAT; XXX no es una moneda de pago.");
 
+        if (await MonedaHabilitada.ExigirAsync(baseDeDatos, peticion.MonedaP, ct) is { } monedaNoHabilitada)
+            return monedaNoHabilitada;
+
         if (peticion.FormaDePagoP == "99" || !await baseDeDatos.SatFormasPago.AsNoTracking()
                 .AnyAsync(x => x.Clave == peticion.FormaDePagoP && x.Vigente, ct))
             return ErrorNegocio.Validacion("forma-pago-invalida", "Selecciona la forma en que se recibió el pago; no puede ser por definir.");

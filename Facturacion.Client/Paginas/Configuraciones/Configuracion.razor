@@ -3,7 +3,9 @@
 @inject ServicioDeEmpresa Empresas
 @inject IServicioDeConfirmacion Confirmacion
 @inject ServicioDeSesion Sesion
+@inject ServicioDeCatalogos Catalogos
 @using Facturacion.Client.Componentes.Empresas
+@using Facturacion.Shared.Contratos
 
 @* El logo se guarda al seleccionarlo; los demás cambios se envían con Guardar. *@
 
@@ -195,6 +197,50 @@ else
             </div>
         </MudTabPanel>
 
+        <MudTabPanel Text="Monedas" Icon="@Icons.Material.Filled.CurrencyExchange" Visible="_verMonedas">
+            <section class="formulario-catalogo-seccion" aria-labelledby="cliente-config-monedas">
+            <h2 id="cliente-config-monedas" class="seccion-titulo">Monedas de la empresa</h2>
+            <p class="seccion-ayuda">
+                Las que se ofrecen al capturar facturas y pagos. El peso mexicano siempre está; el
+                tipo de cambio se captura en cada documento.
+            </p>
+            <div class="rejilla-campos">
+                <BuscadorCatalogo Catalogo="c_Moneda" Opciones="@MonedasPorAgregar" Clave="@_monedaPorAgregar"
+                                  ClaveChanged="AgregarMoneda" Label="Agregar moneda" PuedeLimpiar="false" />
+            </div>
+            <MudSimpleTable Dense="true">
+                <thead>
+                    <tr>
+                        <th scope="col">Clave</th>
+                        <th scope="col">Moneda</th>
+                        <th scope="col">Acción</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td class="cifra-tabular">MXN</td>
+                        <td>@DescripcionDeMoneda("MXN")</td>
+                        <td>Siempre disponible</td>
+                    </tr>
+                    @foreach (var moneda in _monedasCapturadas)
+                    {
+                        <tr>
+                            <td class="cifra-tabular">@moneda</td>
+                            <td>@DescripcionDeMoneda(moneda)</td>
+                            <td>
+                                <MudButton Variant="Variant.Text" Size="Size.Small" StartIcon="@Icons.Material.Filled.Close"
+                                           OnClick="@(() => _monedasCapturadas.Remove(moneda))"
+                                           aria-label="@($"Quitar {moneda}")">
+                                    Quitar
+                                </MudButton>
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </MudSimpleTable>
+            </section>
+        </MudTabPanel>
+
         @* Solo el titular da de alta empresas; el servidor lo exige igual y respeta el límite
            de la cuenta. Tiene su propio botón: no es parte de «Guardar configuración». *@
         <MudTabPanel Text="Nueva empresa" Icon="@Icons.Material.Filled.DomainAdd" Visible="_titular">
@@ -250,9 +296,14 @@ else
 
     // Cada pestaña es una casilla de Configuración: solo se muestran, y solo se cargan, las que
     // el usuario tiene. El servidor rechaza igual tocar la parte que no tiene.
-    private bool _general, _verCorreo, _impuestos, _titular;
+    private bool _general, _verCorreo, _impuestos, _verMonedas, _titular;
 
-    private const int PestanaNuevaEmpresa = 3;
+    private const int PestanaMonedas = 3, PestanaNuevaEmpresa = 4;
+
+    // Lo último que confirmó el servidor y lo capturado; el peso no está en ninguna de las dos.
+    private IReadOnlyList<string> _monedasGuardadas = [];
+    private List<string> _monedasCapturadas = [];
+    private string? _monedaPorAgregar;
 
     private void LimpiarPruebaSmtp()
     {
@@ -281,20 +332,23 @@ else
         _general = Sesion.TienePermiso(Permisos.ConfiguracionGeneral);
         _verCorreo = Sesion.TienePermiso(Permisos.ConfiguracionCorreo);
         _impuestos = Sesion.TienePermiso(Permisos.ConfiguracionImpuestos);
+        _verMonedas = Sesion.TienePermiso(Permisos.ConfiguracionMonedas);
         _titular = Sesion.TienePermiso(Permisos.Titular);
-        _pestana = _general ? 0 : _verCorreo ? 1 : 2;
+        _pestana = _general ? 0 : _verCorreo ? 1 : _impuestos ? 2 : _verMonedas ? PestanaMonedas : PestanaNuevaEmpresa;
 
         try
         {
             var configuracion = Empresas.ObtenerConfiguracionAsync();
             var correo = _verCorreo ? Empresas.ObtenerCorreoAsync() : Task.FromResult<CorreoDeEmpresaDto?>(null);
             var logo = _general ? CargarLogoAsync() : Task.CompletedTask;
+            var monedas = _verMonedas ? Empresas.ObtenerMonedasAsync() : Task.FromResult<MonedasDeEmpresaDto?>(null);
 
-            await Task.WhenAll(configuracion, correo, logo);
+            await Task.WhenAll(configuracion, correo, logo, monedas);
 
             AplicarConfiguracion((await configuracion)!);
 
             if (await correo is { } guardado) AplicarCorreo(guardado);
+            if (await monedas is { } deLaEmpresa) AplicarMonedas(deLaEmpresa);
         }
         finally
         {
@@ -367,6 +421,33 @@ else
         }
     }
 
+    // ── Monedas ─────────────────────────────────────────────────────────────────────
+
+    private string DescripcionDeMoneda(string clave)
+        => Catalogos.Obtener("c_Moneda").FirstOrDefault(m => m.Clave == clave)?.Descripcion ?? clave;
+
+    // XXX no es una moneda: el SAT la reserva para comprobantes sin importe.
+    private IReadOnlyList<ClaveSatDto> MonedasPorAgregar
+        => [.. Catalogos.Obtener("c_Moneda")
+            .Where(m => m.Vigente && m.Clave is not ("MXN" or "XXX") && !_monedasCapturadas.Contains(m.Clave))];
+
+    private void AgregarMoneda(string? clave)
+    {
+        if (!string.IsNullOrEmpty(clave) && !_monedasCapturadas.Contains(clave))
+        {
+            _monedasCapturadas.Add(clave);
+            _monedasCapturadas.Sort(StringComparer.Ordinal);
+        }
+
+        _monedaPorAgregar = null;
+    }
+
+    private void AplicarMonedas(MonedasDeEmpresaDto m)
+    {
+        _monedasGuardadas = [.. m.Monedas.Order(StringComparer.Ordinal)];
+        _monedasCapturadas = [.. m.Monedas.Order(StringComparer.Ordinal)];
+    }
+
     // ── Validación inmediata (la que cuenta es la del servidor) ─────────────────────
 
     private string? ErrorDiasAviso => _diasAviso is < 1 or > 365 ? "Entre 1 y 365 días." : null;
@@ -431,7 +512,9 @@ else
             Distinto(_remitenteNombre, _correo.RemitenteNombre) || Distinto(_remitenteCorreo, _correo.RemitenteCorreo) ||
             Distinto(_nombreRemitenteSistema, _correo.NombreRemitenteSistema) || Distinto(_responderA, _correo.ResponderA));
 
-    private bool HayCambios => ConfiguracionCambio || CorreoCambio;
+    private bool MonedasCambio => _verMonedas && !_monedasCapturadas.SequenceEqual(_monedasGuardadas);
+
+    private bool HayCambios => ConfiguracionCambio || CorreoCambio || MonedasCambio;
 
     private static bool Distinto(string? a, string? b)
         => !string.Equals(string.IsNullOrWhiteSpace(a) ? null : a.Trim(), b, StringComparison.Ordinal);
@@ -486,6 +569,20 @@ else
                 AplicarConfiguracion(configuracion!);
             }
 
+            if (MonedasCambio)
+            {
+                var (monedas, errorMonedas) = await Empresas.GuardarMonedasAsync(new MonedasDeEmpresaDto(_monedasCapturadas));
+
+                if (errorMonedas is not null)
+                {
+                    _error = errorMonedas;
+                    _pestana = PestanaMonedas;
+                    return;
+                }
+
+                AplicarMonedas(monedas!);
+            }
+
             _guardado = true;
         }
         finally
@@ -500,6 +597,7 @@ else
         _guardado = false;
         AplicarConfiguracion(_configuracion);
         if (_correo is not null) AplicarCorreo(_correo);
+        AplicarMonedas(new MonedasDeEmpresaDto(_monedasGuardadas));
     }
 
     private void AplicarConfiguracion(ConfiguracionEmpresaDto c)

@@ -5,6 +5,7 @@
 @using Facturacion.Client.Servicios.Plataforma
 @using Facturacion.Client.Componentes.Facturas
 @using Facturacion.Shared.Comun
+@using Facturacion.Shared.Contratos
 @using Facturacion.Shared.Documentos
 @using Facturacion.Shared.Notaria
 @using Facturacion.Shared.Plataforma
@@ -71,11 +72,11 @@ else
                 <MudTextField T="string" Value="@FolioMostrado" Label="Folio" ReadOnly="true" Class="cifra-tabular" />
 
                 <MudSelect T="string" @bind-Value="_moneda" @bind-Value:after="ActualizarVistaPreviaAsync" Label="Moneda">
-                    @foreach (var m in Catalogos.ObtenerMonedasDeCaptura())
+                    @foreach (var m in _monedasDeCaptura)
                     {
                         <MudSelectItem T="string" Value="@m.Clave">@m.Clave — @m.Descripcion</MudSelectItem>
                     }
-                    @if (_moneda is not ("MXN" or "USD"))
+                    @if (_monedasDeCaptura.All(m => m.Clave != _moneda))
                     {
                         <MudSelectItem T="string" Value="@_moneda" Disabled="true">@_moneda — Moneda guardada</MudSelectItem>
                     }
@@ -425,6 +426,7 @@ else
 
     // Cabecera
     private string _moneda = "MXN";
+    private IReadOnlyList<ClaveSatDto> _monedasDeCaptura = [];
     private decimal? _tipoCambio;
     private SerieParaEmisionDto? _serie;
     private IReadOnlyList<SerieParaEmisionDto> _seriesActivas = [];
@@ -553,6 +555,7 @@ else
         }
 
         _seriesActivas = await Empresa.ListarSeriesActivasAsync("I");
+        _monedasDeCaptura = Catalogos.ObtenerMonedasDeCaptura((await Empresa.ObtenerMonedasAsync())?.Monedas ?? []);
 
         var comprobante = await Emision.ObtenerAsync(Id!.Value);
         _comprobante = comprobante;

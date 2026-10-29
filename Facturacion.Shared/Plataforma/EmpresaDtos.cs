@@ -186,3 +186,9 @@ public sealed record PeticionCrearEmpresa(
     string RegimenFiscal,
     string CodigoPostalExpedicion,
     string ZonaHoraria);
+
+/// <summary>
+/// Las monedas de <c>c_Moneda</c> que la empresa ofrece al capturar facturas y pagos, además del
+/// peso mexicano, que siempre está y no se guarda. El tipo de cambio se captura en cada documento.
+/// </summary>
+public sealed record MonedasDeEmpresaDto(IReadOnlyList<string> Monedas);
