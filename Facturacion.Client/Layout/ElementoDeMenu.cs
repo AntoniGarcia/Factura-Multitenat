@@ -91,11 +91,9 @@ public static class MenuPrincipal
         new("/documentos", "Documentos", "description", Permisos.DocumentosListado),
         // Aparte de Documentos porque es otro permiso y otro trabajo: dar seguimiento a lo que
         // sigue esperando la respuesta del receptor o del SAT (§30).
-        //new("/catalogos", "Catálogos", "catalogo", Permiso: null),
         ElementoDeMenu.Submenu("Catálogos", "catalogo", Catalogos),
 
         // ── Mi Administración: se configura una vez y se revisa de vez en cuando ───────────────       
-        new("/empresa/nueva", "Empresas", "domain_add", Permisos.Titular, Grupos.Administracion),
         new("/empresa/usuarios", "Usuarios", "people", Permisos.Titular, Grupos.Administracion),
 
         // ── Tienda: cuenta, gente y datos del SAT ───────────────────────────────

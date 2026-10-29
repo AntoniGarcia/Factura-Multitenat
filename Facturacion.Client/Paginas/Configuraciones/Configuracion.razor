@@ -3,6 +3,7 @@
 @inject ServicioDeEmpresa Empresas
 @inject IServicioDeConfirmacion Confirmacion
 @inject ServicioDeSesion Sesion
+@using Facturacion.Client.Componentes.Empresas
 
 @* El logo se guarda al seleccionarlo; los demás cambios se envían con Guardar. *@
 
@@ -193,8 +194,16 @@ else
             </section>
             </div>
         </MudTabPanel>
+
+        @* Solo el titular da de alta empresas; el servidor lo exige igual y respeta el límite
+           de la cuenta. Tiene su propio botón: no es parte de «Guardar configuración». *@
+        <MudTabPanel Text="Nueva empresa" Icon="@Icons.Material.Filled.DomainAdd" Visible="_titular">
+            <FormularioDeNuevaEmpresa />
+        </MudTabPanel>
     </MudTabs>
 
+    @if (_pestana != PestanaNuevaEmpresa)
+    {
     <div class="tarjeta-formulario-acciones">
         <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="GuardarAsync"
                    Disabled="@(_guardando || _probandoSmtp || !HayCambios)">
@@ -209,6 +218,7 @@ else
             <span class="mensaje-exito" role="status">Configuración guardada.</span>
         }
     </div>
+    }
 }
 </TarjetaFormulario>
 
@@ -240,7 +250,9 @@ else
 
     // Cada pestaña es una casilla de Configuración: solo se muestran, y solo se cargan, las que
     // el usuario tiene. El servidor rechaza igual tocar la parte que no tiene.
-    private bool _general, _verCorreo, _impuestos;
+    private bool _general, _verCorreo, _impuestos, _titular;
+
+    private const int PestanaNuevaEmpresa = 3;
 
     private void LimpiarPruebaSmtp()
     {
@@ -269,6 +281,7 @@ else
         _general = Sesion.TienePermiso(Permisos.ConfiguracionGeneral);
         _verCorreo = Sesion.TienePermiso(Permisos.ConfiguracionCorreo);
         _impuestos = Sesion.TienePermiso(Permisos.ConfiguracionImpuestos);
+        _titular = Sesion.TienePermiso(Permisos.Titular);
         _pestana = _general ? 0 : _verCorreo ? 1 : 2;
 
         try
