@@ -444,3 +444,19 @@ CFDI 4.0 que rompen timbrados»).
   opcional.
 - La descripción del concepto se precarga con «nombre — descripción» del producto y se puede
   editar en cada factura. El servidor guarda la del renglón, con hasta 1000 caracteres y sin «|».
+
+**29 de octubre de 2026 — Conceptos, público en general y monedas** (modifica la entrada del
+28 de octubre «Público en general, productos y conceptos» y la del 27 de octubre).
+
+- El ID interno del producto solo precarga el `NoIdentificacion` en Comercio Exterior. En los
+  demás tipos el concepto no lo captura y lo envía vacío.
+- Con el RFC `XAXX010101000`, el nombre del receptor se captura en cada factura y se precarga con
+  el del cliente; el catálogo no cambia. El servidor lo normaliza como en el alta de clientes y,
+  con información global, exige `PUBLICO EN GENERAL`.
+- Solo el peso mexicano es moneda fija. Cada empresa agrega en Configuración, pestaña Monedas,
+  las de `c_Moneda` que usa. Facturas y pagos solo se capturan en esas, y el servidor lo valida
+  al guardar. Quitar una la desactiva; los documentos guardados conservan su moneda. Al migrar,
+  cada empresa recibió las monedas que ya tenía en comprobantes o pagos, borradores incluidos.
+  El tipo de cambio se sigue capturando en cada documento.
+- Los permisos asignables son 66: Configuración suma `configuracion_monedas`. Al migrar lo
+  recibió quien tenía `configuracion_general`.
