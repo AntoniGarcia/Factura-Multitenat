@@ -19,6 +19,9 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> opciones, IConte
     /// </summary>
     public Guid? EmpresaActual { get; } = contexto.EmpresaActual;
 
+    /// <summary>Cuenta que alimenta el filtro de <see cref="IEntidadDeCuenta"/>, con el mismo mecanismo.</summary>
+    public Guid? CuentaActual { get; } = contexto.CuentaActual;
+
     // Plataforma, identidad y catálogos.
     public DbSet<Cuenta> Cuentas => Set<Cuenta>();
     public DbSet<Empresa> Empresas => Set<Empresa>();

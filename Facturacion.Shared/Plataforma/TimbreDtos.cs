@@ -1,6 +1,6 @@
 namespace Facturacion.Shared.Plataforma;
 
-/// <summary>Saldo de la empresa activa, tal como lo pinta la tarjeta de la barra superior.</summary>
+/// <summary>Saldo de la cuenta, que comparten sus empresas, tal como lo pinta la tarjeta de la barra superior.</summary>
 /// <param name="Disponibles">Utilizables ahora mismo.</param>
 /// <param name="Reservados">Apartados por un timbrado en curso.</param>
 public sealed record SaldoTimbresDto(int Disponibles, int Reservados);
@@ -22,6 +22,7 @@ public sealed record PaqueteDto(
 public sealed record PeticionDeCompra(Guid PaqueteId);
 
 /// <summary>Una compra, con los datos del paquete ya copiados.</summary>
+/// <param name="Empresa">Empresa que la solicitó, con el nombre que tenía al comprar.</param>
 public sealed record CompraDto(
     Guid Id,
     string NombrePaquete,
@@ -31,10 +32,12 @@ public sealed record CompraDto(
     string Estado,
     DateTime CreadaUtc,
     DateTime? AcreditadaUtc,
-    DateTime? VenceUtc);
+    DateTime? VenceUtc,
+    string Empresa);
 
 /// <summary>Un renglón del historial de movimientos.</summary>
 /// <param name="DeltaDisponible">Cuánto cambió el saldo disponible; negativo cuando baja.</param>
+/// <param name="Empresa">Empresa que lo originó: la que compró o la que timbró.</param>
 public sealed record MovimientoTimbreDto(
     Guid Id,
     string Tipo,
@@ -42,7 +45,8 @@ public sealed record MovimientoTimbreDto(
     int DeltaReservado,
     int DisponiblesDespues,
     string? Motivo,
-    DateTime MomentoUtc);
+    DateTime MomentoUtc,
+    string? Empresa);
 
 /// <summary>
 /// Estado de la suscripción de la cuenta.

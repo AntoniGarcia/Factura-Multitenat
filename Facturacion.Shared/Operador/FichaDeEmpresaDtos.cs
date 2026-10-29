@@ -1,9 +1,9 @@
 namespace Facturacion.Shared.Operador;
 
 /// <summary>
-/// La ficha de una empresa emisora vista desde el panel: identidad fiscal, consumo de la
-/// bolsa, las compras de timbres que esperan acreditarse o rechazarse, las compras pagadas
-/// recientes y los usuarios con acceso a esa empresa.
+/// La ficha de una empresa emisora vista desde el panel: identidad fiscal, las compras de
+/// timbres que solicitó y esperan acreditarse o rechazarse, las pagadas recientes y los
+/// usuarios con acceso a esa empresa. El saldo y los paquetes exclusivos son de la cuenta.
 /// </summary>
 public sealed record FichaDeEmpresaDto(
     Guid Id,
@@ -12,10 +12,7 @@ public sealed record FichaDeEmpresaDto(
     string RegimenFiscal,
     bool Activa,
     DateTime FechaAltaUtc,
-    int TimbresDisponibles,
-    int TimbresReservados,
     LicenciasDeEmpresaDto Licencias,
-    IReadOnlyList<PaquetePersonalizadoDto> PaquetesPersonalizados,
     IReadOnlyList<CompraDeOperadorDto> ComprasPendientes,
     IReadOnlyList<CompraDeOperadorDto> UltimasCompras,
     IReadOnlyList<UsuarioDeCuentaDto> Usuarios);

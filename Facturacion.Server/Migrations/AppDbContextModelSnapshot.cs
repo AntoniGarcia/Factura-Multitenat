@@ -1084,18 +1084,18 @@ namespace Facturacion.Server.Migrations
                     b.Property<DateTime>("ActualizadaUtc")
                         .HasColumnType("datetime2");
 
+                    b.Property<Guid>("CuentaId")
+                        .HasColumnType("uniqueidentifier");
+
                     b.Property<int>("Disponibles")
                         .HasColumnType("int");
-
-                    b.Property<Guid>("EmpresaId")
-                        .HasColumnType("uniqueidentifier");
 
                     b.Property<int>("Reservados")
                         .HasColumnType("int");
 
                     b.HasKey("Id");
 
-                    b.HasIndex("EmpresaId")
+                    b.HasIndex("CuentaId")
                         .IsUnique();
 
                     b.ToTable("BolsasTimbres", (string)null);
@@ -2207,6 +2207,9 @@ namespace Facturacion.Server.Migrations
                     b.Property<DateTime>("CreadaUtc")
                         .HasColumnType("datetime2");
 
+                    b.Property<Guid>("CuentaId")
+                        .HasColumnType("uniqueidentifier");
+
                     b.Property<Guid>("EmpresaId")
                         .HasColumnType("uniqueidentifier");
 
@@ -2271,7 +2274,7 @@ namespace Facturacion.Server.Migrations
                     b.HasIndex("Estado")
                         .HasFilter("[Estado] = 'pendiente_de_pago'");
 
-                    b.HasIndex("EmpresaId", "CreadaUtc");
+                    b.HasIndex("CuentaId", "CreadaUtc");
 
                     b.ToTable("ComprasTimbres", (string)null);
                 });
@@ -2643,6 +2646,9 @@ namespace Facturacion.Server.Migrations
                     b.Property<Guid?>("CompraId")
                         .HasColumnType("uniqueidentifier");
 
+                    b.Property<Guid>("CuentaId")
+                        .HasColumnType("uniqueidentifier");
+
                     b.Property<int>("DeltaDisponible")
                         .HasColumnType("int");
 
@@ -2678,7 +2684,7 @@ namespace Facturacion.Server.Migrations
 
                     b.HasKey("Id");
 
-                    b.HasIndex("EmpresaId", "MomentoUtc");
+                    b.HasIndex("CuentaId", "MomentoUtc");
 
                     b.ToTable("MovimientosTimbre", (string)null);
                 });
@@ -2749,7 +2755,7 @@ namespace Facturacion.Server.Migrations
                     b.Property<int>("CantidadTimbres")
                         .HasColumnType("int");
 
-                    b.Property<Guid?>("EmpresaId")
+                    b.Property<Guid?>("CuentaId")
                         .HasColumnType("uniqueidentifier");
 
                     b.Property<string>("Nombre")
@@ -2773,7 +2779,7 @@ namespace Facturacion.Server.Migrations
 
                     b.HasKey("Id");
 
-                    b.HasIndex("EmpresaId", "Activo", "Orden");
+                    b.HasIndex("CuentaId", "Activo", "Orden");
 
                     b.ToTable("Paquetes", (string)null);
 
@@ -4349,13 +4355,13 @@ namespace Facturacion.Server.Migrations
 
             modelBuilder.Entity("Facturacion.Server.Data.Entidades.Plataforma.BolsaTimbres", b =>
                 {
-                    b.HasOne("Facturacion.Server.Data.Entidades.Plataforma.Empresa", "Empresa")
+                    b.HasOne("Facturacion.Server.Data.Entidades.Plataforma.Cuenta", "Cuenta")
                         .WithMany()
-                        .HasForeignKey("EmpresaId")
+                        .HasForeignKey("CuentaId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
 
-                    b.Navigation("Empresa");
+                    b.Navigation("Cuenta");
                 });
 
             modelBuilder.Entity("Facturacion.Server.Data.Entidades.Plataforma.CertificadoCsd", b =>
@@ -4426,12 +4432,12 @@ namespace Facturacion.Server.Migrations
 
             modelBuilder.Entity("Facturacion.Server.Data.Entidades.Plataforma.Paquete", b =>
                 {
-                    b.HasOne("Facturacion.Server.Data.Entidades.Plataforma.Empresa", "Empresa")
+                    b.HasOne("Facturacion.Server.Data.Entidades.Plataforma.Cuenta", "Cuenta")
                         .WithMany()
-                        .HasForeignKey("EmpresaId")
+                        .HasForeignKey("CuentaId")
                         .OnDelete(DeleteBehavior.Restrict);
 
-                    b.Navigation("Empresa");
+                    b.Navigation("Cuenta");
                 });
 
             modelBuilder.Entity("Facturacion.Server.Data.Entidades.Plataforma.PermisoOperador", b =>

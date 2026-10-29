@@ -54,16 +54,6 @@ else
             </div>
 
             <div class="ficha-empresa-acciones">
-                @if (Sesion.TienePermiso(PoliticasDelPanel.AsignarTimbres))
-                {
-                <MudButton Variant="Variant.Filled"
-                           Color="Color.Primary"
-                           StartIcon="@Icons.Material.Filled.AddCard"
-                           Disabled="@_trabajando"
-                           OnClick="CrearPaquetePersonalizado">
-                    Crear paquete
-                </MudButton>
-                }
                 @if (Sesion.TienePermiso(PoliticasDelPanel.GestionarLicencias))
                 {
                 <MudButton Variant="Variant.Outlined"
@@ -89,14 +79,6 @@ else
         </div>
 
         <dl class="ficha-cuenta-metricas">
-            <div>
-                <dt>Timbres disponibles</dt>
-                <dd class="cifra-tabular">@_ficha.TimbresDisponibles.ToString("N0")</dd>
-            </div>
-            <div>
-                <dt>Timbres reservados</dt>
-                <dd class="cifra-tabular">@_ficha.TimbresReservados.ToString("N0")</dd>
-            </div>
             <div>
                 <dt>Usuarios con acceso</dt>
                 <dd class="cifra-tabular">@_ficha.Usuarios.Count.ToString("N0")</dd>
@@ -272,73 +254,6 @@ else
                 {
                     <MudProgressLinear Indeterminate="true" Color="Color.Primary" Class="progreso-compras-ficha" />
                 }
-
-                <section class="seccion-compras-ficha" aria-labelledby="titulo-paquetes-personalizados">
-                    <div class="cabecera-subseccion-ficha">
-                        <div>
-                            <h3 id="titulo-paquetes-personalizados">Paquetes personalizados</h3>
-                            <span class="texto-secundario">Solo aparecen para esta empresa.</span>
-                        </div>
-                        @if (Sesion.TienePermiso(PoliticasDelPanel.AsignarTimbres))
-                        {
-                        <MudButton Size="Size.Small" Variant="Variant.Outlined"
-                                   StartIcon="@Icons.Material.Filled.Add"
-                                   Disabled="@_trabajando"
-                                   OnClick="CrearPaquetePersonalizado">
-                            Crear paquete
-                        </MudButton>
-                        }
-                    </div>
-
-                    <MudTable T="PaquetePersonalizadoDto"
-                              Items="@_ficha.PaquetesPersonalizados"
-                              Dense="true" Hover="true" Elevation="0"
-                              Breakpoint="Breakpoint.Sm" Class="tabla-ficha-operador">
-                        <HeaderContent>
-                            <MudTh>Paquete</MudTh>
-                            <MudTh class="cifra-tabular">Timbres</MudTh>
-                            <MudTh class="cifra-tabular">Total con IVA</MudTh>
-                            <MudTh>Vigencia</MudTh>
-                            <MudTh>Estado</MudTh>
-                            <MudTh></MudTh>
-                        </HeaderContent>
-                        <RowTemplate>
-                            <MudTd DataLabel="Paquete">
-                                <strong>@context.Nombre</strong>
-                                @if (context.Compras > 0)
-                                {
-                                    <div class="texto-secundario">@(context.Compras == 1 ? "1 compra" : $"{context.Compras} compras")</div>
-                                }
-                            </MudTd>
-                            <MudTd DataLabel="Timbres" Class="cifra-tabular">@context.CantidadTimbres.ToString("N0")</MudTd>
-                            <MudTd DataLabel="Total con IVA" Class="cifra-tabular">@context.PrecioTotal.ToString("C2")</MudTd>
-                            <MudTd DataLabel="Vigencia">@context.VigenciaMeses meses</MudTd>
-                            <MudTd DataLabel="Estado">
-                                <span class="indicador-estado indicador-estado-@(context.Activo ? "timbrada" : "borrador")">
-                                    @(context.Activo ? "Disponible" : "Inactivo")
-                                </span>
-                            </MudTd>
-                            <MudTd DataLabel="Acciones" Class="celda-accion-ficha">
-                                @if (Sesion.TienePermiso(PoliticasDelPanel.AsignarTimbres))
-                                {
-                                <MudButton Size="Size.Small" Variant="Variant.Text" Disabled="@_trabajando"
-                                           OnClick="@(() => EditarPaquetePersonalizado(context))">
-                                    Editar
-                                </MudButton>
-                                <MudButton Size="Size.Small" Variant="Variant.Text"
-                                           Color="@(context.Activo ? Color.Error : Color.Primary)"
-                                           Disabled="@_trabajando"
-                                           OnClick="@(() => CambiarActivoPaquetePersonalizado(context))">
-                                    @(context.Activo ? "Desactivar" : "Reactivar")
-                                </MudButton>
-                                }
-                            </MudTd>
-                        </RowTemplate>
-                        <NoRecordsContent>
-                            <div class="estado-vacio-tabla">Esta empresa aún no tiene paquetes exclusivos.</div>
-                        </NoRecordsContent>
-                    </MudTable>
-                </section>
 
                 <section class="seccion-compras-ficha" aria-labelledby="titulo-pendientes-empresa">
                     <div class="cabecera-subseccion-ficha">
@@ -747,82 +662,6 @@ else
         if (licencias.Comercio) modulos.Add("Comercio exterior");
         if (licencias.Ine) modulos.Add("Complemento INE");
         return modulos.Count == 0 ? "Sin módulos adicionales." : string.Join(" · ", modulos);
-    }
-
-    private async Task CrearPaquetePersonalizado()
-    {
-        if (_trabajando || _ficha is null) return;
-
-        var parametros = new DialogParameters<DialogoDePaquetePersonalizado>
-        {
-            { x => x.NombreEmpresa, _ficha.NombreFiscal }
-        };
-
-        var referencia = await Dialogos.ShowAsync<DialogoDePaquetePersonalizado>("Crear paquete personalizado", parametros);
-        var resultado = await referencia.Result;
-
-        if (resultado is not { Canceled: false, Data: PeticionGuardarPaquetePersonalizado peticion }) return;
-
-        _trabajando = true;
-        _error = null;
-        _aviso = null;
-
-        _error = await Clientes.CrearPaquetePersonalizadoAsync(CuentaId, EmpresaId, peticion);
-
-        _trabajando = false;
-
-        if (_error is null)
-            _aviso = "Paquete creado. El cliente ya puede comprarlo; la compra quedará pendiente de pago.";
-
-        await CargarAsync();
-    }
-
-    private async Task EditarPaquetePersonalizado(PaquetePersonalizadoDto paquete)
-    {
-        if (_trabajando || _ficha is null) return;
-
-        var parametros = new DialogParameters<DialogoDePaquetePersonalizado>
-        {
-            { x => x.NombreEmpresa, _ficha.NombreFiscal },
-            { x => x.Paquete, paquete }
-        };
-
-        var referencia = await Dialogos.ShowAsync<DialogoDePaquetePersonalizado>("Editar paquete personalizado", parametros);
-        var resultado = await referencia.Result;
-
-        if (resultado is not { Canceled: false, Data: PeticionGuardarPaquetePersonalizado peticion }) return;
-
-        _trabajando = true;
-        _error = await Clientes.ActualizarPaquetePersonalizadoAsync(
-            CuentaId, EmpresaId, paquete.Id, peticion);
-        _trabajando = false;
-
-        if (_error is null) _aviso = "Paquete actualizado. Las compras anteriores conservan sus importes.";
-        await CargarAsync();
-    }
-
-    private async Task CambiarActivoPaquetePersonalizado(PaquetePersonalizadoDto paquete)
-    {
-        if (_trabajando) return;
-
-        var nuevoEstado = !paquete.Activo;
-        if (!nuevoEstado)
-        {
-            var confirmado = await Confirmacion.ConfirmarAsync(
-                "Desactivar paquete",
-                $"«{paquete.Nombre}» dejará de aparecer para esta empresa. Las compras existentes no cambiarán.",
-                "Desactivar");
-            if (!confirmado) return;
-        }
-
-        _trabajando = true;
-        _error = await Clientes.CambiarActivoPaquetePersonalizadoAsync(
-            CuentaId, EmpresaId, paquete.Id, nuevoEstado);
-        _trabajando = false;
-
-        if (_error is null) _aviso = nuevoEstado ? "Paquete reactivado." : "Paquete desactivado.";
-
-        await CargarAsync();
     }
 
     private async Task RestablecerContrasena(UsuarioDeCuentaDto usuario)

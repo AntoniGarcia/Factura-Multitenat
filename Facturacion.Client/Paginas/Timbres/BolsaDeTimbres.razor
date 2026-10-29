@@ -79,8 +79,8 @@
 <h2 class="seccion-titulo">Comprar timbres</h2>
 
 <p class="seccion-ayuda">
-    Los timbres se abonan a la empresa activa. La compra queda registrada y los timbres entran
-    en cuanto se confirma el pago.
+    Los timbres se abonan a tu cuenta y los usan todas sus empresas. La compra queda registrada
+    y los timbres entran en cuanto se confirma el pago.
 </p>
 
 <div class="rejilla-paquetes">
@@ -91,7 +91,7 @@
 
             @if (paquete.EsPersonalizado)
             {
-                <span class="indicador-estado indicador-estado-advertencia">Exclusivo para esta empresa</span>
+                <span class="indicador-estado indicador-estado-advertencia">Exclusivo para tu cuenta</span>
             }
 
             <p class="paquete-total cifra-tabular">@paquete.PrecioTotal.ToString("C2")</p>
@@ -126,6 +126,7 @@ else
             <tr>
                 <th class="cifra-tabular">Fecha</th>
                 <th>Paquete</th>
+                <th>Empresa</th>
                 <th class="cifra-tabular">Timbres</th>
                 <th class="cifra-tabular">Total</th>
                 <th>Estado</th>
@@ -139,6 +140,7 @@ else
                     @onclick="@(() => PrevisualizarComprobante(compra))">
                     <td class="cifra-tabular">@compra.CreadaUtc.ToLocalTime().ToString("yyyy-MM-dd HH:mm")</td>
                     <td>@compra.NombrePaquete</td>
+                    <td>@compra.Empresa</td>
                     <td class="cifra-tabular">@compra.CantidadTimbres</td>
                     <td class="cifra-tabular">@compra.PrecioTotal.ToString("C2")</td>
                     <td>

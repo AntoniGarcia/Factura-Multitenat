@@ -30,8 +30,6 @@ public sealed record EmpresaDeCuentaDto(
     string RegimenFiscal,
     bool Activa,
     DateTime FechaAltaUtc,
-    int TimbresDisponibles,
-    int TimbresReservados,
     int ComprasPendientes);
 
 /// <summary>Un usuario de la cuenta. Sin contraseñas ni permisos: solo quién tiene acceso.</summary>
@@ -43,13 +41,16 @@ public sealed record UsuarioDeCuentaDto(
     DateTime FechaAltaUtc);
 
 /// <summary>
-/// La ficha de una cuenta contratante: sus datos y sus empresas. Los usuarios con acceso y las
-/// compras de cada empresa se ven en la ficha de esa empresa, no mezclados aquí.
+/// La ficha de una cuenta contratante: sus datos, sus empresas, su bolsa de timbres y sus
+/// paquetes exclusivos, que son de la cuenta. Los usuarios con acceso y las compras de cada
+/// empresa se ven en la ficha de esa empresa, no mezclados aquí.
 /// </summary>
 public sealed record DetalleDeCuentaDto(
     CuentaEnListaDto Cuenta,
     IReadOnlyList<EmpresaDeCuentaDto> Empresas,
-    LimitesDeCuentaDto Limites);
+    LimitesDeCuentaDto Limites,
+    int TimbresReservados,
+    IReadOnlyList<PaquetePersonalizadoDto> PaquetesPersonalizados);
 
 /// <summary>
 /// Cuántos usuarios activos y cuántas empresas admite la cuenta, y cuántos usa. Un usuario

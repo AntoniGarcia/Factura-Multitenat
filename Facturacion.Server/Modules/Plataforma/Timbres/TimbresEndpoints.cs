@@ -90,12 +90,13 @@ public static class TimbresEndpoints
         var movimientos = await compras.MovimientosAsync(tipo, desde, hasta, ct);
 
         var csv = new StringBuilder();
-        csv.AppendLine("Momento,Tipo,Disponible,Reservado,SaldoDisponible,Motivo");
+        csv.AppendLine("Momento,Tipo,Empresa,Disponible,Reservado,SaldoDisponible,Motivo");
 
         foreach (var movimiento in movimientos)
         {
             csv.Append(movimiento.MomentoUtc.ToString("O", CultureInfo.InvariantCulture)).Append(',')
                .Append(movimiento.Tipo).Append(',')
+               .Append(Entrecomillar(movimiento.Empresa)).Append(',')
                .Append(movimiento.DeltaDisponible.ToString(CultureInfo.InvariantCulture)).Append(',')
                .Append(movimiento.DeltaReservado.ToString(CultureInfo.InvariantCulture)).Append(',')
                .Append(movimiento.DisponiblesDespues.ToString(CultureInfo.InvariantCulture)).Append(',')

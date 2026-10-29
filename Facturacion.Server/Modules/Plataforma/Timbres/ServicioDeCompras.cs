@@ -21,42 +21,31 @@ public sealed class ServicioDeCompras(
     public async Task<IReadOnlyList<PaqueteDto>> PaquetesAsync(CancellationToken ct)
         => await baseDeDatos.Paquetes
             .AsNoTracking()
-            .Where(p => p.Activo && (p.EmpresaId == null || p.EmpresaId == contexto.EmpresaId))
-            .OrderBy(p => p.EmpresaId == null ? 0 : 1)
+            .Where(p => p.Activo && (p.CuentaId == null || p.CuentaId == contexto.CuentaActual))
+            .OrderBy(p => p.CuentaId == null ? 0 : 1)
             .ThenBy(p => p.Orden)
             .Select(p => new PaqueteDto(
                 p.Id, p.Nombre, p.CantidadTimbres, p.PrecioPorTimbre, p.PrecioTotal,
-                p.VigenciaMeses, p.EmpresaId != null))
+                p.VigenciaMeses, p.CuentaId != null))
             .ToListAsync(ct);
 
+    // Una cuenta que nunca compró no tiene renglón de bolsa. Es un saldo de cero, no un
+    // error: la bolsa nace al acreditarse la primera compra. El filtro global la acota a la
+    // cuenta del claim.
     public async Task<SaldoTimbresDto> SaldoAsync(CancellationToken ct)
-    /*
-    => await baseDeDatos.BolsasTimbres
-           .AsNoTracking()
-           .Where(b => b.EmpresaId == contexto.EmpresaId)
-           .Select(b => new SaldoTimbresDto(b.Disponibles, b.Reservados))
-           .FirstOrDefaultAsync(ct)
-       // Una empresa que nunca compró no tiene renglón de bolsa. Es un saldo de cero, no
-       // un error: la bolsa nace al acreditarse la primera compra.
-       ?? new SaldoTimbresDto(0, 0);
-    */
-    {
-        if (!contexto.HayEmpresa) return new SaldoTimbresDto(0, 0);
-
-        return await baseDeDatos.BolsasTimbres
+        => await baseDeDatos.BolsasTimbres
             .AsNoTracking()
-            .Where(b => b.EmpresaId == contexto.EmpresaId)
             .Select(b => new SaldoTimbresDto(b.Disponibles, b.Reservados))
             .FirstOrDefaultAsync(ct)
-            ?? new SaldoTimbresDto(0, 0);
-    }
+           ?? new SaldoTimbresDto(0, 0);
+
     public async Task<Resultado<CompraDto>> ComprarAsync(PeticionDeCompra peticion, CancellationToken ct)
     {
         var paquete = await baseDeDatos.Paquetes
             .AsNoTracking()
             .FirstOrDefaultAsync(
                 p => p.Id == peticion.PaqueteId
-                     && (p.EmpresaId == null || p.EmpresaId == contexto.EmpresaId),
+                     && (p.CuentaId == null || p.CuentaId == contexto.CuentaActual),
                 ct);
 
         if (paquete is null)
@@ -119,7 +108,7 @@ public sealed class ServicioDeCompras(
             .OrderByDescending(c => c.CreadaUtc)
             .Select(c => new CompraDto(
                 c.Id, c.NombrePaquete, c.CantidadTimbres, c.PrecioPorTimbre, c.PrecioTotal,
-                c.Estado, c.CreadaUtc, c.AcreditadaUtc, c.VenceUtc))
+                c.Estado, c.CreadaUtc, c.AcreditadaUtc, c.VenceUtc, c.EmpresaNombreAlComprar))
             .ToListAsync(ct);
 
     /// <param name="tipo">Filtra por <see cref="TiposDeMovimientoTimbre"/>; nulo trae todos.</param>
@@ -141,7 +130,8 @@ public sealed class ServicioDeCompras(
             .OrderByDescending(m => m.MomentoUtc)
             .Select(m => new MovimientoTimbreDto(
                 m.Id, m.Tipo, m.DeltaDisponible, m.DeltaReservado,
-                m.DisponiblesDespues, m.Motivo, m.MomentoUtc))
+                m.DisponiblesDespues, m.Motivo, m.MomentoUtc,
+                baseDeDatos.Empresas.Where(e => e.Id == m.EmpresaId).Select(e => e.NombreFiscal).FirstOrDefault()))
             .ToListAsync(ct);
     }
 
@@ -226,7 +216,8 @@ public sealed class ServicioDeCompras(
         bitacora.Registrar(
             EntidadesDeBitacora.CompraTimbres, compra.Id.ToString(), AccionesDeBitacora.CompraAcreditada,
             despues: new { compra.CantidadTimbres, compra.PrecioTotal, compra.VenceUtc },
-            empresaId: compra.EmpresaId);
+            empresaId: compra.EmpresaId,
+            cuentaId: compra.CuentaId);
 
         await baseDeDatos.SaveChangesAsync(ct);
 
@@ -235,7 +226,8 @@ public sealed class ServicioDeCompras(
 
     private static CompraDto ADto(CompraTimbres compra) => new(
         compra.Id, compra.NombrePaquete, compra.CantidadTimbres, compra.PrecioPorTimbre,
-        compra.PrecioTotal, compra.Estado, compra.CreadaUtc, compra.AcreditadaUtc, compra.VenceUtc);
+        compra.PrecioTotal, compra.Estado, compra.CreadaUtc, compra.AcreditadaUtc, compra.VenceUtc,
+        compra.EmpresaNombreAlComprar);
 
     private sealed record ResultadoDeAcreditacion(bool Acreditada, int? DisponiblesDespues);
 }

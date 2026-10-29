@@ -2,6 +2,7 @@ using Facturacion.Server.Data;
 using Facturacion.Server.Data.Entidades.Plataforma;
 using Facturacion.Server.Infra.Bitacora;
 using Facturacion.Server.Modules.Operador.Auth;
+using Facturacion.Server.Modules.Operador.Paquetes;
 using Facturacion.Server.Modules.Plataforma;
 using Facturacion.Shared.Comun;
 using Facturacion.Shared.Operador;
@@ -27,13 +28,13 @@ namespace Facturacion.Server.Modules.Operador.Clientes;
 /// <para><b>Qué está y qué no está bajo el filtro de empresa</b></para>
 /// <c>Cuenta</c>, <c>Empresa</c> y <c>Usuario</c> quedan fuera del filtro global por diseño,
 /// así que se consultan directo. <c>BolsaTimbres</c> sí lo lleva, y por eso sus consultas van
-/// con <c>IgnoreQueryFilters</c> anotado y siempre acotadas a las empresas de la cuenta que
-/// se está mirando.
+/// con <c>IgnoreQueryFilters</c> anotado y siempre acotadas a la cuenta que se está mirando.
 /// </summary>
 public sealed class ServicioDeClientesDePlataforma(
     AppDbContext baseDeDatos,
     IPasswordHasher<OperadorPlataforma> hasher,
-    IServicioDeBitacora bitacora)
+    IServicioDeBitacora bitacora,
+    ServicioDePaquetesPersonalizados paquetesPersonalizados)
 {
     public async Task<PaginaDeCuentas> ListarAsync(
         string? texto, int pagina, int tamano, CancellationToken ct)
@@ -71,20 +72,19 @@ public sealed class ServicioDeClientesDePlataforma(
                 Empresas = baseDeDatos.Empresas.Count(e => e.CuentaId == c.Id),
                 Usuarios = baseDeDatos.Users.Count(u => u.CuentaId == c.Id),
 
-                // IgnoreQueryFilters justificado: BolsaTimbres es de empresa y el panel suma
-                // las de la cuenta que está listando. Acotado por CuentaId, nunca abierto.
+                // IgnoreQueryFilters justificado: BolsaTimbres lleva el filtro de cuenta y el
+                // panel no tiene cuenta activa. Acotado por CuentaId, nunca abierto.
                 Timbres = baseDeDatos.BolsasTimbres
                     .IgnoreQueryFilters()
-                    .Where(b => baseDeDatos.Empresas.Any(e => e.Id == b.EmpresaId && e.CuentaId == c.Id))
+                    .Where(b => b.CuentaId == c.Id)
                     .Sum(b => (int?)b.Disponibles) ?? 0,
 
-                // IgnoreQueryFilters justificado: ComprasTimbres es de empresa y se cuentan
-                // las de todas las empresas de la cuenta que se está listando. Acotado por
-                // CuentaId, nunca abierto.
+                // IgnoreQueryFilters justificado: ComprasTimbres lleva el filtro de cuenta y
+                // el panel no tiene cuenta activa. Acotado por CuentaId, nunca abierto.
                 ComprasPendientes = baseDeDatos.ComprasTimbres
                     .IgnoreQueryFilters()
                     .Count(cmp => cmp.Estado == EstadosDeCompra.PendienteDePago &&
-                                  baseDeDatos.Empresas.Any(e => e.Id == cmp.EmpresaId && e.CuentaId == c.Id)),
+                                  cmp.CuentaId == c.Id),
 
                 Membresia = baseDeDatos.Membresias
                     .Where(m => m.CuentaId == c.Id)
@@ -121,13 +121,8 @@ public sealed class ServicioDeClientesDePlataforma(
             .OrderBy(e => e.NombreFiscal)
             .Select(e => new EmpresaDeCuentaDto(
                 e.Id, e.Rfc, e.NombreFiscal, e.RegimenFiscal, e.Activa, e.FechaAltaUtc,
-                // IgnoreQueryFilters justificado: igual que arriba, acotado a esta empresa.
-                baseDeDatos.BolsasTimbres.IgnoreQueryFilters()
-                    .Where(b => b.EmpresaId == e.Id).Select(b => (int?)b.Disponibles).FirstOrDefault() ?? 0,
-                baseDeDatos.BolsasTimbres.IgnoreQueryFilters()
-                    .Where(b => b.EmpresaId == e.Id).Select(b => (int?)b.Reservados).FirstOrDefault() ?? 0,
-                // IgnoreQueryFilters justificado: ComprasTimbres es de empresa; se cuentan las
-                // pendientes de acreditar de esta empresa concreta, no las de las demás.
+                // IgnoreQueryFilters justificado: igual que arriba; se cuentan las pendientes
+                // que solicitó esta empresa concreta, no las de las demás.
                 baseDeDatos.ComprasTimbres.IgnoreQueryFilters()
                     .Count(c => c.EmpresaId == e.Id && c.Estado == EstadosDeCompra.PendienteDePago)))
             .ToListAsync(ct);
@@ -139,8 +134,17 @@ public sealed class ServicioDeClientesDePlataforma(
             .SingleAsync(ct);
         var usuariosActivos = await LimitesDeCuenta.UsuariosQueCuentan(baseDeDatos, cuentaId).CountAsync(ct);
 
+        // IgnoreQueryFilters justificado: igual que en el listado, acotado a esta cuenta.
+        var reservados = await baseDeDatos.BolsasTimbres.IgnoreQueryFilters()
+            .Where(b => b.CuentaId == cuentaId)
+            .Select(b => (int?)b.Reservados)
+            .FirstOrDefaultAsync(ct) ?? 0;
+
+        var paquetes = await paquetesPersonalizados.ListarAsync(cuentaId, ct);
+
         return new DetalleDeCuentaDto(cuenta, empresas, new LimitesDeCuentaDto(
-            limites.LimiteDeUsuarios, usuariosActivos, limites.LimiteDeEmpresas, cuenta.Empresas));
+            limites.LimiteDeUsuarios, usuariosActivos, limites.LimiteDeEmpresas, cuenta.Empresas),
+            reservados, paquetes);
     }
 
     /// <summary>
@@ -215,28 +219,11 @@ public sealed class ServicioDeClientesDePlataforma(
                 e.RegimenFiscal,
                 e.Activa,
                 e.FechaAltaUtc,
-                Licencias = new LicenciasDeEmpresaDto(e.LicNotarios, e.LicObras, e.LicComercio, e.LicINE),
-                // IgnoreQueryFilters justificado: BolsaTimbres y ComprasTimbres son de empresa
-                // y se consultan acotadas a esta empresa concreta, nunca abiertas.
-                TimbresDisponibles = baseDeDatos.BolsasTimbres.IgnoreQueryFilters()
-                    .Where(b => b.EmpresaId == e.Id).Select(b => (int?)b.Disponibles).FirstOrDefault() ?? 0,
-                TimbresReservados = baseDeDatos.BolsasTimbres.IgnoreQueryFilters()
-                    .Where(b => b.EmpresaId == e.Id).Select(b => (int?)b.Reservados).FirstOrDefault() ?? 0
+                Licencias = new LicenciasDeEmpresaDto(e.LicNotarios, e.LicObras, e.LicComercio, e.LicINE)
             })
             .FirstOrDefaultAsync(ct);
 
         if (empresa is null) return null;
-
-        var paquetesPersonalizados = await baseDeDatos.Paquetes
-            .AsNoTracking()
-            .Where(p => p.EmpresaId == empresaId)
-            .OrderByDescending(p => p.Activo)
-            .ThenBy(p => p.Orden)
-            .Select(p => new PaquetePersonalizadoDto(
-                p.Id, p.Nombre, p.CantidadTimbres, p.PrecioPorTimbre, p.PrecioTotal,
-                p.VigenciaMeses, p.Activo,
-                baseDeDatos.ComprasTimbres.IgnoreQueryFilters().Count(c => c.PaqueteId == p.Id)))
-            .ToListAsync(ct);
 
         // Búsqueda opcional de compras por nombre de paquete. Vacía o nula conserva el
         // comportamiento por defecto: todas las pendientes y las diez pagadas recientes.
@@ -290,9 +277,8 @@ public sealed class ServicioDeClientesDePlataforma(
         return new FichaDeEmpresaDto(
             empresa.Id, empresa.Rfc, empresa.NombreFiscal, empresa.RegimenFiscal,
             empresa.Activa, empresa.FechaAltaUtc,
-            empresa.TimbresDisponibles, empresa.TimbresReservados,
             empresa.Licencias,
-            paquetesPersonalizados, comprasPendientes, ultimasCompras, usuarios);
+            comprasPendientes, ultimasCompras, usuarios);
     }
 
     /// <summary>
@@ -465,13 +451,13 @@ public sealed class ServicioDeClientesDePlataforma(
                 // las empresas de esta cuenta.
                 Timbres = baseDeDatos.BolsasTimbres
                     .IgnoreQueryFilters()
-                    .Where(b => baseDeDatos.Empresas.Any(e => e.Id == b.EmpresaId && e.CuentaId == c.Id))
+                    .Where(b => b.CuentaId == c.Id)
                     .Sum(b => (int?)b.Disponibles) ?? 0,
 
                 ComprasPendientes = baseDeDatos.ComprasTimbres
                     .IgnoreQueryFilters()
                     .Count(cmp => cmp.Estado == EstadosDeCompra.PendienteDePago &&
-                                  baseDeDatos.Empresas.Any(e => e.Id == cmp.EmpresaId && e.CuentaId == c.Id)),
+                                  cmp.CuentaId == c.Id),
 
                 Membresia = baseDeDatos.Membresias
                     .Where(m => m.CuentaId == c.Id)

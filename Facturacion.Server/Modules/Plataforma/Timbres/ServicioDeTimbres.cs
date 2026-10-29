@@ -9,7 +9,11 @@ using Microsoft.EntityFrameworkCore;
 
 namespace Facturacion.Server.Modules.Plataforma.Timbres;
 
-/// <summary>Reserva y devuelve timbres mediante procedimientos con operaciones atómicas sobre el saldo. La transacción termina antes de llamar al PAC.</summary>
+/// <summary>
+/// Reserva y devuelve timbres mediante procedimientos con operaciones atómicas sobre el saldo.
+/// La bolsa es de la cuenta: los procedimientos la encuentran a partir de la empresa activa,
+/// que queda en el movimiento como la que gastó. La transacción termina antes de llamar al PAC.
+/// </summary>
 public sealed class ServicioDeTimbres(
     AppDbContext baseDeDatos,
     IContextoEmpresaInterno contexto,
@@ -41,7 +45,7 @@ public sealed class ServicioDeTimbres(
             // pide un error claro y el tipo LimiteExcedido existe exactamente para esto.
             throw new ErrorDeNegocioExcepcion(ErrorNegocio.LimiteExcedido(
                 "sin-timbres",
-                "No quedan timbres disponibles en esta empresa. Compra un paquete para seguir facturando."));
+                "No quedan timbres disponibles en tu cuenta. Compra un paquete para seguir facturando."));
         }
 
         bitacora.Registrar(
@@ -103,10 +107,10 @@ public sealed class ServicioDeTimbres(
         await baseDeDatos.SaveChangesAsync(ct);
     }
 
+    // El filtro global ya acota la bolsa a la cuenta del claim.
     public async Task<int> DisponiblesAsync(CancellationToken ct)
         => await baseDeDatos.BolsasTimbres
             .AsNoTracking()
-            .Where(b => b.EmpresaId == contexto.EmpresaId)
             .Select(b => b.Disponibles)
             .FirstOrDefaultAsync(ct);
 

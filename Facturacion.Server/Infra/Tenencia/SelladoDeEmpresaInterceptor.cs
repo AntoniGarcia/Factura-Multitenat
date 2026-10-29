@@ -77,5 +77,43 @@ public sealed class SelladoDeEmpresaInterceptor(IContextoEmpresaInterno contexto
                         $"Se intentó modificar o eliminar '{entrada.Entity.GetType().Name}' de una empresa distinta de la activa.");
             }
         }
+
+        // Lo mismo para lo que es de la cuenta y comparten sus empresas (IEntidadDeCuenta).
+        foreach (var entrada in baseDeDatos.ChangeTracker.Entries<IEntidadDeCuenta>())
+        {
+            switch (entrada.State)
+            {
+                case EntityState.Added:
+                    if (contexto.CuentaActual is not { } cuenta)
+                        throw new InvalidOperationException(
+                            $"Se intentó dar de alta '{entrada.Entity.GetType().Name}' sin cuenta.");
+
+                    if (entrada.Entity.CuentaId == Guid.Empty)
+                        entrada.Entity.CuentaId = cuenta;
+                    else if (entrada.Entity.CuentaId != cuenta)
+                        throw new InvalidOperationException(
+                            $"Se intentó dar de alta '{entrada.Entity.GetType().Name}' en otra cuenta.");
+                    break;
+
+                case EntityState.Modified:
+                    if (entrada.Property(e => e.CuentaId).IsModified)
+                        throw new InvalidOperationException(
+                            $"Se intentó mover '{entrada.Entity.GetType().Name}' de una cuenta a otra.");
+                    VerificarCuentaActiva();
+                    break;
+
+                case EntityState.Deleted:
+                    VerificarCuentaActiva();
+                    break;
+            }
+
+            void VerificarCuentaActiva()
+            {
+                if (contexto.CuentaActual is not { } activa) return;
+                if (entrada.Property(e => e.CuentaId).OriginalValue != activa)
+                    throw new InvalidOperationException(
+                        $"Se intentó modificar o eliminar '{entrada.Entity.GetType().Name}' de otra cuenta.");
+            }
+        }
     }
 }

@@ -18,12 +18,12 @@ public sealed class PaqueteConfiguracion : IEntityTypeConfiguration<Paquete>
         constructor.Property(p => p.PrecioPorTimbre).HasPrecision(18, 6);
         constructor.Property(p => p.PrecioTotal).HasPrecision(18, 6);
 
-        constructor.HasOne(p => p.Empresa)
+        constructor.HasOne(p => p.Cuenta)
             .WithMany()
-            .HasForeignKey(p => p.EmpresaId)
+            .HasForeignKey(p => p.CuentaId)
             .OnDelete(DeleteBehavior.Restrict);
 
-        constructor.HasIndex(p => new { p.EmpresaId, p.Activo, p.Orden });
+        constructor.HasIndex(p => new { p.CuentaId, p.Activo, p.Orden });
 
         // Los paquetes son catálogo del producto, no datos de un inquilino: van en la
         // migración igual que los permisos, para que existan en cualquier entorno sin
@@ -123,14 +123,14 @@ public sealed class BolsaTimbresConfiguracion : IEntityTypeConfiguration<BolsaTi
 
         constructor.HasKey(b => b.Id);
 
-        constructor.HasOne(b => b.Empresa)
+        constructor.HasOne(b => b.Cuenta)
             .WithMany()
-            .HasForeignKey(b => b.EmpresaId)
+            .HasForeignKey(b => b.CuentaId)
             .OnDelete(DeleteBehavior.Restrict);
 
-        // Exactamente una bolsa por empresa. Sin esto, una carrera al crear la bolsa la
+        // Exactamente una bolsa por cuenta. Sin esto, una carrera al crear la bolsa la
         // primera vez dejaría dos renglones y el saldo se partiría en dos.
-        constructor.HasIndex(b => b.EmpresaId).IsUnique();
+        constructor.HasIndex(b => b.CuentaId).IsUnique();
     }
 }
 
@@ -145,8 +145,8 @@ public sealed class MovimientoTimbreConfiguracion : IEntityTypeConfiguration<Mov
         constructor.Property(m => m.Tipo).HasMaxLength(20);
         constructor.Property(m => m.Motivo).HasMaxLength(300);
 
-        // El historial siempre se lee de lo más nuevo a lo más viejo dentro de una empresa.
-        constructor.HasIndex(m => new { m.EmpresaId, m.MomentoUtc });
+        // El historial siempre se lee de lo más nuevo a lo más viejo dentro de una cuenta.
+        constructor.HasIndex(m => new { m.CuentaId, m.MomentoUtc });
     }
 }
 
@@ -192,7 +192,7 @@ public sealed class CompraTimbresConfiguracion : IEntityTypeConfiguration<Compra
 
         // Sin llave foránea al paquete: el paquete es catálogo vivo y la compra ya copió lo
         // que le importa. Una foránea impediría retirar un paquete de la venta.
-        constructor.HasIndex(c => new { c.EmpresaId, c.CreadaUtc });
+        constructor.HasIndex(c => new { c.CuentaId, c.CreadaUtc });
 
         // Las pendientes de acreditar son las que el operador busca; son pocas frente al
         // histórico de compras ya pagadas.

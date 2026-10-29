@@ -7,19 +7,16 @@ using Microsoft.EntityFrameworkCore;
 
 namespace Facturacion.Server.Modules.Operador.Paquetes;
 
-/// <summary>Ofertas exclusivas que el operador prepara para una empresa concreta.</summary>
+/// <summary>Ofertas exclusivas que el operador prepara para una cuenta: cualquiera de sus empresas puede comprarlas.</summary>
 public sealed class ServicioDePaquetesPersonalizados(
     AppDbContext baseDeDatos,
     IServicioDeBitacora bitacora)
 {
     public async Task<IReadOnlyList<PaquetePersonalizadoDto>> ListarAsync(
-        Guid cuentaId, Guid empresaId, CancellationToken ct)
-    {
-        if (!await ExisteEmpresaAsync(cuentaId, empresaId, ct)) return [];
-
-        return await baseDeDatos.Paquetes
+        Guid cuentaId, CancellationToken ct)
+        => await baseDeDatos.Paquetes
             .AsNoTracking()
-            .Where(p => p.EmpresaId == empresaId)
+            .Where(p => p.CuentaId == cuentaId)
             .OrderByDescending(p => p.Activo)
             .ThenBy(p => p.Orden)
             .Select(p => new PaquetePersonalizadoDto(
@@ -27,27 +24,26 @@ public sealed class ServicioDePaquetesPersonalizados(
                 p.VigenciaMeses, p.Activo,
                 baseDeDatos.ComprasTimbres.IgnoreQueryFilters().Count(c => c.PaqueteId == p.Id)))
             .ToListAsync(ct);
-    }
 
     public async Task<Resultado<PaquetePersonalizadoDto>> CrearAsync(
-        Guid operadorId, Guid cuentaId, Guid empresaId,
+        Guid operadorId, Guid cuentaId,
         PeticionGuardarPaquetePersonalizado peticion, CancellationToken ct)
     {
         if (Validar(peticion) is { } error) return error;
-        if (!await ExisteEmpresaAsync(cuentaId, empresaId, ct))
-            return ErrorNegocio.NoEncontrado("empresa-no-encontrada", "Esa empresa no existe en esta cuenta.");
+        if (!await ExisteCuentaAsync(cuentaId, ct))
+            return ErrorNegocio.NoEncontrado("cuenta-no-encontrada", "Esa cuenta no existe.");
 
         var paquete = new Paquete
         {
             Id = Guid.NewGuid(),
-            EmpresaId = empresaId,
+            CuentaId = cuentaId,
             Nombre = peticion.Nombre.Trim(),
             CantidadTimbres = peticion.CantidadTimbres,
             PrecioTotal = Math.Round(peticion.PrecioTotal, 6, MidpointRounding.AwayFromZero),
             PrecioPorTimbre = Math.Round(
                 peticion.PrecioTotal / peticion.CantidadTimbres, 6, MidpointRounding.AwayFromZero),
             VigenciaMeses = peticion.VigenciaMeses,
-            Orden = await SiguienteOrdenAsync(empresaId, ct),
+            Orden = await SiguienteOrdenAsync(cuentaId, ct),
             Activo = true
         };
 
@@ -58,17 +54,15 @@ public sealed class ServicioDePaquetesPersonalizados(
     }
 
     public async Task<Resultado<PaquetePersonalizadoDto>> ActualizarAsync(
-        Guid operadorId, Guid cuentaId, Guid empresaId, Guid paqueteId,
+        Guid operadorId, Guid cuentaId, Guid paqueteId,
         PeticionGuardarPaquetePersonalizado peticion, CancellationToken ct)
     {
         if (Validar(peticion) is { } error) return error;
-        if (!await ExisteEmpresaAsync(cuentaId, empresaId, ct))
-            return ErrorNegocio.NoEncontrado("empresa-no-encontrada", "Esa empresa no existe en esta cuenta.");
 
         var paquete = await baseDeDatos.Paquetes.SingleOrDefaultAsync(
-            p => p.Id == paqueteId && p.EmpresaId == empresaId, ct);
+            p => p.Id == paqueteId && p.CuentaId == cuentaId, ct);
         if (paquete is null)
-            return ErrorNegocio.NoEncontrado("paquete-no-encontrado", "Ese paquete no pertenece a la empresa.");
+            return ErrorNegocio.NoEncontrado("paquete-no-encontrado", "Ese paquete no pertenece a la cuenta.");
 
         var antes = Retrato(paquete);
         paquete.Nombre = peticion.Nombre.Trim();
@@ -84,16 +78,13 @@ public sealed class ServicioDePaquetesPersonalizados(
     }
 
     public async Task<Resultado<PaquetePersonalizadoDto>> CambiarActivoAsync(
-        Guid operadorId, Guid cuentaId, Guid empresaId, Guid paqueteId,
+        Guid operadorId, Guid cuentaId, Guid paqueteId,
         bool activo, CancellationToken ct)
     {
-        if (!await ExisteEmpresaAsync(cuentaId, empresaId, ct))
-            return ErrorNegocio.NoEncontrado("empresa-no-encontrada", "Esa empresa no existe en esta cuenta.");
-
         var paquete = await baseDeDatos.Paquetes.SingleOrDefaultAsync(
-            p => p.Id == paqueteId && p.EmpresaId == empresaId, ct);
+            p => p.Id == paqueteId && p.CuentaId == cuentaId, ct);
         if (paquete is null)
-            return ErrorNegocio.NoEncontrado("paquete-no-encontrado", "Ese paquete no pertenece a la empresa.");
+            return ErrorNegocio.NoEncontrado("paquete-no-encontrado", "Ese paquete no pertenece a la cuenta.");
 
         if (paquete.Activo != activo)
         {
@@ -110,13 +101,12 @@ public sealed class ServicioDePaquetesPersonalizados(
         return await ReleerAsync(paquete, ct);
     }
 
-    private Task<bool> ExisteEmpresaAsync(Guid cuentaId, Guid empresaId, CancellationToken ct)
-        => baseDeDatos.Empresas.AsNoTracking().AnyAsync(
-            e => e.Id == empresaId && e.CuentaId == cuentaId, ct);
+    private Task<bool> ExisteCuentaAsync(Guid cuentaId, CancellationToken ct)
+        => baseDeDatos.Cuentas.AsNoTracking().AnyAsync(c => c.Id == cuentaId, ct);
 
-    private async Task<int> SiguienteOrdenAsync(Guid empresaId, CancellationToken ct)
+    private async Task<int> SiguienteOrdenAsync(Guid cuentaId, CancellationToken ct)
         => (await baseDeDatos.Paquetes
-            .Where(p => p.EmpresaId == empresaId)
+            .Where(p => p.CuentaId == cuentaId)
             .MaxAsync(p => (int?)p.Orden, ct) ?? 0) + 1;
 
     private async Task<PaquetePersonalizadoDto> ReleerAsync(Paquete paquete, CancellationToken ct)
@@ -151,13 +141,12 @@ public sealed class ServicioDePaquetesPersonalizados(
             accion,
             antes,
             Retrato(paquete),
-            paquete.EmpresaId,
             cuentaId: cuentaId,
             operadorId: operadorId);
 
     private static object Retrato(Paquete paquete) => new
     {
-        paquete.EmpresaId,
+        paquete.CuentaId,
         paquete.Nombre,
         paquete.CantidadTimbres,
         paquete.PrecioPorTimbre,
