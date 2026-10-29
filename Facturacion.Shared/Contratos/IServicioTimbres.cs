@@ -1,8 +1,9 @@
 namespace Facturacion.Shared.Contratos;
 
 /// <summary>
-/// Bolsa de timbres de la empresa activa. La bolsa es por empresa, no por cuenta: el gasto
-/// de una empresa no consume los timbres de otra del mismo dueño.
+/// Bolsa de timbres de la cuenta de la empresa activa. Desde el 27 de octubre de 2026 la bolsa
+/// es por cuenta (AGENTS.md §11): todas las empresas del mismo dueño gastan de ella, y cada
+/// movimiento conserva la empresa que lo originó.
 /// <para>
 /// Las tres operaciones corren en transacciones cortas. Nunca se hace una llamada HTTP
 /// dentro de ellas (ARQUITECTURA.md §5).

@@ -2,7 +2,8 @@ namespace Facturacion.Shared.Contratos;
 
 /// <summary>
 /// Lo que la mitad A le pregunta a la mitad B antes de borrar un registro de catálogo: si algún
-/// comprobante de la empresa activa lo usa, borradores incluidos. Solo lectura.
+/// comprobante de la cuenta lo usa —de cualquiera de sus empresas para clientes y productos,
+/// de la empresa activa para series—, borradores incluidos. Solo lectura.
 /// <para>
 /// Se añadió después de congelar el contrato, para el permiso Eliminar de los catálogos
 /// (AGENTS.md §11). El comprobante guarda la foto del cliente, del producto y de la serie, pero
