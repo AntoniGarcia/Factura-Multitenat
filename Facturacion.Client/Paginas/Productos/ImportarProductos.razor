@@ -35,7 +35,7 @@
             </MudButton>
 
             <MudButton Variant="Variant.Text" StartIcon="@Icons.Material.Filled.Download"
-                       OnClick="DescargarPlantilla">Descargar plantilla</MudButton>
+                       OnClick="DescargarPlantilla" Disabled="@_descargando">Descargar plantilla</MudButton>
         </div>
     </section>
 }
@@ -194,6 +194,12 @@
         _error = null;
     }
 
-    private void DescargarPlantilla()
-        => Navegacion.NavigateTo(ServicioDeProductos.RutaDePlantilla(), forceLoad: true);
+    private bool _descargando;
+    private async Task DescargarPlantilla()
+    {
+        if (_descargando) return;
+        _descargando = true;
+        try { _error = await Productos.DescargarPlantillaAsync(); }
+        finally { _descargando = false; }
+    }
 }

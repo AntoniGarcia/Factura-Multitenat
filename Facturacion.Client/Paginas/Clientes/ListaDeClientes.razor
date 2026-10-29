@@ -183,6 +183,11 @@
         finally { _trabajando = false; }
     }
 
-    private void Exportar()
-        => Navegacion.NavigateTo(ServicioDeClientes.RutaDeExportacion(_activos, _empresa), forceLoad: true);
+    private async Task Exportar()
+    {
+        if (_trabajando) return;
+        _trabajando = true;
+        try { _error = await Clientes.ExportarAsync(_activos, _empresa); }
+        finally { _trabajando = false; }
+    }
 }

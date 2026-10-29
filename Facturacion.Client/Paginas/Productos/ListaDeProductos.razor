@@ -161,6 +161,12 @@
         if (_error is null) await RecargarAsync();
     }
 
-    private void Exportar()
-        => Navegacion.NavigateTo(ServicioDeProductos.RutaDeExportacion(_activos, _empresa), forceLoad: true);
+    private bool _exportando;
+    private async Task Exportar()
+    {
+        if (_exportando) return;
+        _exportando = true;
+        try { _error = await Productos.ExportarAsync(_activos, _empresa); }
+        finally { _exportando = false; }
+    }
 }

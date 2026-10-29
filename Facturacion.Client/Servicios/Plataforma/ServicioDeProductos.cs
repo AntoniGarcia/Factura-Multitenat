@@ -5,7 +5,7 @@ using Facturacion.Shared.Plataforma;
 namespace Facturacion.Client.Servicios.Plataforma;
 
 /// <summary>Llama a <c>/api/productos</c>. La empresa nunca viaja: va en el token.</summary>
-public sealed class ServicioDeProductos(IHttpClientFactory fabrica)
+public sealed class ServicioDeProductos(IHttpClientFactory fabrica, ServicioDeDescargas descargas)
 {
     private HttpClient Cliente => fabrica.CreateClient(ClientesHttp.Api);
 
@@ -86,6 +86,12 @@ public sealed class ServicioDeProductos(IHttpClientFactory fabrica)
         }.Where(p => p is not null));
 
     public static string RutaDePlantilla() => "api/productos/plantilla-csv";
+
+    public Task<DetalleProblema?> DescargarPlantillaAsync(CancellationToken ct = default)
+        => descargas.DescargarAsync(RutaDePlantilla(), "plantilla-productos.csv", ct);
+
+    public Task<DetalleProblema?> ExportarAsync(bool? activos, Guid? empresa = null, CancellationToken ct = default)
+        => descargas.DescargarAsync(RutaDeExportacion(activos, empresa), "productos.csv", ct);
 
     private static async Task<(T? Exito, DetalleProblema? Error)> LeerAsync<T>(
         HttpResponseMessage respuesta, CancellationToken ct)

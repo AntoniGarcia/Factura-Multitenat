@@ -5,7 +5,7 @@ using Facturacion.Shared.Plataforma;
 namespace Facturacion.Client.Servicios.Plataforma;
 
 /// <summary>Llama a <c>/api/clientes</c>. La empresa nunca viaja: va en el token.</summary>
-public sealed class ServicioDeClientes(IHttpClientFactory fabrica)
+public sealed class ServicioDeClientes(IHttpClientFactory fabrica, ServicioDeDescargas descargas)
 {
     private HttpClient Cliente => fabrica.CreateClient(ClientesHttp.Api);
 
@@ -83,7 +83,12 @@ public sealed class ServicioDeClientes(IHttpClientFactory fabrica)
 
     public static string RutaDePlantilla() => "api/clientes/plantilla-csv";
 
-    /// <summary>Ruta del CSV. La descarga la hace el navegador, no se pasa por memoria del WebAssembly.</summary>
+    public Task<DetalleProblema?> DescargarPlantillaAsync(CancellationToken ct = default)
+        => descargas.DescargarAsync(RutaDePlantilla(), "plantilla-clientes.csv", ct);
+
+    public Task<DetalleProblema?> ExportarAsync(bool? activos, Guid? empresa = null, CancellationToken ct = default)
+        => descargas.DescargarAsync(RutaDeExportacion(activos, empresa), "clientes.csv", ct);
+
     public static string RutaDeExportacion(bool? activos, Guid? empresa = null)
         => "api/clientes/exportar?" + string.Join("&", new[]
         {

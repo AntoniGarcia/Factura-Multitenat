@@ -235,8 +235,14 @@
         if (error is null) await RecargarProductosAsync();
     }
 
-    private void ExportarProductos()
-        => Navegacion.NavigateTo(ServicioDeProductos.RutaDeExportacion(_activosProductos, _empresaProductos), forceLoad: true);
+    private bool _exportandoProductos;
+    private async Task ExportarProductos()
+    {
+        if (_exportandoProductos) return;
+        _exportandoProductos = true;
+        try { _error = await Productos.ExportarAsync(_activosProductos, _empresaProductos); }
+        finally { _exportandoProductos = false; }
+    }
 
     // Mismo patrón que DialogoDeCliente: /productos/nuevo y /productos/{Id} siguen
     // existiendo por si algo más las enlaza directo; Catálogos ya no navega ahí.
@@ -325,8 +331,14 @@
         if (error is null) await RecargarClientesAsync();
     }
 
-    private void ExportarClientes()
-        => Navegacion.NavigateTo(ServicioDeClientes.RutaDeExportacion(_activosClientes, _empresaClientes), forceLoad: true);
+    private bool _exportandoClientes;
+    private async Task ExportarClientes()
+    {
+        if (_exportandoClientes) return;
+        _exportandoClientes = true;
+        try { _error = await Clientes.ExportarAsync(_activosClientes, _empresaClientes); }
+        finally { _exportandoClientes = false; }
+    }
 
     // El mismo ancho para crear y editar: el formulario es idéntico, solo cambia si Id
     // llega precargado. /clientes/nuevo y /clientes/{Id} siguen existiendo por si algo más

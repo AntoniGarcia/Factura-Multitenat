@@ -256,10 +256,10 @@ else
             }
         </MudTabPanel>
 
-        <MudTabPanel Text="Información global" Disabled="@(!EsPublicoEnGeneral)">
+        <MudTabPanel Text="Información global">
             @if (!EsPublicoEnGeneral)
             {
-                <p class="seccion-ayuda">Solo aplica cuando el cliente es «Público en general» (RFC XAXX010101000).</p>
+                <p class="seccion-ayuda">Selecciona un cliente con RFC XAXX010101000 para capturar estos datos.</p>
             }
             else
             {
