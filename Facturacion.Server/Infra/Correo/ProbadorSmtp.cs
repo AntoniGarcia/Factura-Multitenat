@@ -23,9 +23,9 @@ public static class ProbadorSmtp
         if (!usarTls)
             return ErrorNegocio.Validacion("smtp-tls-requerido", "Activa la conexión segura.");
         if (string.IsNullOrWhiteSpace(usuario) || usuario.Trim().Length > 254 || TieneSaltos(usuario))
-            return ErrorNegocio.Validacion("smtp-usuario-invalido", "Escribe el usuario SMTP en una sola línea (máximo 254 caracteres).");
+            return ErrorNegocio.Validacion("smtp-usuario-invalido", "Escribe el usuario SMTP en una sola línea.");
         if (string.IsNullOrEmpty(contrasena) || contrasena.Length > 512)
-            return ErrorNegocio.Validacion("smtp-contrasena-invalida", "Escribe la contraseña SMTP o conserva una guardada (máximo 512 caracteres).");
+            return ErrorNegocio.Validacion("smtp-contrasena-invalida", "Escribe la contraseña SMTP o conserva una guardada");
         if (nombre is not null && (nombre.Trim().Length > 128 || TieneSaltos(nombre)))
             return ErrorNegocio.Validacion("smtp-nombre-invalido", "El nombre del remitente admite hasta 128 caracteres en una sola línea.");
         if (string.IsNullOrWhiteSpace(remitente) || remitente.Trim().Length > 254 || TieneSaltos(remitente)

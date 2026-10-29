@@ -117,7 +117,7 @@
             <MudTextField @bind-Value="_servidor" Label="Servidor SMTP" Placeholder="smtp.ejemplo.com" MaxLength="253" Disabled="@(!PuedeAdministrarSistema || _trabajando)" />
             <MudTextField @bind-Value="_puertoTexto" Label="Puerto" HelperText="587 (STARTTLS)." Class="cifra-tabular" Disabled="@(!PuedeAdministrarSistema || _trabajando)" />
             <MudTextField @bind-Value="_usuarioSmtp" Label="Usuario" MaxLength="254" Disabled="@(!PuedeAdministrarSistema || _trabajando)" />
-            <MudTextField @bind-Value="_contrasenaSmtpNueva" Label="Nueva contraseña SMTP"
+            <MudTextField @bind-Value="_contrasenaSmtpNueva" Label="Contraseña"
                           InputType="InputType.Password" MaxLength="512" Disabled="@(!PuedeAdministrarSistema || _trabajando)"
                           HelperText="@(_contrasenaSmtpConfigurada ? "Configurada; déjala vacía para conservarla." : "Sin credencial configurada.")" />
             <MudTextField @bind-Value="_remitenteCorreo" Label="Correo del remitente"

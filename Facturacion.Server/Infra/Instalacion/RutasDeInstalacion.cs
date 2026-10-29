@@ -24,5 +24,6 @@ public sealed record RutasDeInstalacion(string Conexion, string Interna)
             if (ruta.Equals(publico, StringComparison.OrdinalIgnoreCase)
                 || ruta.StartsWith(publico + Path.DirectorySeparatorChar, StringComparison.OrdinalIgnoreCase))
                 throw new InvalidOperationException("La configuración debe quedar fuera de wwwroot.");
-        return new(conexion, interna);    }
+        return new(conexion, interna);
+    }
 }
