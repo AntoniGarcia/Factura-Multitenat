@@ -9,8 +9,7 @@ namespace Facturacion.Server.Modules.Plataforma.Catalogos;
 
 /// <summary>
 /// Carga idempotente de los catálogos del SAT desde el archivo oficial <c>catCFDI</c>
-/// (Anexo 20). Se dispara con <c>dotnet run -- --cargar-catalogos ruta.xls</c>, ver
-/// <c>Program.cs</c>; no corre nunca dentro de una petición HTTP.
+/// (Anexo 20), utilizada por la consola y por la actualización en segundo plano del operador.
 /// <para><b>Por qué no hay una fila fija de encabezado</b></para>
 /// Cada hoja del archivo del SAT trae el encabezado en una fila distinta —algunas empiezan
 /// con una fila en blanco, otras no— así que <see cref="FilaDeEncabezado"/> lo busca por
@@ -742,6 +741,7 @@ public sealed class ImportadorCatalogosSat(AppDbContext db)
         where TEntidad : class
         where TClave : notnull
     {
+        if (nuevos.Count == 0) throw new InvalidOperationException("La hoja no contiene claves para importar.");
         var existentes = await tabla.ToDictionaryAsync(clave, ct);
 
         foreach (var (k, nuevo) in nuevos)

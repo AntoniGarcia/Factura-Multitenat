@@ -92,7 +92,7 @@ public static class CargaDeCatalogosComercioExteriorCli
         if (entradas.Count == 0) throw new InvalidOperationException("El archivo no contiene claves.");
 
         var existentes = await tabla.ToDictionaryAsync(x => x.Clave, StringComparer.OrdinalIgnoreCase, ct);
-        await using var transaccion = await db.Database.BeginTransactionAsync(ct);
+        await using var transaccion = db.Database.CurrentTransaction is null ? await db.Database.BeginTransactionAsync(ct) : null;
         foreach (var (clave, nuevo) in entradas)
         {
             if (!existentes.TryGetValue(clave, out var anterior))
@@ -124,7 +124,7 @@ public static class CargaDeCatalogosComercioExteriorCli
         version.FechaCargaUtc = DateTime.UtcNow;
         version.RenglonesVigentes = entradas.Values.Count(x => x.Vigente);
         await db.SaveChangesAsync(ct);
-        await transaccion.CommitAsync(ct);
+        if (transaccion is not null) await transaccion.CommitAsync(ct);
         return version.RenglonesVigentes;
     }
 

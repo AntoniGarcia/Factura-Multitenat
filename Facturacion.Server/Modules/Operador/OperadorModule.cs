@@ -36,6 +36,8 @@ public static class OperadorModule
         servicios.AddScoped<ServicioDePerfilDeOperador>();
         servicios.AddScoped<ServicioDeOperadores>();
         servicios.AddScoped<ServicioDeCatalogosDeOperador>();
+        servicios.AddSingleton<ActualizadorDeCatalogos>();
+        servicios.AddHostedService(proveedor => proveedor.GetRequiredService<ActualizadorDeCatalogos>());
         servicios.AddScoped<ServicioDePaquetesDeOperador>();
         servicios.AddScoped<ServicioDePaquetesPersonalizados>();
         servicios.AddScoped<ServicioDeComprasDeOperador>();

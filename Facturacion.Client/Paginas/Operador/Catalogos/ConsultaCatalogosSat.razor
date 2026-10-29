@@ -5,6 +5,8 @@
 @using Facturacion.Client.Servicios.Operador
 @implements IDisposable
 @inject ServicioDeCatalogosDeOperador Catalogos
+@inject ServicioDeSesionDeOperador SesionOperador
+@inject IServicioDeConfirmacion Confirmacion
 
 <PageTitle>Catálogos del SAT</PageTitle>
 <TituloDePagina Texto="Catálogos del SAT" />
@@ -17,7 +19,7 @@
 else if (_catalogos.Count > 0)
 {
     <section class="catalogo-panel" aria-label="Consulta de catálogos del SAT">
-        <p class="catalogo-descripcion">Consulta de claves y vigencia. Solo lectura.</p>
+        <p class="catalogo-descripcion">Claves, vigencia y versiones de los catálogos oficiales.</p>
         <div class="filtros-documentos">
             <MudAutocomplete T="string" Label="Catálogo del SAT" Value="_catalogo" ValueChanged="CambiarCatalogoAsync"
                              ToStringFunc="NombreCatalogo" SearchFunc="BuscarCatalogosAsync" MinCharacters="0"
@@ -31,7 +33,7 @@ else if (_catalogos.Count > 0)
                 <MudSelectItem T="string" Value="@("vigentes")">Vigentes</MudSelectItem>
                 <MudSelectItem T="string" Value="@("no-vigentes")">No vigentes</MudSelectItem>
             </MudSelect>
-            <MudButton StartIcon="@Icons.Material.Filled.Refresh" OnClick="ActualizarAsync">Actualizar</MudButton>
+            <MudButton StartIcon="@Icons.Material.Filled.Refresh" OnClick="ActualizarAsync">Recargar consulta</MudButton>
         </div>
         @if (Seleccionado?.UltimaCarga is { } carga)
         {
@@ -40,6 +42,31 @@ else if (_catalogos.Count > 0)
         else
         {
             <p class="seccion-ayuda">Sin información de la última carga.</p>
+        }
+        @if (PuedeActualizar)
+        {
+            <details class="catalogo-opcional" open="@Actualizando">
+                <summary>Cargar actualización</summary>
+                <div class="catalogo-opcional-contenido">
+                    <p class="seccion-ayuda">Archivo oficial Excel para @NombreCatalogo(_catalogo). Las claves retiradas se conservan como no vigentes.</p>
+                    <div class="acciones-formulario catalogos-actualizacion">
+                        <MudFileUpload T="IBrowserFile" FilesChanged="SeleccionarArchivo" Accept=".xls,.xlsx" Disabled="@(_subiendo || Actualizando)">
+                            <CustomContent Context="carga">
+                                <MudButton Variant="Variant.Outlined" Disabled="@(_subiendo || Actualizando)" OnClick="@(() => carga.OpenFilePickerAsync())" StartIcon="@Icons.Material.Filled.AttachFile">
+                                    @(_archivo?.Name ?? "Elegir archivo SAT")
+                                </MudButton>
+                            </CustomContent>
+                        </MudFileUpload>
+                        <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="AplicarActualizacionAsync"
+                                   Disabled="@(_archivo is null || _subiendo || Actualizando)">Aplicar actualización</MudButton>
+                    </div>
+                </div>
+            </details>
+        }
+        @if (_actualizacion is { } actualizacion)
+        {
+            <p role="status" class="@(_actualizacion.Estado == "error" ? "mensaje-error" : "seccion-ayuda")">@actualizacion.Catalogo: @actualizacion.Mensaje</p>
+            @if (Actualizando) { <MudProgressLinear Indeterminate="true" Color="Color.Primary" /> }
         }
         @if (FaltaBusqueda)
         {
@@ -65,6 +92,13 @@ else
     private bool _descartado;
     private DetalleProblema? _error;
     private long _revision;
+    private IBrowserFile? _archivo;
+    private bool _subiendo;
+    private ActualizacionCatalogosDto? _actualizacion;
+    private readonly CancellationTokenSource _cancelacion = new();
+    private Task? _seguimiento;
+    private bool PuedeActualizar => SesionOperador.TienePermiso(PoliticasDelPanel.AdministrarConfiguracion);
+    private bool Actualizando => _actualizacion?.Estado == "cargando";
     private CatalogoSatDeOperadorDto? Seleccionado => _catalogos.FirstOrDefault(x => x.Definicion.Clave == _catalogo);
     private bool FaltaBusqueda => Seleccionado?.Definicion.RequiereBusqueda == true && _texto.Trim().Length < 3;
     private readonly IReadOnlyList<ColumnaDeTabla<FilaCatalogoSatDto>> _columnas =
@@ -79,6 +113,14 @@ else
     protected override async Task OnInitializedAsync()
     {
         await CargarCatalogosAsync();
+        try
+        {
+            var (actualizacion, error) = await Catalogos.ObtenerActualizacionAsync(_cancelacion.Token);
+            _actualizacion = actualizacion;
+            if (error is not null) _error = error;
+            if (Actualizando) _seguimiento = SeguirActualizacionAsync();
+        }
+        catch (HttpRequestException) { _error = ErrorDeConexion(); }
         _cargando = false;
     }
 
@@ -118,6 +160,7 @@ else
     {
         if (!_catalogos.Any(x => x.Definicion.Clave == clave)) return Task.CompletedTask;
         _catalogo = clave;
+        _archivo = null;
         _texto = "";
         _error = null;
         _revision++;
@@ -146,5 +189,60 @@ else
     private async Task ActualizarAsync() { await CargarCatalogosAsync(); await RecargarAsync(); }
     private static DetalleProblema ErrorDeConexion() => new("about:blank", "No se pudieron consultar los catálogos", 0,
         "Revisa tu conexión y vuelve a intentar.", null, "", null);
-    public void Dispose() { _descartado = true; _revision++; }
+    private void SeleccionarArchivo(IBrowserFile? archivo) { _archivo = archivo; _error = null; }
+
+    private async Task AplicarActualizacionAsync()
+    {
+        if (_archivo is null || Actualizando || _subiendo) return;
+        if (_archivo.Size > 50L * 1024 * 1024 || Path.GetExtension(_archivo.Name).ToLowerInvariant() is not (".xls" or ".xlsx"))
+        {
+            _error = new("archivo-invalido", "Archivo no válido", 400, "Selecciona un Excel .xls o .xlsx de hasta 50 MB.", null, "", null);
+            return;
+        }
+        var catalogo = _catalogo;
+        var archivo = _archivo;
+        if (!await Confirmacion.ConfirmarAsync("Actualizar catálogo", $"Se actualizará {NombreCatalogo(catalogo)} con {archivo.Name}.", "Actualizar")) return;
+        _subiendo = true;
+        try
+        {
+            await using var flujo = archivo.OpenReadStream(50L * 1024 * 1024, _cancelacion.Token);
+            var (trabajo, error) = await Catalogos.ActualizarAsync(catalogo, flujo, archivo.Name, _cancelacion.Token);
+            _error = error;
+            if (trabajo is not null)
+            {
+                _actualizacion = trabajo;
+                _archivo = null;
+                _seguimiento = SeguirActualizacionAsync();
+            }
+        }
+        catch (HttpRequestException) { _error = ErrorDeConexion(); }
+        catch (OperationCanceledException) when (_descartado) { }
+        finally { _subiendo = false; }
+    }
+
+    private async Task SeguirActualizacionAsync()
+    {
+        try
+        {
+            using var reloj = new PeriodicTimer(TimeSpan.FromSeconds(2));
+            while (Actualizando && await reloj.WaitForNextTickAsync(_cancelacion.Token))
+            {
+                var (estado, error) = await Catalogos.ObtenerActualizacionAsync(_cancelacion.Token);
+                if (_descartado) return;
+                _error = error;
+                _actualizacion = estado;
+                if (estado is null && error is null)
+                    _error = new("carga-interrumpida", "Actualización interrumpida", 409, "El servidor se reinició. Revisa la última carga antes de volver a intentarlo.", null, "", null);
+                if (estado?.Estado == "listo") await ActualizarAsync();
+                await InvokeAsync(StateHasChanged);
+            }
+        }
+        catch (OperationCanceledException) when (_descartado) { }
+        catch (HttpRequestException)
+        {
+            if (!_descartado) { _error = ErrorDeConexion(); await InvokeAsync(StateHasChanged); }
+        }
+    }
+
+    public void Dispose() { _descartado = true; _revision++; _cancelacion.Cancel(); _cancelacion.Dispose(); }
 }
