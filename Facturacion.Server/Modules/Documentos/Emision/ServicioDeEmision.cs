@@ -187,13 +187,24 @@ public sealed class ServicioDeEmision(
         var receptor = await ResolverReceptorAsync(peticion.ClienteId, ct);
         if (receptor.EsFallo) return receptor.Error!;
 
-        // El cliente con RFC genérico puede llevar otro nombre para ventas sueltas, pero el SAT
-        // exige PUBLICO EN GENERAL en la factura global (AGENTS.md §11).
-        if (receptor.Valor is { Rfc: "XAXX010101000" } publico && peticion.GlobalPeriodicidad is not null
-            && publico.Nombre != "PUBLICO EN GENERAL")
-            return ErrorNegocio.Validacion("global-nombre",
-                $"La factura global va a nombre de PUBLICO EN GENERAL y el cliente elegido se llama «{publico.Nombre}». " +
-                "Elige el cliente PUBLICO EN GENERAL o quita la información global.");
+        // Con el RFC genérico el nombre se captura en cada factura, para ventas sueltas; el SAT
+        // exige PUBLICO EN GENERAL solo en la factura global (AGENTS.md §11).
+        var nombreReceptor = receptor.Valor?.Nombre;
+        if (receptor.Valor is { Rfc: "XAXX010101000" })
+        {
+            if (peticion.ReceptorNombre is { } capturado)
+            {
+                nombreReceptor = NombreFiscal.Normalizar(capturado).Normalizado;
+                if (nombreReceptor.Length is 0 or > 254 || nombreReceptor.Contains('|'))
+                    return ErrorNegocio.Validacion("receptor-nombre",
+                        "Escribe el nombre del receptor: hasta 254 caracteres y sin «|».");
+            }
+
+            if (peticion.GlobalPeriodicidad is not null && nombreReceptor != "PUBLICO EN GENERAL")
+                return ErrorNegocio.Validacion("global-nombre",
+                    $"La factura global va a nombre de PUBLICO EN GENERAL y esta dice «{nombreReceptor}». " +
+                    "Cambia el nombre o quita la información global.");
+        }
 
         var conceptosResueltos = await ResolverConceptosAsync(peticion.Conceptos, ct);
         if (conceptosResueltos.EsFallo) return conceptosResueltos.Error!;
@@ -217,7 +228,7 @@ public sealed class ServicioDeEmision(
         // pena conservar, y el registro queda como alta.
         var antes = comprobante.ModificadoUtc is null ? null : ADto(comprobante);
 
-        AplicarCabecera(comprobante, peticion, receptor.Valor);
+        AplicarCabecera(comprobante, peticion, receptor.Valor, nombreReceptor);
         AplicarConceptos(comprobante, conceptosResueltos.Valor, calculado.Valor);
         AplicarRelacionados(comprobante, peticion.Relacionados);
         AplicarTotales(comprobante, decimalesMoneda.Value);
@@ -516,7 +527,7 @@ public sealed class ServicioDeEmision(
     // ── Aplicar al comprobante ──────────────────────────────────────────────────────────
 
     private static void AplicarCabecera(
-        Comprobante comprobante, PeticionGuardarBorrador peticion, ReceptorFiscalDto? receptor)
+        Comprobante comprobante, PeticionGuardarBorrador peticion, ReceptorFiscalDto? receptor, string? nombreReceptor)
     {
         comprobante.SerieId = peticion.SerieId;
         comprobante.Moneda = peticion.Moneda;
@@ -528,7 +539,7 @@ public sealed class ServicioDeEmision(
 
         comprobante.ClienteId = receptor?.ClienteId;
         comprobante.ReceptorRfc = receptor?.Rfc ?? string.Empty;
-        comprobante.ReceptorNombre = receptor?.Nombre ?? string.Empty;
+        comprobante.ReceptorNombre = nombreReceptor ?? string.Empty;
         comprobante.ReceptorRegimenFiscal = receptor?.RegimenFiscal ?? string.Empty;
         // El SAT exige que el domicilio fiscal de ambos RFC genéricos sea el lugar de expedición.
         comprobante.ReceptorDomicilioFiscal = receptor?.Rfc is "XAXX010101000" or "XEXX010101000"

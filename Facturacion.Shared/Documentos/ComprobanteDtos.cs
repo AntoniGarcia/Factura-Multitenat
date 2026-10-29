@@ -84,6 +84,10 @@ public sealed record ComprobanteRelacionadoDto(
 /// viajes de red sin ganar nada: nada de esto se timbra hasta que el usuario pide "Generar
 /// factura".
 /// </summary>
+/// <param name="ReceptorNombre">
+/// Solo con el RFC XAXX010101000: el nombre de esta factura, que puede no ser el del cliente
+/// (ventas sueltas). Con cualquier otro RFC se ignora y va el del catálogo.
+/// </param>
 public sealed record PeticionGuardarBorrador(
     string TipoDeComprobante,
     Guid? SerieId,
@@ -100,7 +104,8 @@ public sealed record PeticionGuardarBorrador(
     string? GlobalMeses,
     int? GlobalAnio,
     IReadOnlyList<ConceptoDto> Conceptos,
-    IReadOnlyList<ComprobanteRelacionadoDto> Relacionados);
+    IReadOnlyList<ComprobanteRelacionadoDto> Relacionados,
+    string? ReceptorNombre = null);
 
 /// <summary>Un CFDI relacionado resuelto por Serie+Folio, listo para agregar a la pestaña.</summary>
 public sealed record CfdiRelacionadoResueltoDto(

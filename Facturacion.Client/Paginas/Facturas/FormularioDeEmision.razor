@@ -99,7 +99,16 @@ else
             <div class="rejilla-campos">
                 <BuscadorDeCliente Valor="@_cliente" ValorCambiado="AlElegirClienteAsync" Requerido="true" />
                 <MudTextField T="string" Value="@(_cliente?.Rfc)" Label="R.F.C." ReadOnly="true" Class="cifra-tabular" />
-                <MudTextField T="string" Value="@(_cliente?.Nombre)" Label="Nombre" ReadOnly="true" />
+                @if (EsPublicoEnGeneral)
+                {
+                    @* Ventas sueltas a nombre de quien compra; el cliente del catálogo no cambia. *@
+                    <MudTextField @bind-Value="_receptorNombre" Label="Nombre" MaxLength="254" Immediate="true"
+                                  HelperText="@AyudaNombreReceptor" />
+                }
+                else
+                {
+                    <MudTextField T="string" Value="@(_cliente?.Nombre)" Label="Nombre" ReadOnly="true" />
+                }
                 <MudTextField T="string" Value="@(_cliente?.DomicilioFiscalCp)" Label="CP del cliente" ReadOnly="true" Class="cifra-tabular"
                               HelperText="@(_cliente?.Rfc is "XAXX010101000" or "XEXX010101000" ? "El CFDI usará el CP de expedición." : null)" />
 
@@ -149,19 +158,13 @@ else
                                              Label="Cantidad" Format="N2" Min="0.000001m" Immediate="true"
                                              Class="concepto-editor-cantidad cifra-tabular" />
 
-                            @* Visible en todas: lo precarga el ID interno del producto y va al XML, así
-                               que el capturista tiene que poder verlo y cambiarlo. *@
+                            @* Solo Comercio Exterior lo lleva: ahí el SAT lo cruza con las mercancías. En
+                               los demás tipos no se captura ni se envía. *@
                             @if (EsFacturaComercio)
                             {
                                 <MudTextField @bind-Value="renglon.NoIdentificacion"
                                               Label="Identificador de mercancía" MaxLength="100"
-                                              HelperText="Debe coincidir con el NoIdentificacion del CFDI." />
-                            }
-                            else
-                            {
-                                <MudTextField @bind-Value="renglon.NoIdentificacion"
-                                              Label="No. de identificación" MaxLength="100"
-                                              HelperText="Opcional. Se precarga con el ID interno del producto." />
+                                              HelperText="Debe coincidir con el NoIdentificacion del CFDI. Se precarga con el ID interno del producto." />
                             }
 
                             <MudNumericField T="decimal" Value="@renglon.ValorUnitario" ValueChanged="async v => { renglon.ValorUnitario = v; await ActualizarVistaPreviaAsync(); }"
@@ -308,7 +311,7 @@ else
 
         <div class="emision-resumen-cliente">
             <span>Receptor</span>
-            <strong>@(_cliente?.Nombre ?? "Sin seleccionar")</strong>
+            <strong>@(NombreDelReceptor ?? "Sin seleccionar")</strong>
             @if (_cliente is not null)
             {
                 <span class="cifra-tabular">@_cliente.Rfc</span>
@@ -428,6 +431,7 @@ else
 
     // Cliente
     private ClienteEnListaDto? _cliente;
+    private string? _receptorNombre;
     private string? _usoCfdi, _metodoPago, _formaPago;
 
     // Conceptos
@@ -469,6 +473,22 @@ else
     private bool PuedeTimbrar => _integracionFiscal?.TimbradoDisponible == true;
 
     private bool EsPublicoEnGeneral => _cliente?.Rfc == RfcPublicoEnGeneral;
+
+    private string? NombreDelReceptor => EsPublicoEnGeneral ? _receptorNombre : _cliente?.Nombre;
+
+    /// <summary>Avisa cómo quedará el nombre en el CFDI, igual que el alta de clientes.</summary>
+    private string AyudaNombreReceptor
+    {
+        get
+        {
+            var nombre = NombreFiscal.Normalizar(_receptorNombre);
+            if (_globalPeriodicidad is not null && nombre.Normalizado != "PUBLICO EN GENERAL")
+                return "Con información global debe ser PUBLICO EN GENERAL.";
+            return nombre.Normalizado != nombre.Original && nombre.Normalizado.Length > 0
+                ? $"En el CFDI irá «{nombre.Normalizado}»."
+                : "Solo para esta factura; el cliente no cambia.";
+        }
+    }
 
     private bool PuedeAgregarRelacionado =>
         !string.IsNullOrWhiteSpace(_tipoRelacion) &&
@@ -562,6 +582,7 @@ else
             _metodoPago = comprobante.MetodoPago;
             _formaPago = comprobante.FormaPago;
             _usoCfdi = comprobante.ReceptorUsoCfdi;
+            _receptorNombre = comprobante.ReceptorNombre;
             _observaciones = comprobante.Observaciones;
             _condicionesDePago = comprobante.CondicionesDePago;
             _globalPeriodicidad = comprobante.GlobalPeriodicidad;
@@ -615,6 +636,7 @@ else
     {
         _cliente = seleccion;
         _clienteDetalle = null;
+        _receptorNombre = seleccion?.Nombre;
 
         if (seleccion is null) return;
 
@@ -645,8 +667,7 @@ else
         renglon.ClaveUnidad = producto.ClaveUnidad;
         renglon.UnidadTexto = producto.UnidadTexto;
         renglon.Descripcion = DescripcionDeConcepto(producto);
-        // El ID interno del producto precarga el No. de identificación; se puede cambiar.
-        if (producto.IdInterno is { } idInterno) renglon.NoIdentificacion = idInterno;
+        if (EsFacturaComercio && producto.IdInterno is { } idInterno) renglon.NoIdentificacion = idInterno;
         renglon.ObjetoImp = producto.ObjetoImp;
         renglon.ValorUnitario = producto.ValorUnitario;
         renglon.Impuestos = [.. producto.Impuestos.Select(i =>
@@ -806,6 +827,7 @@ else
         }
 
         _comprobante = exito;
+        _receptorNombre = exito!.ReceptorNombre;
         _vistaPrevia = DesdeComprobante(exito!);
         _errorVistaPrevia = null;
         _borradorSinGuardar = null;
@@ -828,9 +850,11 @@ else
             EsPublicoEnGeneral ? _globalMeses : null,
             EsPublicoEnGeneral ? _globalAnio : null,
             [.. _renglones.Where(r => !soloElegidos || r.ProductoId is not null).Select((r, i) => new ConceptoDto(
-                null, i + 1, r.ProductoId, r.ClaveProdServ!, r.ClaveUnidad!, r.UnidadTexto, r.NoIdentificacion,
+                null, i + 1, r.ProductoId, r.ClaveProdServ!, r.ClaveUnidad!, r.UnidadTexto,
+                EsFacturaComercio ? r.NoIdentificacion : null,
                 r.Descripcion!, r.Cantidad, r.ValorUnitario, r.Importe, r.Descuento, r.ObjetoImp!, r.Impuestos))],
-            _relacionados);
+            _relacionados,
+            EsPublicoEnGeneral ? _receptorNombre ?? string.Empty : null);
 
     private async Task VistaPreviaAsync()
     {
@@ -885,7 +909,7 @@ else
 
         var confirmado = await Confirmacion.ConfirmarAsync(
             "Timbrar CFDI",
-            $"Se consumirá un timbre para emitir el CFDI de {_cliente?.Nombre ?? "el receptor"} " +
+            $"Se consumirá un timbre para emitir el CFDI de {NombreDelReceptor ?? "el receptor"} " +
             $"por {_comprobante.Total:N2} {_comprobante.Moneda}. Después ya no podrás editarlo.",
             "Timbrar CFDI");
 
