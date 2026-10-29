@@ -1,66 +1,77 @@
-@* Acciones del catálogo: buscar, crear y exportar. Editar y desactivar corresponden a cada registro. *@
+@*
+    Dos renglones: arriba lo que crea o mueve registros, abajo lo que filtra. En uno solo los
+    seis controles se amontonaban y los filtros quedaban partidos entre los botones.
+*@
 
 <div class="barra-herramientas-catalogo">
-    <MudTextField T="string"
-                   Placeholder="@Placeholder"
-                   Value="@Texto"
-                   ValueChanged="AlBuscar"
-                   Adornment="Adornment.Start"
-                   AdornmentIcon="@Icons.Material.Filled.Search"
-                   Immediate="true"
-                   DebounceInterval="300"
-                   Class="barra-herramientas-buscador" />
-
-    <span class="separador-flexible"></span>
-
-    @if (MuestraEstatus)
+    @if (OnNuevo.HasDelegate || OnExportar.HasDelegate || OnSecundario.HasDelegate)
     {
-        <MudSelect T="bool?"
-                   Label="Estatus"
-                   Value="@Activos"
-                   ValueChanged="@(v => ActivosCambiado.InvokeAsync(v))"
-                   Class="barra-herramientas-estatus">
-            <MudSelectItem T="bool?" Value="@(null)">Todos</MudSelectItem>
-            <MudSelectItem T="bool?" Value="@(true)">Activos</MudSelectItem>
-            <MudSelectItem T="bool?" Value="@(false)">Inactivos</MudSelectItem>
-        </MudSelect>
-    }
-
-    @if (Empresas is { Count: > 1 })
-    {
-        <MudSelect T="Guid?"
-                   Label="Dado de alta en"
-                   Value="@Empresa"
-                   ValueChanged="@(v => EmpresaCambiada.InvokeAsync(v))"
-                   Class="barra-herramientas-empresa">
-            <MudSelectItem T="Guid?" Value="@(null)">Todas las empresas</MudSelectItem>
-            @foreach (var empresa in Empresas)
+        <div class="barra-herramientas-acciones">
+            @if (OnNuevo.HasDelegate)
             {
-                <MudSelectItem T="Guid?" Value="@empresa.Id">@empresa.NombreFiscal</MudSelectItem>
+                <MudButton Variant="Variant.Filled" Color="Color.Primary" StartIcon="@Icons.Material.Filled.Add" OnClick="OnNuevo">
+                    @TextoNuevo
+                </MudButton>
             }
-        </MudSelect>
+
+            @if (OnExportar.HasDelegate)
+            {
+                <MudButton Variant="Variant.Outlined" StartIcon="@Icons.Material.Filled.Download" OnClick="OnExportar">
+                    Exportar CSV
+                </MudButton>
+            }
+
+            @if (OnSecundario.HasDelegate)
+            {
+                <MudButton Variant="Variant.Outlined" StartIcon="@IconoSecundario" OnClick="OnSecundario">
+                    @TextoSecundario
+                </MudButton>
+            }
+        </div>
     }
 
-    @if (OnExportar.HasDelegate)
-    {
-        <MudButton Variant="Variant.Outlined" StartIcon="@Icons.Material.Filled.Download" OnClick="OnExportar">
-            Exportar CSV
-        </MudButton>
-    }
+    <div class="barra-herramientas-filtros">
+        @* Con etiqueta, como los selectores: sin ella el buscador quedaba más arriba que ellos. *@
+        <MudTextField T="string"
+                       Label="Buscar"
+                       ShrinkLabel="true"
+                       Placeholder="@Placeholder"
+                       Value="@Texto"
+                       ValueChanged="AlBuscar"
+                       Adornment="Adornment.Start"
+                       AdornmentIcon="@Icons.Material.Filled.Search"
+                       Immediate="true"
+                       DebounceInterval="300"
+                       Class="barra-herramientas-buscador" />
 
-    @if (OnSecundario.HasDelegate)
-    {
-        <MudButton Variant="Variant.Outlined" StartIcon="@IconoSecundario" OnClick="OnSecundario">
-            @TextoSecundario
-        </MudButton>
-    }
+        @if (Empresas is { Count: > 1 })
+        {
+            <MudSelect T="Guid?"
+                       Label="Dado de alta en"
+                       Value="@Empresa"
+                       ValueChanged="@(v => EmpresaCambiada.InvokeAsync(v))"
+                       Class="barra-herramientas-empresa">
+                <MudSelectItem T="Guid?" Value="@(null)">Todas las empresas</MudSelectItem>
+                @foreach (var empresa in Empresas)
+                {
+                    <MudSelectItem T="Guid?" Value="@empresa.Id">@empresa.NombreFiscal</MudSelectItem>
+                }
+            </MudSelect>
+        }
 
-    @if (OnNuevo.HasDelegate)
-    {
-        <MudButton Variant="Variant.Filled" Color="Color.Primary" StartIcon="@Icons.Material.Filled.Add" OnClick="OnNuevo">
-            @TextoNuevo
-        </MudButton>
-    }
+        @if (MuestraEstatus)
+        {
+            <MudSelect T="bool?"
+                       Label="Estatus"
+                       Value="@Activos"
+                       ValueChanged="@(v => ActivosCambiado.InvokeAsync(v))"
+                       Class="barra-herramientas-estatus">
+                <MudSelectItem T="bool?" Value="@(null)">Todos</MudSelectItem>
+                <MudSelectItem T="bool?" Value="@(true)">Activos</MudSelectItem>
+                <MudSelectItem T="bool?" Value="@(false)">Inactivos</MudSelectItem>
+            </MudSelect>
+        }
+    </div>
 </div>
 
 @code {

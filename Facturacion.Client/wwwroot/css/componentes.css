@@ -144,16 +144,24 @@
 
 .barra-herramientas-catalogo {
     display: flex;
-    flex-wrap: wrap;
-    align-items: center;
+    flex-direction: column;
     gap: 0.75rem;
     padding: 0.75rem 1rem;
     border-bottom: 1px solid var(--borde);
 }
 
+.barra-herramientas-acciones,
+.barra-herramientas-filtros {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.75rem;
+}
+
 .barra-herramientas-buscador {
     flex: 1 1 18rem;
     max-width: 28rem;
+    margin-inline-end: 1rem;
 }
 
 .barra-herramientas-estatus {
@@ -230,13 +238,10 @@
 }
 
 @media (max-width: 48rem) {
-    .barra-herramientas-catalogo .separador-flexible {
-        display: none;
-    }
-
     .barra-herramientas-buscador {
         flex-basis: 100%;
         max-width: none;
+        margin-inline-end: 0;
     }
 
     .barra-herramientas-estatus,
