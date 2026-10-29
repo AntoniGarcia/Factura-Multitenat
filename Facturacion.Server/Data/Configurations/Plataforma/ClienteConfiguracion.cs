@@ -38,23 +38,28 @@ public sealed class ClienteConfiguracion : IEntityTypeConfiguration<Cliente>
         constructor.Property(c => c.Pais).HasMaxLength(64);
         constructor.Property(c => c.CodigoPostal).HasMaxLength(5);
 
-        constructor.HasOne(c => c.Empresa)
+        constructor.HasOne(c => c.Cuenta)
             .WithMany()
-            .HasForeignKey(c => c.EmpresaId)
+            .HasForeignKey(c => c.CuentaId)
             .OnDelete(DeleteBehavior.Restrict);
 
-        // La clave que teclean los contadores no se puede repetir dentro de la empresa.
-        constructor.HasIndex(c => new { c.EmpresaId, c.ClaveInterna })
+        // La clave que teclean los contadores no se puede repetir dentro de la cuenta.
+        constructor.HasIndex(c => new { c.CuentaId, c.ClaveInterna })
             .IsUnique()
-            .HasDatabaseName("IX_Clientes_ClaveInternaPorEmpresa");
+            .HasDatabaseName("IX_Clientes_ClaveInternaPorCuenta");
 
-        // El RFC es único por empresa, salvo los genéricos. Desactivar un cliente no libera su RFC: debe reactivarse el registro existente. El índice filtrado usa comparaciones simples compatibles con SQL Server.
-        constructor.HasIndex(c => new { c.EmpresaId, c.Rfc })
+        // El RFC es único por cuenta, salvo los genéricos. Desactivar un cliente no libera su RFC: debe reactivarse el registro existente. El índice filtrado usa comparaciones simples compatibles con SQL Server.
+        constructor.HasIndex(c => new { c.CuentaId, c.Rfc })
             .IsUnique()
             .HasFilter($"[Rfc] <> '{Rfc.GenericoNacional}' AND [Rfc] <> '{Rfc.GenericoExtranjero}'")
-            .HasDatabaseName("IX_Clientes_RfcPorEmpresa");
+            .HasDatabaseName("IX_Clientes_RfcPorCuenta");
 
         // La lista filtra por activos y ordena por nombre; es la consulta más frecuente.
-        constructor.HasIndex(c => new { c.EmpresaId, c.Activo, c.Nombre });
+        constructor.HasIndex(c => new { c.CuentaId, c.Activo, c.Nombre });
+
+        constructor.HasOne<Empresa>()
+            .WithMany()
+            .HasForeignKey(c => c.EmpresaAltaId)
+            .OnDelete(DeleteBehavior.Restrict);
     }
 }

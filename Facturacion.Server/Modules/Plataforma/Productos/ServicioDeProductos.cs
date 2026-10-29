@@ -8,7 +8,7 @@ using Microsoft.EntityFrameworkCore;
 
 namespace Facturacion.Server.Modules.Plataforma.Productos;
 
-/// <summary>Administra productos de la empresa activa y proporciona sus datos para los conceptos.</summary>
+/// <summary>Administra los productos de la cuenta, que comparten todas sus empresas, y proporciona sus datos para los conceptos.</summary>
 public sealed class ServicioDeProductos(
     AppDbContext baseDeDatos,
     ValidadorDeProducto validador,
@@ -38,9 +38,15 @@ public sealed class ServicioDeProductos(
     }
 
     public async Task<PaginaDeProductos> ListarAsync(
-        string? texto, bool? activos, int pagina, int tamano, string? orden, bool descendente, CancellationToken ct)
+        string? texto, bool? activos, Guid? empresaAlta, int pagina, int tamano, string? orden, bool descendente,
+        CancellationToken ct)
     {
         var consulta = baseDeDatos.Productos.AsNoTracking();
+
+    // Filtro informativo por la empresa que lo dio de alta. El identificador viene del
+    // navegador, pero el filtro global ya acota a la cuenta: uno ajeno no devuelve nada.
+        if (empresaAlta is { } empresa)
+            consulta = consulta.Where(p => p.EmpresaAltaId == empresa);
 
         // Tres estados: null todos, true activos, false dados de baja (ver ServicioDeClientes).
         if (activos is { } valor) consulta = consulta.Where(p => p.Activo == valor);
@@ -52,6 +58,7 @@ public sealed class ServicioDeProductos(
             var id = Guid.TryParse(buscado, out var identificador) ? identificador : (Guid?)null;
             consulta = consulta.Where(p =>
                 p.Descripcion.Contains(buscado) || p.ClaveProdServ.Contains(buscado) || p.UnidadTexto.Contains(buscado) ||
+                (p.IdInterno != null && p.IdInterno.Contains(buscado)) ||
                 p.ClaveUnidad.Contains(buscado) || p.CodigoInterno == codigo || p.Id == id);
         }
 
@@ -72,7 +79,7 @@ public sealed class ServicioDeProductos(
             .Take(tamano)
             .Select(p => new ProductoEnListaDto(
                 p.Id, p.CodigoInterno, p.Descripcion, p.UnidadTexto,
-                p.ValorUnitario, p.PesoKg, p.ClaveProdServ, p.Activo))
+                p.ValorUnitario, p.PesoKg, p.ClaveProdServ, p.Activo, p.IdInterno))
             .ToListAsync(ct);
 
         return new PaginaDeProductos(elementos, total);
@@ -88,11 +95,12 @@ public sealed class ServicioDeProductos(
         return producto is null ? null : ADto(producto);
     }
 
-    public Task<List<Producto>> ListarParaExportarAsync(bool? activos, CancellationToken ct)
+    public Task<List<Producto>> ListarParaExportarAsync(bool? activos, Guid? empresaAlta, CancellationToken ct)
     {
         IQueryable<Producto> consulta = baseDeDatos.Productos.AsNoTracking().Include(p => p.Impuestos);
 
         if (activos is { } valor) consulta = consulta.Where(p => p.Activo == valor);
+        if (empresaAlta is { } empresa) consulta = consulta.Where(p => p.EmpresaAltaId == empresa);
 
         return consulta.OrderBy(p => p.CodigoInterno).ToListAsync(ct);
     }
@@ -113,10 +121,13 @@ public sealed class ServicioDeProductos(
         {
             Id = Guid.NewGuid(),
             CodigoInterno = await SiguienteCodigoAsync(ct),
+            EmpresaAltaId = contexto.EmpresaId,
             ClaveProdServ = peticion.ClaveProdServ,
             ClaveUnidad = peticion.ClaveUnidad,
             UnidadTexto = peticion.UnidadTexto.Trim(),
             Descripcion = peticion.Descripcion.Trim(),
+            IdInterno = Recortar(peticion.IdInterno),
+            Detalle = Recortar(peticion.Detalle),
             ValorUnitario = peticion.ValorUnitario,
             PesoKg = peticion.PesoKg,
             ObjetoImp = peticion.ObjetoImp,
@@ -160,6 +171,8 @@ public sealed class ServicioDeProductos(
         producto.ClaveUnidad = peticion.ClaveUnidad;
         producto.UnidadTexto = peticion.UnidadTexto.Trim();
         producto.Descripcion = peticion.Descripcion.Trim();
+        producto.IdInterno = Recortar(peticion.IdInterno);
+        producto.Detalle = Recortar(peticion.Detalle);
         producto.ValorUnitario = peticion.ValorUnitario;
         producto.PesoKg = peticion.PesoKg;
         producto.ObjetoImp = peticion.ObjetoImp;
@@ -247,12 +260,15 @@ public sealed class ServicioDeProductos(
                 continue;
             }
 
-            // Se reconoce por clave del SAT + descripción: es lo que distingue un producto
-            // en la práctica y permite recargar el mismo archivo sin duplicar el catálogo.
+            // Se reconoce por el ID interno si el renglón lo trae; si no, por clave del SAT y
+            // nombre, que es lo que distingue un producto en la práctica. Así se puede recargar
+            // el mismo archivo sin duplicar el catálogo.
+            var idInterno = Recortar(renglon.Producto.IdInterno);
             var existente = await baseDeDatos.Productos
                 .Include(p => p.Impuestos)
-                .FirstOrDefaultAsync(p => p.ClaveProdServ == renglon.Producto.ClaveProdServ
-                                          && p.Descripcion == renglon.Producto.Descripcion, ct);
+                .FirstOrDefaultAsync(p => idInterno != null
+                    ? p.IdInterno == idInterno
+                    : p.ClaveProdServ == renglon.Producto.ClaveProdServ && p.Descripcion == renglon.Producto.Descripcion, ct);
 
             var peticion = renglon.Producto;
 
@@ -340,5 +356,7 @@ public sealed class ServicioDeProductos(
         p.Id, p.CodigoInterno, p.ClaveProdServ, p.ClaveUnidad, p.UnidadTexto, p.Descripcion,
         p.ValorUnitario, p.PesoKg, p.ObjetoImp,
         [.. p.Impuestos.Select(i => new ImpuestoDeProductoDto(i.Impuesto, i.TipoFactor, i.TasaOCuota, i.EsRetencion))],
-        p.Activo);
+        p.Activo, p.IdInterno, p.Detalle);
+
+    private static string? Recortar(string? valor) => string.IsNullOrWhiteSpace(valor) ? null : valor.Trim();
 }

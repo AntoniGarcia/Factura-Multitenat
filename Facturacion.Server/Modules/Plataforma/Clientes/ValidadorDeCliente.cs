@@ -85,18 +85,15 @@ public sealed class ValidadorDeCliente(AppDbContext baseDeDatos, IServicioCatalo
     }
 
     /// <summary>
-    /// Reglas fijas de los dos genéricos. Para el nacional el SAT no admite
-    /// variaciones: nombre, régimen y uso son exactamente esos tres valores.
+    /// Reglas fijas de los dos genéricos. Para el nacional, régimen y uso son fijos; el nombre
+    /// puede ser otro (AGENTS.md §11, 28 de octubre de 2026): el SAT solo exige
+    /// PUBLICO EN GENERAL en la factura global, y eso lo revisa la emisión.
     /// </summary>
     private static ErrorNegocio? ValidarGenerico(
         string rfc, PeticionGuardarCliente peticion, string nombreNormalizado)
     {
         if (rfc == Shared.Comun.Rfc.GenericoNacional)
         {
-            if (nombreNormalizado != "PUBLICO EN GENERAL")
-                return ErrorNegocio.Validacion("generico-nombre",
-                    "Para el RFC XAXX010101000 el nombre tiene que ser exactamente PUBLICO EN GENERAL.");
-
             if (peticion.RegimenFiscal != "616")
                 return ErrorNegocio.Validacion("generico-regimen",
                     "Para el RFC XAXX010101000 el régimen tiene que ser 616, Sin obligaciones fiscales.");

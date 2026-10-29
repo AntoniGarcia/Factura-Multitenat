@@ -16,11 +16,13 @@ public sealed class ProductoConfiguracion : IEntityTypeConfiguration<Producto>
         constructor.Property(p => p.ClaveUnidad).HasMaxLength(20);
         constructor.Property(p => p.UnidadTexto).HasMaxLength(64);
         constructor.Property(p => p.Descripcion).HasMaxLength(1000);
+        constructor.Property(p => p.IdInterno).HasMaxLength(100);
+        constructor.Property(p => p.Detalle).HasMaxLength(1000);
         constructor.Property(p => p.ObjetoImp).HasMaxLength(2);
 
-        constructor.HasOne(p => p.Empresa)
+        constructor.HasOne(p => p.Cuenta)
             .WithMany()
-            .HasForeignKey(p => p.EmpresaId)
+            .HasForeignKey(p => p.CuentaId)
             .OnDelete(DeleteBehavior.Restrict);
 
         // Al cambiar la configuración fiscal se reemplazan los impuestos del producto. Los comprobantes conservan su copia histórica.
@@ -29,12 +31,20 @@ public sealed class ProductoConfiguracion : IEntityTypeConfiguration<Producto>
             .HasForeignKey(i => i.ProductoId)
             .OnDelete(DeleteBehavior.Cascade);
 
-        constructor.HasIndex(p => new { p.EmpresaId, p.CodigoInterno })
+        constructor.HasIndex(p => new { p.CuentaId, p.CodigoInterno })
             .IsUnique()
-            .HasDatabaseName("IX_Productos_CodigoInternoPorEmpresa");
+            .HasDatabaseName("IX_Productos_CodigoInternoPorCuenta");
 
         // La lista filtra por activos y ordena por descripción; es la consulta más frecuente.
-        constructor.HasIndex(p => new { p.EmpresaId, p.Activo, p.Descripcion });
+        constructor.HasIndex(p => new { p.CuentaId, p.Activo, p.Descripcion });
+
+        // La importación reconoce por el ID interno y el buscador lo consulta.
+        constructor.HasIndex(p => new { p.CuentaId, p.IdInterno });
+
+        constructor.HasOne<Empresa>()
+            .WithMany()
+            .HasForeignKey(p => p.EmpresaAltaId)
+            .OnDelete(DeleteBehavior.Restrict);
     }
 }
 

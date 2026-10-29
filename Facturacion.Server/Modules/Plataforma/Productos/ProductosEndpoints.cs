@@ -55,10 +55,10 @@ public static class ProductosEndpoints
     // «Todos» mostraba solo los activos. Los buscadores de la emisión mandan true explícito.
     private static async Task<IResult> Listar(
         ServicioDeProductos productos, CancellationToken ct,
-        string? texto = null, bool? activos = null,
+        string? texto = null, bool? activos = null, Guid? empresa = null,
         int pagina = 0, int tamano = 25, string? orden = null, bool descendente = false)
         => Results.Ok(await productos.ListarAsync(
-            texto, activos, Math.Max(pagina, 0), Math.Clamp(tamano, 1, 100), orden, descendente, ct));
+            texto, activos, empresa, Math.Max(pagina, 0), Math.Clamp(tamano, 1, 100), orden, descendente, ct));
 
     private static async Task<IResult> Obtener(Guid id, ServicioDeProductos productos, CancellationToken ct)
     {
@@ -131,9 +131,9 @@ public static class ProductosEndpoints
     }
 
     private static async Task<IResult> Exportar(
-        ServicioDeProductos productos, CancellationToken ct, bool? activos = null)
+        ServicioDeProductos productos, CancellationToken ct, bool? activos = null, Guid? empresa = null)
     {
-        var lista = await productos.ListarParaExportarAsync(activos, ct);
+        var lista = await productos.ListarParaExportarAsync(activos, empresa, ct);
 
         var csv = new StringBuilder();
         csv.AppendLine(string.Join(',',
@@ -156,7 +156,7 @@ public static class ProductosEndpoints
                 Campo(p.ClaveProdServ), Campo(p.ClaveUnidad), Campo(p.UnidadTexto), Campo(p.Descripcion),
                 p.ValorUnitario.ToString("0.######", CultureInfo.InvariantCulture),
                 p.PesoKg?.ToString("0.######", CultureInfo.InvariantCulture) ?? string.Empty,
-                Campo(p.ObjetoImp), Campo(iva),
+                Campo(p.ObjetoImp), Campo(iva), Campo(p.IdInterno), Campo(p.Detalle),
                 p.Activo ? "Sí" : "No"));
         }
 
@@ -170,8 +170,8 @@ public static class ProductosEndpoints
     {
         var csv = new StringBuilder();
         csv.AppendLine(string.Join(',', LectorDeCsvDeProductos.Columnas));
-        csv.AppendLine("01010101,H87,Pieza,Ejemplo de producto,100.00,1.5,02,16");
-        csv.AppendLine("01010101,E48,Servicio,Ejemplo de servicio exento,250.00,,02,exento");
+        csv.AppendLine("01010101,H87,Pieza,Ejemplo de producto,100.00,1.5,02,16,SKU-001,Presentación de 500 g");
+        csv.AppendLine("01010101,E48,Servicio,Ejemplo de servicio exento,250.00,,02,exento,,");
 
         var bytes = Encoding.UTF8.GetPreamble().Concat(Encoding.UTF8.GetBytes(csv.ToString())).ToArray();
 

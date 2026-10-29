@@ -979,6 +979,10 @@
     color: var(--acento);
 }
 
+.concepto-editor-descripcion {
+    grid-column: 1 / -1;
+}
+
 .concepto-editor-aviso {
     grid-column: 1 / -1;
     color: var(--estado-advertencia-texto);

@@ -2093,12 +2093,15 @@ namespace Facturacion.Server.Migrations
                         .HasMaxLength(254)
                         .HasColumnType("nvarchar(254)");
 
+                    b.Property<Guid>("CuentaId")
+                        .HasColumnType("uniqueidentifier");
+
                     b.Property<string>("DomicilioFiscalCp")
                         .IsRequired()
                         .HasMaxLength(5)
                         .HasColumnType("nvarchar(5)");
 
-                    b.Property<Guid>("EmpresaId")
+                    b.Property<Guid?>("EmpresaAltaId")
                         .HasColumnType("uniqueidentifier");
 
                     b.Property<string>("Estado")
@@ -2176,16 +2179,18 @@ namespace Facturacion.Server.Migrations
 
                     b.HasKey("Id");
 
-                    b.HasIndex("EmpresaId", "ClaveInterna")
-                        .IsUnique()
-                        .HasDatabaseName("IX_Clientes_ClaveInternaPorEmpresa");
+                    b.HasIndex("EmpresaAltaId");
 
-                    b.HasIndex("EmpresaId", "Rfc")
+                    b.HasIndex("CuentaId", "ClaveInterna")
                         .IsUnique()
-                        .HasDatabaseName("IX_Clientes_RfcPorEmpresa")
+                        .HasDatabaseName("IX_Clientes_ClaveInternaPorCuenta");
+
+                    b.HasIndex("CuentaId", "Rfc")
+                        .IsUnique()
+                        .HasDatabaseName("IX_Clientes_RfcPorCuenta")
                         .HasFilter("[Rfc] <> 'XAXX010101000' AND [Rfc] <> 'XEXX010101000'");
 
-                    b.HasIndex("EmpresaId", "Activo", "Nombre");
+                    b.HasIndex("CuentaId", "Activo", "Nombre");
 
                     b.ToTable("Clientes", (string)null);
                 });
@@ -3222,12 +3227,19 @@ namespace Facturacion.Server.Migrations
                     b.Property<int>("CodigoInterno")
                         .HasColumnType("int");
 
+                    b.Property<Guid>("CuentaId")
+                        .HasColumnType("uniqueidentifier");
+
                     b.Property<string>("Descripcion")
                         .IsRequired()
                         .HasMaxLength(1000)
                         .HasColumnType("nvarchar(1000)");
 
-                    b.Property<Guid>("EmpresaId")
+                    b.Property<string>("Detalle")
+                        .HasMaxLength(1000)
+                        .HasColumnType("nvarchar(1000)");
+
+                    b.Property<Guid?>("EmpresaAltaId")
                         .HasColumnType("uniqueidentifier");
 
                     b.Property<DateTime>("FechaAltaUtc")
@@ -3235,6 +3247,10 @@ namespace Facturacion.Server.Migrations
 
                     b.Property<DateTime?>("FechaModificacionUtc")
                         .HasColumnType("datetime2");
+
+                    b.Property<string>("IdInterno")
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
 
                     b.Property<string>("ObjetoImp")
                         .IsRequired()
@@ -3256,11 +3272,15 @@ namespace Facturacion.Server.Migrations
 
                     b.HasKey("Id");
 
-                    b.HasIndex("EmpresaId", "CodigoInterno")
-                        .IsUnique()
-                        .HasDatabaseName("IX_Productos_CodigoInternoPorEmpresa");
+                    b.HasIndex("EmpresaAltaId");
 
-                    b.HasIndex("EmpresaId", "Activo", "Descripcion");
+                    b.HasIndex("CuentaId", "CodigoInterno")
+                        .IsUnique()
+                        .HasDatabaseName("IX_Productos_CodigoInternoPorCuenta");
+
+                    b.HasIndex("CuentaId", "IdInterno");
+
+                    b.HasIndex("CuentaId", "Activo", "Descripcion");
 
                     b.ToTable("Productos", (string)null);
                 });
@@ -3270,7 +3290,7 @@ namespace Facturacion.Server.Migrations
                     b.Property<Guid>("Id")
                         .HasColumnType("uniqueidentifier");
 
-                    b.Property<Guid>("EmpresaId")
+                    b.Property<Guid>("CuentaId")
                         .HasColumnType("uniqueidentifier");
 
                     b.Property<bool>("EsRetencion")
@@ -4377,13 +4397,18 @@ namespace Facturacion.Server.Migrations
 
             modelBuilder.Entity("Facturacion.Server.Data.Entidades.Plataforma.Cliente", b =>
                 {
-                    b.HasOne("Facturacion.Server.Data.Entidades.Plataforma.Empresa", "Empresa")
+                    b.HasOne("Facturacion.Server.Data.Entidades.Plataforma.Cuenta", "Cuenta")
                         .WithMany()
-                        .HasForeignKey("EmpresaId")
+                        .HasForeignKey("CuentaId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
 
-                    b.Navigation("Empresa");
+                    b.HasOne("Facturacion.Server.Data.Entidades.Plataforma.Empresa", null)
+                        .WithMany()
+                        .HasForeignKey("EmpresaAltaId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.Navigation("Cuenta");
                 });
 
             modelBuilder.Entity("Facturacion.Server.Data.Entidades.Plataforma.ConfiguracionEmpresa", b =>
@@ -4453,13 +4478,18 @@ namespace Facturacion.Server.Migrations
 
             modelBuilder.Entity("Facturacion.Server.Data.Entidades.Plataforma.Producto", b =>
                 {
-                    b.HasOne("Facturacion.Server.Data.Entidades.Plataforma.Empresa", "Empresa")
+                    b.HasOne("Facturacion.Server.Data.Entidades.Plataforma.Cuenta", "Cuenta")
                         .WithMany()
-                        .HasForeignKey("EmpresaId")
+                        .HasForeignKey("CuentaId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
 
-                    b.Navigation("Empresa");
+                    b.HasOne("Facturacion.Server.Data.Entidades.Plataforma.Empresa", null)
+                        .WithMany()
+                        .HasForeignKey("EmpresaAltaId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.Navigation("Cuenta");
                 });
 
             modelBuilder.Entity("Facturacion.Server.Data.Entidades.Plataforma.ProductoImpuesto", b =>

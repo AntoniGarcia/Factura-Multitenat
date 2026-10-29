@@ -1,0 +1,196 @@
+@page "/clientes/importar"
+@attribute [Authorize(Policy = Permisos.Politicas.EditarClientes)]
+@inject ServicioDeClientes Clientes
+@inject NavigationManager Navegacion
+
+<PageTitle>Importar clientes</PageTitle>
+<TituloDePagina Texto="Importar clientes desde CSV" />
+
+<TarjetaFormulario Ancha="true" RutaVolver="/clientes">
+<PanelErrores Problema="_error" />
+
+@if (_resultado is null)
+{
+    <section class="importacion-archivo">
+        <div>
+            <h2>Selecciona el archivo</h2>
+            <p>
+                Sube el CSV y revisa la vista previa. <strong>No se guarda nada hasta que confirmes.</strong>
+                Los renglones con error se quedan fuera; los demás entran.
+            </p>
+        </div>
+
+        <div class="carga-csd">
+            <MudFileUpload T="IBrowserFile" FilesChanged="a => _archivo = a" Accept=".csv">
+                <CustomContent Context="carga">
+                    <MudButton Variant="Variant.Outlined" StartIcon="@Icons.Material.Filled.AttachFile"
+                               OnClick="@(() => carga.OpenFilePickerAsync())">
+                        @(_archivo is null ? "Elegir archivo CSV" : _archivo.Name)
+                    </MudButton>
+                </CustomContent>
+            </MudFileUpload>
+
+            <MudButton Variant="Variant.Filled" OnClick="Analizar" Disabled="@(_analizando || _archivo is null)">
+                @(_analizando ? "Revisando…" : "Revisar archivo")
+            </MudButton>
+
+            <MudButton Variant="Variant.Text" StartIcon="@Icons.Material.Filled.Download"
+                       OnClick="DescargarPlantilla">Descargar plantilla</MudButton>
+        </div>
+    </section>
+}
+
+@if (_vista is not null && _resultado is null)
+{
+    <section class="importacion-vista">
+    <h2 class="seccion-titulo">Vista previa</h2>
+    <p class="seccion-ayuda">
+        Un RFC que ya está en tu cuenta se actualiza; los genéricos se reconocen además por el
+        nombre. Una celda vacía no borra lo que el cliente ya tiene, y el domicilio de entrega se
+        conserva. La columna Activo se aplica si está presente.
+    </p>
+
+    <div class="resumen-importacion">
+        <span class="indicador-estado indicador-estado-timbrada">@_vista.Validos van a entrar</span>
+        @if (_vista.ConError > 0)
+        {
+            <span class="indicador-estado indicador-estado-cancelada">@_vista.ConError se quedan fuera</span>
+        }
+    </div>
+
+    <MudSimpleTable Dense="true" Hover="true">
+        <thead>
+            <tr>
+                <th class="cifra-tabular">Renglón</th>
+                <th class="cifra-tabular">RFC</th>
+                <th>Nombre</th>
+                <th class="cifra-tabular">Régimen</th>
+                <th>Resultado</th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var renglon in _vista.Renglones)
+            {
+                <tr>
+                    <td class="cifra-tabular">@renglon.Numero</td>
+                    <td class="cifra-tabular">@(renglon.Cliente?.Rfc ?? "—")</td>
+                    <td>@(renglon.Cliente?.Nombre ?? "—")</td>
+                    <td class="cifra-tabular">@(renglon.Cliente?.RegimenFiscal ?? "—")</td>
+                    <td>
+                        @if (renglon.Error is null)
+                        {
+                            <span class="indicador-estado indicador-estado-timbrada">Correcto</span>
+                        }
+                        else
+                        {
+                            <span class="texto-error">@renglon.Error</span>
+                        }
+                    </td>
+                </tr>
+            }
+        </tbody>
+    </MudSimpleTable>
+
+    <div class="acciones-formulario">
+        <MudButton Variant="Variant.Filled" OnClick="Confirmar" Disabled="@(_confirmando || _vista.Validos == 0)">
+            @(_confirmando ? "Guardando…" : $"Importar {_vista.Validos} clientes")
+        </MudButton>
+        <MudButton Variant="Variant.Text" OnClick="Limpiar">Elegir otro archivo</MudButton>
+    </div>
+    </section>
+}
+
+@if (_resultado is not null)
+{
+    <section class="importacion-resultado">
+    <h2 class="seccion-titulo">Listo</h2>
+
+    <p class="mensaje-exito" role="status">
+        Se crearon @_resultado.Creados clientes y se actualizaron @_resultado.Actualizados.
+    </p>
+
+    @if (_resultado.Rechazados.Count > 0)
+    {
+        <p class="seccion-ayuda">Estos renglones no entraron:</p>
+        <ul class="lista-rechazos">
+            @foreach (var rechazado in _resultado.Rechazados)
+            {
+                <li>Renglón @rechazado.Numero: @rechazado.Error</li>
+            }
+        </ul>
+    }
+
+    <div class="acciones-formulario">
+        <MudButton Variant="Variant.Filled" OnClick="@(() => Navegacion.NavigateTo("/clientes"))">
+            Ver el catálogo
+        </MudButton>
+        <MudButton Variant="Variant.Text" OnClick="Limpiar">Importar otro archivo</MudButton>
+    </div>
+    </section>
+}
+</TarjetaFormulario>
+
+@code {
+    /// <summary>Cinco megabytes: el mismo tope que acepta el servidor.</summary>
+    private const long TopeArchivo = 5 * 1024 * 1024;
+
+    private IBrowserFile? _archivo;
+    private VistaPreviaDeImportacionDeClientes? _vista;
+    private ResultadoDeImportacionDeClientes? _resultado;
+    private DetalleProblema? _error;
+    private bool _analizando, _confirmando;
+
+    private async Task Analizar()
+    {
+        if (_archivo is null) return;
+
+        _analizando = true;
+        _error = null;
+
+        try
+        {
+            await using var flujo = _archivo.OpenReadStream(TopeArchivo);
+            var (exito, error) = await Clientes.AnalizarCsvAsync(flujo, _archivo.Name);
+
+            _error = error;
+            _vista = exito;
+        }
+        finally
+        {
+            _analizando = false;
+        }
+    }
+
+    private async Task Confirmar()
+    {
+        if (_vista is null) return;
+
+        _confirmando = true;
+        _error = null;
+
+        try
+        {
+            var validos = _vista.Renglones.Where(r => r.Error is null).ToList();
+
+            var (exito, error) = await Clientes.ConfirmarImportacionAsync(validos);
+
+            _error = error;
+            _resultado = exito;
+        }
+        finally
+        {
+            _confirmando = false;
+        }
+    }
+
+    private void Limpiar()
+    {
+        _archivo = null;
+        _vista = null;
+        _resultado = null;
+        _error = null;
+    }
+
+    private void DescargarPlantilla()
+        => Navegacion.NavigateTo(ServicioDeClientes.RutaDePlantilla(), forceLoad: true);
+}

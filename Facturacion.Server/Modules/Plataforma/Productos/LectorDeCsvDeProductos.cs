@@ -24,7 +24,7 @@ public static class LectorDeCsvDeProductos
 {
     /// <summary>Encabezados que se esperan, en este orden.</summary>
     public static readonly string[] Columnas =
-        ["ClaveProdServ", "ClaveUnidad", "Unidad", "Descripcion", "Precio", "PesoKg", "ObjetoImp", "Iva"];
+        ["ClaveProdServ", "ClaveUnidad", "Unidad", "Nombre", "Precio", "PesoKg", "ObjetoImp", "Iva", "IdInterno", "Descripcion"];
 
     /// <summary>Tope de renglones por archivo, para que una importación no tumbe el servidor.</summary>
     private const int MaximoRenglones = 5000;
@@ -73,7 +73,7 @@ public static class LectorDeCsvDeProductos
 
     private static bool EsEncabezado(string linea, out bool formatoExportado)
     {
-        var campos = PartirCsv(linea);
+        var campos = LectorCsv.Partir(linea);
         formatoExportado = campos.Count > 1
             && campos[0].Trim().Equals("Codigo", StringComparison.OrdinalIgnoreCase)
             && campos[1].Trim().Equals("ClaveProdServ", StringComparison.OrdinalIgnoreCase);
@@ -83,14 +83,14 @@ public static class LectorDeCsvDeProductos
 
     private static RenglonDeImportacion LeerRenglon(int numero, string linea, bool formatoExportado)
     {
-        var campos = PartirCsv(linea);
+        var campos = LectorCsv.Partir(linea);
 
         if (formatoExportado)
         {
-            if (campos.Count < 10)
-                return Malo(numero, $"El archivo exportado requiere 10 columnas y llegaron {campos.Count}.");
+            if (campos.Count < 12)
+                return Malo(numero, $"El archivo exportado requiere 12 columnas y llegaron {campos.Count}.");
 
-            campos.RemoveAt(0); // El código interno es informativo; la coincidencia se resuelve por clave y descripción.
+            campos.RemoveAt(0); // El código interno es informativo; la coincidencia se resuelve por ID interno o por clave y nombre.
         }
 
         if (campos.Count < 7)
@@ -100,11 +100,11 @@ public static class LectorDeCsvDeProductos
         var claveProdServ = campos[0].Trim();
         var claveUnidad = campos[1].Trim();
         var unidad = campos[2].Trim();
-        var descripcion = campos[3].Trim();
+        var nombre = campos[3].Trim();
 
         if (claveProdServ.Length == 0) return Malo(numero, "Falta la clave de producto o servicio.");
         if (claveUnidad.Length == 0) return Malo(numero, "Falta la clave de unidad.");
-        if (descripcion.Length == 0) return Malo(numero, "Falta la descripción.");
+        if (nombre.Length == 0) return Malo(numero, "Falta el nombre del producto.");
         if (unidad.Length == 0) unidad = claveUnidad;
 
         if (!TryLeerDecimal(campos[4], out var precio))
@@ -124,17 +124,21 @@ public static class LectorDeCsvDeProductos
 
         var iva = campos.Count > 7 ? campos[7].Trim() : string.Empty;
 
-        var activoExplicito = campos.Count > 8;
+        string? Opcional(int indice)
+            => indice < campos.Count && !string.IsNullOrWhiteSpace(campos[indice]) ? campos[indice].Trim() : null;
+
+        var activoExplicito = Opcional(10) is not null;
         var activo = true;
-        if (activoExplicito && !TryLeerActivo(campos[8], out activo))
-            return Malo(numero, $"El valor de Activo «{campos[8]}» no se entiende. Escribe Sí o No.");
+        if (activoExplicito && !LectorCsv.TryLeerSiNo(campos[10], out activo))
+            return Malo(numero, $"El valor de Activo «{campos[10]}» no se entiende. Escribe Sí o No.");
 
         var impuestos = TraducirIva(iva, objetoImp, out var errorIva);
         if (errorIva is not null) return Malo(numero, errorIva);
 
         return new RenglonDeImportacion(numero,
             new PeticionGuardarProducto(
-                claveProdServ, claveUnidad, unidad, descripcion, precio, peso, objetoImp, impuestos, activo),
+                claveProdServ, claveUnidad, unidad, nombre, precio, peso, objetoImp, impuestos, activo,
+                IdInterno: Opcional(8), Detalle: Opcional(9)),
             null, activoExplicito);
     }
 
@@ -190,66 +194,5 @@ public static class LectorDeCsvDeProductos
         var limpio = (texto ?? string.Empty).Trim().Replace("$", string.Empty).Replace(",", string.Empty);
 
         return decimal.TryParse(limpio, NumberStyles.Any, CultureInfo.InvariantCulture, out valor);
-    }
-
-    private static bool TryLeerActivo(string texto, out bool activo)
-    {
-        switch (texto.Trim().ToUpperInvariant())
-        {
-            case "SÍ" or "SI" or "TRUE" or "1":
-                activo = true;
-                return true;
-            case "NO" or "FALSE" or "0":
-                activo = false;
-                return true;
-            default:
-                activo = false;
-                return false;
-        }
-    }
-
-    /// <summary>
-    /// Parte un renglón de CSV respetando las comillas: una descripción como
-    /// «Caja, 12 piezas» viene entrecomillada y no debe partirse en dos columnas.
-    /// </summary>
-    private static List<string> PartirCsv(string linea)
-    {
-        var campos = new List<string>();
-        var actual = new StringBuilder();
-        var entreComillas = false;
-
-        for (var i = 0; i < linea.Length; i++)
-        {
-            var caracter = linea[i];
-
-            if (entreComillas)
-            {
-                if (caracter != '"') { actual.Append(caracter); continue; }
-
-                // Dos comillas seguidas dentro de un campo son una comilla literal.
-                if (i + 1 < linea.Length && linea[i + 1] == '"') { actual.Append('"'); i++; }
-                else entreComillas = false;
-
-                continue;
-            }
-
-            switch (caracter)
-            {
-                case '"':
-                    entreComillas = true;
-                    break;
-                case ',':
-                    campos.Add(actual.ToString());
-                    actual.Clear();
-                    break;
-                default:
-                    actual.Append(caracter);
-                    break;
-            }
-        }
-
-        campos.Add(actual.ToString());
-
-        return campos;
     }
 }

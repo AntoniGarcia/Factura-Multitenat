@@ -141,7 +141,7 @@ public sealed class EliminacionDeAccesosPruebas : IAsyncLifetime
     }
 
     [Fact]
-    public async Task Cliente_bloquea_documentos_traslados_y_otra_empresa()
+    public async Task Cliente_bloquea_documentos_de_cualquier_empresa_traslados_y_otra_cuenta()
     {
         await using var db = Abrir();
         var contexto = new ContextoEmpresaFijo(_empresa, _cuenta, _titular);
@@ -151,7 +151,8 @@ public sealed class EliminacionDeAccesosPruebas : IAsyncLifetime
         var libre = Cliente(1);
         var conFactura = Cliente(2);
         var conTraslado = Cliente(3);
-        db.Clientes.AddRange(libre, conFactura, conTraslado);
+        var usadoEnOtraEmpresa = Cliente(4);
+        db.Clientes.AddRange(libre, conFactura, conTraslado, usadoEnOtraEmpresa);
         db.Comprobantes.Add(Comprobante(conFactura.Id));
         var vehiculo = new Vehiculo { Id = Guid.NewGuid(), Clave = "1", Descripcion = "Prueba", ConfiguracionAutotransporte = "C2",
             Placa = "ABC123", Aseguradora = "Prueba", Poliza = "1", TipoPermiso = "TPAF01", NumeroPermiso = "1" };
@@ -166,12 +167,31 @@ public sealed class EliminacionDeAccesosPruebas : IAsyncLifetime
         Assert.Equal("catalogo-en-uso", (await servicio.EliminarAsync(conFactura.Id, default)).Error?.Codigo);
         Assert.Equal("catalogo-en-uso", (await servicio.EliminarAsync(conTraslado.Id, default)).Error?.Codigo);
 
+        // Los clientes son de la cuenta: una factura de otra empresa de la misma cuenta también lo usa.
         var otraEmpresa = Guid.NewGuid();
         db.Empresas.Add(Empresa(otraEmpresa));
         await db.SaveChangesAsync();
-        var ajeno = Cliente(1);
+        var deOtraEmpresa = new ContextoEmpresaFijo(otraEmpresa, _cuenta);
         await using (var otroDb = new AppDbContext(new DbContextOptionsBuilder<AppDbContext>().Configurar(
-            db.Database.GetConnectionString(), new ContextoEmpresaFijo(otraEmpresa)).Options, new ContextoEmpresaFijo(otraEmpresa)))
+            db.Database.GetConnectionString(), deOtraEmpresa).Options, deOtraEmpresa))
+        {
+            otroDb.Comprobantes.Add(Comprobante(usadoEnOtraEmpresa.Id));
+            await otroDb.SaveChangesAsync();
+        }
+        Assert.Equal("catalogo-en-uso", (await servicio.EliminarAsync(usadoEnOtraEmpresa.Id, default)).Error?.Codigo);
+
+        // Un cliente de otra cuenta ni siquiera se encuentra.
+        var otraCuenta = Guid.NewGuid();
+        var empresaAjena = Guid.NewGuid();
+        db.Cuentas.Add(new Cuenta { Id = otraCuenta, Nombre = "Ajena", CorreoContacto = "ajena@example.com" });
+        var empresa = Empresa(empresaAjena);
+        empresa.CuentaId = otraCuenta;
+        db.Empresas.Add(empresa);
+        await db.SaveChangesAsync();
+        var ajeno = Cliente(1);
+        var deOtraCuenta = new ContextoEmpresaFijo(empresaAjena, otraCuenta);
+        await using (var otroDb = new AppDbContext(new DbContextOptionsBuilder<AppDbContext>().Configurar(
+            db.Database.GetConnectionString(), deOtraCuenta).Options, deOtraCuenta))
         {
             otroDb.Clientes.Add(ajeno);
             await otroDb.SaveChangesAsync();

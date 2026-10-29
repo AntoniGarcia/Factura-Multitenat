@@ -57,6 +57,9 @@ public static class AccionesDeBitacora
     public const string ClienteDesactivado = "cliente_desactivado";
     public const string ClienteReactivado = "cliente_reactivado";
     public const string ClienteEliminado = "cliente_eliminado";
+    // Solo las escribe la migración que unió los catálogos de las empresas de cada cuenta.
+    public const string ClienteFusionado = "cliente_fusionado";
+    public const string ClienteRenumerado = "cliente_renumerado";
 
     // Productos.
     public const string ProductoCreado = "producto_creado";
@@ -66,6 +69,7 @@ public static class AccionesDeBitacora
 
     // Borrado físico de un registro de catálogo que nunca se usó (AGENTS.md §11).
     public const string ProductoEliminado = "producto_eliminado";
+    public const string ProductoRenumerado = "producto_renumerado";
     public const string VehiculoEliminado = "vehiculo_eliminado";
     public const string FiguraEliminada = "figura_eliminada";
 

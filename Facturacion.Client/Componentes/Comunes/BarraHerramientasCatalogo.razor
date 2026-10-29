@@ -26,9 +26,26 @@
         </MudSelect>
     }
 
+    @if (Empresas is { Count: > 1 })
+    {
+        <MudSelect T="Guid?"
+                   Label="Dado de alta en"
+                   Value="@Empresa"
+                   ValueChanged="@(v => EmpresaCambiada.InvokeAsync(v))"
+                   Class="barra-herramientas-empresa">
+            <MudSelectItem T="Guid?" Value="@(null)">Todas las empresas</MudSelectItem>
+            @foreach (var empresa in Empresas)
+            {
+                <MudSelectItem T="Guid?" Value="@empresa.Id">@empresa.NombreFiscal</MudSelectItem>
+            }
+        </MudSelect>
+    }
+
     @if (OnExportar.HasDelegate)
     {
-        <MudIconButton Icon="@Icons.Material.Filled.Download" OnClick="OnExportar" title="Exportar a CSV" />
+        <MudButton Variant="Variant.Outlined" StartIcon="@Icons.Material.Filled.Download" OnClick="OnExportar">
+            Exportar CSV
+        </MudButton>
     }
 
     @if (OnSecundario.HasDelegate)
@@ -74,6 +91,20 @@
 
     [Parameter]
     public EventCallback<bool?> ActivosCambiado { get; set; }
+
+    /// <summary>
+    /// Empresas para el filtro por la que dio de alta el registro, en los catálogos que son de
+    /// la cuenta. Es informativo: no cambia qué puede usar cada empresa. Con una sola no se pinta.
+    /// </summary>
+    [Parameter]
+    public IReadOnlyList<EmpresaDisponibleDto>? Empresas { get; set; }
+
+    /// <summary>Empresa filtrada; <c>null</c> son todas.</summary>
+    [Parameter]
+    public Guid? Empresa { get; set; }
+
+    [Parameter]
+    public EventCallback<Guid?> EmpresaCambiada { get; set; }
 
     [Parameter]
     public string TextoNuevo { get; set; } = "Nuevo";

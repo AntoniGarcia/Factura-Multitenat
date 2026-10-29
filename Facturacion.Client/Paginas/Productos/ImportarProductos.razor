@@ -45,7 +45,8 @@
     <section class="importacion-vista">
     <h2 class="seccion-titulo">Vista previa</h2>
     <p class="seccion-ayuda">
-        Se actualiza por clave SAT y descripción; si cambias una de ellas, se crea otro producto.
+        Se actualiza por ID interno si el renglón lo trae; si no, por clave SAT y nombre, y si cambias
+        alguno de ellos se crea otro producto.
         Al actualizar, el CSV cambia el IVA trasladado y conserva retenciones e IEPS, salvo si
         cambias el objeto de impuesto a uno sin desglose. La columna Activo se aplica si está presente.
     </p>
@@ -62,7 +63,7 @@
         <thead>
             <tr>
                 <th class="cifra-tabular">Renglón</th>
-                <th>Descripción</th>
+                <th>Nombre</th>
                 <th class="cifra-tabular">Clave SAT</th>
                 <th class="cifra-tabular">Precio</th>
                 <th>Resultado</th>

@@ -12,15 +12,18 @@
 
 <section class="catalogo-panel" aria-label="Catálogo de productos y servicios">
     <p class="catalogo-descripcion">
-        Conceptos reutilizables con sus claves del SAT, precio e impuestos configurados.
+        Conceptos reutilizables de tu cuenta con sus claves del SAT, precio e impuestos configurados.
     </p>
 
     <BarraHerramientasCatalogo Texto="@_texto"
                                TextoCambiado="AlBuscar"
-                               Placeholder="Buscar por código, descripción o clave SAT…"
+                               Placeholder="Buscar por código, nombre, ID interno o clave SAT…"
                                MuestraEstatus="true"
                                Activos="_activos"
                                ActivosCambiado="AlFiltrarActivos"
+                               Empresas="@Sesion.Sesion?.Empresas"
+                               Empresa="_empresa"
+                               EmpresaCambiada="AlFiltrarEmpresa"
                                TextoNuevo="Nuevo producto"
                                OnNuevo="@(_puedeCrear ? EventCallback.Factory.Create(this, () => Navegacion.NavigateTo("/productos/nuevo")) : default)"
                                OnExportar="Exportar"
@@ -43,6 +46,7 @@
     private DetalleProblema? _error;
     private string _texto = string.Empty;
     private bool? _activos;
+    private Guid? _empresa;
 
     // Comodidad visual: lo que el servidor rechazaría ni se ofrece. La protección real es la
     // política de cada endpoint. La importación crea y actualiza: se ofrece con cualquiera de
@@ -65,7 +69,7 @@
         new("Código", p => @<span class="cifra-tabular">@p.CodigoInterno</span>, ClaveOrden: "codigo", Tabular: true),
         new("Producto o servicio", p => @<div class="catalogo-celda-principal">
                                             <strong>@p.Descripcion</strong>
-                                            <span>@p.UnidadTexto</span>
+                                            <span>@(p.IdInterno is { } id ? $"{id} · {p.UnidadTexto}" : p.UnidadTexto)</span>
                                         </div>, ClaveOrden: "descripcion"),
         new("Clave SAT", p => @<span class="cifra-tabular">@p.ClaveProdServ</span>, Tabular: true),
         new("Precio", p => @<div class="catalogo-celda-precio">
@@ -97,7 +101,7 @@
     private async Task<ResultadoDePagina<ProductoEnListaDto>> CargarAsync(PeticionDePagina peticion, CancellationToken ct)
     {
         var pagina = await Productos.ListarAsync(
-            _texto, _activos, peticion.Pagina, peticion.TamanoPagina,
+            _texto, _activos, _empresa, peticion.Pagina, peticion.TamanoPagina,
             peticion.ClaveOrden, peticion.Descendente, ct);
 
         return new ResultadoDePagina<ProductoEnListaDto>(pagina.Elementos, pagina.Total);
@@ -112,6 +116,12 @@
     private async Task AlFiltrarActivos(bool? activos)
     {
         _activos = activos;
+        await RecargarAsync();
+    }
+
+    private async Task AlFiltrarEmpresa(Guid? empresa)
+    {
+        _empresa = empresa;
         await RecargarAsync();
     }
 
@@ -152,5 +162,5 @@
     }
 
     private void Exportar()
-        => Navegacion.NavigateTo(ServicioDeProductos.RutaDeExportacion(_activos), forceLoad: true);
+        => Navegacion.NavigateTo(ServicioDeProductos.RutaDeExportacion(_activos, _empresa), forceLoad: true);
 }

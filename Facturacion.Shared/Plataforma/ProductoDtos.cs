@@ -12,7 +12,9 @@ public sealed record ProductoDto(
     decimal? PesoKg,
     string ObjetoImp,
     IReadOnlyList<ImpuestoDeProductoDto> Impuestos,
-    bool Activo);
+    bool Activo,
+    string? IdInterno,
+    string? Detalle);
 
 /// <summary>
 /// Un impuesto del producto, con las tres columnas del SAT. Ver <c>ProductoImpuesto</c>
@@ -33,9 +35,13 @@ public sealed record ProductoEnListaDto(
     decimal ValorUnitario,
     decimal? PesoKg,
     string ClaveProdServ,
-    bool Activo);
+    bool Activo,
+    string? IdInterno);
 
 /// <summary>Alta y edición. El código interno lo asigna el servidor.</summary>
+/// <param name="Descripcion">El nombre del producto; es lo que va al CFDI.</param>
+/// <param name="IdInterno">Código propio de la empresa; precarga el NoIdentificacion del concepto.</param>
+/// <param name="Detalle">Descripción ampliada, opcional.</param>
 public sealed record PeticionGuardarProducto(
     string ClaveProdServ,
     string ClaveUnidad,
@@ -45,7 +51,9 @@ public sealed record PeticionGuardarProducto(
     decimal? PesoKg,
     string ObjetoImp,
     IReadOnlyList<ImpuestoDeProductoDto> Impuestos,
-    bool Activo);
+    bool Activo,
+    string? IdInterno = null,
+    string? Detalle = null);
 
 /// <summary>Una página de productos con el total.</summary>
 public sealed record PaginaDeProductos(
