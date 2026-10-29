@@ -20,7 +20,7 @@
                         aria-pressed="@activa"
                         @onclick="@(() => SeleccionarSeccion(seccion))">
                     <span class="permiso-modulo-cantidad">
-                        @Value.Count(p => seccion.Acciones.Any(a => a.Clave == p))
+                        @AccionesHabilitadas(seccion)
                     </span>
                     <MudIcon Icon="@Icons.Material.Filled.ChevronRight" Size="Size.Small" />
 
@@ -32,18 +32,23 @@
     <section class="permisos-detalle" aria-labelledby="permisos-detalle-titulo">
         <div class="permisos-detalle-encabezado">
             <h3 id="permisos-detalle-titulo">@SeccionActiva.Titulo</h3>
-            <span>@Value.Count(p => SeccionActiva.Acciones.Any(a => a.Clave == p)) de @SeccionActiva.Acciones.Count</span>
+            <span>@AccionesHabilitadas(SeccionActiva) de @SeccionActiva.Acciones.Count</span>
         </div>
-        <p class="permisos-detalle-ayuda">Al marcar una acción, también se activa el permiso para ver el módulo.</p>
         <div class="permisos-acciones" role="group" aria-label="@($"Acciones de {SeccionActiva.Titulo}")">
             @foreach (var accion in SeccionActiva.Acciones)
             {
+                var incluido = !Value.Contains(accion.Clave) && PermisosDePanel.Autoriza(Value, accion.Clave);
+                <div class="permiso-casilla" @key="accion.Clave">
                 <MudCheckBox T="bool"
-                             @key="accion.Clave"
-                             Value="@Value.Contains(accion.Clave)"
+                             Value="@(Value.Contains(accion.Clave) || incluido)"
                              ValueChanged="@(marcado => CambiarAccion(SeccionActiva, accion.Clave, marcado))"
                              Label="@accion.Etiqueta"
-                             Disabled="@Deshabilitado" />
+                             Disabled="@(Deshabilitado || incluido)" />
+                @if (incluido)
+                {
+                    <span class="permiso-concedido">Incluido</span>
+                }
+                </div>
             }
         </div>
     </section>
@@ -60,6 +65,9 @@
     public bool Deshabilitado { get; set; }
 
     private string _seccionActivaClave = PermisosDePanel.Secciones[0].Ver.Clave;
+
+    private int AccionesHabilitadas(SeccionDePermisosDePanel seccion)
+        => seccion.Acciones.Count(accion => PermisosDePanel.Autoriza(Value, accion.Clave));
 
     private SeccionDePermisosDePanel SeccionActiva =>
         PermisosDePanel.Secciones.FirstOrDefault(s => s.Ver.Clave == _seccionActivaClave)

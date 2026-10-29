@@ -100,32 +100,32 @@ public static class PermisosDePanel
     private static readonly IReadOnlyDictionary<string, string> Etiquetas = new Dictionary<string, string>
     {
         [VerPaquetes] = "Ver paquetes",
-        [AdministrarPaquetes] = "Administrar paquetes (todas las acciones)",
-        [CambiarEstadoPaquetes] = "Retirar y reactivar paquetes",
+        [AdministrarPaquetes] = "Acceso completo a paquetes",
+        [CambiarEstadoPaquetes] = "Desactivar y reactivar paquetes",
         [VerCompras] = "Ver compras",
-        [AcreditarCompras] = "Resolver compras (ambas acciones)",
-        [SoloAcreditarCompras] = "Solo acreditar compras",
-        [DescartarCompras] = "Solo descartar compras",
-        [VerClientes] = "Ver clientes",
-        [AdministrarClientes] = "Administrar cuentas (todas las acciones)",
-        [AsignarTimbres] = "Administrar paquetes exclusivos",
+        [AcreditarCompras] = "Acreditar y descartar compras",
+        [SoloAcreditarCompras] = "Acreditar compras",
+        [DescartarCompras] = "Descartar compras",
+        [VerClientes] = "Ver cuentas",
+        [AdministrarClientes] = "Acceso completo a cuentas",
+        [AsignarTimbres] = "Gestionar paquetes exclusivos",
         [EditarContactoCuentas] = "Editar contacto de cuentas",
         [CambiarEstadoEmpresas] = "Desactivar y reactivar empresas",
         [GestionarLicencias] = "Gestionar módulos de empresas",
         [GestionarMembresias] = "Gestionar membresías",
-        [GestionarLimites] = "Cambiar límites de usuarios y empresas",
+        [GestionarLimites] = "Cambiar límites de la cuenta",
         [VerUsuarios] = "Ver usuarios",
-        [AdministrarUsuarios] = "Administrar usuarios (todas las acciones)",
+        [AdministrarUsuarios] = "Acceso completo a usuarios",
         [RestablecerContrasenasUsuarios] = "Restablecer contraseñas",
         [CambiarCorreosUsuarios] = "Cambiar correos de usuarios",
         [CambiarEstadoUsuarios] = "Desactivar y reactivar usuarios",
         [QuitarAccesoUsuarios] = "Quitar acceso a empresas",
         [VerOperadores] = "Ver operadores",
-        [AdministrarOperadores] = "Administrar operadores (todas las acciones)",
+        [AdministrarOperadores] = "Acceso completo a operadores",
         [CambiarEstadoOperadores] = "Desactivar y reactivar operadores",
         [VerConfiguracion] = "Ver configuración",
         [VerCatalogosSat] = "Consultar catálogos del SAT",
-        [AdministrarConfiguracion] = "Administrar configuración"
+        [AdministrarConfiguracion] = "Editar configuración"
     };
 
     /// <summary>
@@ -146,8 +146,8 @@ public static class PermisosDePanel
                 new(SoloAcreditarCompras, Etiquetas[SoloAcreditarCompras]),
                 new(DescartarCompras, Etiquetas[DescartarCompras])
             ]),
-        new("Clientes",
-            new(VerClientes, "Ver clientes"),
+        new("Cuentas",
+            new(VerClientes, Etiquetas[VerClientes]),
             [
                 new(AdministrarClientes, Etiquetas[AdministrarClientes]),
                 new(AsignarTimbres, Etiquetas[AsignarTimbres]),
@@ -175,7 +175,7 @@ public static class PermisosDePanel
         new("Catálogos del SAT", new(VerCatalogosSat, "Consultar catálogos del SAT"), []),
         new("Configuración",
             new(VerConfiguracion, "Ver configuración"),
-            [new(AdministrarConfiguracion, "Administrar configuración")])
+            [new(AdministrarConfiguracion, Etiquetas[AdministrarConfiguracion])])
     ];
 
     /// <summary>

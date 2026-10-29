@@ -5,7 +5,7 @@
 @inject ServicioDeOperadores Operadores
 @inject IDialogService Dialogos
 
-<MudDialog>
+<MudDialog Class="dialogo-edicion-operador">
     <DialogContent>
         <PanelErrores Problema="_error" />
 
@@ -20,16 +20,14 @@
         }
         else
         {
-            <EditForm Model="this" OnValidSubmit="Guardar">
-                <div class="formulario-catalogo-secciones">
+            <EditForm id="formulario-operador" Model="this" OnValidSubmit="Guardar">
+                <div class="formulario-catalogo-secciones operador-edicion-secciones">
                 <section class="formulario-catalogo-seccion formulario-catalogo-seccion-ancha" aria-labelledby="operador-datos-acceso">
                 <h2 id="operador-datos-acceso" class="seccion-titulo">Datos de acceso</h2>
-                <div class="catalogo-rejilla catalogo-rejilla-dos">
-                    <MudTextField @bind-Value="_correo" Label="Correo" Immediate="true" InputType="InputType.Email" MaxLength="254" Required="true" />
-                    <MudTextField @bind-Value="_nombre" Label="Nombre" Immediate="true" MaxLength="128" Required="true" />
-                </div>
-                <div class="catalogo-rejilla catalogo-rejilla-dos">
-                    <MudTextField @bind-Value="_contrasena" Label="@(_modo == ModoFormulario.Crear ? "Contraseña del nuevo operador" : "Nueva contraseña del operador")" Immediate="true"
+                <div class="operador-edicion-campos">
+                    <MudTextField @bind-Value="_correo" Label="Correo" Immediate="true" InputType="InputType.Email" MaxLength="254" Required="true" Margin="Margin.Dense" />
+                    <MudTextField @bind-Value="_nombre" Label="Nombre" Immediate="true" MaxLength="128" Required="true" Margin="Margin.Dense" />
+                    <MudTextField @bind-Value="_contrasena" Label="@(_modo == ModoFormulario.Crear ? "Contraseña del operador" : "Nueva contraseña")" Immediate="true" Margin="Margin.Dense"
                                   InputType="@(_verContrasena ? InputType.Text : InputType.Password)"
                                   Adornment="Adornment.End"
                                   AdornmentIcon="@(_verContrasena ? Icons.Material.Filled.VisibilityOff : Icons.Material.Filled.Visibility)"
@@ -37,39 +35,33 @@
                                   MaxLength="128"
                                   Required="@(_modo == ModoFormulario.Crear)"
                                   HelperText="@(_modo == ModoFormulario.Crear ? "Compártela por un medio seguro." : "Déjala vacía para conservar la actual.")" />
+                    <MudTextField @bind-Value="_contrasenaOperador" Label="Tu contraseña" Immediate="true" Margin="Margin.Dense"
+                                  InputType="@(_verContrasenaOp ? InputType.Text : InputType.Password)"
+                                  Adornment="Adornment.End"
+                                  AdornmentIcon="@(_verContrasenaOp ? Icons.Material.Filled.VisibilityOff : Icons.Material.Filled.Visibility)"
+                                  OnAdornmentClick="@(() => _verContrasenaOp = !_verContrasenaOp)"
+                                  MaxLength="128" Required="true" HelperText="Autoriza los cambios." />
                 </div>
 
                 </section>
                 <section class="formulario-catalogo-seccion formulario-catalogo-seccion-ancha" aria-labelledby="operador-permisos">
                 <h2 id="operador-permisos" class="seccion-titulo">Permisos</h2>
-                <p class="seccion-ayuda">Selecciona una sección para revisar sus permisos específicos.</p>
                 <SelectorDePermisosDePanel @bind-Value="_permisos" Deshabilitado="@_guardando" />
                 </section>
 
-                <section class="formulario-catalogo-seccion formulario-catalogo-seccion-ancha" aria-labelledby="operador-confirmacion">
-                <h2 id="operador-confirmacion" class="seccion-titulo">Confirmar cambios</h2>
-                <p class="seccion-ayuda">Usa tu contraseña para autorizar esta operación.</p>
-                <div class="catalogo-rejilla catalogo-rejilla-dos">
-                    <MudTextField @bind-Value="_contrasenaOperador" Label="Tu contraseña de operador" Immediate="true"
-                                  InputType="@(_verContrasenaOp ? InputType.Text : InputType.Password)"
-                                  Adornment="Adornment.End"
-                                  AdornmentIcon="@(_verContrasenaOp ? Icons.Material.Filled.VisibilityOff : Icons.Material.Filled.Visibility)"
-                                  OnAdornmentClick="@(() => _verContrasenaOp = !_verContrasenaOp)"
-                                  MaxLength="128"
-                                  Required="true" />
-                </div>
-                </section>
-                </div>
-
-                <div class="tarjeta-formulario-acciones">
-                    <MudButton Variant="Variant.Text" OnClick="Cancelar">Cancelar</MudButton>
-                    <MudButton Variant="Variant.Filled" Color="Color.Primary" ButtonType="ButtonType.Submit" Disabled="@_guardando">
-                        @(_guardando ? "Guardando…" : (_modo == ModoFormulario.Crear ? "Crear operador" : "Guardar cambios"))
-                    </MudButton>
                 </div>
             </EditForm>
         }
     </DialogContent>
+    <DialogActions>
+        @if (_resultado is null)
+        {
+            <MudButton Variant="Variant.Text" OnClick="Cancelar" Disabled="@_guardando">Cancelar</MudButton>
+            <MudButton Variant="Variant.Filled" Color="Color.Primary" ButtonType="ButtonType.Submit" form="formulario-operador" Disabled="@_guardando">
+                @(_guardando ? "Guardando…" : (_modo == ModoFormulario.Crear ? "Crear operador" : "Guardar cambios"))
+            </MudButton>
+        }
+    </DialogActions>
 </MudDialog>
 
 @code {
