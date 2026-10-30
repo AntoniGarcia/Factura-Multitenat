@@ -1,6 +1,6 @@
 # Estado actual del sistema de facturación
 
-**Corte documental: 28 de octubre de 2026.** Las secciones fechadas el 7 y el 8 de octubre
+**Corte documental: 30 de octubre de 2026.** Las secciones fechadas el 7 y el 8 de octubre
 se conservan como historia de esas revisiones. Para comprobar el estado de un entorno
 concreto, se deben revisar su versión desplegada, sus migraciones y sus pruebas: un cambio
 en `develop` no demuestra por sí solo que el servidor de entrega ya lo esté ejecutando.
@@ -36,11 +36,14 @@ integración de pago.
 
 ## Evidencia de la última entrega de código
 
-Al 28 de octubre, además, el árbol de trabajo tiene sin commit los cambios del 27 y 28 de
-octubre descritos abajo. Con ellos, la compilación Release pasa sin advertencias nuevas y la
-suite registra **194 pruebas aprobadas y dos omitidas**.
+Al 30 de octubre, `develop` está publicado y al día con `origin/develop` hasta `4aa7334`.
+Solo queda sin commit la selección de deducciones de obra descrita abajo. Con ella, la
+compilación Release pasa sin advertencias nuevas —quedan las de auditoría de NuGet— y la
+suite registra **201 pruebas aprobadas y dos omitidas**. Esto tampoco confirma el estado del
+servidor de entrega.
 
-Al 27 de octubre, `develop` local está **17 commits por delante** de `origin/develop`, sin
+Al 28 de octubre, el árbol de trabajo tenía sin commit los cambios del 27 y 28 de octubre;
+ya están en `develop`. Al 27 de octubre, `develop` local está **17 commits por delante** de `origin/develop`, sin
 publicar. Además de lo del 24 de octubre, incluye los subpermisos por acción (`9c0910a`), el
 contrato `IUsoDeCatalogos` en su commit dedicado (`157092b`) y el merge de `origin/develop`
 (`517082f`), que trae búsquedas por clave y nombre, vista previa de la captura, eliminación
@@ -48,10 +51,51 @@ de usuarios y clientes sin movimientos, consulta de catálogos SAT en el panel y
 conexión SMTP. La compilación Release pasa sin errores y solo con las advertencias de auditoría de NuGet; la suite registra **193 pruebas aprobadas y dos omitidas**. Esa verificación es de código local: **no confirma**
 migraciones aplicadas, configuración ni funcionamiento del servidor de entrega.
 
-## Cambios del 27 y 28 de octubre de 2026 (sin commit)
+## Cambios del 29 y 30 de octubre de 2026
 
-Reglas en AGENTS.md §11, entradas del 28 de octubre. Todo está en el árbol de trabajo de
-`develop`, sin commit.
+Reglas en AGENTS.md §11, entrada del 29 de octubre. Todo está en `develop` (`d1c57fa` a
+`4aa7334`), salvo las deducciones de obra.
+
+**Catálogos y documentos**
+
+- La barra de clientes y productos tiene dos renglones: arriba Nuevo, Exportar e Importar;
+  abajo Buscar, Dado de alta en y Estatus. Se retiró la página `/catalogos`, que no se usaba.
+- El ID interno del producto solo precarga el No. de identificación en Comercio Exterior; en
+  los demás tipos el concepto no lo captura.
+- Con `XAXX010101000`, el nombre del receptor se captura en cada factura, precargado con el
+  del cliente. El servidor lo normaliza y la información global exige `PUBLICO EN GENERAL`.
+- El alta de empresa es una pestaña de Configuración, solo para el titular. `/empresa/nueva`
+  se conserva para la primera entrada y salió del menú.
+
+**Monedas por empresa** (`22f1afd`)
+
+- Solo MXN es fija. La pestaña Monedas de Configuración agrega las de `c_Moneda` que usa la
+  empresa, con el permiso nuevo `configuracion_monedas` (66 asignables). Facturas y pagos
+  solo ofrecen esas monedas y el servidor rechaza otra al guardar.
+- Migración `20261029_B_MonedasDeEmpresa`: siembra las monedas que cada empresa ya tenía en
+  comprobantes o pagos, borradores incluidos, y da el permiso a quien tenía
+  `configuracion_general`. Probada en una copia de la base (subir, bajar y volver a subir),
+  aplicada en FacturacionDev y revisada por Luis en el navegador.
+- `docs/sql/Facturacion.Instalacion.sql` llega hasta esa migración. Se ejecutó dos veces en
+  una base vacía sin errores: 67 migraciones y 66 permisos.
+
+**Deducciones de obra** (30 oct, sin commit)
+
+- Cada una de las cuatro deducciones (5 al millar, 1% OBS, ICIC, ÚNETE) tiene una casilla.
+  Solo las marcadas muestran su nombre y porcentaje, y solo ellas salen en el cálculo y en el
+  PDF de la estimación. Una desmarcada se guarda con 0 %; no hubo migración.
+- Marcar una deducción sin porcentaje impide guardar. Las reglas fiscales de la obra no
+  cambiaron: la obra pública sigue exigiendo el 5 al millar al 0.50 %.
+- **No se ha verificado en el navegador.**
+
+**También en `develop`** el 29 de octubre: actualización de catálogos SAT desde el panel del
+operador (`ce362d8`), descargas CSV autenticadas (`91b590f`) y ajustes de textos y
+formularios (`032ddec`, `071dc6d`).
+
+## Cambios del 27 y 28 de octubre de 2026
+
+Reglas en AGENTS.md §11, entradas del 28 de octubre. Están en `develop` desde el 28 de
+octubre (`11f9098`, `6d2b42e`, `08e7f6c` y anteriores).
 
 **La cuenta como unidad de trabajo**
 
@@ -73,8 +117,9 @@ Reglas en AGENTS.md §11, entradas del 28 de octubre. Todo está en el árbol de
 - Con `XAXX010101000` el nombre se puede cambiar; la factura global exige `PUBLICO EN GENERAL`.
 - Producto con nombre, ID interno y descripción, un solo formulario y el modal de claves SAT
   con alto fijo. El CSV de productos cambió de columnas (Nombre, IdInterno, Descripcion).
-- En la factura, el No. de identificación se ve en todos los tipos y se precarga con el ID
-  interno; la descripción del concepto se precarga con «nombre — descripción» y es editable.
+- En la factura, el No. de identificación se veía en todos los tipos y se precargaba con el ID
+  interno (el 29 de octubre quedó solo en Comercio Exterior); la descripción del concepto se
+  precarga con «nombre — descripción» y es editable.
 
 **Migraciones** (todas probadas en una copia de la base: subir, bajar y volver a subir)
 
@@ -292,10 +337,11 @@ entorno local, no acredita la existencia de un CFDI certificado por el SAT.
    pública, porque los logos se sirven con autorización (AGENTS.md §4).
 7. Decidir si el `traceId` deja de mostrarse en pantalla y, si se mantiene así,
    registrarlo en AGENTS.md §11.
-8. Hacer los commits de los cambios del 27 y 28 de octubre, publicar `develop` y revisar
-   antes de cada commit que no queden marcadores de conflicto.
+8. Hacer el commit de las deducciones de obra, revisarlas en el navegador y revisar antes de
+   cada commit que no queden marcadores de conflicto.
 9. Actualizar FacturationWebAppDB (la base del ensayo local de IIS), que sigue en la migración
-   del 9 de octubre, y la del servidor real cuando exista, con el script regenerado.
+   del 9 de octubre, y la del servidor real cuando exista, con el script regenerado hasta
+   `20261029_B_MonedasDeEmpresa`.
 10. Corregir el renglón de concepto de la factura: con ventanas de unos 1000 px sus columnas
     fijas son más anchas que la tarjeta y el botón de quitar y la descripción se salen.
 
