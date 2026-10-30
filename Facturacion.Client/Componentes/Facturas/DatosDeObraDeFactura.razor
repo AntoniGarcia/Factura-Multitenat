@@ -51,13 +51,19 @@
 
 <section class="emision-seccion">
     <h2 class="seccion-titulo">Deducciones del pago</h2>
-    @for (var i = 0; i < _deducciones.Count; i++)
+    <p class="seccion-ayuda">Marca las que aplica el contrato. Las demás no salen en el cálculo ni en la estimación.</p>
+    @foreach (var deduccion in _deducciones)
     {
-        var deduccion = _deducciones[i];
-        <div class="obra-deduccion">
-            <MudTextField @bind-Value="deduccion.Nombre" Label="Concepto" MaxLength="60" Required="true" />
-            <MudNumericField T="decimal" @bind-Value="deduccion.Porcentaje" Immediate="true" Label="Porcentaje (%)"
-                             Min="0" Max="100" Format="N2" Class="cifra-tabular" />
+        <div class="obra-deduccion-bloque">
+            <MudCheckBox T="bool" @bind-Value="deduccion.Aplica" Label="@deduccion.Etiqueta" />
+            @if (deduccion.Aplica)
+            {
+                <div class="obra-deduccion">
+                    <MudTextField @bind-Value="deduccion.Nombre" Label="Concepto" MaxLength="60" Required="true" />
+                    <MudNumericField T="decimal" @bind-Value="deduccion.Porcentaje" Immediate="true" Label="Porcentaje (%)"
+                                     Min="0" Max="100" Format="N2" Class="cifra-tabular" />
+                </div>
+            }
         </div>
     }
 </section>
@@ -75,7 +81,7 @@
             <div><dt>Subtotal de la estimación</dt><dd class="cifra-tabular">@vista.SubtotalEstimacion.ToString("N2")</dd></div>
             <div><dt>IVA estimado</dt><dd class="cifra-tabular">@vista.IvaEstimado.ToString("N2")</dd></div>
             <div><dt>Total de la estimación</dt><dd class="cifra-tabular">@vista.TotalEstimacion.ToString("N2")</dd></div>
-            @foreach (var deduccion in vista.Deducciones)
+            @foreach (var deduccion in vista.Deducciones.Where(x => x.Porcentaje != 0))
             {
                 <div><dt>@deduccion.Nombre</dt><dd class="cifra-tabular">−@deduccion.Importe.ToString("N2")</dd></div>
             }
@@ -107,12 +113,13 @@
     private decimal _porcentajeRetenciones;
     private decimal _porcentajeDevoluciones;
     private decimal _porcentajeIva;
+    // Los nombres se asignan en OnParametersSetAsync, que restablece cada deducción.
     private readonly List<DeduccionCaptura> _deducciones =
     [
-        new("5 al millar", 0m),
-        new("1% OBS", 0m),
-        new("ICIC", 0m),
-        new("ÚNETE", 0m)
+        new("5 al millar"),
+        new("1% OBS"),
+        new("ICIC"),
+        new("ÚNETE")
     ];
     private DatosObraDto? _resultado;
     private ConciliacionFiscalObraDto? _conciliacion;
@@ -137,7 +144,7 @@
             var iva = Porcentaje(subtotal, _porcentajeIva);
             var total = subtotal + iva;
             var deducciones = _deducciones.Select(x => new DeduccionDeObraDto(
-                x.Nombre, x.Porcentaje, Porcentaje(importe, x.Porcentaje))).ToArray();
+                x.NombreAEnviar, x.PorcentajeAEnviar, Porcentaje(importe, x.PorcentajeAEnviar))).ToArray();
             return new DatosObraDto(importe, _porcentajeAmortizacion, amortizacion,
                 _porcentajeRetenciones, retenciones, _porcentajeDevoluciones, devoluciones,
                 subtotal, _porcentajeIva, iva, total, deducciones,
@@ -157,8 +164,8 @@
            datos.PorcentajeIva == _porcentajeIva &&
            datos.Deducciones.Count == _deducciones.Count &&
            datos.Deducciones.Select((deduccion, indice) =>
-               deduccion.Nombre == _deducciones[indice].Nombre &&
-               deduccion.Porcentaje == _deducciones[indice].Porcentaje).All(x => x);
+               deduccion.Nombre == _deducciones[indice].NombreAEnviar &&
+               deduccion.Porcentaje == _deducciones[indice].PorcentajeAEnviar).All(x => x);
 
     protected override async Task OnParametersSetAsync()
     {
@@ -171,11 +178,7 @@
         _porcentajeRetenciones = 0;
         _porcentajeDevoluciones = 0;
         _porcentajeIva = 0;
-        _deducciones[0].Nombre = "5 al millar";
-        _deducciones[1].Nombre = "1% OBS";
-        _deducciones[2].Nombre = "ICIC";
-        _deducciones[3].Nombre = "ÚNETE";
-        foreach (var deduccion in _deducciones) deduccion.Porcentaje = 0;
+        foreach (var deduccion in _deducciones) deduccion.Restablecer();
         _datosAnterioresSinTasa = false;
         _aceptaRecalculo = false;
         var (datos, error) = await Obras.ObtenerAsync(ComprobanteId);
@@ -194,6 +197,7 @@
         {
             _deducciones[i].Nombre = datos.Deducciones[i].Nombre;
             _deducciones[i].Porcentaje = datos.Deducciones[i].Porcentaje;
+            _deducciones[i].Aplica = datos.Deducciones[i].Porcentaje != 0;
         }
         await CargarConciliacionAsync();
     }
@@ -212,6 +216,14 @@
                 null, string.Empty, null);
             return false;
         }
+        if (_deducciones.FirstOrDefault(x => x.Aplica && x.Porcentaje == 0) is { } sinPorcentaje)
+        {
+            _error = new DetalleProblema("urn:facturacion:error:obra-deduccion-sin-porcentaje",
+                "Falta el porcentaje de una deducción", 400,
+                $"Indica el porcentaje de {sinPorcentaje.Etiqueta} o desmárcala si el contrato no la aplica.",
+                null, string.Empty, null);
+            return false;
+        }
         _guardando = true;
         _error = null;
         _conciliacion = null;
@@ -220,7 +232,7 @@
             if (!await GuardarFactura()) return false;
             var peticion = new PeticionGuardarDatosObra(_porcentajeAmortizacion, _porcentajeRetenciones,
                 _porcentajeDevoluciones, _porcentajeIva,
-                [.. _deducciones.Select(x => new PeticionDeduccionDeObra(x.Nombre, x.Porcentaje))], _tipoObra);
+                [.. _deducciones.Select(x => new PeticionDeduccionDeObra(x.NombreAEnviar, x.PorcentajeAEnviar))], _tipoObra);
             var (datos, error) = await Obras.GuardarAsync(ComprobanteId, peticion);
             _resultado = datos;
             if (datos is not null) _datosAnterioresSinTasa = false;
@@ -263,9 +275,24 @@
             new DialogOptions { MaxWidth = MaxWidth.ExtraLarge, FullWidth = true, CloseOnEscapeKey = true });
     }
 
-    private sealed class DeduccionCaptura(string nombre, decimal porcentaje)
+    // La tabla conserva siempre las cuatro deducciones; una sin usar se guarda con 0 %, que es
+    // también lo que la deja fuera del cálculo y del PDF. Desmarcar no borra lo capturado, para
+    // que volver a marcarla lo recupere mientras no se guarde.
+    private sealed class DeduccionCaptura(string predeterminado)
     {
-        public string Nombre { get; set; } = nombre;
-        public decimal Porcentaje { get; set; } = porcentaje;
+        public string Nombre { get; set; } = string.Empty;
+        public decimal Porcentaje { get; set; }
+        public bool Aplica { get; set; }
+
+        public string Etiqueta => string.IsNullOrWhiteSpace(Nombre) ? predeterminado : Nombre.Trim();
+        public string NombreAEnviar => Aplica ? Nombre : Etiqueta;
+        public decimal PorcentajeAEnviar => Aplica ? Porcentaje : 0m;
+
+        public void Restablecer()
+        {
+            Nombre = predeterminado;
+            Porcentaje = 0;
+            Aplica = false;
+        }
     }
 }

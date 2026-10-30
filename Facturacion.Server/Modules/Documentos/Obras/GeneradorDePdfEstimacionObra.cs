@@ -96,7 +96,8 @@ public sealed class GeneradorDePdfEstimacionObra
                             Renglon(desglose, "Subtotal de la estimación", obra.SubtotalEstimacion, true);
                             Renglon(desglose, $"IVA estimado ({obra.PorcentajeIva:N2} %)", obra.IvaEstimado);
                             Renglon(desglose, "Total de la estimación", obra.TotalEstimacion, true);
-                            foreach (var deduccion in obra.Deducciones)
+                            // Una deducción con 0 % es una que el contrato no aplica.
+                            foreach (var deduccion in obra.Deducciones.Where(x => x.Porcentaje != 0))
                                 Renglon(desglose, $"{deduccion.Nombre} ({deduccion.Porcentaje:N2} %)", -deduccion.Importe);
                             desglose.Item().PaddingTop(5).LineHorizontal(1);
                             Renglon(desglose, "Importe líquido estimado", obra.ImporteLiquido, true);

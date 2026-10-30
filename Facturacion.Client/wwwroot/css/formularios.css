@@ -627,7 +627,11 @@
 
 .obra-deduccion {
     grid-template-columns: minmax(0, 2fr) minmax(0, 1fr);
-    padding-bottom: 0.75rem;
+    margin: 0.25rem 0 0.5rem;
+}
+
+.obra-deduccion-bloque {
+    margin-bottom: 0.5rem;
     border-bottom: 1px solid var(--borde);
 }
 
