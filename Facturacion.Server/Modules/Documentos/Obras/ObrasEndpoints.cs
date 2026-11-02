@@ -14,7 +14,12 @@ public static class ObrasEndpoints
         grupo.MapGet("/{comprobanteId:guid}", Obtener);
         grupo.MapPut("/{comprobanteId:guid}", Guardar);
         grupo.MapGet("/{comprobanteId:guid}/conciliacion-fiscal", ConciliacionFiscal);
-        grupo.MapGet("/{comprobanteId:guid}/estimacion.pdf", EstimacionPdf);
+
+        // Fuera del grupo: se abre desde el listado, así que basta con poder descargar documentos.
+        // Cualquier casilla de obra ya trae la descarga entre sus permisos implícitos.
+        rutas.MapGet("/api/obras/comprobantes/{comprobanteId:guid}/estimacion.pdf", EstimacionPdf)
+            .WithTags("Constructoras")
+            .RequireAuthorization(Permisos.DocumentosDescarga);
     }
 
     private static async Task<IResult> Obtener(Guid comprobanteId, ServicioDeObras obras,

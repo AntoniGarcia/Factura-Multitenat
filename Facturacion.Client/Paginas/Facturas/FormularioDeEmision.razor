@@ -173,7 +173,8 @@ else
                                              Class="concepto-editor-precio cifra-tabular" />
 
                             <MudNumericField T="decimal" Value="@renglon.Descuento" ValueChanged="async v => { renglon.Descuento = v; await ActualizarVistaPreviaAsync(); }"
-                                             Label="Descuento" Format="N2" Min="0" Immediate="true"
+                                             Label="Descuento" Format="N2" Min="0" Immediate="true" ReadOnly="EsFacturaDeObra"
+                                             HelperText="@(EsFacturaDeObra ? "Amortización del anticipo, desde la pestaña Obra" : null)"
                                              Class="concepto-editor-descuento cifra-tabular" />
 
                             <div class="concepto-editor-dato concepto-editor-importe">
@@ -283,8 +284,11 @@ else
         @if (EsFacturaDeObra)
         {
             <MudTabPanel Text="Obra">
-                <DatosDeObraDeFactura ComprobanteId="@_comprobante.Id" ImporteTrabajos="@(_vistaPrevia?.SubTotal ?? _comprobante.SubTotal)" GuardarFactura="GuardarAsync"
-                                      AlGuardar="@(() => _obraGuardada = true)" />
+                <DatosDeObraDeFactura ComprobanteId="@_comprobante.Id" ImporteTrabajos="@(_vistaPrevia?.SubTotal ?? _comprobante.SubTotal)"
+                                      IvaConceptos="@(_vistaPrevia?.TotalImpuestosTrasladados ?? _comprobante.TotalImpuestosTrasladados)"
+                                      AnticipoRelacionado="@(_relacionados.Count(r => r.TipoRelacion == "07") == 1)"
+                                      GuardarFactura="GuardarAsync"
+                                      AlGuardar="AlGuardarObraAsync" />
             </MudTabPanel>
         }
         @if (EsFacturaComercio)
@@ -831,10 +835,32 @@ else
 
         _comprobante = exito;
         _receptorNombre = exito!.ReceptorNombre;
+        if (EsFacturaDeObra) CopiarAmortizacion(exito);
         _vistaPrevia = DesdeComprobante(exito!);
         _errorVistaPrevia = null;
         _borradorSinGuardar = null;
         return true;
+    }
+
+    // En obra el servidor pone en cada concepto el descuento de la amortización y la leyenda del
+    // anticipo; se copian a la captura para que el siguiente guardado no muestre los anteriores.
+    private void CopiarAmortizacion(ComprobanteDto guardado)
+    {
+        var conceptos = guardado.Conceptos.OrderBy(x => x.Orden).ToArray();
+        for (var i = 0; i < Math.Min(conceptos.Length, _renglones.Count); i++)
+        {
+            _renglones[i].Descuento = conceptos[i].Descuento;
+            _renglones[i].Descripcion = conceptos[i].Descripcion;
+        }
+    }
+
+    private async Task AlGuardarObraAsync()
+    {
+        _obraGuardada = true;
+        if (_comprobante is null || await Emision.ObtenerAsync(_comprobante.Id) is not { } actualizado) return;
+        _comprobante = actualizado;
+        CopiarAmortizacion(actualizado);
+        _vistaPrevia = DesdeComprobante(actualizado);
     }
 
     private PeticionGuardarBorrador CapturarFactura(bool soloElegidos = false) => new(

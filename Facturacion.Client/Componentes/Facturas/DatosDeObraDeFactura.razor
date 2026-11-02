@@ -2,7 +2,6 @@
 @using Facturacion.Shared.Comun
 @using Facturacion.Shared.Obras
 @inject ServicioDeObras Obras
-@inject IDialogService Dialogos
 
 <PanelErrores Problema="_error" />
 
@@ -17,26 +16,37 @@
     }
 
     <div class="obra-rejilla">
-        <MudSelect T="string" @bind-Value="_tipoObra" Label="Tipo de obra" Required="true">
+        <MudSelect T="string" Value="_tipoObra" ValueChanged="CambiarTipoObra" Label="Tipo de obra" Required="true">
             <MudSelectItem T="string" Value="@TiposDeObra.Publica">Obra pública</MudSelectItem>
             <MudSelectItem T="string" Value="@TiposDeObra.Privada">Obra privada</MudSelectItem>
         </MudSelect>
         <MudTextField T="string" Value="@(ImporteTrabajos > 0 ? ImporteTrabajos.ToString("N2") : "Guarda los conceptos")"
                       Label="Importe de los trabajos" ReadOnly="true" Class="cifra-tabular" />
+        <MudTextField T="string" Value="@(ImporteTrabajos > 0 ? IvaConceptos.ToString("N2") : "Guarda los conceptos")"
+                      Label="IVA de los conceptos" ReadOnly="true" Class="cifra-tabular"
+                      HelperText="Suma del IVA de cada concepto, como sale en el CFDI." />
     </div>
-    <h3 class="obra-subtitulo">Ajustes de la estimación</h3>
+</section>
+
+<section class="emision-seccion">
+    <h2 class="seccion-titulo">Amortización del anticipo</h2>
     <div class="obra-rejilla">
         <MudNumericField T="decimal" @bind-Value="_porcentajeAmortizacion" Immediate="true" Label="Amortización del anticipo (%)"
-                         Min="0" Max="100" Format="N2" Class="cifra-tabular" />
-        <MudNumericField T="decimal" @bind-Value="_porcentajeRetenciones" Immediate="true" Label="Retenciones (%)"
-                         Min="0" Max="100" Format="N2" Class="cifra-tabular" />
-        <MudNumericField T="decimal" @bind-Value="_porcentajeDevoluciones" Immediate="true" Label="Devoluciones (%)"
-                         Min="0" Max="100" Format="N2" Class="cifra-tabular" />
-        <MudNumericField T="decimal" @bind-Value="_porcentajeIva" Immediate="true" Label="IVA estimado (%)"
-                         Min="0" Max="100" Format="N2" Class="cifra-tabular" />
+                         Min="0" Max="100" Format="N2" Class="cifra-tabular" Disabled="@(!AnticipoRelacionado)" />
     </div>
     <p class="seccion-ayuda">
-        Cálculo preliminar. Sin ajustes de base y con IVA uniforme, al guardar se usa el IVA de los conceptos.
+        @if (AnticipoRelacionado)
+        {
+            @:Se resta como descuento de cada concepto antes del IVA y agrega a su descripción la leyenda «CFDI por remanente de un anticipo», como pide el SAT. No puede pasar del saldo del anticipo.
+        }
+        else
+        {
+            @:Para habilitarla, agrega en «CFDI relacionados» el anticipo con tipo 07 — Aplicación de anticipo.
+            @if (_porcentajeAmortizacion != 0)
+            {
+                @: Sin anticipo relacionado, al guardar se quitará la amortización.
+            }
+        }
     </p>
 </section>
 
@@ -51,17 +61,27 @@
 
 <section class="emision-seccion">
     <h2 class="seccion-titulo">Deducciones del pago</h2>
-    <p class="seccion-ayuda">Marca las que aplica el contrato. Las demás no salen en el cálculo ni en la estimación.</p>
+    <p class="seccion-ayuda">
+        Se restan del total del CFDI para llegar al importe líquido; no cambian la factura. Marca las que
+        aplica el contrato: las demás no salen en el cálculo ni en la estimación.
+    </p>
+    <div class="obra-rejilla">
+        <MudNumericField T="decimal" @bind-Value="_porcentajeRetenciones" Immediate="true" Label="Retenciones (%)"
+                         Min="0" Max="100" Format="N2" Class="cifra-tabular" />
+        <MudNumericField T="decimal" @bind-Value="_porcentajeDevoluciones" Immediate="true" Label="Devoluciones (%)"
+                         Min="0" Max="100" Format="N2" Class="cifra-tabular" />
+    </div>
     @foreach (var deduccion in _deducciones)
     {
         <div class="obra-deduccion-bloque">
-            <MudCheckBox T="bool" @bind-Value="deduccion.Aplica" Label="@deduccion.Etiqueta" />
+            <MudCheckBox T="bool" Value="deduccion.Aplica" ValueChanged="@(aplica => Marcar(deduccion, aplica))"
+                         Label="@deduccion.Etiqueta" />
             @if (deduccion.Aplica)
             {
                 <div class="obra-deduccion">
                     <MudTextField @bind-Value="deduccion.Nombre" Label="Concepto" MaxLength="60" Required="true" />
                     <MudNumericField T="decimal" @bind-Value="deduccion.Porcentaje" Immediate="true" Label="Porcentaje (%)"
-                                     Min="0" Max="100" Format="N2" Class="cifra-tabular" />
+                                     Min="0" Max="100" Step="0.1m" Format="N2" Class="cifra-tabular" />
                 </div>
             }
         </div>
@@ -75,12 +95,21 @@
         <p class="seccion-ayuda">Estimación sobre conceptos guardados; no sustituye el total fiscal del CFDI.</p>
         <dl class="obra-desglose">
             <div><dt>Importe de trabajos</dt><dd class="cifra-tabular">@vista.ImporteTrabajos.ToString("N2")</dd></div>
-            <div><dt>Amortización del anticipo</dt><dd class="cifra-tabular">−@vista.Amortizacion.ToString("N2")</dd></div>
-            <div><dt>Retenciones</dt><dd class="cifra-tabular">−@vista.Retenciones.ToString("N2")</dd></div>
-            <div><dt>Devoluciones</dt><dd class="cifra-tabular">−@vista.Devoluciones.ToString("N2")</dd></div>
+            @if (vista.Amortizacion != 0)
+            {
+                <div><dt>Amortización del anticipo</dt><dd class="cifra-tabular">−@vista.Amortizacion.ToString("N2")</dd></div>
+            }
             <div><dt>Subtotal de la estimación</dt><dd class="cifra-tabular">@vista.SubtotalEstimacion.ToString("N2")</dd></div>
-            <div><dt>IVA estimado</dt><dd class="cifra-tabular">@vista.IvaEstimado.ToString("N2")</dd></div>
+            <div><dt>IVA de los conceptos</dt><dd class="cifra-tabular">@vista.IvaEstimado.ToString("N2")</dd></div>
             <div><dt>Total de la estimación</dt><dd class="cifra-tabular">@vista.TotalEstimacion.ToString("N2")</dd></div>
+            @if (vista.Retenciones != 0)
+            {
+                <div><dt>Retenciones</dt><dd class="cifra-tabular">−@vista.Retenciones.ToString("N2")</dd></div>
+            }
+            @if (vista.Devoluciones != 0)
+            {
+                <div><dt>Devoluciones</dt><dd class="cifra-tabular">−@vista.Devoluciones.ToString("N2")</dd></div>
+            }
             @foreach (var deduccion in vista.Deducciones.Where(x => x.Porcentaje != 0))
             {
                 <div><dt>@deduccion.Nombre</dt><dd class="cifra-tabular">−@deduccion.Importe.ToString("N2")</dd></div>
@@ -91,11 +120,7 @@
 }
 
 <div class="tarjeta-formulario-acciones">
-    <span class="catalogo-acciones-ayuda">Revisa los ajustes y deducciones antes de guardar.</span>
-    <MudButton Variant="Variant.Outlined" StartIcon="@Icons.Material.Filled.PictureAsPdf"
-               OnClick="VistaPreviaAsync" Disabled="@(_guardando || (_datosAnterioresSinTasa && !_aceptaRecalculo))">
-        Vista previa de estimación
-    </MudButton>
+    <span class="catalogo-acciones-ayuda">Revisa la amortización y las deducciones antes de guardar.</span>
     <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="GuardarAsync" Disabled="@(_guardando || (_datosAnterioresSinTasa && !_aceptaRecalculo))">
         @(_guardando ? "Guardando…" : "Guardar cálculo de obra")
     </MudButton>
@@ -105,21 +130,26 @@
 @code {
     [Parameter, EditorRequired] public Guid ComprobanteId { get; set; }
     [Parameter] public decimal ImporteTrabajos { get; set; }
+    /// <summary>IVA trasladado de los conceptos capturados; el servidor lo vuelve a sumar al guardar.</summary>
+    [Parameter] public decimal IvaConceptos { get; set; }
+    /// <summary>La factura relaciona exactamente un CFDI con tipo 07: solo entonces se amortiza.</summary>
+    [Parameter] public bool AnticipoRelacionado { get; set; }
     [Parameter, EditorRequired] public Func<Task<bool>> GuardarFactura { get; set; } = null!;
     [Parameter] public EventCallback AlGuardar { get; set; }
 
     private decimal _porcentajeAmortizacion;
+    private decimal AmortizacionAEnviar => AnticipoRelacionado ? _porcentajeAmortizacion : 0;
     private string? _tipoObra;
     private decimal _porcentajeRetenciones;
     private decimal _porcentajeDevoluciones;
-    private decimal _porcentajeIva;
-    // Los nombres se asignan en OnParametersSetAsync, que restablece cada deducción.
+    // Los nombres se asignan en OnParametersSetAsync, que restablece cada deducción. El segundo
+    // valor es la tasa que se precarga al marcarla: 2 al millar de la CMIC en ICIC.
     private readonly List<DeduccionCaptura> _deducciones =
     [
-        new("5 al millar"),
-        new("1% OBS"),
-        new("ICIC"),
-        new("ÚNETE")
+        new("5 al millar", 0.5m),
+        new("1% OBS", 1m),
+        new("ICIC", 0.2m),
+        new("ÚNETE", 0.5m)
     ];
     private DatosObraDto? _resultado;
     private ConciliacionFiscalObraDto? _conciliacion;
@@ -137,18 +167,24 @@
             if (importe <= 0) return null;
             if (_datosAnterioresSinTasa && !_aceptaRecalculo && _resultado is not null) return _resultado;
             if (CoincideConGuardado(importe)) return _resultado;
-            var amortizacion = Porcentaje(importe, _porcentajeAmortizacion);
+            var porcentaje = AmortizacionAEnviar;
+            var amortizacion = Porcentaje(importe, porcentaje);
             var retenciones = Porcentaje(importe, _porcentajeRetenciones);
             var devoluciones = Porcentaje(importe, _porcentajeDevoluciones);
-            var subtotal = importe - amortizacion - retenciones - devoluciones;
-            var iva = Porcentaje(subtotal, _porcentajeIva);
+            var subtotal = importe - amortizacion;
+            // IvaConceptos ya trae descontada la amortización guardada; mientras no se guarde la
+            // nueva, se estima escalando a la base que quedaría. Al guardar manda el servidor.
+            var aplicada = _resultado?.PorcentajeAmortizacion ?? 0;
+            var iva = aplicada == porcentaje ? IvaConceptos
+                : aplicada >= 100 ? 0
+                : Math.Round(IvaConceptos / (1 - aplicada / 100m) * (1 - porcentaje / 100m), 2, MidpointRounding.ToEven);
             var total = subtotal + iva;
             var deducciones = _deducciones.Select(x => new DeduccionDeObraDto(
                 x.NombreAEnviar, x.PorcentajeAEnviar, Porcentaje(importe, x.PorcentajeAEnviar))).ToArray();
-            return new DatosObraDto(importe, _porcentajeAmortizacion, amortizacion,
+            return new DatosObraDto(importe, porcentaje, amortizacion,
                 _porcentajeRetenciones, retenciones, _porcentajeDevoluciones, devoluciones,
-                subtotal, _porcentajeIva, iva, total, deducciones,
-                total - deducciones.Sum(x => x.Importe), _tipoObra);
+                subtotal, iva, total, deducciones,
+                total - retenciones - devoluciones - deducciones.Sum(x => x.Importe), _tipoObra);
         }
     }
 
@@ -158,10 +194,10 @@
     private bool CoincideConGuardado(decimal importe)
         => _resultado is { } datos && datos.ImporteTrabajos == importe &&
            datos.TipoObra == _tipoObra &&
-           datos.PorcentajeAmortizacion == _porcentajeAmortizacion &&
+           datos.PorcentajeAmortizacion == AmortizacionAEnviar &&
            datos.PorcentajeRetenciones == _porcentajeRetenciones &&
            datos.PorcentajeDevoluciones == _porcentajeDevoluciones &&
-           datos.PorcentajeIva == _porcentajeIva &&
+           datos.IvaEstimado == IvaConceptos &&
            datos.Deducciones.Count == _deducciones.Count &&
            datos.Deducciones.Select((deduccion, indice) =>
                deduccion.Nombre == _deducciones[indice].NombreAEnviar &&
@@ -177,7 +213,6 @@
         _porcentajeAmortizacion = 0;
         _porcentajeRetenciones = 0;
         _porcentajeDevoluciones = 0;
-        _porcentajeIva = 0;
         foreach (var deduccion in _deducciones) deduccion.Restablecer();
         _datosAnterioresSinTasa = false;
         _aceptaRecalculo = false;
@@ -192,7 +227,6 @@
         _datosAnterioresSinTasa =
             (datos.PorcentajeRetenciones is null && datos.Retenciones != 0) ||
             (datos.PorcentajeDevoluciones is null && datos.Devoluciones != 0);
-        _porcentajeIva = datos.PorcentajeIva;
         for (var i = 0; i < _deducciones.Count; i++)
         {
             _deducciones[i].Nombre = datos.Deducciones[i].Nombre;
@@ -200,6 +234,27 @@
             _deducciones[i].Aplica = datos.Deducciones[i].Porcentaje != 0;
         }
         await CargarConciliacionAsync();
+    }
+
+    // Obra pública marca la retención local (5 al millar, editable para tasas estatales o
+    // municipales); obra privada empieza sin deducciones.
+    private void CambiarTipoObra(string? tipo)
+    {
+        _tipoObra = tipo;
+        if (tipo == TiposDeObra.Publica)
+            Marcar(_deducciones[0], true);
+        else if (tipo == TiposDeObra.Privada)
+            foreach (var deduccion in _deducciones)
+            {
+                deduccion.Aplica = false;
+                deduccion.Porcentaje = 0;
+            }
+    }
+
+    private static void Marcar(DeduccionCaptura deduccion, bool aplica)
+    {
+        deduccion.Aplica = aplica;
+        if (aplica && deduccion.Porcentaje == 0) deduccion.Porcentaje = deduccion.Sugerido;
     }
 
     private async Task GuardarAsync()
@@ -230,8 +285,8 @@
         try
         {
             if (!await GuardarFactura()) return false;
-            var peticion = new PeticionGuardarDatosObra(_porcentajeAmortizacion, _porcentajeRetenciones,
-                _porcentajeDevoluciones, _porcentajeIva,
+            var peticion = new PeticionGuardarDatosObra(AmortizacionAEnviar, _porcentajeRetenciones,
+                _porcentajeDevoluciones,
                 [.. _deducciones.Select(x => new PeticionDeduccionDeObra(x.NombreAEnviar, x.PorcentajeAEnviar))], _tipoObra);
             var (datos, error) = await Obras.GuardarAsync(ComprobanteId, peticion);
             _resultado = datos;
@@ -257,32 +312,15 @@
         if (error is not null) _error = error;
     }
 
-    private async Task VistaPreviaAsync()
-    {
-        if (!await GuardarDatosAsync()) return;
-        var (archivo, error) = await Obras.ObtenerEstimacionPdfAsync(ComprobanteId);
-        _error = error;
-        if (archivo is null) return;
-
-        var parametros = new DialogParameters<DialogoDeComprobanteDeCompra>
-        {
-            { x => x.Archivo, archivo },
-            { x => x.TituloVistaPrevia, "Estimación de obra" },
-            { x => x.AvisoFiscal, string.Empty }
-        };
-        await Dialogos.ShowAsync<DialogoDeComprobanteDeCompra>(
-            "Vista previa de estimación de obra", parametros,
-            new DialogOptions { MaxWidth = MaxWidth.ExtraLarge, FullWidth = true, CloseOnEscapeKey = true });
-    }
-
     // La tabla conserva siempre las cuatro deducciones; una sin usar se guarda con 0 %, que es
     // también lo que la deja fuera del cálculo y del PDF. Desmarcar no borra lo capturado, para
     // que volver a marcarla lo recupere mientras no se guarde.
-    private sealed class DeduccionCaptura(string predeterminado)
+    private sealed class DeduccionCaptura(string predeterminado, decimal sugerido)
     {
         public string Nombre { get; set; } = string.Empty;
         public decimal Porcentaje { get; set; }
         public bool Aplica { get; set; }
+        public decimal Sugerido => sugerido;
 
         public string Etiqueta => string.IsNullOrWhiteSpace(Nombre) ? predeterminado : Nombre.Trim();
         public string NombreAEnviar => Aplica ? Nombre : Etiqueta;

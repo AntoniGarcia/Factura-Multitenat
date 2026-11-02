@@ -3,7 +3,6 @@ using Facturacion.Server.Data;
 using Facturacion.Server.Infra.Tenencia;
 using Facturacion.Server.Modules.Documentos.ComercioExterior;
 using Facturacion.Server.Modules.Documentos.Obras;
-using Facturacion.Shared.Obras;
 using Facturacion.Server.Modules.Plataforma.Empresas;
 using Facturacion.Shared.ComercioExterior;
 using Facturacion.Shared.Comun;
@@ -31,6 +30,7 @@ public sealed class ServicioDePdfBorrador(
             .Include(c => c.Pagos).ThenInclude(p => p.Documentos).ThenInclude(d => d.Impuestos)
             .Include(c => c.Conceptos.OrderBy(x => x.Orden))
                 .ThenInclude(x => x.Impuestos)
+            .Include(c => c.Relacionados)
             .FirstOrDefaultAsync(c => c.Id == comprobanteId, ct);
 
         if (comprobante is null)
@@ -128,8 +128,6 @@ public sealed class ServicioDePdfBorrador(
             comprobante,
             new DatosDelPdf(fechaLocal, decimales, logo?.Contenido, EsBorrador: true,
                 Notaria: notariaPdf, ComercioExterior: comercioPdf,
-                RetencionCincoAlMillar: obra?.TipoObra == TiposDeObra.Publica
-                    ? Math.Round(comprobante.SubTotal * 0.005m, 2, MidpointRounding.ToEven)
-                    : null) { ZonaHoraria = zona });
+                RetencionLocal: RetencionLocalDeObra.Calcular(comprobante, obra)) { ZonaHoraria = zona });
     }
 }

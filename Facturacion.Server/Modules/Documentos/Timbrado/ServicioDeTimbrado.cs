@@ -186,6 +186,8 @@ public sealed class ServicioDeTimbrado(
                     "Esta empresa no tiene activo el módulo de Constructoras.");
             if (ValidadorFiscalDeObra.Validar(comprobante, obra) is { } errorObra)
                 return errorObra;
+            if (await AnticipoDeObra.ValidarAsync(baseDeDatos, comprobante, obra.PorcentajeAmortizacion, ct) is { } errorAnticipo)
+                return errorAnticipo;
 
             var validacionXmlObra = await xml.GenerarAsync(comprobante, ct);
             if (validacionXmlObra.EsFallo) return validacionXmlObra.Error!;

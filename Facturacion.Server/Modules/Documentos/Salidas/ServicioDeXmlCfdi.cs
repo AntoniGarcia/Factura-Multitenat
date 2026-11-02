@@ -159,7 +159,7 @@ public sealed class ServicioDeXmlCfdi(
                         "Una estimación de obra no se puede combinar con Notaría o Comercio Exterior en esta factura.");
             }
 
-            if (datosObra?.TipoObra == Facturacion.Shared.Obras.TiposDeObra.Publica)
+            if (RetencionLocalDeObra.Calcular(comprobante, datosObra) is { } retencionLocal)
             {
                 documento = generador.Generar(comprobante, datosDeEmision);
                 var raiz = documento.Root!;
@@ -168,7 +168,7 @@ public sealed class ServicioDeXmlCfdi(
                     $"{EsquemasSat.EspacioDeNombresCfdi} http://www.sat.gob.mx/sitio_internet/cfd/4/cfdv40.xsd " +
                     $"{EsquemasSat.EspacioDeNombresImpuestosLocales} http://www.sat.gob.mx/sitio_internet/cfd/implocal/implocal.xsd");
                 raiz.Add(new XElement(XNamespace.Get(EsquemasSat.EspacioDeNombresCfdi) + "Complemento",
-                    GeneradorDeXmlImpuestosLocalesDeObra.Generar(comprobante)));
+                    GeneradorDeXmlImpuestosLocalesDeObra.Generar(retencionLocal)));
             }
             else if (contenidoComercio is not null || comprobante.Exportacion == "02")
             {

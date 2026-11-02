@@ -35,6 +35,7 @@ public sealed class ServicioDeObras(
         if (await ValidarLicenciaAsync(ct) is { } licencia) return licencia;
         var comprobante = await baseDeDatos.Comprobantes.AsNoTracking()
             .Include(x => x.Conceptos).ThenInclude(x => x.Impuestos)
+            .Include(x => x.Relacionados)
             .FirstOrDefaultAsync(x => x.Id == comprobanteId && x.TipoDeComprobante == "I", ct);
         if (comprobante is null)
             return ErrorNegocio.NoEncontrado("factura-no-encontrada", "No se encontró la factura.");
@@ -57,6 +58,7 @@ public sealed class ServicioDeObras(
         if (await ValidarLicenciaAsync(ct) is { } licencia) return licencia;
         var comprobante = await baseDeDatos.Comprobantes
             .Include(x => x.Conceptos).ThenInclude(x => x.Impuestos)
+            .Include(x => x.Relacionados)
             .FirstOrDefaultAsync(x => x.Id == comprobanteId && x.TipoDeComprobante == "I", ct);
         if (comprobante is null)
             return ErrorNegocio.NoEncontrado("factura-no-encontrada", "No se encontró la factura.");
@@ -72,17 +74,18 @@ public sealed class ServicioDeObras(
             return ErrorNegocio.Validacion("obra-tipo-invalido", "Indica si el contrato es de obra pública o privada.");
 
         if (peticion.Deducciones is null || peticion.Deducciones.Count != 4 ||
-            !TasaValida(peticion.PorcentajeAmortizacion) || !TasaValida(peticion.PorcentajeIva) ||
+            !TasaValida(peticion.PorcentajeAmortizacion) ||
             !TasaValida(peticion.PorcentajeRetenciones) || !TasaValida(peticion.PorcentajeDevoluciones) ||
             peticion.Deducciones.Any(x => !TasaValida(x.Porcentaje) ||
                 string.IsNullOrWhiteSpace(x.Nombre) || x.Nombre.Trim().Length > 60))
             return ErrorNegocio.Validacion("obra-datos-invalidos", "Revisa porcentajes, importes y nombres de las cuatro deducciones.");
 
-        var amortizacion = Porcentaje(comprobante.SubTotal, peticion.PorcentajeAmortizacion);
         var retenciones = Porcentaje(comprobante.SubTotal, peticion.PorcentajeRetenciones);
         var devoluciones = Porcentaje(comprobante.SubTotal, peticion.PorcentajeDevoluciones);
-        if (amortizacion + retenciones + devoluciones > comprobante.SubTotal)
-            return ErrorNegocio.Validacion("obra-subtotal-negativo", "La amortización, retenciones y devoluciones superan el importe de los trabajos.");
+        var decimalesMoneda = await baseDeDatos.SatMonedas.AsNoTracking()
+            .Where(x => x.Clave == comprobante.Moneda)
+            .Select(x => (int?)x.Decimales)
+            .FirstOrDefaultAsync(ct) ?? 2;
 
         var datos = await baseDeDatos.DatosObra
             .FirstOrDefaultAsync(x => x.ComprobanteId == comprobanteId, ct);
@@ -99,7 +102,6 @@ public sealed class ServicioDeObras(
         datos.Retenciones = retenciones;
         datos.PorcentajeDevoluciones = peticion.PorcentajeDevoluciones;
         datos.Devoluciones = devoluciones;
-        datos.PorcentajeIva = peticion.PorcentajeIva;
         datos.NombreDeduccion1 = peticion.Deducciones[0].Nombre.Trim();
         datos.PorcentajeDeduccion1 = peticion.Deducciones[0].Porcentaje;
         datos.NombreDeduccion2 = peticion.Deducciones[1].Nombre.Trim();
@@ -108,6 +110,11 @@ public sealed class ServicioDeObras(
         datos.PorcentajeDeduccion3 = peticion.Deducciones[2].Porcentaje;
         datos.NombreDeduccion4 = peticion.Deducciones[3].Nombre.Trim();
         datos.PorcentajeDeduccion4 = peticion.Deducciones[3].Porcentaje;
+
+        if (AmortizacionDeObra.Aplicar(comprobante, datos.PorcentajeAmortizacion, decimalesMoneda) is { } sinAplicar)
+            return sinAplicar;
+        if (await AnticipoDeObra.ValidarAsync(baseDeDatos, comprobante, datos.PorcentajeAmortizacion, ct) is { } anticipo)
+            return anticipo;
 
         var despues = Calcular(comprobante, datos);
         if (despues.ImporteLiquido < 0)
@@ -136,13 +143,16 @@ public sealed class ServicioDeObras(
 
     private static DatosObraDto Calcular(Comprobante comprobante, DatosObra datos)
     {
+        // Subtotal, IVA y total son los del CFDI: la amortización es el descuento de los conceptos.
+        // Retenciones, devoluciones y deducciones se restan después, solo del importe líquido.
         var importeTrabajos = comprobante.SubTotal;
-        var amortizacion = Porcentaje(importeTrabajos, datos.PorcentajeAmortizacion);
-        var subtotal = importeTrabajos - amortizacion - datos.Retenciones - datos.Devoluciones;
-        var iva = SinAjustesDeBase(datos) && IvaUniforme(comprobante, datos.PorcentajeIva)
-            ? comprobante.Conceptos.SelectMany(x => x.Impuestos)
-                .Sum(x => Math.Round(x.Importe ?? 0m, 2, MidpointRounding.ToEven))
-            : Porcentaje(subtotal, datos.PorcentajeIva);
+        var amortizacion = comprobante.Descuento;
+        var subtotal = importeTrabajos - amortizacion;
+        // Redondeado por impuesto igual que en el XML, para que la estimación lleve el IVA exacto
+        // del CFDI aunque los conceptos mezclen tasas o vengan exentos.
+        var iva = comprobante.Conceptos.SelectMany(x => x.Impuestos)
+            .Where(x => !x.EsRetencion && x.Impuesto == "002")
+            .Sum(x => Math.Round(x.Importe ?? 0m, 2, MidpointRounding.ToEven));
         var total = subtotal + iva;
         DeduccionDeObraDto[] deducciones =
         [
@@ -153,20 +163,8 @@ public sealed class ServicioDeObras(
         ];
         return new DatosObraDto(importeTrabajos, datos.PorcentajeAmortizacion, amortizacion,
             datos.PorcentajeRetenciones, datos.Retenciones, datos.PorcentajeDevoluciones,
-            datos.Devoluciones, subtotal, datos.PorcentajeIva, iva, total,
-            deducciones, total - deducciones.Sum(x => x.Importe), datos.TipoObra);
+            datos.Devoluciones, subtotal, iva, total,
+            deducciones, total - datos.Retenciones - datos.Devoluciones - deducciones.Sum(x => x.Importe),
+            datos.TipoObra);
     }
-
-    private static bool SinAjustesDeBase(DatosObra datos)
-        => datos.PorcentajeAmortizacion == 0 && datos.PorcentajeRetenciones == 0 &&
-           datos.PorcentajeDevoluciones == 0 && datos.Retenciones == 0 && datos.Devoluciones == 0;
-
-    private static bool IvaUniforme(Comprobante comprobante, decimal porcentajeIva)
-        => comprobante.Conceptos.Count > 0 &&
-           comprobante.Conceptos.All(concepto =>
-               (porcentajeIva == 0 && concepto.Impuestos.Count == 0) ||
-               (concepto.Impuestos.Count == 1 && concepto.Impuestos[0] is { } impuesto &&
-                !impuesto.EsRetencion && impuesto.Impuesto == "002" &&
-                impuesto.TipoFactor == "Tasa" &&
-                impuesto.TasaOCuota * 100m == porcentajeIva));
 }

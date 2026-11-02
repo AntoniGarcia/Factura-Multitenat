@@ -29,7 +29,7 @@ public sealed class GeneradorDePdfEstimacionObra
                         TiposDeObra.Privada => "Obra privada",
                         _ => "Tipo de obra sin clasificar"
                     }).FontSize(9);
-                    encabezado.Item().PaddingTop(3).Text("BORRADOR")
+                    encabezado.Item().PaddingTop(3).Text(Estado(factura))
                         .Bold().FontSize(9);
                     encabezado.Item().PaddingTop(7).LineHorizontal(1);
                 });
@@ -90,13 +90,16 @@ public sealed class GeneradorDePdfEstimacionObra
                         {
                             desglose.Item().Text("CÁLCULO DE LA ESTIMACIÓN").Bold().FontSize(9);
                             Renglon(desglose, "Importe de los trabajos", obra.ImporteTrabajos);
-                            Renglon(desglose, $"Amortización del anticipo ({obra.PorcentajeAmortizacion:N2} %)", -obra.Amortizacion);
-                            Renglon(desglose, "Retenciones", -obra.Retenciones);
-                            Renglon(desglose, "Devoluciones", -obra.Devoluciones);
+                            if (obra.Amortizacion != 0)
+                                Renglon(desglose, $"Amortización del anticipo ({obra.PorcentajeAmortizacion:N2} %)", -obra.Amortizacion);
                             Renglon(desglose, "Subtotal de la estimación", obra.SubtotalEstimacion, true);
-                            Renglon(desglose, $"IVA estimado ({obra.PorcentajeIva:N2} %)", obra.IvaEstimado);
+                            Renglon(desglose, "IVA de los conceptos", obra.IvaEstimado);
                             Renglon(desglose, "Total de la estimación", obra.TotalEstimacion, true);
-                            // Una deducción con 0 % es una que el contrato no aplica.
+                            // Lo que sigue no está en el CFDI: se descuenta del pago. Con 0 % no aplica.
+                            if (obra.Retenciones != 0)
+                                Renglon(desglose, $"Retenciones ({obra.PorcentajeRetenciones ?? 0:N2} %)", -obra.Retenciones);
+                            if (obra.Devoluciones != 0)
+                                Renglon(desglose, $"Devoluciones ({obra.PorcentajeDevoluciones ?? 0:N2} %)", -obra.Devoluciones);
                             foreach (var deduccion in obra.Deducciones.Where(x => x.Porcentaje != 0))
                                 Renglon(desglose, $"{deduccion.Nombre} ({deduccion.Porcentaje:N2} %)", -deduccion.Importe);
                             desglose.Item().PaddingTop(5).LineHorizontal(1);
@@ -114,6 +117,13 @@ public sealed class GeneradorDePdfEstimacionObra
 
             });
         }).GeneratePdf();
+
+    private static string Estado(Comprobante factura) => factura.Estatus switch
+    {
+        "timbrado" or "en_cancelacion" => $"Factura {factura.Serie}{factura.Folio} · UUID {factura.Uuid}",
+        "cancelado" => $"Factura {factura.Serie}{factura.Folio} · CANCELADA",
+        _ => "BORRADOR"
+    };
 
     private static void Cabecera(TableCellDescriptor celda, string texto)
         => celda.Cell().Background(Colors.Grey.Lighten3).Padding(4).Text(texto).Bold().FontSize(8);

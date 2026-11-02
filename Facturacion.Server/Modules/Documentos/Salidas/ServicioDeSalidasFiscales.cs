@@ -7,6 +7,7 @@ using Facturacion.Server.Data;
 using Facturacion.Server.Data.Entidades.Documentos;
 using Facturacion.Server.Infra.Almacen;
 using Facturacion.Server.Infra.Tenencia;
+using Facturacion.Server.Modules.Documentos.Obras;
 using Facturacion.Server.Modules.Plataforma.Empresas;
 using Facturacion.Shared.Comun;
 using Microsoft.EntityFrameworkCore;
@@ -98,12 +99,12 @@ public sealed class ServicioDeSalidasFiscales(
         if (archivoXml.EsFallo) return archivoXml.Error!;
 
         DatosNotarialesDelPdf? datosNotariales;
-        decimal? retencionCincoAlMillar;
+        RetencionLocalDeObra? retencionLocal;
         string? leyenda;
         try
         {
             datosNotariales = DatosNotarialesDelPdf.DesdeXml(archivoXml.Valor.Contenido);
-            retencionCincoAlMillar = LeerCincoAlMillar(archivoXml.Valor.Contenido);
+            retencionLocal = LeerRetencionLocal(archivoXml.Valor.Contenido);
             leyenda = LeerLeyendaDelTimbre(archivoXml.Valor.Contenido);
         }
         catch (Exception ex) when (ex is XmlException or InvalidDataException or FormatException or OverflowException)
@@ -115,7 +116,7 @@ public sealed class ServicioDeSalidasFiscales(
 
         var contenido = generadorPdf.Generar(comprobante,
             new DatosDelPdf(fechaLocal, decimales, logo?.Contenido, Notaria: datosNotariales,
-                RetencionCincoAlMillar: retencionCincoAlMillar, LeyendaDelTimbre: leyenda) { ZonaHoraria = zona });
+                RetencionLocal: retencionLocal, LeyendaDelTimbre: leyenda) { ZonaHoraria = zona });
 
         return new ArchivoFiscal(NombreDeArchivoFiscal.Construir(comprobante, zona, "pdf"), "application/pdf", contenido);
     }
@@ -136,7 +137,7 @@ public sealed class ServicioDeSalidasFiscales(
 
     private const string EspacioDeNombresTimbre = "http://www.sat.gob.mx/TimbreFiscalDigital";
 
-    private static decimal? LeerCincoAlMillar(byte[] contenido)
+    private static RetencionLocalDeObra? LeerRetencionLocal(byte[] contenido)
     {
         using var lector = XmlReader.Create(new MemoryStream(contenido), new XmlReaderSettings
         {
@@ -148,16 +149,20 @@ public sealed class ServicioDeSalidasFiscales(
         var complemento = documento.Descendants(espacio + "ImpuestosLocales").FirstOrDefault();
         if (complemento is null) return null;
 
-        var retencion = complemento.Elements(espacio + "RetencionesLocales")
-            .FirstOrDefault(x => (string?)x.Attribute("ImpLocRetenido") == "5 al millar");
-        if (retencion is null || (string?)retencion.Attribute("TasadeRetencion") != "0.50" ||
+        // La obra solo escribe una retención local; los XML anteriores la llamaban siempre
+        // «5 al millar» a 0.50 y se leen igual.
+        var retencion = complemento.Elements(espacio + "RetencionesLocales").FirstOrDefault();
+        var nombre = (string?)retencion?.Attribute("ImpLocRetenido");
+        if (retencion is null || string.IsNullOrWhiteSpace(nombre) ||
+            !decimal.TryParse((string?)retencion.Attribute("TasadeRetencion"),
+                NumberStyles.AllowDecimalPoint, CultureInfo.InvariantCulture, out var tasa) || tasa < 0 ||
             !decimal.TryParse((string?)retencion.Attribute("Importe"),
                 NumberStyles.AllowDecimalPoint, CultureInfo.InvariantCulture, out var importe) || importe < 0 ||
             !decimal.TryParse((string?)complemento.Attribute("TotaldeRetenciones"),
                 NumberStyles.AllowDecimalPoint, CultureInfo.InvariantCulture, out var total) || total != importe)
-            throw new InvalidDataException("El complemento de 5 al millar no tiene un importe válido.");
+            throw new InvalidDataException("El complemento de impuestos locales no tiene un importe válido.");
 
-        return importe;
+        return new RetencionLocalDeObra(nombre, tasa, importe);
     }
 
     public async Task<Resultado<ArchivoFiscal>> ObtenerXmlAsync(Guid comprobanteId, CancellationToken ct)

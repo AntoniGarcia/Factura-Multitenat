@@ -14,10 +14,10 @@ public sealed record PeticionGuardarDatosObra(
     decimal PorcentajeAmortizacion,
     decimal PorcentajeRetenciones,
     decimal PorcentajeDevoluciones,
-    decimal PorcentajeIva,
     IReadOnlyList<PeticionDeduccionDeObra> Deducciones,
     string? TipoObra = null);
 
+/// <param name="IvaEstimado">IVA trasladado de los conceptos, tal como sale en el CFDI.</param>
 public sealed record DatosObraDto(
     decimal ImporteTrabajos,
     decimal PorcentajeAmortizacion,
@@ -27,7 +27,6 @@ public sealed record DatosObraDto(
     decimal? PorcentajeDevoluciones,
     decimal Devoluciones,
     decimal SubtotalEstimacion,
-    decimal PorcentajeIva,
     decimal IvaEstimado,
     decimal TotalEstimacion,
     IReadOnlyList<DeduccionDeObraDto> Deducciones,

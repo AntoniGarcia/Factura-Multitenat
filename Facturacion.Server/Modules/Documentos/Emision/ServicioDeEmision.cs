@@ -3,6 +3,7 @@ using Facturacion.Server.Data.Entidades.Documentos;
 using Facturacion.Server.Infra.Bitacora;
 using Facturacion.Server.Infra.Tenencia;
 using Facturacion.Server.Modules.Documentos.Impuestos;
+using Facturacion.Server.Modules.Documentos.Obras;
 using Facturacion.Server.Modules.Documentos.Pagos;
 using Facturacion.Server.Modules.Documentos.Salidas;
 using Facturacion.Shared.Comun;
@@ -55,6 +56,10 @@ public sealed class ServicioDeEmision(
                 peticion.TipoCambio, [.. resueltos.Valor.Select(c => c.ACalcular)]));
             if (calculado.EsFallo) return calculado.Error!;
             AplicarConceptos(comprobante, resueltos.Valor, calculado.Valor);
+            comprobante.Moneda = peticion.Moneda;
+            comprobante.TipoCambio = peticion.TipoCambio;
+            if (await AplicarAmortizacionDeObraAsync(comprobante, decimales.Value, ct) is { } errorObra)
+                return errorObra;
             AplicarTotales(comprobante, decimales.Value);
             return new VistaPreviaFacturaDto(comprobante.SubTotal, comprobante.Descuento,
                 comprobante.TotalImpuestosTrasladados, comprobante.TotalImpuestosRetenidos,
@@ -234,6 +239,8 @@ public sealed class ServicioDeEmision(
         AplicarCabecera(comprobante, peticion, receptor.Valor, nombreReceptor);
         AplicarConceptos(comprobante, conceptosResueltos.Valor, calculado.Valor);
         AplicarRelacionados(comprobante, peticion.Relacionados);
+        if (await AplicarAmortizacionDeObraAsync(comprobante, decimalesMoneda.Value, ct) is { } errorObra)
+            return errorObra;
         AplicarTotales(comprobante, decimalesMoneda.Value);
 
         comprobante.ModificadoUtc = DateTime.UtcNow;
@@ -625,6 +632,22 @@ public sealed class ServicioDeEmision(
                 UuidRelacionado = relacionado.UuidRelacionado
             });
         }
+    }
+
+    /// <summary>
+    /// En una factura de obra el descuento de cada concepto es la amortización del anticipo, y
+    /// lo pone el servidor con el porcentaje guardado en la pestaña Obra: lo que mande la
+    /// captura se descarta, para que conceptos y estimación no se separen.
+    /// </summary>
+    private async Task<ErrorNegocio?> AplicarAmortizacionDeObraAsync(
+        Comprobante comprobante, int decimalesMoneda, CancellationToken ct)
+    {
+        if (comprobante.Variante != VariantesDeFactura.Obra) return null;
+        var porcentaje = await baseDeDatos.DatosObra.AsNoTracking()
+            .Where(x => x.ComprobanteId == comprobante.Id)
+            .Select(x => x.PorcentajeAmortizacion)
+            .FirstOrDefaultAsync(ct);
+        return AmortizacionDeObra.Aplicar(comprobante, porcentaje, decimalesMoneda);
     }
 
     private static void AplicarTotales(Comprobante comprobante, int decimalesMoneda)

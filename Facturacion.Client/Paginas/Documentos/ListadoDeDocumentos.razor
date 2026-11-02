@@ -6,6 +6,7 @@
 @using Facturacion.Shared.Documentos
 @inject ServicioDeListado Listado
 @inject ServicioDeEmision Emision
+@inject ServicioDeObras Obras
 @inject ServicioDeCancelacion Cancelacion
 @inject ServicioDeDescargas Descargas
 @inject NavigationManager Navegacion
@@ -223,6 +224,17 @@
                     </MudButton>
                 }
 
+                @if (_detalleSeleccionado is { Variante: VariantesDeFactura.Obra } &&
+                     Sesion.TienePermiso(Permisos.DocumentosDescarga))
+                {
+                    <MudButton Variant="Variant.Outlined"
+                               StartIcon="@Icons.Material.Filled.PictureAsPdf"
+                               Disabled="@_preparandoEstimacion"
+                               OnClick="VerEstimacionAsync">
+                        @(_preparandoEstimacion ? "Preparando estimación…" : "PDF de estimación")
+                    </MudButton>
+                }
+
                 @if (_detalleSeleccionado is { } detalleConXml && EsCfdiFiscal(detalleConXml) &&
                      Sesion.TienePermiso(Permisos.DocumentosDescarga))
                 {
@@ -286,6 +298,7 @@
     private ComprobanteDto? _detalleSeleccionado;
     private bool _cargandoVista;
     private bool _preparandoPdf;
+    private bool _preparandoEstimacion;
     private bool _descargandoXml;
     private bool _timbrando;
     private int _versionDeVista;
@@ -455,6 +468,38 @@
         finally
         {
             _preparandoPdf = false;
+        }
+    }
+
+    private async Task VerEstimacionAsync()
+    {
+        if (_detalleSeleccionado is null || _preparandoEstimacion) return;
+
+        _preparandoEstimacion = true;
+        _error = null;
+
+        try
+        {
+            var (archivo, error) = await Obras.ObtenerEstimacionPdfAsync(_detalleSeleccionado.Id);
+            _error = error;
+
+            if (archivo is null) return;
+
+            var parametros = new DialogParameters<DialogoDeComprobanteDeCompra>
+            {
+                { x => x.Archivo, archivo },
+                { x => x.TituloVistaPrevia, "Estimación de obra" },
+                { x => x.AvisoFiscal, "Documento de control del contrato; no sustituye al CFDI." }
+            };
+
+            await Dialogos.ShowAsync<DialogoDeComprobanteDeCompra>(
+                "PDF de estimación",
+                parametros,
+                new DialogOptions { MaxWidth = MaxWidth.ExtraLarge, FullWidth = true, CloseOnEscapeKey = true });
+        }
+        finally
+        {
+            _preparandoEstimacion = false;
         }
     }
 

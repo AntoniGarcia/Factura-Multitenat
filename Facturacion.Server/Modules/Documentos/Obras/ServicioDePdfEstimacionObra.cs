@@ -26,8 +26,6 @@ public sealed class ServicioDePdfEstimacionObra(
             .FirstOrDefaultAsync(x => x.Id == comprobanteId && x.TipoDeComprobante == "I", ct);
         if (factura is null)
             return ErrorNegocio.NoEncontrado("factura-no-encontrada", "No se encontró la factura.");
-        if (factura.Estatus is not ("borrador" or "error"))
-            return ErrorNegocio.Conflicto("obra-no-es-borrador", "Esta estimación ya no está en borrador.");
         if (factura.Conceptos.Count == 0 || string.IsNullOrWhiteSpace(factura.ReceptorRfc))
             return ErrorNegocio.Validacion("obra-incompleta", "Guarda los conceptos y selecciona al cliente.");
 
