@@ -47,6 +47,13 @@ Cambia solo su documentación: clientes y productos pasan a ser de la cuenta (AG
 Un cliente o producto de otra empresa de la misma cuenta ya se encuentra, y el uso de un
 cliente o producto se busca en los comprobantes de todas las empresas de la cuenta.
 
+**`IEmisionDeFacturasDeCompras` (3 de noviembre de 2026).**
+Autorizado para facturar las compras de timbres desde el operador. Plataforma conserva
+los datos fiscales del proveedor, su CSD, la reserva de folios y los intentos; Documentos
+genera y firma el XML y consulta al PAC. No utiliza el certificado, las series ni la bolsa
+del comprador. El control del intento cambia al reclamarlo para conciliación y evita
+escrituras de una ejecución anterior. El contrato se incorpora en un commit dedicado.
+
 ## Convenciones
 
 - Todos los DTO son `record` inmutables y viven en el mismo archivo que su interfaz.
