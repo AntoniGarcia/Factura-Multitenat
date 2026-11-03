@@ -158,6 +158,9 @@ public sealed class ServicioDeTimbrado(
             if (serie.EsFallo) return serie.Error!;
         }
 
+        var obra = await baseDeDatos.DatosObra.AsNoTracking()
+            .FirstOrDefaultAsync(x => x.ComprobanteId == comprobanteId, ct);
+
         if (comprobante.TipoDeComprobante == TiposDeComprobante.Ingreso)
         {
             var decimalesMoneda = await baseDeDatos.SatMonedas.AsNoTracking()
@@ -167,15 +170,14 @@ public sealed class ServicioDeTimbrado(
             if (decimalesMoneda is null)
                 return ErrorNegocio.Validacion("moneda-desconocida",
                     "La moneda de la factura no está en el catálogo del SAT.");
-            if (!ProyeccionMonetariaCfdi.Calcular(comprobante, decimalesMoneda.Value)
+            if (!ProyeccionMonetariaCfdi.Calcular(comprobante, decimalesMoneda.Value, obra)
                     .CoincideCon(comprobante))
                 return ErrorNegocio.Regla("totales-del-borrador-desactualizados",
                     "Los totales guardados no coinciden con el XML en los decimales de la moneda. Guarda de nuevo el borrador antes de timbrarlo; no se consumió folio ni timbre.");
         }
 
-        var obra = await baseDeDatos.DatosObra.AsNoTracking()
-            .FirstOrDefaultAsync(x => x.ComprobanteId == comprobanteId, ct);
         if (comprobante.Variante == VariantesDeFactura.Obra && obra is null)
+
             return ErrorNegocio.Regla("obra-sin-datos",
                 "Guarda la estimación de obra antes de timbrar. No se reservó folio ni timbre.");
         if (obra is not null)

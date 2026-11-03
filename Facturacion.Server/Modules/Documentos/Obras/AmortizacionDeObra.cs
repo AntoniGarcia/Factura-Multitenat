@@ -30,11 +30,13 @@ public static class AmortizacionDeObra
         => descripcion.EndsWith(Separador + Leyenda, StringComparison.Ordinal);
 
     /// <summary>
-    /// Reescribe descuento, leyenda e impuestos de cada concepto con el porcentaje dado y
-    /// recalcula los totales. Con 0 % deja los conceptos sin descuento y sin leyenda.
+    /// Reescribe descuento, leyenda e impuestos de cada concepto con el porcentaje de
+    /// amortización de la obra y recalcula los totales, con su retención local. Sin estimación
+    /// guardada, o con 0 %, deja los conceptos sin descuento y sin leyenda.
     /// </summary>
-    public static ErrorNegocio? Aplicar(Comprobante comprobante, decimal porcentaje, int decimalesMoneda)
+    public static ErrorNegocio? Aplicar(Comprobante comprobante, DatosObra? obra, int decimalesMoneda)
     {
+        var porcentaje = obra?.PorcentajeAmortizacion ?? 0m;
         var conceptos = comprobante.Conceptos.OrderBy(x => x.Orden).ToArray();
         for (var i = 0; i < conceptos.Length; i++)
         {
@@ -68,13 +70,9 @@ public static class AmortizacionDeObra
             }
         }
 
-        var proyeccion = ProyeccionMonetariaCfdi.Calcular(comprobante, decimalesMoneda);
-        comprobante.SubTotal = proyeccion.SubTotal;
-        comprobante.Descuento = proyeccion.Descuento;
-        comprobante.TotalImpuestosTrasladados = proyeccion.TotalImpuestosTrasladados;
-        comprobante.TotalImpuestosRetenidos = proyeccion.TotalImpuestosRetenidos;
-        comprobante.Total = proyeccion.Total;
+        ProyeccionMonetariaCfdi.Calcular(comprobante, decimalesMoneda, obra).AplicarA(comprobante);
         return null;
+
     }
 
     /// <summary>Los conceptos guardados ¿reflejan el porcentaje de amortización de la obra?</summary>

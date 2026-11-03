@@ -128,6 +128,6 @@ public sealed class ServicioDePdfBorrador(
             comprobante,
             new DatosDelPdf(fechaLocal, decimales, logo?.Contenido, EsBorrador: true,
                 Notaria: notariaPdf, ComercioExterior: comercioPdf,
-                RetencionLocal: RetencionLocalDeObra.Calcular(comprobante, obra)) { ZonaHoraria = zona });
+                ImpuestosLocales: ProyeccionMonetariaCfdi.Calcular(comprobante, decimales, obra).Locales) { ZonaHoraria = zona });
     }
 }

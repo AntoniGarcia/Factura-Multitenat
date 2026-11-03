@@ -1,7 +1,6 @@
 using System.Globalization;
 using Facturacion.Server.Data.Entidades.Documentos;
 using Facturacion.Server.Modules.Documentos.Impuestos;
-using Facturacion.Server.Modules.Documentos.Obras;
 using Facturacion.Shared.ComercioExterior;
 using QRCoder;
 using QuestPDF.Fluent;
@@ -24,7 +23,7 @@ public sealed record DatosDelPdf(
     bool EsBorrador = false,
     DatosNotarialesDelPdf? Notaria = null,
     DatosComercioExteriorDto? ComercioExterior = null,
-    RetencionLocalDeObra? RetencionLocal = null,
+    IReadOnlyList<ImpuestoLocalCfdi>? ImpuestosLocales = null,
     string? LeyendaDelTimbre = null)
 {
     public TimeZoneInfo? ZonaHoraria { get; init; }
@@ -182,7 +181,7 @@ public sealed class GeneradorDePdfCfdi
         else
         {
             columna.Item().PaddingTop(6).Element(e => Conceptos(e, c, datos.Decimales));
-            columna.Item().PaddingTop(6).Element(e => Totales(e, c, datos.Decimales, datos.RetencionLocal));
+            columna.Item().PaddingTop(6).Element(e => Totales(e, c, datos.Decimales, datos.ImpuestosLocales ?? []));
 
             if (datos.Notaria is { } notaria)
                 columna.Item().PaddingTop(10).Element(e => SeccionNotarial(e, notaria, datos.Decimales));
@@ -349,7 +348,7 @@ public sealed class GeneradorDePdfCfdi
         });
 
     private static void Totales(IContainer contenedor, Comprobante c, int decimales,
-        RetencionLocalDeObra? retencionLocal)
+        IReadOnlyList<ImpuestoLocalCfdi> locales)
         => contenedor.Row(fila =>
         {
             fila.RelativeItem().Column(pago =>
@@ -373,16 +372,14 @@ public sealed class GeneradorDePdfCfdi
                 if (c.TotalImpuestosRetenidos > 0)
                     totales.Item().Element(e => Dato(e, "Impuestos retenidos", Cifra(c.TotalImpuestosRetenidos, decimales)));
 
+                // Del complemento de impuestos locales: ya van dentro del Total.
+                foreach (var local in locales)
+                    totales.Item().Element(e => Dato(e,
+                        $"{local.Nombre} ({Cifra(local.Tasa, 2)} %){(local.EsRetencion ? " retenido" : "")} · impuesto local",
+                        (local.EsRetencion ? "−" : "") + Cifra(local.Importe, 2)));
+
                 totales.Item().PaddingTop(2).BorderTop(0.5f).Element(e => Dato(e, "Total", Cifra(c.Total, decimales), negrita: true));
 
-                if (retencionLocal is { } retencion)
-                {
-                    totales.Item().PaddingTop(4).Element(e => Dato(e,
-                        $"{retencion.Nombre} ({Cifra(retencion.Tasa, 2)} %) · complemento de impuestos locales",
-                        Cifra(retencion.Importe, decimales)));
-                    totales.Item().Element(e => Dato(e, "Importe líquido estimado",
-                        Cifra(Math.Round(c.Total, decimales, MidpointRounding.ToEven) - retencion.Importe, decimales)));
-                }
             });
         });
 

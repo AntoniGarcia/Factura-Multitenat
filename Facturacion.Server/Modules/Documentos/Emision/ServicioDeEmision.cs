@@ -48,22 +48,26 @@ public sealed class ServicioDeEmision(
             .Select(m => (int?)m.Decimales).FirstOrDefaultAsync(ct);
         if (decimales is null)
             return ErrorNegocio.Validacion("moneda-desconocida", "Selecciona una moneda válida.");
-        var resueltos = await ResolverConceptosAsync(peticion.Conceptos, ct);
+        var resueltos = await ResolverConceptosAsync(peticion.Conceptos, comprobante.Variante, ct);
         if (resueltos.EsFallo) return resueltos.Error!;
         try
         {
             var calculado = MotorDeImpuestos.Calcular(new ComprobanteACalcular(peticion.Moneda,
                 peticion.TipoCambio, [.. resueltos.Valor.Select(c => c.ACalcular)]));
             if (calculado.EsFallo) return calculado.Error!;
+            var tasaIsh = TasaIshDeCaptura(peticion.TasaIsh, resueltos.Valor);
+            if (tasaIsh.EsFallo) return tasaIsh.Error!;
             AplicarConceptos(comprobante, resueltos.Valor, calculado.Valor);
             comprobante.Moneda = peticion.Moneda;
             comprobante.TipoCambio = peticion.TipoCambio;
-            if (await AplicarAmortizacionDeObraAsync(comprobante, decimales.Value, ct) is { } errorObra)
+            comprobante.TasaIsh = tasaIsh.Valor;
+            var obra = await ObtenerDatosDeObraAsync(comprobante, ct);
+            if (AplicarAmortizacionDeObra(comprobante, obra, decimales.Value) is { } errorObra)
                 return errorObra;
-            AplicarTotales(comprobante, decimales.Value);
+            var proyeccion = AplicarTotales(comprobante, decimales.Value, obra);
             return new VistaPreviaFacturaDto(comprobante.SubTotal, comprobante.Descuento,
                 comprobante.TotalImpuestosTrasladados, comprobante.TotalImpuestosRetenidos,
-                comprobante.Total, ADto(comprobante).Conceptos);
+                comprobante.Total, ADto(comprobante).Conceptos, ALocales(proyeccion));
         }
         catch (OverflowException)
         {
@@ -148,7 +152,13 @@ public sealed class ServicioDeEmision(
     public async Task<ComprobanteDto?> ObtenerAsync(Guid id, CancellationToken ct)
     {
         var comprobante = await CargarAsync(id, ct);
-        return comprobante is null ? null : ADto(comprobante);
+        if (comprobante is null) return null;
+        if (comprobante.TipoDeComprobante != TipoFactura) return ADto(comprobante);
+
+        var decimales = await baseDeDatos.SatMonedas.AsNoTracking().Where(m => m.Clave == comprobante.Moneda)
+            .Select(m => (int?)m.Decimales).FirstOrDefaultAsync(ct) ?? 2;
+        var obra = await ObtenerDatosDeObraAsync(comprobante, ct);
+        return ADto(comprobante, ALocales(ProyeccionMonetariaCfdi.Calcular(comprobante, decimales, obra)));
     }
 
     public async Task<Resultado<ComprobanteDto>> GuardarAsync(
@@ -211,7 +221,7 @@ public sealed class ServicioDeEmision(
                     "Cambia el nombre o quita la información global.");
         }
 
-        var conceptosResueltos = await ResolverConceptosAsync(peticion.Conceptos, ct);
+        var conceptosResueltos = await ResolverConceptosAsync(peticion.Conceptos, comprobante.Variante, ct);
         if (conceptosResueltos.EsFallo) return conceptosResueltos.Error!;
 
         var calculado = MotorDeImpuestos.Calcular(new ComprobanteACalcular(
@@ -232,6 +242,9 @@ public sealed class ServicioDeEmision(
         if (await MonedaHabilitada.ExigirAsync(baseDeDatos, peticion.Moneda, ct) is { } monedaNoHabilitada)
             return monedaNoHabilitada;
 
+        var tasaIsh = TasaIshDeCaptura(peticion.TasaIsh, conceptosResueltos.Valor);
+        if (tasaIsh.EsFallo) return tasaIsh.Error!;
+
         // Sin ModificadoUtc el borrador nunca se guardó: no hay valor anterior que valga la
         // pena conservar, y el registro queda como alta.
         var antes = comprobante.ModificadoUtc is null ? null : ADto(comprobante);
@@ -239,9 +252,11 @@ public sealed class ServicioDeEmision(
         AplicarCabecera(comprobante, peticion, receptor.Valor, nombreReceptor);
         AplicarConceptos(comprobante, conceptosResueltos.Valor, calculado.Valor);
         AplicarRelacionados(comprobante, peticion.Relacionados);
-        if (await AplicarAmortizacionDeObraAsync(comprobante, decimalesMoneda.Value, ct) is { } errorObra)
+        comprobante.TasaIsh = tasaIsh.Valor;
+        var obra = await ObtenerDatosDeObraAsync(comprobante, ct);
+        if (AplicarAmortizacionDeObra(comprobante, obra, decimalesMoneda.Value) is { } errorObra)
             return errorObra;
-        AplicarTotales(comprobante, decimalesMoneda.Value);
+        var proyeccion = AplicarTotales(comprobante, decimalesMoneda.Value, obra);
 
         comprobante.ModificadoUtc = DateTime.UtcNow;
 
@@ -262,7 +277,20 @@ public sealed class ServicioDeEmision(
         await baseDeDatos.SaveChangesAsync(ct);
 
         await transaccion.CommitAsync(ct);
-        return ADto(comprobante);
+        return ADto(comprobante, ALocales(proyeccion));
+    }
+
+    /// <summary>
+    /// La tasa se guarda solo si algún concepto aplica ISH: sin conceptos marcados, la factura no
+    /// lleva el complemento aunque la captura traiga una tasa.
+    /// </summary>
+    private static Resultado<decimal?> TasaIshDeCaptura(decimal? tasa, IReadOnlyList<ConceptoResuelto> resueltos)
+    {
+        if (!resueltos.Any(x => x.AplicaIsh)) return Resultado<decimal?>.Exito(null);
+        if (tasa is not { } t || !ImpuestoSobreHospedaje.EsTasaValida(t))
+            return ErrorNegocio.Validacion("ish-tasa-invalida",
+                "Captura la tasa de ISH: mayor que cero, hasta 100 % y con dos decimales.");
+        return Resultado<decimal?>.Exito(t);
     }
 
     /// <summary>
@@ -478,9 +506,13 @@ public sealed class ServicioDeEmision(
     }
 
     private async Task<Resultado<IReadOnlyList<ConceptoResuelto>>> ResolverConceptosAsync(
-        IReadOnlyList<ConceptoDto> conceptos, CancellationToken ct)
+        IReadOnlyList<ConceptoDto> conceptos, string? variante, CancellationToken ct)
     {
         var resueltos = new List<ConceptoResuelto>(conceptos.Count);
+        var conCasillas = (variante ?? VariantesDeFactura.Basica) == VariantesDeFactura.Basica;
+        var tasas = conCasillas && conceptos.Any(c => c.Retenciones is not null)
+            ? await ObtenerTasasDeCapturaAsync(ct)
+            : null;
 
         for (var i = 0; i < conceptos.Count; i++)
         {
@@ -526,6 +558,12 @@ public sealed class ServicioDeEmision(
                     $"El producto del renglón {i + 1} tiene la unidad «{producto.UnidadTexto}». " +
                     $"{UnidadDeConcepto.Regla} Corrígela en el producto y vuelve a guardar.");
 
+            var impuestos = tasas is not null && linea.Retenciones is { } retenciones
+                ? ImpuestosConCasillas(producto, retenciones, tasas, i + 1)
+                : Resultado<IReadOnlyList<ImpuestoDeConcepto>>.Exito([.. producto.Impuestos.Select(x =>
+                    new ImpuestoDeConcepto(x.Impuesto, x.TipoFactor, x.TasaOCuota, x.EsRetencion))]);
+            if (impuestos.EsFallo) return impuestos.Error!;
+
             resueltos.Add(new ConceptoResuelto(
                 Orden: i + 1,
                 Producto: producto,
@@ -534,21 +572,71 @@ public sealed class ServicioDeEmision(
                 Cantidad: linea.Cantidad,
                 ValorUnitario: linea.ValorUnitario,
                 Descuento: linea.Descuento,
+                AplicaIsh: conCasillas && linea.AplicaIsh,
                 ACalcular: new ConceptoACalcular(
                     linea.Cantidad,
                     linea.ValorUnitario,
                     linea.Descuento,
                     producto.ObjetoImp,
-                    [.. producto.Impuestos.Select(x =>
-                        new ImpuestoDeConcepto(x.Impuesto, x.TipoFactor, x.TasaOCuota, x.EsRetencion))])));
+                    impuestos.Valor)));
         }
 
         return resueltos;
     }
 
+    public async Task<TasasDeCapturaDto> ObtenerTasasDeCapturaAsync(CancellationToken ct)
+        => await baseDeDatos.ConfiguracionesEmpresa.AsNoTracking()
+            .Select(c => new TasasDeCapturaDto(
+                c.TasaRetencionIvaPorDefecto, c.TasaRetencionIsrPorDefecto, c.TasaRetencionIepsPorDefecto,
+                c.TasaIshPorDefecto))
+            .FirstOrDefaultAsync(ct)
+           ?? new TasasDeCapturaDto(0m, 0m, 0m, 0m);
+
+    /// <summary>
+    /// Traslados del producto y las retenciones marcadas en el renglón. Cada retención conserva
+    /// la tasa del producto si la trae; si no, usa la de Configuración, que no se edita en la factura.
+    /// </summary>
+    private static Resultado<IReadOnlyList<ImpuestoDeConcepto>> ImpuestosConCasillas(
+        ProductoParaConceptoDto producto, IReadOnlyList<string> retenciones, TasasDeCapturaDto tasas, int renglon)
+    {
+        var impuestos = producto.Impuestos.Where(x => !x.EsRetencion)
+            .Select(x => new ImpuestoDeConcepto(x.Impuesto, x.TipoFactor, x.TasaOCuota, false))
+            .ToList();
+
+        foreach (var clave in retenciones.Distinct())
+        {
+            var (nombre, deConfiguracion) = clave switch
+            {
+                "001" => ("ISR", tasas.RetencionIsr),
+                "002" => ("IVA", tasas.RetencionIva),
+                "003" => ("IEPS", tasas.RetencionIeps),
+                _ => ((string?)null, 0m)
+            };
+            if (nombre is null)
+                return ErrorNegocio.Validacion("retencion-invalida",
+                    $"El renglón {renglon} trae una retención que no existe.");
+
+            if (producto.ObjetoImp != "02")
+                return ErrorNegocio.Validacion("retencion-sin-objeto",
+                    $"El producto del renglón {renglon} no es objeto de impuesto, así que no admite la retención de {nombre}.");
+
+            var delProducto = producto.Impuestos.FirstOrDefault(x => x.EsRetencion && x.Impuesto == clave);
+            var tasa = delProducto?.TasaOCuota ?? deConfiguracion;
+            if (tasa <= 0)
+                return ErrorNegocio.Validacion("retencion-sin-tasa",
+                    $"La retención de {nombre} del renglón {renglon} no tiene tasa. Captúrala en Configuración, pestaña Impuestos.");
+
+            impuestos.Add(new ImpuestoDeConcepto(clave, delProducto?.TipoFactor ?? "Tasa", tasa, true));
+        }
+
+        return Resultado<IReadOnlyList<ImpuestoDeConcepto>>.Exito(impuestos);
+
+    }
+
+
     private sealed record ConceptoResuelto(
         int Orden, ProductoParaConceptoDto Producto, string Descripcion, string? NoIdentificacion,
-        decimal Cantidad, decimal ValorUnitario, decimal Descuento, ConceptoACalcular ACalcular);
+        decimal Cantidad, decimal ValorUnitario, decimal Descuento, bool AplicaIsh, ConceptoACalcular ACalcular);
 
     // ── Aplicar al comprobante ──────────────────────────────────────────────────────────
 
@@ -610,7 +698,8 @@ public sealed class ServicioDeEmision(
                 ValorUnitario = origen.ValorUnitario,
                 Importe = calculo.Importe,
                 Descuento = calculo.Descuento,
-                ObjetoImp = producto.ObjetoImp
+                ObjetoImp = producto.ObjetoImp,
+                AplicaIsh = origen.AplicaIsh
             };
 
             foreach (var impuestoCalculado in calculo.Impuestos)
@@ -650,31 +739,30 @@ public sealed class ServicioDeEmision(
         }
     }
 
+    private async Task<DatosObra?> ObtenerDatosDeObraAsync(Comprobante comprobante, CancellationToken ct)
+        => comprobante.Variante == VariantesDeFactura.Obra
+            ? await baseDeDatos.DatosObra.AsNoTracking().FirstOrDefaultAsync(x => x.ComprobanteId == comprobante.Id, ct)
+            : null;
+
     /// <summary>
     /// En una factura de obra el descuento de cada concepto es la amortización del anticipo, y
     /// lo pone el servidor con el porcentaje guardado en la pestaña Obra: lo que mande la
     /// captura se descarta, para que conceptos y estimación no se separen.
     /// </summary>
-    private async Task<ErrorNegocio?> AplicarAmortizacionDeObraAsync(
-        Comprobante comprobante, int decimalesMoneda, CancellationToken ct)
+    private static ErrorNegocio? AplicarAmortizacionDeObra(Comprobante comprobante, DatosObra? obra, int decimalesMoneda)
+        => comprobante.Variante == VariantesDeFactura.Obra
+            ? AmortizacionDeObra.Aplicar(comprobante, obra, decimalesMoneda)
+            : null;
+
+    private static ProyeccionMonetariaCfdi AplicarTotales(Comprobante comprobante, int decimalesMoneda, DatosObra? obra)
     {
-        if (comprobante.Variante != VariantesDeFactura.Obra) return null;
-        var porcentaje = await baseDeDatos.DatosObra.AsNoTracking()
-            .Where(x => x.ComprobanteId == comprobante.Id)
-            .Select(x => x.PorcentajeAmortizacion)
-            .FirstOrDefaultAsync(ct);
-        return AmortizacionDeObra.Aplicar(comprobante, porcentaje, decimalesMoneda);
+        var proyeccion = ProyeccionMonetariaCfdi.Calcular(comprobante, decimalesMoneda, obra);
+        proyeccion.AplicarA(comprobante);
+        return proyeccion;
     }
 
-    private static void AplicarTotales(Comprobante comprobante, int decimalesMoneda)
-    {
-        var proyeccion = ProyeccionMonetariaCfdi.Calcular(comprobante, decimalesMoneda);
-        comprobante.SubTotal = proyeccion.SubTotal;
-        comprobante.Descuento = proyeccion.Descuento;
-        comprobante.TotalImpuestosTrasladados = proyeccion.TotalImpuestosTrasladados;
-        comprobante.TotalImpuestosRetenidos = proyeccion.TotalImpuestosRetenidos;
-        comprobante.Total = proyeccion.Total;
-    }
+    private static IReadOnlyList<ImpuestoLocalDto> ALocales(ProyeccionMonetariaCfdi proyeccion)
+        => [.. proyeccion.Locales.Select(x => new ImpuestoLocalDto(x.Nombre, x.Tasa, x.Importe, x.EsRetencion))];
 
     // ── Lectura ─────────────────────────────────────────────────────────────────────────
 
@@ -684,7 +772,7 @@ public sealed class ServicioDeEmision(
             .Include(c => c.Relacionados)
             .FirstOrDefaultAsync(c => c.Id == id, ct);
 
-    private static ComprobanteDto ADto(Comprobante c) => new(
+    private static ComprobanteDto ADto(Comprobante c, IReadOnlyList<ImpuestoLocalDto>? locales = null) => new(
         c.Id, c.Estatus, c.TipoDeComprobante, c.Variante, c.SerieId, c.Serie, c.Folio,
         c.Moneda, c.TipoCambio, c.FormaPago, c.MetodoPago, c.Exportacion, c.CondicionesDePago,
         c.Observaciones,
@@ -700,6 +788,9 @@ public sealed class ServicioDeEmision(
         [.. c.Conceptos.Select(x => new ConceptoDto(
             x.Id, x.Orden, x.ProductoId, x.ClaveProdServ, x.ClaveUnidad, x.UnidadTexto, x.NoIdentificacion,
             x.Descripcion, x.Cantidad, x.ValorUnitario, x.Importe, x.Descuento, x.ObjetoImp,
-            [.. x.Impuestos.Select(i => new ImpuestoDeConceptoDto(i.Impuesto, i.TipoFactor, i.TasaOCuota, i.EsRetencion))]))],
-        [.. c.Relacionados.Select(r => new ComprobanteRelacionadoDto(r.Id, r.TipoRelacion, r.UuidRelacionado, null, null))]);
+            [.. x.Impuestos.Select(i => new ImpuestoDeConceptoDto(i.Impuesto, i.TipoFactor, i.TasaOCuota, i.EsRetencion))],
+            AplicaIsh: x.AplicaIsh))],
+        [.. c.Relacionados.Select(r => new ComprobanteRelacionadoDto(r.Id, r.TipoRelacion, r.UuidRelacionado, null, null))],
+        c.TasaIsh, locales);
+
 }

@@ -45,6 +45,10 @@ public static class EmisionEndpoints
         grupo.MapGet("/relacionados/series", async (ServicioDeEmision emision, CancellationToken ct)
             => Results.Ok(await emision.ListarSeriesRelacionablesAsync(ct)))
             .RequireAuthorization(Permisos.DocumentosListado);
+        grupo.MapGet("/tasas-de-captura", async (ServicioDeEmision emision, CancellationToken ct)
+            => Results.Ok(await emision.ObtenerTasasDeCapturaAsync(ct)))
+            .RequireAuthorization(Permisos.DocumentosListado);
+
     }
 
     // Cuerpo opcional: sin él se crea una factura básica, como antes de que existieran las variantes.

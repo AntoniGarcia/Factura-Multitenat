@@ -182,6 +182,10 @@ namespace Facturacion.Server.Migrations
                         .HasPrecision(18, 6)
                         .HasColumnType("decimal(18,6)");
 
+                    b.Property<decimal?>("TasaIsh")
+                        .HasPrecision(18, 6)
+                        .HasColumnType("decimal(18,6)");
+
                     b.Property<decimal?>("TipoCambio")
                         .HasPrecision(18, 6)
                         .HasColumnType("decimal(18,6)");
@@ -261,6 +265,9 @@ namespace Facturacion.Server.Migrations
                 {
                     b.Property<Guid>("Id")
                         .HasColumnType("uniqueidentifier");
+
+                    b.Property<bool>("AplicaIsh")
+                        .HasColumnType("bit");
 
                     b.Property<decimal>("Cantidad")
                         .HasPrecision(18, 6)

@@ -102,7 +102,13 @@ public sealed class ServicioDeEmision(IHttpClientFactory fabrica)
             $"{string.Join(", ", s.Tipos.Select(NombreDeTipo))} · {s.Timbrados} CFDI", true))];
     }
 
+    /// <summary>Tasas de Configuración para capturar una factura básica: retenciones e ISH.</summary>
+    public async Task<TasasDeCapturaDto> ObtenerTasasDeCapturaAsync(CancellationToken ct = default)
+        => await Cliente.GetFromJsonAsync<TasasDeCapturaDto>("api/documentos/tasas-de-captura", ct)
+           ?? new TasasDeCapturaDto(0m, 0m, 0m, 0m);
+
     private static string NombreDeTipo(string tipo) => tipo switch
+
     {
         "I" => "Ingreso",
         "E" => "Egreso",

@@ -121,7 +121,17 @@ public sealed class Comprobante : IEntidadDeEmpresa
 
     public decimal TotalImpuestosRetenidos { get; set; }
 
+    /// <summary>
+    /// Incluye los impuestos locales del complemento —el ISH suma, la retención de obra resta—,
+    /// como pide el Anexo 20: el SAT no los cuenta en los totales federales, pero sí en el Total.
+    /// </summary>
     public decimal Total { get; set; }
+
+    /// <summary>
+    /// Impuesto sobre hospedaje, como fracción. Solo en factura básica y solo si algún concepto
+    /// lo aplica; si no, nula. Se captura en cada factura, precargada desde Configuración.
+    /// </summary>
+    public decimal? TasaIsh { get; set; }
 
     // ── Resultado del timbrado ───────────────────────────────────────────────────────
 

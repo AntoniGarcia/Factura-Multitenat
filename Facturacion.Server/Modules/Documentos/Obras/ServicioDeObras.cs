@@ -111,7 +111,7 @@ public sealed class ServicioDeObras(
         datos.NombreDeduccion4 = peticion.Deducciones[3].Nombre.Trim();
         datos.PorcentajeDeduccion4 = peticion.Deducciones[3].Porcentaje;
 
-        if (AmortizacionDeObra.Aplicar(comprobante, datos.PorcentajeAmortizacion, decimalesMoneda) is { } sinAplicar)
+        if (AmortizacionDeObra.Aplicar(comprobante, datos, decimalesMoneda) is { } sinAplicar)
             return sinAplicar;
         if (await AnticipoDeObra.ValidarAsync(baseDeDatos, comprobante, datos.PorcentajeAmortizacion, ct) is { } anticipo)
             return anticipo;

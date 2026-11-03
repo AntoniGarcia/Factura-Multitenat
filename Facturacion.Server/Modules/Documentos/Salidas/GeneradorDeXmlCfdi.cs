@@ -19,6 +19,9 @@ public sealed record DatosDeEmision(
     string CertificadoBase64)
 {
     public TimeZoneInfo? ZonaHoraria { get; init; }
+
+    /// <summary>La estimación de una factura de obra: su retención local resta del Total.</summary>
+    public DatosObra? Obra { get; init; }
 }
 
 /// <summary>
@@ -60,7 +63,8 @@ public sealed class GeneradorDeXmlCfdi
 
         var d = datos.Decimales;
 
-        var proyeccion = ProyeccionMonetariaCfdi.Calcular(comprobante, d);
+        var proyeccion = ProyeccionMonetariaCfdi.Calcular(comprobante, d, datos.Obra);
+
         var conceptos = proyeccion.Conceptos;
         var traslados = proyeccion.Traslados;
         var retenciones = proyeccion.Retenciones;

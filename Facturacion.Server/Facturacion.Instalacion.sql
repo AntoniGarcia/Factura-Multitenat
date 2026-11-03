@@ -5840,3 +5840,32 @@ END;
 COMMIT;
 GO
 
+BEGIN TRANSACTION;
+IF NOT EXISTS (
+    SELECT * FROM [__EFMigrationsHistory]
+    WHERE [MigrationId] = N'20261103231509_20261103_B_IshEnFactura'
+)
+BEGIN
+    EXEC(N'ALTER TABLE [Conceptos] ADD [AplicaIsh] bit NOT NULL DEFAULT CAST(0 AS bit);');
+END;
+
+IF NOT EXISTS (
+    SELECT * FROM [__EFMigrationsHistory]
+    WHERE [MigrationId] = N'20261103231509_20261103_B_IshEnFactura'
+)
+BEGIN
+    EXEC(N'ALTER TABLE [Comprobantes] ADD [TasaIsh] decimal(18,6) NULL;');
+END;
+
+IF NOT EXISTS (
+    SELECT * FROM [__EFMigrationsHistory]
+    WHERE [MigrationId] = N'20261103231509_20261103_B_IshEnFactura'
+)
+BEGIN
+    EXEC(N'INSERT INTO [__EFMigrationsHistory] ([MigrationId], [ProductVersion])
+    VALUES (N''20261103231509_20261103_B_IshEnFactura'', N''10.0.10'');');
+END;
+
+COMMIT;
+GO
+

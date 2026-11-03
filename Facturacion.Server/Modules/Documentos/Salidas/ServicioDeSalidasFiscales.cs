@@ -99,12 +99,12 @@ public sealed class ServicioDeSalidasFiscales(
         if (archivoXml.EsFallo) return archivoXml.Error!;
 
         DatosNotarialesDelPdf? datosNotariales;
-        RetencionLocalDeObra? retencionLocal;
+        IReadOnlyList<ImpuestoLocalCfdi> impuestosLocales;
         string? leyenda;
         try
         {
             datosNotariales = DatosNotarialesDelPdf.DesdeXml(archivoXml.Valor.Contenido);
-            retencionLocal = LeerRetencionLocal(archivoXml.Valor.Contenido);
+            impuestosLocales = LeerImpuestosLocales(archivoXml.Valor.Contenido);
             leyenda = LeerLeyendaDelTimbre(archivoXml.Valor.Contenido);
         }
         catch (Exception ex) when (ex is XmlException or InvalidDataException or FormatException or OverflowException)
@@ -116,7 +116,7 @@ public sealed class ServicioDeSalidasFiscales(
 
         var contenido = generadorPdf.Generar(comprobante,
             new DatosDelPdf(fechaLocal, decimales, logo?.Contenido, Notaria: datosNotariales,
-                RetencionLocal: retencionLocal, LeyendaDelTimbre: leyenda) { ZonaHoraria = zona });
+                ImpuestosLocales: impuestosLocales, LeyendaDelTimbre: leyenda) { ZonaHoraria = zona });
 
         return new ArchivoFiscal(NombreDeArchivoFiscal.Construir(comprobante, zona, "pdf"), "application/pdf", contenido);
     }
@@ -137,7 +137,11 @@ public sealed class ServicioDeSalidasFiscales(
 
     private const string EspacioDeNombresTimbre = "http://www.sat.gob.mx/TimbreFiscalDigital";
 
-    private static RetencionLocalDeObra? LeerRetencionLocal(byte[] contenido)
+    /// <summary>
+    /// Del XML timbrado, no del comprobante: el PDF de un CFDI muestra lo que el SAT recibió. Los
+    /// XML de obra anteriores llamaban siempre «5 al millar» a su retención y se leen igual.
+    /// </summary>
+    private static IReadOnlyList<ImpuestoLocalCfdi> LeerImpuestosLocales(byte[] contenido)
     {
         using var lector = XmlReader.Create(new MemoryStream(contenido), new XmlReaderSettings
         {
@@ -147,23 +151,30 @@ public sealed class ServicioDeSalidasFiscales(
         var documento = XDocument.Load(lector);
         var espacio = XNamespace.Get(EsquemasSat.EspacioDeNombresImpuestosLocales);
         var complemento = documento.Descendants(espacio + "ImpuestosLocales").FirstOrDefault();
-        if (complemento is null) return null;
+        if (complemento is null) return [];
 
-        // La obra solo escribe una retención local; los XML anteriores la llamaban siempre
-        // «5 al millar» a 0.50 y se leen igual.
-        var retencion = complemento.Elements(espacio + "RetencionesLocales").FirstOrDefault();
-        var nombre = (string?)retencion?.Attribute("ImpLocRetenido");
-        if (retencion is null || string.IsNullOrWhiteSpace(nombre) ||
-            !decimal.TryParse((string?)retencion.Attribute("TasadeRetencion"),
-                NumberStyles.AllowDecimalPoint, CultureInfo.InvariantCulture, out var tasa) || tasa < 0 ||
-            !decimal.TryParse((string?)retencion.Attribute("Importe"),
-                NumberStyles.AllowDecimalPoint, CultureInfo.InvariantCulture, out var importe) || importe < 0 ||
-            !decimal.TryParse((string?)complemento.Attribute("TotaldeRetenciones"),
-                NumberStyles.AllowDecimalPoint, CultureInfo.InvariantCulture, out var total) || total != importe)
-            throw new InvalidDataException("El complemento de impuestos locales no tiene un importe válido.");
+        static decimal Cifra(string? texto)
+            => decimal.TryParse(texto, NumberStyles.AllowDecimalPoint, CultureInfo.InvariantCulture, out var valor)
+                ? valor
+                : throw new InvalidDataException("El complemento de impuestos locales no tiene un importe válido.");
 
-        return new RetencionLocalDeObra(nombre, tasa, importe);
+        ImpuestoLocalCfdi Leer(XElement nodo, string nombre, string tasa, bool esRetencion)
+            => (string?)nodo.Attribute(nombre) is { Length: > 0 } texto
+                ? new(texto, Cifra((string?)nodo.Attribute(tasa)), Cifra((string?)nodo.Attribute("Importe")), esRetencion)
+                : throw new InvalidDataException("El complemento de impuestos locales trae un impuesto sin nombre.");
+
+        ImpuestoLocalCfdi[] locales =
+        [
+            .. complemento.Elements(espacio + "RetencionesLocales").Select(x => Leer(x, "ImpLocRetenido", "TasadeRetencion", true)),
+            .. complemento.Elements(espacio + "TrasladosLocales").Select(x => Leer(x, "ImpLocTrasladado", "TasadeTraslado", false))
+        ];
+        if (Cifra((string?)complemento.Attribute("TotaldeRetenciones")) != locales.Where(x => x.EsRetencion).Sum(x => x.Importe) ||
+            Cifra((string?)complemento.Attribute("TotaldeTraslados")) != locales.Where(x => !x.EsRetencion).Sum(x => x.Importe))
+            throw new InvalidDataException("Los totales del complemento de impuestos locales no cuadran.");
+
+        return locales;
     }
+
 
     public async Task<Resultado<ArchivoFiscal>> ObtenerXmlAsync(Guid comprobanteId, CancellationToken ct)
     {
