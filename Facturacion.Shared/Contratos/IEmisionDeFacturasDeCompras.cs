@@ -5,6 +5,9 @@ namespace Facturacion.Shared.Contratos;
 /// <summary>Persistencia fiscal del proveedor, exclusiva de la emisión de compras desde el servidor.</summary>
 public interface IEmisionDeFacturasDeCompras
 {
+    /// <summary>Lee una factura emitida de la cuenta activa, o desde la identidad del operador. No entrega material del CSD.</summary>
+    Task<Resultado<FacturaProveedorEmitidaDto>> ObtenerEmitidaAsync(Guid compraId, CancellationToken ct);
+
     /// <summary>Congela un intento y reserva folio sin tocar la bolsa del comprador. La clave repetida recupera el mismo intento.</summary>
     Task<Resultado<IntentoFacturaCompraDto>> PrepararAsync(
         Guid compraId, byte[] version, string claveIdempotencia, CancellationToken ct);
@@ -23,6 +26,12 @@ public interface IEmisionDeFacturasDeCompras
     Task<IReadOnlyList<IntentoFacturaCompraDto>> ObtenerPendientesAsync(
         DateTime limiteUtc, int maximo, CancellationToken ct);
 }
+
+public sealed record FacturaProveedorEmitidaDto(
+    Guid FacturaId, Guid CompraId, Guid Uuid,
+    string XmlTimbrado, string ZonaHoraria,
+    DateTime FechaEmisionUtc, DateTime FechaTimbradoUtc,
+    string CadenaOriginalSat);
 
 public sealed record EmisorFacturaProveedorDto(
     string Rfc, string Nombre, string Regimen, string CodigoPostal, string ZonaHoraria, string Serie);

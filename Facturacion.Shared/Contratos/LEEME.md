@@ -54,6 +54,11 @@ genera y firma el XML y consulta al PAC. No utiliza el certificado, las series n
 del comprador. El control del intento cambia al reclamarlo para conciliación y evita
 escrituras de una ejecución anterior. El contrato se incorpora en un commit dedicado.
 
+La consulta `ObtenerEmitidaAsync`, autorizada por separado el mismo día, entrega el XML
+persistido y los datos de emisión para su descarga y representación PDF. El cliente
+conserva el filtro de cuenta; el operador consulta desde su identidad propia. No devuelve
+certificados ni contraseñas y no modifica el esquema SQL.
+
 ## Convenciones
 
 - Todos los DTO son `record` inmutables y viven en el mismo archivo que su interfaz.
