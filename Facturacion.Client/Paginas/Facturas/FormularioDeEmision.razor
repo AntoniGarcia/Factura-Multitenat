@@ -227,7 +227,7 @@ else
 
             <div class="rejilla-campos">
 <BuscadorCatalogo Catalogo="c_TipoRelacion" Opciones="@Catalogos.Obtener("c_TipoRelacion")" @bind-Clave="_tipoRelacion" Label="Tipo de relación" PuedeLimpiar="true" />
-                <MudTextField @bind-Value="_serieRelacionado" Label="Serie" MaxLength="25" />
+<BuscadorCatalogo Catalogo="serie" Opciones="@_seriesRelacionables" @bind-Clave="_serieRelacionado" Label="Serie" PuedeLimpiar="true" MuestraSelectorEnLista="false" />
                 <MudNumericField T="int?" @bind-Value="_folioRelacionado" Label="Folio" />
             </div>
 
@@ -448,7 +448,8 @@ else
 
     // CFDI relacionados
     private string? _tipoRelacion;
-    private string _serieRelacionado = string.Empty;
+    private string? _serieRelacionado;
+    private IReadOnlyList<ClaveSatDto> _seriesRelacionables = [];
     private int? _folioRelacionado;
     private readonly List<ComprobanteRelacionadoDto> _relacionados = [];
 
@@ -559,6 +560,7 @@ else
         }
 
         _seriesActivas = await Empresa.ListarSeriesActivasAsync("I");
+        _seriesRelacionables = await Emision.ListarSeriesRelacionablesAsync();
         _monedasDeCaptura = Catalogos.ObtenerMonedasDeCaptura((await Empresa.ObtenerMonedasAsync())?.Monedas ?? []);
 
         var comprobante = await Emision.ObtenerAsync(Id!.Value);
@@ -772,7 +774,7 @@ else
     {
         if (!PuedeAgregarRelacionado) return;
 
-        var (resuelto, error) = await Emision.ResolverRelacionadoAsync(_serieRelacionado, _folioRelacionado!.Value);
+        var (resuelto, error) = await Emision.ResolverRelacionadoAsync(_serieRelacionado!, _folioRelacionado!.Value);
 
         if (error is not null)
         {
@@ -784,7 +786,7 @@ else
         _relacionados.Add(new ComprobanteRelacionadoDto(
             null, _tipoRelacion!, resuelto!.Uuid, resuelto.Serie, resuelto.Folio));
 
-        _serieRelacionado = string.Empty;
+        _serieRelacionado = null;
         _folioRelacionado = null;
         _tipoRelacion = null;
     }

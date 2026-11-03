@@ -11,7 +11,8 @@ using Microsoft.EntityFrameworkCore;
 namespace Facturacion.Server.Modules.Plataforma.Empresas;
 
 /// <summary>
-/// Alta y edición del servidor SMTP propio de la empresa activa.
+/// Alta y edición del servidor SMTP de la empresa activa, el único por el que salen sus
+/// comprobantes: por eso se guarda siempre completo.
 /// <para>
 /// La contraseña es de solo escritura: entra cifrada y nunca sale. Una petición sin contraseña
 /// conserva la guardada, para que editar el puerto no obligue a volver a escribirla.
@@ -32,7 +33,7 @@ public sealed class ServicioDeConfiguracionDeCorreo(
         var correo = await baseDeDatos.CorreosDeEmpresa.AsNoTracking().FirstOrDefaultAsync(ct);
 
         return correo is null
-            ? new CorreoDeEmpresaDto(false, null, PuertosSmtp.StartTls, null, false, null, null, null, null)
+            ? new CorreoDeEmpresaDto(false, null, PuertosSmtp.StartTls, null, false, null, null)
             : ADto(correo);
     }
 
@@ -43,24 +44,16 @@ public sealed class ServicioDeConfiguracionDeCorreo(
         var usuario = Limpiar(peticion.Usuario);
         var remitenteNombre = Limpiar(peticion.RemitenteNombre);
         var remitenteCorreo = Limpiar(peticion.RemitenteCorreo);
-        var nombreRemitenteSistema = Limpiar(peticion.NombreRemitenteSistema);
-        var responderA = Limpiar(peticion.ResponderA);
         var contrasenaNueva = string.IsNullOrEmpty(peticion.Contrasena) ? null : peticion.Contrasena;
 
         var correo = await baseDeDatos.CorreosDeEmpresa.FirstOrDefaultAsync(ct);
         var tieneContrasena = contrasenaNueva is not null || !string.IsNullOrEmpty(correo?.ContrasenaCifrada);
 
-        var error = Validar(peticion, servidor, usuario, contrasenaNueva, remitenteNombre, remitenteCorreo, tieneContrasena)
-                    ?? ValidarRemitenteDelSistema(nombreRemitenteSistema, responderA);
+        var error = Validar(peticion, servidor, usuario, contrasenaNueva, remitenteNombre, remitenteCorreo, tieneContrasena);
         if (error is not null) return error;
 
-        // Solo se exige un destino alcanzable cuando se va a usar: guardar los datos con el
-        // switch apagado no tiene por qué depender del DNS.
-        if (peticion.Habilitado)
-        {
-            var destino = await DestinoSmtp.ResolverAsync(servidor!, ct);
-            if (destino.EsFallo) return destino.Error!;
-        }
+        var destino = await DestinoSmtp.ResolverAsync(servidor!, ct);
+        if (destino.EsFallo) return destino.Error!;
 
         var antes = correo is null ? null : ADto(correo);
 
@@ -71,14 +64,11 @@ public sealed class ServicioDeConfiguracionDeCorreo(
             baseDeDatos.CorreosDeEmpresa.Add(correo);
         }
 
-        correo.Habilitado = peticion.Habilitado;
         correo.Servidor = servidor;
         correo.Puerto = peticion.Puerto;
         correo.Usuario = usuario;
         correo.RemitenteNombre = remitenteNombre;
         correo.RemitenteCorreo = remitenteCorreo;
-        correo.NombreRemitenteSistema = nombreRemitenteSistema;
-        correo.ResponderA = responderA;
 
         if (contrasenaNueva is not null)
             correo.ContrasenaCifrada = protector.Cifrar(contexto.EmpresaId, contrasenaNueva);
@@ -98,8 +88,6 @@ public sealed class ServicioDeConfiguracionDeCorreo(
 
     public async Task<Resultado<bool>> ProbarAsync(PeticionGuardarCorreoDeEmpresa peticion, CancellationToken ct)
     {
-        if (!peticion.Habilitado)
-            return ErrorNegocio.Validacion("smtp-no-habilitado", "Activa tu servidor de correo para probarlo.");
         var guardado = await baseDeDatos.CorreosDeEmpresa.AsNoTracking().FirstOrDefaultAsync(ct);
         var contrasena = peticion.Contrasena;
         if (string.IsNullOrEmpty(contrasena) && !string.IsNullOrEmpty(guardado?.ContrasenaCifrada))
@@ -112,7 +100,6 @@ public sealed class ServicioDeConfiguracionDeCorreo(
         }
         var error = Validar(peticion, Limpiar(peticion.Servidor), Limpiar(peticion.Usuario), peticion.Contrasena,
             Limpiar(peticion.RemitenteNombre), Limpiar(peticion.RemitenteCorreo), !string.IsNullOrEmpty(contrasena))
-            ?? ValidarRemitenteDelSistema(Limpiar(peticion.NombreRemitenteSistema), Limpiar(peticion.ResponderA))
             ?? ProbadorSmtp.Validar(peticion.Servidor, peticion.Puerto, peticion.Usuario, contrasena,
                 peticion.RemitenteNombre, peticion.RemitenteCorreo);
         if (error is not null) return error;
@@ -148,8 +135,6 @@ public sealed class ServicioDeConfiguracionDeCorreo(
             return ErrorNegocio.Validacion("smtp-remitente-invalido",
                 "El correo del remitente no es válido. Escribe solo la dirección, como facturas@miempresa.com.");
 
-        if (!peticion.Habilitado) return null;
-
         if (servidor is null)
             return ErrorNegocio.Validacion("smtp-servidor-requerido", "Escribe el servidor SMTP.");
 
@@ -161,21 +146,6 @@ public sealed class ServicioDeConfiguracionDeCorreo(
 
         if (remitenteCorreo is null)
             return ErrorNegocio.Validacion("smtp-remitente-requerido", "Escribe el correo del remitente.");
-
-        return null;
-    }
-
-    private static ErrorNegocio? ValidarRemitenteDelSistema(string? nombre, string? responderA)
-    {
-        // Sin «@»: con la dirección del sistema detrás, un nombre como «pagos@banco.com» se lee
-        // en la bandeja como si fuera el remitente real.
-        if (nombre is not null && (nombre.Length > LongitudMaximaNombre || TieneSaltoDeLinea(nombre) || nombre.Contains('@')))
-            return ErrorNegocio.Validacion("remitente-sistema-nombre-invalido",
-                $"El nombre del remitente admite hasta {LongitudMaximaNombre} caracteres en una sola línea y sin «@».");
-
-        if (responderA is not null && !EsCorreoValido(responderA))
-            return ErrorNegocio.Validacion("responder-a-invalido",
-                "El correo para responder no es válido. Escribe solo la dirección, como contacto@miempresa.com.");
 
         return null;
     }
@@ -193,7 +163,6 @@ public sealed class ServicioDeConfiguracionDeCorreo(
     private static string? Limpiar(string? texto) => string.IsNullOrWhiteSpace(texto) ? null : texto.Trim();
 
     private static CorreoDeEmpresaDto ADto(CorreoDeEmpresa c) => new(
-        c.Habilitado, c.Servidor, c.Puerto, c.Usuario,
-        !string.IsNullOrEmpty(c.ContrasenaCifrada), c.RemitenteNombre, c.RemitenteCorreo,
-        c.NombreRemitenteSistema, c.ResponderA);
+        ServicioDeCorreoDeEmpresa.EstaCompleto(c), c.Servidor, c.Puerto, c.Usuario,
+        !string.IsNullOrEmpty(c.ContrasenaCifrada), c.RemitenteNombre, c.RemitenteCorreo);
 }

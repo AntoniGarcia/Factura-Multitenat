@@ -113,6 +113,16 @@ public sealed record CfdiRelacionadoResueltoDto(
     string Serie,
     int Folio);
 
+/// <summary>
+/// Una serie con al menos un CFDI timbrado en la empresa: lo único que se puede relacionar.
+/// Incluye las series ya inactivas, porque sus comprobantes siguen vigentes.
+/// </summary>
+/// <param name="Tipos">Claves de <c>c_TipoDeComprobante</c> que tiene timbradas.</param>
+public sealed record SerieRelacionableDto(
+    string Serie,
+    IReadOnlyList<string> Tipos,
+    int Timbrados);
+
 /// <summary>Lo que devuelve <c>POST /api/documentos/{id}/timbrar</c> cuando el timbrado termina bien.</summary>
 public sealed record RespuestaDeTimbradoDto(
     Guid ComprobanteId,

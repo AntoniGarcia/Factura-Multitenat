@@ -318,6 +318,22 @@ public sealed class ServicioDeEmision(
             : relacionado;
     }
 
+    /// <summary>Series que tienen CFDI con UUID: las mismas que <see cref="ResolverRelacionadoAsync"/> puede encontrar.</summary>
+    public async Task<IReadOnlyList<SerieRelacionableDto>> ListarSeriesRelacionablesAsync(CancellationToken ct)
+    {
+        var filas = await baseDeDatos.Comprobantes
+            .AsNoTracking()
+            .Where(c => c.Uuid != null && c.Serie != null)
+            .GroupBy(c => new { c.Serie, c.TipoDeComprobante })
+            .Select(g => new { g.Key.Serie, g.Key.TipoDeComprobante, Timbrados = g.Count() })
+            .ToListAsync(ct);
+
+        return [.. filas.GroupBy(x => x.Serie!)
+            .OrderBy(g => g.Key, StringComparer.OrdinalIgnoreCase)
+            .Select(g => new SerieRelacionableDto(g.Key,
+                [.. g.Select(x => x.TipoDeComprobante).Order()], g.Sum(x => x.Timbrados)))];
+    }
+
     /// <summary>Lista los documentos de la empresa activa mediante el filtro global de EF.</summary>
     /// <param name="busca">
     /// RFC o nombre del receptor. Si el texto es un número se interpreta además como folio,

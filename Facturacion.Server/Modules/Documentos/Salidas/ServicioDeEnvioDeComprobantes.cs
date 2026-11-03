@@ -96,9 +96,8 @@ public sealed class ServicioDeEnvioDeComprobantes(
 
         var copiaOculta = peticion.CopiaALaEmpresa ? correoDeLaEmpresa : null;
 
-        // La copia va siempre al correo de contacto; las respuestas, a donde la empresa las haya
-        // dirigido en Configuración.
-        var responderA = await correo.ResponderAAsync(correoDeLaEmpresa, ct);
+        // La copia y las respuestas van al correo de contacto de la empresa.
+        var responderA = correoDeLaEmpresa;
 
         var mensaje = new MensajeDeCorreo(
             destinatarios.Valor,

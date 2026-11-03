@@ -5785,3 +5785,58 @@ END;
 COMMIT;
 GO
 
+BEGIN TRANSACTION;
+IF NOT EXISTS (
+    SELECT * FROM [__EFMigrationsHistory]
+    WHERE [MigrationId] = N'20261103142120_20261103_A_SmtpSoloDeEmpresa'
+)
+BEGIN
+    EXEC(N'DECLARE @var6 nvarchar(max);
+    SELECT @var6 = QUOTENAME([d].[name])
+    FROM [sys].[default_constraints] [d]
+    INNER JOIN [sys].[columns] [c] ON [d].[parent_column_id] = [c].[column_id] AND [d].[parent_object_id] = [c].[object_id]
+    WHERE ([d].[parent_object_id] = OBJECT_ID(N''[CorreosDeEmpresa]'') AND [c].[name] = N''Habilitado'');
+    IF @var6 IS NOT NULL EXEC(N''ALTER TABLE [CorreosDeEmpresa] DROP CONSTRAINT '' + @var6 + '';'');
+    ALTER TABLE [CorreosDeEmpresa] DROP COLUMN [Habilitado];');
+END;
+
+IF NOT EXISTS (
+    SELECT * FROM [__EFMigrationsHistory]
+    WHERE [MigrationId] = N'20261103142120_20261103_A_SmtpSoloDeEmpresa'
+)
+BEGIN
+    EXEC(N'DECLARE @var7 nvarchar(max);
+    SELECT @var7 = QUOTENAME([d].[name])
+    FROM [sys].[default_constraints] [d]
+    INNER JOIN [sys].[columns] [c] ON [d].[parent_column_id] = [c].[column_id] AND [d].[parent_object_id] = [c].[object_id]
+    WHERE ([d].[parent_object_id] = OBJECT_ID(N''[CorreosDeEmpresa]'') AND [c].[name] = N''NombreRemitenteSistema'');
+    IF @var7 IS NOT NULL EXEC(N''ALTER TABLE [CorreosDeEmpresa] DROP CONSTRAINT '' + @var7 + '';'');
+    ALTER TABLE [CorreosDeEmpresa] DROP COLUMN [NombreRemitenteSistema];');
+END;
+
+IF NOT EXISTS (
+    SELECT * FROM [__EFMigrationsHistory]
+    WHERE [MigrationId] = N'20261103142120_20261103_A_SmtpSoloDeEmpresa'
+)
+BEGIN
+    EXEC(N'DECLARE @var8 nvarchar(max);
+    SELECT @var8 = QUOTENAME([d].[name])
+    FROM [sys].[default_constraints] [d]
+    INNER JOIN [sys].[columns] [c] ON [d].[parent_column_id] = [c].[column_id] AND [d].[parent_object_id] = [c].[object_id]
+    WHERE ([d].[parent_object_id] = OBJECT_ID(N''[CorreosDeEmpresa]'') AND [c].[name] = N''ResponderA'');
+    IF @var8 IS NOT NULL EXEC(N''ALTER TABLE [CorreosDeEmpresa] DROP CONSTRAINT '' + @var8 + '';'');
+    ALTER TABLE [CorreosDeEmpresa] DROP COLUMN [ResponderA];');
+END;
+
+IF NOT EXISTS (
+    SELECT * FROM [__EFMigrationsHistory]
+    WHERE [MigrationId] = N'20261103142120_20261103_A_SmtpSoloDeEmpresa'
+)
+BEGIN
+    EXEC(N'INSERT INTO [__EFMigrationsHistory] ([MigrationId], [ProductVersion])
+    VALUES (N''20261103142120_20261103_A_SmtpSoloDeEmpresa'', N''10.0.10'');');
+END;
+
+COMMIT;
+GO
+

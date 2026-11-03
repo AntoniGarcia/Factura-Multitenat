@@ -22,7 +22,7 @@ public sealed class ServicioDeCorreoConsola(ILogger<ServicioDeCorreoConsola> reg
 
         registro.LogInformation(
             "Correo simulado (Correo:Servidor no configurado) → {Destinatarios}{Copia} | De: {Remitente} | Responder a: {ResponderA} | {Asunto}{Adjuntos}\n{Cuerpo}",
-            string.Join(", ", mensaje.Para), copia, mensaje.NombreRemitente ?? "—", mensaje.ResponderA ?? "—",
+            string.Join(", ", mensaje.Para), copia, "sistema", mensaje.ResponderA ?? "—",
             mensaje.Asunto, adjuntos, mensaje.CuerpoHtml);
 
         return Task.CompletedTask;
