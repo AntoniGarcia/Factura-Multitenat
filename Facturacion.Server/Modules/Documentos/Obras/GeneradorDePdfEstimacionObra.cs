@@ -1,4 +1,5 @@
-using System.Globalization;
+﻿using System.Globalization;
+using Facturacion.Server.Infra.Pdf;
 using Facturacion.Server.Data.Entidades.Documentos;
 using Facturacion.Shared.Obras;
 using QuestPDF.Fluent;
@@ -17,12 +18,14 @@ public sealed class GeneradorDePdfEstimacionObra
             documento.Page(pagina =>
             {
                 pagina.Size(PageSizes.Letter);
-                pagina.Margin(1.5f, Unit.Centimetre);
+                pagina.Margin(0.9f, Unit.Centimetre);
                 pagina.DefaultTextStyle(texto => texto.FontFamily(Fonts.Calibri).FontSize(9));
 
                 pagina.Header().Column(encabezado =>
                 {
-                    encabezado.Item().Text("ESTIMACIÓN DE OBRA").Bold().FontSize(17);
+                    encabezado.Item().AlignRight().Text(factura.EmisorNombre).Bold().FontSize(15).FontColor(EstiloDeComprobante.Tinta);
+                    encabezado.Item().PaddingTop(4).AlignRight().Text($"RFC {factura.EmisorRfc} · Régimen fiscal {factura.EmisorRegimenFiscal}");
+                    encabezado.Item().PaddingVertical(7).Element(e => EstiloDeComprobante.Seccion(e, "ESTIMACIÓN DE OBRA"));
                     encabezado.Item().Text(obra.TipoObra switch
                     {
                         TiposDeObra.Publica => "Obra pública",
@@ -126,7 +129,7 @@ public sealed class GeneradorDePdfEstimacionObra
     };
 
     private static void Cabecera(TableCellDescriptor celda, string texto)
-        => celda.Cell().Background(Colors.Grey.Lighten3).Padding(4).Text(texto).Bold().FontSize(8);
+        => EstiloDeComprobante.Cabecera(celda.Cell()).Text(texto).FontSize(8);
 
     private static void Celda(TableDescriptor tabla, string texto, bool derecha = false)
     {

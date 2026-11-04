@@ -1,4 +1,5 @@
-using System.Globalization;
+﻿using System.Globalization;
+using Facturacion.Server.Infra.Pdf;
 using QuestPDF.Fluent;
 using QuestPDF.Helpers;
 using QuestPDF.Infrastructure;
@@ -29,20 +30,17 @@ public sealed record DatosDeComprobanteDeCompra(
 /// </summary>
 public sealed class GeneradorDeComprobanteDeCompraPdf
 {
-    private const string AzulTinta = "#17243A";
-    private const string AzulAcento = "#245BDB";
-    private const string TextoSecundario = "#64748B";
-    private const string Borde = "#DCE3EC";
-    private const string FondoExito = "#DCFCE7";
-    private const string TextoExito = "#15803D";
-    private const string TextoAviso = "#B42318";
+    private const string AzulTinta = EstiloDeComprobante.Tinta;
+    private const string AzulAcento = EstiloDeComprobante.Azul;
+    private const string TextoSecundario = EstiloDeComprobante.Secundario;
+    private const string Borde = EstiloDeComprobante.Borde;
 
     public byte[] Generar(DatosDeComprobanteDeCompra datos)
         => Document.Create(documento => documento.Page(pagina =>
         {
             pagina.Size(PageSizes.Letter);
-            pagina.MarginHorizontal(1.8f, Unit.Centimetre);
-            pagina.MarginVertical(1.5f, Unit.Centimetre);
+            pagina.MarginHorizontal(0.9f, Unit.Centimetre);
+            pagina.MarginVertical(0.9f, Unit.Centimetre);
             pagina.DefaultTextStyle(t => t.FontSize(9).FontFamily(Fonts.Calibri));
 
             pagina.Header().Element(e => Encabezado(e, datos));
@@ -56,35 +54,20 @@ public sealed class GeneradorDeComprobanteDeCompraPdf
         })).GeneratePdf();
 
     private static void Encabezado(IContainer contenedor, DatosDeComprobanteDeCompra datos)
-        => contenedor.PaddingBottom(16).Column(columna =>
+        => contenedor.PaddingBottom(12).Column(columna =>
         {
-            columna.Item().Row(fila =>
+            columna.Item().AlignRight().Text(datos.NombreDelSistema).FontSize(15).Bold().FontColor(AzulTinta);
+            columna.Item().PaddingTop(4).AlignRight().Text("Servicios de facturación electrónica").FontSize(8).FontColor(TextoSecundario);
+            columna.Item().PaddingVertical(10).AlignCenter().Text("COMPROBANTE DE COMPRA").Bold().FontSize(12);
+            columna.Item().Table(tabla =>
             {
-                fila.RelativeItem().Column(identidad =>
-                {
-                    identidad.Item().Text(datos.NombreDelSistema).FontSize(15).Bold().FontColor(AzulTinta);
-                    identidad.Item().PaddingTop(3).Text("Servicios de facturación electrónica")
-                        .FontSize(8).FontColor(TextoSecundario);
-                });
-
-                fila.ConstantItem(235).AlignRight().Column(titulo =>
-                {
-                    titulo.Item().AlignRight().Text("COMPROBANTE DE COMPRA")
-                        .FontSize(16).Bold().FontColor(AzulAcento);
-                    titulo.Item().PaddingTop(2).AlignRight().Text($"Folio {FolioCorto(datos.CompraId)}")
-                        .FontSize(10).Bold().FontFamily(Fonts.Consolas).FontColor(AzulTinta);
-                    titulo.Item().PaddingTop(5).AlignRight().Row(estado =>
-                    {
-                        estado.RelativeItem();
-                        estado.AutoItem().Background(FondoExito).PaddingHorizontal(8).PaddingVertical(3)
-                            .Text("Pago acreditado").FontSize(7).SemiBold().FontColor(TextoExito);
-                    });
-                });
+                tabla.ColumnsDefinition(x => { x.RelativeColumn(); x.RelativeColumn(); x.RelativeColumn(); x.RelativeColumn(); });
+                foreach (var titulo in new[] { "Folio interno", "RFC del comprador", "Fecha de compra", "Fecha de pago" })
+                    EstiloDeComprobante.Cabecera(tabla.Cell()).Text(titulo);
+                foreach (var valor in new[] { FolioCorto(datos.CompraId), datos.EmpresaRfc, Fecha(datos.FechaDeCompraUtc), Fecha(datos.FechaDePagoUtc) })
+                    EstiloDeComprobante.Celda(tabla.Cell()).Text(valor).FontSize(7);
             });
-
-            columna.Item().PaddingTop(15).BorderBottom(1).BorderColor(AzulTinta);
-            columna.Item().PaddingTop(9).AlignRight().Text("DOCUMENTO INTERNO - SIN VALIDEZ FISCAL")
-                .FontSize(7).Bold().FontColor(TextoAviso);
+            columna.Item().PaddingTop(5).Text("Pago acreditado · Documento interno sin validez fiscal").FontSize(7).FontColor(TextoSecundario);
         });
 
     private static void Cuerpo(IContainer contenedor, DatosDeComprobanteDeCompra datos)
@@ -180,7 +163,7 @@ public sealed class GeneradorDeComprobanteDeCompraPdf
         });
 
     private static void EncabezadoDeCelda(IContainer celda, string texto)
-        => celda.Background(AzulTinta).PaddingVertical(7).PaddingHorizontal(8)
+        => celda.Background(AzulAcento).PaddingVertical(7).PaddingHorizontal(8)
             .Text(texto).FontSize(7).FontColor(Colors.White).SemiBold();
 
     private static void Celda(IContainer celda, string texto)
