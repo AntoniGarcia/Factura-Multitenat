@@ -38,6 +38,8 @@ public static class PermisosDePanel
     public const string AcreditarCompras = "panel_acreditar_compras";
     public const string SoloAcreditarCompras = "panel_solo_acreditar_compras";
     public const string DescartarCompras = "panel_descartar_compras";
+    public const string FacturarCompras = "panel_facturar_compras";
+    public const string TimbrarCompras = "panel_timbrar_compras";
 
     public const string VerClientes = "panel_ver_clientes";
     public const string AdministrarClientes = "panel_administrar_clientes";
@@ -75,6 +77,8 @@ public static class PermisosDePanel
         AcreditarCompras,
         SoloAcreditarCompras,
         DescartarCompras,
+        FacturarCompras,
+        TimbrarCompras,
         VerClientes,
         AdministrarClientes,
         AsignarTimbres,
@@ -106,6 +110,8 @@ public static class PermisosDePanel
         [AcreditarCompras] = "Acreditar y descartar compras",
         [SoloAcreditarCompras] = "Acreditar compras",
         [DescartarCompras] = "Descartar compras",
+        [FacturarCompras] = "Preparar facturas",
+        [TimbrarCompras] = "Timbrar facturas de compras",
         [VerClientes] = "Ver cuentas",
         [AdministrarClientes] = "Acceso completo a cuentas",
         [AsignarTimbres] = "Gestionar paquetes exclusivos",
@@ -144,7 +150,9 @@ public static class PermisosDePanel
             [
                 new(AcreditarCompras, Etiquetas[AcreditarCompras]),
                 new(SoloAcreditarCompras, Etiquetas[SoloAcreditarCompras]),
-                new(DescartarCompras, Etiquetas[DescartarCompras])
+                new(DescartarCompras, Etiquetas[DescartarCompras]),
+                new(FacturarCompras, Etiquetas[FacturarCompras]),
+                new(TimbrarCompras, Etiquetas[TimbrarCompras])
             ]),
         new("Cuentas",
             new(VerClientes, Etiquetas[VerClientes]),
@@ -187,7 +195,7 @@ public static class PermisosDePanel
         AdministrarPaquetes => VerPaquetes,
         CambiarEstadoPaquetes => VerPaquetes,
         AcreditarCompras => VerCompras,
-        SoloAcreditarCompras or DescartarCompras => VerCompras,
+        SoloAcreditarCompras or DescartarCompras or FacturarCompras or TimbrarCompras => VerCompras,
         AdministrarClientes => VerClientes,
         AsignarTimbres => VerClientes,
         EditarContactoCuentas or CambiarEstadoEmpresas or GestionarLicencias or GestionarMembresias or GestionarLimites => VerClientes,

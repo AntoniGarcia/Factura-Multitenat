@@ -1,0 +1,238 @@
+@using Facturacion.Client.Servicios.Operador
+@using Facturacion.Shared.Contratos
+@using Facturacion.Shared.Operador
+@using Facturacion.Client.Servicios.Plataforma
+@using Facturacion.Client.Componentes.Comunes
+@inject ServicioDeComprasDeOperador Compras
+@inject ServicioDeSesionDeOperador Sesion
+@inject ServicioDeArchivosDeFacturaCompra Archivos
+@inject IDialogService Dialogos
+
+<MudDialog Class="dialogo-factura-compra">
+    <DialogContent>
+        <PanelErrores Problema="_error" />
+        @if (_mensaje is not null)
+        {
+            <p class="texto-error" role="alert">@_mensaje</p>
+        }
+        @if (_cargando)
+        {
+            <p class="tabla-datos-estado">Cargando factura…</p>
+        }
+        else if (_factura is { } f)
+        {
+            <MudForm @ref="_formulario">
+                <div class="formulario-catalogo-secciones">
+                    <section class="formulario-catalogo-seccion formulario-catalogo-seccion-ancha factura-compra-proveedor" aria-labelledby="factura-compra-emisor">
+                        <h2 id="factura-compra-emisor" class="seccion-titulo">Proveedor</h2>
+                        <p><strong>@f.Emisor.NombreFiscal</strong> · <span class="cifra-tabular">@f.Emisor.Rfc</span></p>
+                        <p class="texto-secundario">Régimen @f.Emisor.RegimenFiscal · CP @f.Emisor.CodigoPostalExpedicion · Serie @f.Emisor.Serie</p>
+                        <p role="status">@(f.Id is null ? "Sin guardar" : Estado(f.Estado))</p>
+                        @if (f.Uuid is { } uuid)
+                        {
+                            <p class="cifra-tabular">@f.Emisor.Serie-@f.Folio · @uuid</p>
+                            <p class="seccion-ayuda">Timbrado simulado.</p>
+                            <div class="acciones-formulario">
+                                <MudButton Variant="Variant.Filled" Color="Color.Primary" Disabled="_guardando" OnClick="VistaPrevia">Vista previa</MudButton>
+                                <MudButton Variant="Variant.Outlined" Disabled="_guardando" OnClick="@(() => DescargarFactura(false))">Descargar PDF</MudButton>
+                                <MudButton Variant="Variant.Outlined" Disabled="_guardando" OnClick="@(() => DescargarFactura(true))">Descargar XML</MudButton>
+                            </div>
+                        }
+                    </section>
+                    <section class="formulario-catalogo-seccion" aria-labelledby="factura-compra-receptor">
+                        <h2 id="factura-compra-receptor" class="seccion-titulo">Empresa compradora</h2>
+                        <div class="catalogo-rejilla catalogo-rejilla-dos">
+                            <MudTextField Value="@f.Receptor.Rfc" Label="RFC" ReadOnly="true" Class="cifra-tabular" />
+                            <BuscadorCatalogo Catalogo="c_CodigoPostal" Label="Código postal fiscal" @bind-Clave="_cp"
+                                              BusquedaPersonalizada="BuscarCp" MostrarSoloClave="true" MuestraSelectorEnLista="false"
+                                              Requerido="true" Deshabilitado="@(!PuedeEditar || _guardando)" />
+                            <MudTextField @bind-Value="_nombre" Label="Razón social" Required="true" MaxLength="254" Class="factura-compra-campo-ancho" Disabled="@(!PuedeEditar || _guardando)" />
+                            <div class="factura-compra-campo-ancho">
+                                <BuscadorCatalogo Catalogo="c_RegimenFiscal" Label="Régimen fiscal" Opciones="_regimenes" @bind-Clave="_regimen"
+                                                  Requerido="true" Deshabilitado="@(!PuedeEditar || _guardando)" />
+                            </div>
+                            <div class="factura-compra-campo-ancho">
+                                <BuscadorCatalogo Catalogo="c_UsoCFDI" Label="Uso de CFDI" Opciones="_usos" @bind-Clave="_uso"
+                                                  Requerido="true" Deshabilitado="@(!PuedeEditar || _guardando)" />
+                            </div>
+                        </div>
+                    </section>
+                    <section class="formulario-catalogo-seccion" aria-labelledby="factura-compra-concepto">
+                        <h2 id="factura-compra-concepto" class="seccion-titulo">Paquete de timbres</h2>
+                        <p class="seccion-ayuda">Un paquete de @f.Concepto.CantidadTimbres.ToString("N0") timbres. El precio ya incluye IVA.</p>
+                        <MudTextField @bind-Value="_descripcion" Label="Descripción" Required="true" MaxLength="1000" Lines="2" Disabled="@(!PuedeEditar || _guardando)" />
+                        <div class="catalogo-rejilla catalogo-rejilla-dos">
+                            <BuscadorCatalogo Catalogo="c_ClaveProdServ" Label="Clave de producto o servicio" Valor="_productoSat"
+                                              ValorCambiado="@(v => _productoSat = v)" BusquedaPersonalizada="BuscarProducto"
+                                              MuestraSelectorEnLista="false" Requerido="true" Deshabilitado="@(!PuedeEditar || _guardando)" />
+                            <BuscadorCatalogo Catalogo="c_ClaveUnidad" Label="Unidad SAT" Valor="_unidadSat" ValorCambiado="@(v => _unidadSat = v)"
+                                              BusquedaPersonalizada="BuscarUnidad" MuestraSelectorEnLista="false"
+                                              Requerido="true" Deshabilitado="@(!PuedeEditar || _guardando)" />
+                            <MudTextField Value="@f.MetodoPago" Label="Método de pago" ReadOnly="true" />
+                            <BuscadorCatalogo Catalogo="c_FormaPago" Label="Forma de pago recibida" Opciones="_formas" @bind-Clave="_forma"
+                                              Requerido="true" Deshabilitado="@(!PuedeEditar || _guardando)" />
+                        </div>
+                        <dl class="resumen-desglose-iva">
+                            <div><dt>Subtotal</dt><dd>@f.Concepto.Subtotal.ToString("C2")</dd></div>
+                            <div><dt>IVA @f.Concepto.TasaIva.ToString("P0")</dt><dd>@f.Concepto.Iva.ToString("C2")</dd></div>
+                            <div class="resumen-desglose-total"><dt>Total MXN</dt><dd>@f.Concepto.Total.ToString("C2")</dd></div>
+                        </dl>
+                    </section>
+                </div>
+            </MudForm>
+        }
+    </DialogContent>
+    <DialogActions>
+        <MudButton Disabled="_guardando" OnClick="Cerrar">Cerrar</MudButton>
+        @if (_factura?.Id is not null)
+        {
+            <MudButton Disabled="_guardando" OnClick="Actualizar">Actualizar estado</MudButton>
+        }
+        @if (PuedeTimbrar)
+        {
+            <MudButton Variant="Variant.Filled" Color="Color.Secondary" OnClick="Timbrar" Disabled="_guardando">Timbrar simulación</MudButton>
+        }
+        @if (PuedeEditar && _factura is not null)
+        {
+            <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="Guardar" Disabled="@(_guardando || _cargando)">
+                @(_guardando ? "Guardando…" : "Guardar borrador")
+            </MudButton>
+        }
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter] private IMudDialogInstance Dialogo { get; set; } = default!;
+    [Parameter] public Guid CompraId { get; set; }
+    private MudForm? _formulario;
+    private FacturaDeCompraDto? _factura;
+    private bool _cargando = true, _guardando, _huboCambios;
+    private bool PuedeEditar => Sesion.TienePermiso(PoliticasDelPanel.FacturarCompras) && _factura?.Estado is "borrador" or "error";
+    private bool PuedeTimbrar => Sesion.TienePermiso(PoliticasDelPanel.TimbrarCompras) && _factura?.Id is not null &&
+        _factura.Estado is "borrador" or "error";
+    private string? _claveTimbrado;
+    private byte[]? _versionTimbrado;
+    private DetalleProblema? _error;
+    private string? _mensaje;
+    private string _nombre = "", _regimen = "", _cp = "", _uso = "", _descripcion = "", _forma = "";
+    private ClaveSatDto? _productoSat, _unidadSat;
+    private IReadOnlyList<ClaveSatDto> _regimenes = [], _usos = [], _formas = [];
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            var (datos, error) = await Compras.ObtenerFacturaAsync(CompraId);
+            _error = error;
+            if (datos is null) return;
+            _factura = datos; _nombre = datos.Receptor.NombreFiscal; _regimen = datos.Receptor.RegimenFiscal;
+            _cp = datos.Receptor.CodigoPostalFiscal; _uso = datos.Receptor.UsoCfdi;
+            _descripcion = datos.Concepto.Descripcion; _forma = datos.FormaPago;
+            var opciones = await Task.WhenAll(Compras.CatalogoFacturaAsync("c_RegimenFiscal"),
+                Compras.CatalogoFacturaAsync("c_UsoCFDI"), Compras.CatalogoFacturaAsync("c_FormaPago"));
+            _regimenes = opciones[0]; _usos = opciones[1]; _formas = opciones[2];
+            if (datos.Concepto.ClaveProdServ.Length > 0)
+                _productoSat = (await Compras.CatalogoFacturaAsync("c_ClaveProdServ", clave: datos.Concepto.ClaveProdServ)).FirstOrDefault();
+            if (datos.Concepto.ClaveUnidad.Length > 0)
+                _unidadSat = (await Compras.CatalogoFacturaAsync("c_ClaveUnidad", clave: datos.Concepto.ClaveUnidad)).FirstOrDefault();
+        }
+        catch (HttpRequestException) { _mensaje = "No se pudo cargar la factura. Revisa la conexión."; }
+        finally { _cargando = false; }
+    }
+
+    private Task<IReadOnlyList<ClaveSatDto>> BuscarProducto(string texto, CancellationToken ct)
+        => Compras.CatalogoFacturaAsync("c_ClaveProdServ", texto, ct: ct);
+    private Task<IReadOnlyList<ClaveSatDto>> BuscarUnidad(string texto, CancellationToken ct)
+        => Compras.CatalogoFacturaAsync("c_ClaveUnidad", texto, ct: ct);
+    private Task<IReadOnlyList<ClaveSatDto>> BuscarCp(string texto, CancellationToken ct)
+        => Compras.CatalogoFacturaAsync("c_CodigoPostal", texto, ct: ct);
+
+    private async Task Guardar()
+    {
+        if (_guardando || !PuedeEditar || _factura is null || _formulario is null) return;
+        _guardando = true; _error = null; _mensaje = null;
+        try
+        {
+            await _formulario.ValidateAsync();
+            if (!_formulario.IsValid) return;
+            var (datos, error) = await Compras.GuardarFacturaAsync(CompraId,
+                new(_nombre, _regimen, _cp, _uso, _descripcion, _productoSat?.Clave ?? "", _unidadSat?.Clave ?? "",
+                    _forma, _factura.Version, _factura.VersionProveedor));
+            _error = error;
+            if (datos is not null)
+            { _factura = datos; _nombre = datos.Receptor.NombreFiscal; _huboCambios = true; Dialogo.Close(DialogResult.Ok(true)); }
+        }
+        catch (HttpRequestException) { _mensaje = "No se pudo guardar la factura. Revisa la conexión."; }
+        finally { _guardando = false; }
+    }
+    private void Cerrar() => Dialogo.Close(DialogResult.Ok(_huboCambios));
+
+    private async Task DescargarFactura(bool xml)
+    {
+        if (_guardando) return;
+        _guardando = true; _error = null;
+        try { _error = await Archivos.DescargarAsync(CompraId, xml, operador: true); }
+        finally { _guardando = false; }
+    }
+
+    private async Task VistaPrevia()
+    {
+        if (_guardando) return;
+        _guardando = true; _error = null;
+        try
+        {
+            var (archivo, error) = await Archivos.ObtenerAsync(CompraId, operador: true);
+            _error = error;
+            if (archivo is null) return;
+            await Dialogos.ShowAsync<DialogoDeComprobanteDeCompra>("Factura de la compra",
+                new DialogParameters<DialogoDeComprobanteDeCompra>
+                { { x => x.Archivo, archivo }, { x => x.TituloVistaPrevia, "Vista previa de la factura" }, { x => x.AvisoFiscal, "" } },
+                new DialogOptions { MaxWidth = MaxWidth.ExtraLarge, FullWidth = true, CloseOnEscapeKey = true });
+        }
+        finally { _guardando = false; }
+    }
+
+    private static string Estado(string estado) => estado switch
+    {
+        "timbrando" => "Timbrado pendiente de confirmar",
+        "timbrado" => "Factura emitida",
+        "error" => "No se pudo emitir. Revisa los datos y el CSD antes de reintentar.",
+        _ => "Borrador guardado"
+    };
+
+    private async Task Actualizar()
+    {
+        try
+        {
+            var (datos, error) = await Compras.ObtenerFacturaAsync(CompraId);
+            _error = error;
+            if (datos is not null)
+            {
+                _huboCambios |= _factura?.Estado != datos.Estado;
+                _factura = datos;
+            }
+        }
+        catch (HttpRequestException) { _mensaje = "No se pudo consultar el estado. Revisa la conexión."; }
+    }
+
+    private async Task Timbrar()
+    {
+        if (_guardando || !PuedeTimbrar || _factura?.Version is null) return;
+        // Se timbra la versión guardada; el operador debe guardar los cambios del formulario primero.
+        if (_nombre != _factura.Receptor.NombreFiscal || _regimen != _factura.Receptor.RegimenFiscal ||
+            _cp != _factura.Receptor.CodigoPostalFiscal || _uso != _factura.Receptor.UsoCfdi ||
+            _descripcion != _factura.Concepto.Descripcion || _forma != _factura.FormaPago ||
+            _productoSat?.Clave != _factura.Concepto.ClaveProdServ || _unidadSat?.Clave != _factura.Concepto.ClaveUnidad)
+        { _mensaje = "Guarda los cambios antes de timbrar."; return; }
+        _guardando = true; _error = null; _mensaje = null;
+        try
+        {
+            if (_versionTimbrado is null || !_versionTimbrado.SequenceEqual(_factura.Version))
+            { _claveTimbrado = Guid.NewGuid().ToString("N"); _versionTimbrado = _factura.Version.ToArray(); }
+            _error = await Compras.TimbrarFacturaAsync(CompraId, _versionTimbrado, _claveTimbrado!);
+            if (_error is null) { _huboCambios = true; await Actualizar(); }
+        }
+        catch (HttpRequestException) { _mensaje = "No se pudo confirmar la solicitud. Actualiza el estado antes de reintentar."; }
+        finally { _guardando = false; }
+    }
+}

@@ -2,6 +2,7 @@ using System.Net.Http.Json;
 using Facturacion.Client.Servicios.Plataforma;
 using Facturacion.Shared.Comun;
 using Facturacion.Shared.Operador;
+using Facturacion.Shared.Contratos;
 
 namespace Facturacion.Client.Servicios.Operador;
 
@@ -11,6 +12,45 @@ public sealed class ServicioDeComprasDeOperador(
     ServicioDeDescargas descargas)
 {
     private HttpClient Cliente => fabrica.CreateClient(ClientesHttp.ApiOperador);
+
+    public async Task<DetalleProblema?> TimbrarFacturaAsync(Guid compraId, byte[] version, string clave)
+    {
+        using var peticion = new HttpRequestMessage(HttpMethod.Post, $"api/operador/compras/{compraId}/factura/timbrar")
+        { Content = JsonContent.Create(new PeticionTimbrarFacturaCompra(version)) };
+        peticion.Headers.Add("Idempotency-Key", clave);
+        using var r = await Cliente.SendAsync(peticion);
+        if (r.IsSuccessStatusCode) return null;
+        if (r.Content.Headers.ContentType?.MediaType is "application/json" or "application/problem+json")
+            return await r.Content.ReadFromJsonAsync<DetalleProblema>();
+        return new("timbrado-compra", "No se pudo solicitar el timbrado", (int)r.StatusCode,
+            "Actualiza la factura y vuelve a intentarlo.", null, "", null);
+    }
+
+    public async Task<(FacturaDeCompraDto? Datos, DetalleProblema? Error)> ObtenerFacturaAsync(Guid compraId)
+    {
+        using var r = await Cliente.GetAsync($"api/operador/compras/{compraId}/factura");
+        return await LeerFacturaAsync(r);
+    }
+
+    public async Task<(FacturaDeCompraDto? Datos, DetalleProblema? Error)> GuardarFacturaAsync(Guid compraId, PeticionGuardarFacturaCompra p)
+    {
+        using var r = await Cliente.PutAsJsonAsync($"api/operador/compras/{compraId}/factura", p);
+        return await LeerFacturaAsync(r);
+    }
+
+    public async Task<IReadOnlyList<ClaveSatDto>> CatalogoFacturaAsync(
+        string catalogo, string? texto = null, string? clave = null, CancellationToken ct = default)
+        => await Cliente.GetFromJsonAsync<List<ClaveSatDto>>(
+            $"api/operador/compras/facturas/catalogos/{Uri.EscapeDataString(catalogo)}?texto={Uri.EscapeDataString(texto ?? "")}&clave={Uri.EscapeDataString(clave ?? "")}", ct) ?? [];
+
+    private static async Task<(FacturaDeCompraDto? Datos, DetalleProblema? Error)> LeerFacturaAsync(HttpResponseMessage r)
+    {
+        if (r.IsSuccessStatusCode) return (await r.Content.ReadFromJsonAsync<FacturaDeCompraDto>(), null);
+        if (r.Content.Headers.ContentType?.MediaType is "application/json" or "application/problem+json")
+            return (null, await r.Content.ReadFromJsonAsync<DetalleProblema>());
+        return (null, new DetalleProblema("factura-compra", "No se pudo abrir la factura", (int)r.StatusCode,
+            "Revisa la conexión con el servidor.", null, "", null));
+    }
 
     public async Task<PaginaDeComprasDeOperador> ListarAsync(
         string? estado, string? texto, int pagina, int tamano, CancellationToken ct = default)

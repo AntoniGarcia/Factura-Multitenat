@@ -3,6 +3,7 @@ using Facturacion.Server.Data.Entidades.Plataforma;
 using Facturacion.Server.Infra.Bitacora;
 using Facturacion.Shared.Comun;
 using Facturacion.Shared.Operador;
+using Facturacion.Shared.Plataforma;
 using Microsoft.EntityFrameworkCore;
 
 namespace Facturacion.Server.Modules.Operador.Paquetes;
@@ -20,7 +21,7 @@ namespace Facturacion.Server.Modules.Operador.Paquetes;
 /// </summary>
 public sealed class ServicioDePaquetesDeOperador(
     AppDbContext baseDeDatos,
-    IServicioDeBitacora bitacora)
+    IServicioDeBitacora bitacora, ClavesSatDePaquete clavesSat)
 {
     /// <summary>Todos, activos e inactivos: el operador administra el catálogo completo.</summary>
     public async Task<IReadOnlyList<PaqueteDeOperadorDto>> ListarAsync(CancellationToken ct)
@@ -34,7 +35,7 @@ public sealed class ServicioDePaquetesDeOperador(
                 // Las compras sí están bajo el filtro global, pero aquí se cuentan desde el
                 // paquete y sin proyectar ningún dato de empresa: el operador ve el número,
                 // no de quién es cada una.
-                baseDeDatos.ComprasTimbres.IgnoreQueryFilters().Count(c => c.PaqueteId == p.Id)))
+                baseDeDatos.ComprasTimbres.IgnoreQueryFilters().Count(c => c.PaqueteId == p.Id), p.ClaveProdServ, p.ClaveUnidad))
             .ToListAsync(ct);
 
     public async Task<PaqueteDeOperadorDto?> ObtenerAsync(Guid id, CancellationToken ct)
@@ -46,19 +47,22 @@ public sealed class ServicioDePaquetesDeOperador(
                 p.VigenciaMeses, p.Activo, p.Orden,
                 // IgnoreQueryFilters justificado: mismo caso que en el listado, se cuenta a
                 // través de todas las empresas y no se proyecta ningún dato suyo.
-                baseDeDatos.ComprasTimbres.IgnoreQueryFilters().Count(c => c.PaqueteId == p.Id)))
+                baseDeDatos.ComprasTimbres.IgnoreQueryFilters().Count(c => c.PaqueteId == p.Id), p.ClaveProdServ, p.ClaveUnidad))
             .FirstOrDefaultAsync(ct);
 
     public async Task<Resultado<PaqueteDeOperadorDto>> CrearAsync(
         PeticionGuardarPaquete peticion, CancellationToken ct)
     {
         if (Validar(peticion) is { } error) return error;
+        if (await clavesSat.ValidarAsync(peticion.ClaveProdServ, peticion.ClaveUnidad, ct) is { } errorSat) return errorSat;
 
         var paquete = new Paquete
         {
             Id = Guid.NewGuid(),
             CuentaId = null,
             Nombre = peticion.Nombre.Trim(),
+            ClaveProdServ = ClavesSatPredeterminadasDePaquetes.Producto(peticion.ClaveProdServ),
+            ClaveUnidad = ClavesSatPredeterminadasDePaquetes.Unidad(peticion.ClaveUnidad),
             CantidadTimbres = peticion.CantidadTimbres,
             PrecioTotal = peticion.PrecioTotal,
             PrecioPorTimbre = peticion.PrecioPorTimbre,
@@ -87,6 +91,7 @@ public sealed class ServicioDePaquetesDeOperador(
         Guid id, PeticionGuardarPaquete peticion, CancellationToken ct)
     {
         if (Validar(peticion) is { } error) return error;
+        if (await clavesSat.ValidarAsync(peticion.ClaveProdServ, peticion.ClaveUnidad, ct) is { } errorSat) return errorSat;
 
         var paquete = await baseDeDatos.Paquetes
             .SingleOrDefaultAsync(p => p.Id == id && p.CuentaId == null, ct);
@@ -97,6 +102,8 @@ public sealed class ServicioDePaquetesDeOperador(
         var antes = Retrato(paquete);
 
         paquete.Nombre = peticion.Nombre.Trim();
+        paquete.ClaveProdServ = ClavesSatPredeterminadasDePaquetes.Producto(peticion.ClaveProdServ);
+        paquete.ClaveUnidad = ClavesSatPredeterminadasDePaquetes.Unidad(peticion.ClaveUnidad);
         paquete.CantidadTimbres = peticion.CantidadTimbres;
         paquete.PrecioTotal = peticion.PrecioTotal;
         paquete.PrecioPorTimbre = peticion.PrecioPorTimbre;
@@ -184,6 +191,8 @@ public sealed class ServicioDePaquetesDeOperador(
     private static object Retrato(Paquete paquete) => new
     {
         paquete.Nombre,
+        paquete.ClaveProdServ,
+        paquete.ClaveUnidad,
         paquete.CantidadTimbres,
         paquete.PrecioPorTimbre,
         paquete.PrecioTotal,

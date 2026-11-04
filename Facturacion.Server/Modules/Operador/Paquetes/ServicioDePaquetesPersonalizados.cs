@@ -3,6 +3,7 @@ using Facturacion.Server.Data.Entidades.Plataforma;
 using Facturacion.Server.Infra.Bitacora;
 using Facturacion.Shared.Comun;
 using Facturacion.Shared.Operador;
+using Facturacion.Shared.Plataforma;
 using Microsoft.EntityFrameworkCore;
 
 namespace Facturacion.Server.Modules.Operador.Paquetes;
@@ -10,7 +11,7 @@ namespace Facturacion.Server.Modules.Operador.Paquetes;
 /// <summary>Ofertas exclusivas que el operador prepara para una cuenta: cualquiera de sus empresas puede comprarlas.</summary>
 public sealed class ServicioDePaquetesPersonalizados(
     AppDbContext baseDeDatos,
-    IServicioDeBitacora bitacora)
+    IServicioDeBitacora bitacora, ClavesSatDePaquete clavesSat)
 {
     public async Task<IReadOnlyList<PaquetePersonalizadoDto>> ListarAsync(
         Guid cuentaId, CancellationToken ct)
@@ -22,7 +23,7 @@ public sealed class ServicioDePaquetesPersonalizados(
             .Select(p => new PaquetePersonalizadoDto(
                 p.Id, p.Nombre, p.CantidadTimbres, p.PrecioPorTimbre, p.PrecioTotal,
                 p.VigenciaMeses, p.Activo,
-                baseDeDatos.ComprasTimbres.IgnoreQueryFilters().Count(c => c.PaqueteId == p.Id)))
+                baseDeDatos.ComprasTimbres.IgnoreQueryFilters().Count(c => c.PaqueteId == p.Id), p.ClaveProdServ, p.ClaveUnidad))
             .ToListAsync(ct);
 
     public async Task<Resultado<PaquetePersonalizadoDto>> CrearAsync(
@@ -30,6 +31,7 @@ public sealed class ServicioDePaquetesPersonalizados(
         PeticionGuardarPaquetePersonalizado peticion, CancellationToken ct)
     {
         if (Validar(peticion) is { } error) return error;
+        if (await clavesSat.ValidarAsync(peticion.ClaveProdServ, peticion.ClaveUnidad, ct) is { } errorSat) return errorSat;
         if (!await ExisteCuentaAsync(cuentaId, ct))
             return ErrorNegocio.NoEncontrado("cuenta-no-encontrada", "Esa cuenta no existe.");
 
@@ -38,6 +40,8 @@ public sealed class ServicioDePaquetesPersonalizados(
             Id = Guid.NewGuid(),
             CuentaId = cuentaId,
             Nombre = peticion.Nombre.Trim(),
+            ClaveProdServ = ClavesSatPredeterminadasDePaquetes.Producto(peticion.ClaveProdServ),
+            ClaveUnidad = ClavesSatPredeterminadasDePaquetes.Unidad(peticion.ClaveUnidad),
             CantidadTimbres = peticion.CantidadTimbres,
             PrecioTotal = Math.Round(peticion.PrecioTotal, 6, MidpointRounding.AwayFromZero),
             PrecioPorTimbre = Math.Round(
@@ -58,6 +62,7 @@ public sealed class ServicioDePaquetesPersonalizados(
         PeticionGuardarPaquetePersonalizado peticion, CancellationToken ct)
     {
         if (Validar(peticion) is { } error) return error;
+        if (await clavesSat.ValidarAsync(peticion.ClaveProdServ, peticion.ClaveUnidad, ct) is { } errorSat) return errorSat;
 
         var paquete = await baseDeDatos.Paquetes.SingleOrDefaultAsync(
             p => p.Id == paqueteId && p.CuentaId == cuentaId, ct);
@@ -66,6 +71,8 @@ public sealed class ServicioDePaquetesPersonalizados(
 
         var antes = Retrato(paquete);
         paquete.Nombre = peticion.Nombre.Trim();
+        paquete.ClaveProdServ = ClavesSatPredeterminadasDePaquetes.Producto(peticion.ClaveProdServ);
+        paquete.ClaveUnidad = ClavesSatPredeterminadasDePaquetes.Unidad(peticion.ClaveUnidad);
         paquete.CantidadTimbres = peticion.CantidadTimbres;
         paquete.PrecioTotal = Math.Round(peticion.PrecioTotal, 6, MidpointRounding.AwayFromZero);
         paquete.PrecioPorTimbre = Math.Round(
@@ -116,7 +123,7 @@ public sealed class ServicioDePaquetesPersonalizados(
     private static PaquetePersonalizadoDto ADto(Paquete paquete, int compras)
         => new(
             paquete.Id, paquete.Nombre, paquete.CantidadTimbres, paquete.PrecioPorTimbre,
-            paquete.PrecioTotal, paquete.VigenciaMeses, paquete.Activo, compras);
+            paquete.PrecioTotal, paquete.VigenciaMeses, paquete.Activo, compras, paquete.ClaveProdServ, paquete.ClaveUnidad);
 
     private static ErrorNegocio? Validar(PeticionGuardarPaquetePersonalizado peticion)
     {
@@ -148,6 +155,8 @@ public sealed class ServicioDePaquetesPersonalizados(
     {
         paquete.CuentaId,
         paquete.Nombre,
+        paquete.ClaveProdServ,
+        paquete.ClaveUnidad,
         paquete.CantidadTimbres,
         paquete.PrecioPorTimbre,
         paquete.PrecioTotal,

@@ -188,6 +188,12 @@
     }
     </MudTabPanel>
     }
+    @if (Sesion.TienePermiso(PoliticasDelPanel.VerConfiguracion))
+    {
+        <MudTabPanel Text="Facturación">
+            <Facturacion.Client.Componentes.Operador.ConfiguracionFiscalDelProveedor />
+        </MudTabPanel>
+    }
     </MudTabs>
 
 </TarjetaFormulario>

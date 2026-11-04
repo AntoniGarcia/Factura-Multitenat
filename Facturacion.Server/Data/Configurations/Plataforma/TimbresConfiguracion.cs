@@ -1,4 +1,5 @@
 using Facturacion.Server.Data.Entidades.Plataforma;
+using Facturacion.Shared.Plataforma;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 
@@ -13,6 +14,8 @@ public sealed class PaqueteConfiguracion : IEntityTypeConfiguration<Paquete>
         constructor.HasKey(p => p.Id);
 
         constructor.Property(p => p.Nombre).HasMaxLength(100);
+        constructor.Property(p => p.ClaveProdServ).HasMaxLength(8).HasDefaultValue(ClavesSatPredeterminadasDePaquetes.ProductoServicio);
+        constructor.Property(p => p.ClaveUnidad).HasMaxLength(3).HasDefaultValue(ClavesSatPredeterminadasDePaquetes.UnidadServicio);
 
         // Mantiene seis decimales en los importes y en el precio por timbre.
         constructor.Property(p => p.PrecioPorTimbre).HasPrecision(18, 6);
@@ -182,6 +185,8 @@ public sealed class CompraTimbresConfiguracion : IEntityTypeConfiguration<Compra
         constructor.Property(c => c.EmpresaNombreAlComprar).HasMaxLength(254);
         constructor.Property(c => c.EmpresaRfcAlComprar).HasMaxLength(13);
         constructor.Property(c => c.NombrePaquete).HasMaxLength(100);
+        constructor.Property(c => c.ClaveProdServAlComprar).HasMaxLength(8);
+        constructor.Property(c => c.ClaveUnidadAlComprar).HasMaxLength(3);
         constructor.Property(c => c.Estado).HasMaxLength(20);
         constructor.Property(c => c.PrecioPorTimbre).HasPrecision(18, 6);
         constructor.Property(c => c.PrecioTotal).HasPrecision(18, 6);

@@ -1,0 +1,59 @@
+@using Facturacion.Shared.Contratos
+@using Facturacion.Client.Servicios.Operador
+@inject ServicioDePaquetesDeOperador Paquetes
+
+<div class="catalogo-rejilla catalogo-rejilla-dos">
+    <BuscadorCatalogo Catalogo="c_ClaveProdServ" Label="Producto o servicio SAT" Valor="_producto"
+                      ValorCambiado="ElegirProducto" BusquedaPersonalizada="BuscarProducto"
+                      MuestraSelectorEnLista="false" Deshabilitado="Deshabilitado" />
+    <BuscadorCatalogo Catalogo="c_ClaveUnidad" Label="Unidad SAT" Valor="_unidad"
+                      ValorCambiado="ElegirUnidad" BusquedaPersonalizada="BuscarUnidad"
+                      MuestraSelectorEnLista="false" Deshabilitado="Deshabilitado" />
+</div>
+@if (_error is not null)
+{
+    <p class="texto-error" role="alert">@_error</p>
+}
+
+@code {
+    [Parameter] public string? ClaveProdServ { get; set; }
+    [Parameter] public EventCallback<string?> ClaveProdServChanged { get; set; }
+    [Parameter] public string? ClaveUnidad { get; set; }
+    [Parameter] public EventCallback<string?> ClaveUnidadChanged { get; set; }
+    [Parameter] public bool Deshabilitado { get; set; }
+    private ClaveSatDto? _producto, _unidad;
+    private string? _productoCargado, _unidadCargada, _error;
+
+    protected override async Task OnParametersSetAsync()
+    {
+        try
+        {
+            if (_productoCargado != ClaveProdServ)
+            {
+                var clave = ClaveProdServ;
+                _productoCargado = clave;
+                var producto = string.IsNullOrEmpty(clave) ? null :
+                    (await Paquetes.ClavesSatAsync("c_ClaveProdServ", clave: clave)).FirstOrDefault();
+                if (ClaveProdServ == clave) _producto = producto;
+            }
+            if (_unidadCargada != ClaveUnidad)
+            {
+                var clave = ClaveUnidad;
+                _unidadCargada = clave;
+                var unidad = string.IsNullOrEmpty(clave) ? null :
+                    (await Paquetes.ClavesSatAsync("c_ClaveUnidad", clave: clave)).FirstOrDefault();
+                if (ClaveUnidad == clave) _unidad = unidad;
+            }
+        }
+        catch (HttpRequestException) { _error = "No se pudieron consultar las claves SAT."; }
+    }
+
+    private async Task ElegirProducto(ClaveSatDto? valor)
+    { _producto = valor; _productoCargado = valor?.Clave; await ClaveProdServChanged.InvokeAsync(valor?.Clave); }
+    private async Task ElegirUnidad(ClaveSatDto? valor)
+    { _unidad = valor; _unidadCargada = valor?.Clave; await ClaveUnidadChanged.InvokeAsync(valor?.Clave); }
+    private Task<IReadOnlyList<ClaveSatDto>> BuscarProducto(string texto, CancellationToken ct)
+        => Paquetes.ClavesSatAsync("c_ClaveProdServ", texto, ct: ct);
+    private Task<IReadOnlyList<ClaveSatDto>> BuscarUnidad(string texto, CancellationToken ct)
+        => Paquetes.ClavesSatAsync("c_ClaveUnidad", texto, ct: ct);
+}

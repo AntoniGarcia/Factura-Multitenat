@@ -79,6 +79,8 @@ public sealed class ServicioDeCompras(
 
             // Copias, no referencias: lo que se cobra queda congelado aunque el catálogo cambie.
             NombrePaquete = paquete.Nombre,
+            ClaveProdServAlComprar = ClavesSatPredeterminadasDePaquetes.Producto(paquete.ClaveProdServ),
+            ClaveUnidadAlComprar = ClavesSatPredeterminadasDePaquetes.Unidad(paquete.ClaveUnidad),
             CantidadTimbres = paquete.CantidadTimbres,
             PrecioPorTimbre = paquete.PrecioPorTimbre,
             PrecioTotal = paquete.PrecioTotal,
@@ -103,12 +105,14 @@ public sealed class ServicioDeCompras(
     }
 
     public async Task<IReadOnlyList<CompraDto>> ComprasAsync(CancellationToken ct)
-        => await baseDeDatos.ComprasTimbres
-            .AsNoTracking()
-            .OrderByDescending(c => c.CreadaUtc)
-            .Select(c => new CompraDto(
+        => await (from c in baseDeDatos.ComprasTimbres.AsNoTracking()
+            join f in baseDeDatos.FacturasDeCompras.AsNoTracking() on c.Id equals f.CompraId into facturas
+            from f in facturas.DefaultIfEmpty()
+            orderby c.CreadaUtc descending
+            select new CompraDto(
                 c.Id, c.NombrePaquete, c.CantidadTimbres, c.PrecioPorTimbre, c.PrecioTotal,
-                c.Estado, c.CreadaUtc, c.AcreditadaUtc, c.VenceUtc, c.EmpresaNombreAlComprar))
+                c.Estado, c.CreadaUtc, c.AcreditadaUtc, c.VenceUtc, c.EmpresaNombreAlComprar,
+                f == null ? null : f.Estado))
             .ToListAsync(ct);
 
     /// <param name="tipo">Filtra por <see cref="TiposDeMovimientoTimbre"/>; nulo trae todos.</param>

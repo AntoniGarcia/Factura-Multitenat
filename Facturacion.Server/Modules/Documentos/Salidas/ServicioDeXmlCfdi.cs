@@ -1,5 +1,3 @@
-using System.Security.Cryptography;
-using System.Text;
 using System.Text.Json;
 using System.Xml;
 using System.Xml.Linq;
@@ -226,7 +224,7 @@ public sealed class ServicioDeXmlCfdi(
 
         try
         {
-            cadena = CadenaOriginal(documento);
+            cadena = FirmaDeXmlCfdi.CadenaOriginal(documento, esquemas);
         }
         catch (FileNotFoundException ex)
         {
@@ -238,7 +236,7 @@ public sealed class ServicioDeXmlCfdi(
                 "Falta un archivo del SAT para calcular la cadena original. Avisa a soporte.");
         }
 
-        var sello = Sellar(cadena, material);
+        var sello = FirmaDeXmlCfdi.Sellar(cadena, material);
         documento.Root!.SetAttributeValue("Sello", sello);
 
         try
@@ -256,7 +254,7 @@ public sealed class ServicioDeXmlCfdi(
             return ErrorNegocio.Regla("esquemas-sat-incompletos", "Falta un esquema del SAT para validar el XML. Avisa a soporte.");
         }
 
-        return new CfdiSellado(Serializar(documento), cadena, sello, material.NumeroSerie);
+        return new CfdiSellado(FirmaDeXmlCfdi.Serializar(documento), cadena, sello, material.NumeroSerie);
     }
 
     private async Task<int?> DecimalesDeMonedaAsync(string moneda, CancellationToken ct)
@@ -265,40 +263,6 @@ public sealed class ServicioDeXmlCfdi(
             .Where(m => m.Clave == moneda)
             .Select(m => (int?)m.Decimales)
             .FirstOrDefaultAsync(ct);
-
-    /// <summary>
-    /// Aplica el XSLT oficial. La cadena original <b>no se construye a mano</b> a propósito:
-    /// sus reglas de escapado y de omisión de campos vacíos son del SAT, y reimplementarlas
-    /// produce sellos que el PAC rechaza por motivos que no se ven en el XML.
-    /// </summary>
-    private string CadenaOriginal(XDocument documento)
-    {
-        var salida = new StringWriter();
-
-        using (var lector = documento.CreateReader())
-        using (var escritor = XmlWriter.Create(salida, new XmlWriterSettings
-        {
-            OmitXmlDeclaration = true,
-            ConformanceLevel = ConformanceLevel.Fragment
-        }))
-        {
-            esquemas.CadenaOriginal.Transform(lector, escritor);
-        }
-
-        return salida.ToString();
-    }
-
-    private static string Sellar(string cadena, CsdDescifradoDto material)
-    {
-        using var rsa = RSA.Create();
-        rsa.ImportEncryptedPkcs8PrivateKey(material.ContrasenaLlave, material.LlavePrivadaKey, out _);
-
-        // SHA-256 con relleno PKCS#1: es lo que pide el SAT para CFDI 3.3 en adelante.
-        var firma = rsa.SignData(
-            Encoding.UTF8.GetBytes(cadena), HashAlgorithmName.SHA256, RSASignaturePadding.Pkcs1);
-
-        return Convert.ToBase64String(firma);
-    }
 
     private ErrorNegocio? Validar(XDocument documento, bool esCartaPorte, bool esNotaria, bool esComercio,
         bool esImpuestosLocales, bool esPago)
@@ -317,7 +281,7 @@ public sealed class ServicioDeXmlCfdi(
 
         ajustes.ValidationEventHandler += (_, e) => problemas.Add(e.Message);
 
-        using (var lector = XmlReader.Create(new StringReader(Serializar(documento)), ajustes))
+        using (var lector = XmlReader.Create(new StringReader(FirmaDeXmlCfdi.Serializar(documento)), ajustes))
         {
             while (lector.Read()) { }
         }
@@ -334,21 +298,4 @@ public sealed class ServicioDeXmlCfdi(
             "El comprobante generado no cumple el estándar del SAT. El detalle quedó en la bitácora técnica.");
     }
 
-    private static string Serializar(XDocument documento)
-    {
-        // UTF-8 sin BOM: el SAT lo exige y un BOM invalida el sello.
-        using var salida = new MemoryStream();
-
-        using (var escritor = XmlWriter.Create(salida, new XmlWriterSettings
-        {
-            Indent = false,
-            Encoding = new UTF8Encoding(false),
-            OmitXmlDeclaration = false
-        }))
-        {
-            documento.Save(escritor);
-        }
-
-        return Encoding.UTF8.GetString(salida.ToArray());
-    }
 }

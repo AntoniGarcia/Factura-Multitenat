@@ -51,12 +51,16 @@ public sealed class ServicioDeComprasDeOperador(
         // El join contra empresas y cuentas también lo lleva, por lo mismo.
         var empresas = baseDeDatos.Empresas.IgnoreQueryFilters().AsNoTracking();
         var cuentas = baseDeDatos.Cuentas.AsNoTracking();
+        // La consulta global queda protegida por el permiso de compras del operador.
+        var facturas = baseDeDatos.FacturasDeCompras.IgnoreQueryFilters().AsNoTracking();
 
         var unidas =
             from compra in consulta
             join empresa in empresas on compra.EmpresaId equals empresa.Id
             join cuenta in cuentas on empresa.CuentaId equals cuenta.Id
-            select new { compra, empresa, cuenta };
+            join factura in facturas on compra.Id equals factura.CompraId into relacionadas
+            from factura in relacionadas.DefaultIfEmpty()
+            select new { compra, empresa, cuenta, factura };
 
         if (!string.IsNullOrWhiteSpace(texto))
         {
@@ -92,7 +96,8 @@ public sealed class ServicioDeComprasDeOperador(
                 u.compra.AcreditadaUtc,
                 u.compra.VenceUtc,
                 u.compra.CanceladaUtc,
-                u.compra.MotivoCancelacion))
+                u.compra.MotivoCancelacion,
+                u.factura == null ? null : u.factura.Estado))
             .ToListAsync(ct);
 
         return new PaginaDeComprasDeOperador(elementos, total);

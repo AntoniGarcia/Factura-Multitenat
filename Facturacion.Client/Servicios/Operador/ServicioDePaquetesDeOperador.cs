@@ -2,6 +2,7 @@ using System.Net.Http.Json;
 using Facturacion.Client.Servicios.Plataforma;
 using Facturacion.Shared.Comun;
 using Facturacion.Shared.Operador;
+using Facturacion.Shared.Contratos;
 
 namespace Facturacion.Client.Servicios.Operador;
 
@@ -12,6 +13,11 @@ namespace Facturacion.Client.Servicios.Operador;
 public sealed class ServicioDePaquetesDeOperador(IHttpClientFactory fabrica)
 {
     private HttpClient Cliente => fabrica.CreateClient(ClientesHttp.ApiOperador);
+
+    public async Task<IReadOnlyList<ClaveSatDto>> ClavesSatAsync(
+        string catalogo, string? texto = null, string? clave = null, CancellationToken ct = default)
+        => await Cliente.GetFromJsonAsync<List<ClaveSatDto>>(
+            $"api/operador/paquetes/catalogos/{Uri.EscapeDataString(catalogo)}?texto={Uri.EscapeDataString(texto ?? "")}&clave={Uri.EscapeDataString(clave ?? "")}", ct) ?? [];
 
     public async Task<IReadOnlyList<PaqueteDeOperadorDto>> ListarAsync(CancellationToken ct = default)
         => await Cliente.GetFromJsonAsync<IReadOnlyList<PaqueteDeOperadorDto>>("api/operador/paquetes", ct)

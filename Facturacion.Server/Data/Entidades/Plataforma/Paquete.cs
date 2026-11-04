@@ -1,3 +1,5 @@
+using Facturacion.Shared.Plataforma;
+
 namespace Facturacion.Server.Data.Entidades.Plataforma;
 
 /// <summary>Oferta general si CuentaId es nulo; exclusiva de una cuenta si tiene valor. El servidor obtiene el precio a partir del identificador del paquete.</summary>
@@ -10,6 +12,8 @@ public sealed class Paquete
     public Cuenta? Cuenta { get; set; }
 
     public required string Nombre { get; set; }
+    public string? ClaveProdServ { get; set; } = ClavesSatPredeterminadasDePaquetes.ProductoServicio;
+    public string? ClaveUnidad { get; set; } = ClavesSatPredeterminadasDePaquetes.UnidadServicio;
 
     public int CantidadTimbres { get; set; }
 

@@ -41,6 +41,8 @@ public static class PoliticasDeOperador
     public const string AcreditarCompras = PermisosDePanel.AcreditarCompras;
     public const string SoloAcreditarCompras = PermisosDePanel.SoloAcreditarCompras;
     public const string DescartarCompras = PermisosDePanel.DescartarCompras;
+    public const string FacturarCompras = PermisosDePanel.FacturarCompras;
+    public const string TimbrarCompras = PermisosDePanel.TimbrarCompras;
     public const string VerClientes = PermisosDePanel.VerClientes;
     public const string AdministrarClientes = PermisosDePanel.AdministrarClientes;
     public const string AsignarTimbres = PermisosDePanel.AsignarTimbres;

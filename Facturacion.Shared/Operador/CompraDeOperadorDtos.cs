@@ -21,7 +21,8 @@ public sealed record CompraDeOperadorDto(
     DateTime? AcreditadaUtc,
     DateTime? VenceUtc,
     DateTime? CanceladaUtc,
-    string? MotivoCancelacion);
+    string? MotivoCancelacion,
+    string? EstadoFactura = null);
 
 /// <summary>Una página de compras y cuántas hay en total con ese filtro.</summary>
 public sealed record PaginaDeComprasDeOperador(

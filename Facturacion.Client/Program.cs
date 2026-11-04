@@ -41,6 +41,7 @@ builder.Services.AddScoped<ServicioDePerfilDeOperador>();
 builder.Services.AddScoped<ServicioDeOperadores>();
 builder.Services.AddScoped<ServicioDeCatalogosDeOperador>();
 builder.Services.AddScoped<ServicioDeConfiguracionDelSistema>();
+builder.Services.AddScoped<ServicioFiscalDelProveedor>();
 builder.Services.AddSingleton<ServicioDeTema>();
 builder.Services.AddSingleton<EstadoDeEncabezado>();
 
@@ -51,6 +52,7 @@ builder.Services.AddScoped<ServicioDeClientes>();
 builder.Services.AddScoped<ServicioDeProductos>();
 builder.Services.AddScoped<ServicioDeTransporte>();
 builder.Services.AddScoped<ServicioDeTimbres>();
+builder.Services.AddScoped<ServicioDeArchivosDeFacturaCompra>();
 builder.Services.AddScoped<ServicioDeUsuarios>();
 builder.Services.AddScoped<ServicioDePerfil>();
 builder.Services.AddScoped<ServicioDeTablero>();

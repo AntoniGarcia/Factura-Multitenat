@@ -155,7 +155,10 @@ public sealed class GeneradorDePdfCfdi
                         datos.EsBorrador ? "No timbrado" : c.NoCertificadoSat ?? "—"));
                     columna.Item().Element(e => Dato(e, "Fecha de emisión", datos.FechaLocal.ToString("dd/MM/yyyy HH:mm:ss", CultureInfo.InvariantCulture)));
                     columna.Item().Element(e => Dato(e, "Fecha de certificación",
-                        datos.EsBorrador ? "No timbrado" : c.FechaTimbradoUtc?.ToString("dd/MM/yyyy HH:mm:ss", CultureInfo.InvariantCulture) ?? "—"));
+                        datos.EsBorrador ? "No timbrado" : c.FechaTimbradoUtc is { } certificacion
+                            ? TimeZoneInfo.ConvertTimeFromUtc(DateTime.SpecifyKind(certificacion, DateTimeKind.Utc),
+                                datos.ZonaHoraria ?? TimeZoneInfo.Utc).ToString("dd/MM/yyyy HH:mm:ss", CultureInfo.InvariantCulture)
+                            : "—"));
                 });
             });
         });

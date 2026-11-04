@@ -79,6 +79,7 @@
         new("Timbres", c => @<span class="cifra-tabular">@c.CantidadTimbres.ToString("N0")</span>, Tabular: true),
         new("Total", c => @<span class="cifra-tabular">@c.PrecioTotal.ToString("C2")</span>, Tabular: true),
         new("Estado", c => @<span class="indicador-estado indicador-estado-@EstiloDe(c.Estado)">@TextoDe(c.Estado)</span>),
+        new("Factura", c => @<span class="texto-secundario">@(c.EstadoFactura switch { "borrador" => "Borrador", "timbrando" => "En proceso", "timbrado" => "Emitida", "error" => "Revisar", _ => "—" })</span>),
         new("", c => @<div class="acciones-renglon">
                           @if (c.Estado == Estados.Pendiente)
                           {
@@ -103,12 +104,19 @@
                                   <MudButton Size="Size.Small" Variant="Variant.Text"
                                              Disabled="@(_trabajando || _previsualizando is not null)"
                                              OnClick="@(() => Previsualizar(c))">
-                                      Ver
+                                      Comprobante
                                   </MudButton>
                                   <MudButton Size="Size.Small" Variant="Variant.Text"
                                              Disabled="@_trabajando" OnClick="@(() => Descargar(c))">
                                       Descargar PDF
                                   </MudButton>
+                                  @if (c.EstadoFactura is not null || Sesion.TienePermiso(PoliticasDelPanel.FacturarCompras))
+                                  {
+                                      <MudButton Size="Size.Small" Variant="Variant.Outlined" Color="Color.Primary"
+                                                 Disabled="@_trabajando" OnClick="@(() => AbrirFactura(c))">
+                                          @(c.EstadoFactura is null ? "Preparar factura" : "Ver factura")
+                                      </MudButton>
+                                  }
                               </span>
                           }
                           else if (c.MotivoCancelacion is { } motivo)
@@ -139,6 +147,22 @@
     }
 
     private Task RecargarAsync() => _tabla?.RecargarAsync() ?? Task.CompletedTask;
+
+    private async Task AbrirFactura(CompraDeOperadorDto compra)
+    {
+        if (_trabajando) return;
+        _trabajando = true;
+        try
+        {
+            var referencia = await Dialogos.ShowAsync<DialogoFacturaDeCompra>("Factura de la compra",
+                new DialogParameters<DialogoFacturaDeCompra> { { x => x.CompraId, compra.Id } },
+                new DialogOptions { MaxWidth = MaxWidth.Medium, FullWidth = true, CloseButton = true });
+            var resultado = await referencia.Result;
+            if (resultado is { Canceled: false, Data: true })
+            { _aviso = "Factura actualizada."; await RecargarAsync(); }
+        }
+        finally { _trabajando = false; }
+    }
 
     /// <summary>
     /// La última pantalla antes de crear saldo: se confirma con la empresa y el importe a la

@@ -38,6 +38,8 @@ public sealed class CompraTimbres : IEntidadDeCuenta
     public required string EmpresaRfcAlComprar { get; set; }
 
     public required string NombrePaquete { get; set; }
+    public string? ClaveProdServAlComprar { get; set; }
+    public string? ClaveUnidadAlComprar { get; set; }
 
     public int CantidadTimbres { get; set; }
 

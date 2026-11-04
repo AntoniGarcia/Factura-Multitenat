@@ -1,6 +1,7 @@
 using Facturacion.Server.Infra.Errores;
 using Facturacion.Server.Modules.Operador.Auth;
 using Facturacion.Shared.Operador;
+using Facturacion.Shared.Comun;
 
 namespace Facturacion.Server.Modules.Operador.Paquetes;
 
@@ -21,6 +22,12 @@ public static class PaquetesDeOperadorEndpoints
             .RequireAuthorization(PoliticasDeOperador.Operador);
 
         grupo.MapGet("/", Listar).RequireAuthorization(PoliticasDeOperador.VerPaquetes);
+        grupo.MapGet("/catalogos/{catalogo}", async (string catalogo, string? texto, string? clave,
+            ClavesSatDePaquete claves, CancellationToken ct) =>
+                Results.Ok(await claves.OpcionesAsync(catalogo, texto, clave, ct)))
+            .RequireAuthorization(p => p.RequireAssertion(c =>
+                PermisosDePanel.Autoriza(c.User.FindAll(ClavesDeClaim.Permiso).Select(x => x.Value), PermisosDePanel.VerPaquetes) ||
+                PermisosDePanel.Autoriza(c.User.FindAll(ClavesDeClaim.Permiso).Select(x => x.Value), PermisosDePanel.VerClientes)));
         grupo.MapGet("/{id:guid}", Obtener).RequireAuthorization(PoliticasDeOperador.VerPaquetes);
         grupo.MapPost("/", Crear).RequireAuthorization(PoliticasDeOperador.AdministrarPaquetes);
         grupo.MapPut("/{id:guid}", Actualizar).RequireAuthorization(PoliticasDeOperador.AdministrarPaquetes);

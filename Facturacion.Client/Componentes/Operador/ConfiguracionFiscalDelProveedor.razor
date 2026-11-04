@@ -1,0 +1,211 @@
+@using Facturacion.Client.Servicios.Operador
+@using Facturacion.Client.Paginas.Operador.Operadores
+@using Facturacion.Shared.Contratos
+@using Facturacion.Shared.Operador
+@inject ServicioFiscalDelProveedor Servicio
+@inject ServicioDeSesionDeOperador Sesion
+@inject IDialogService Dialogos
+
+<PanelErrores Problema="_error" />
+@if (_aviso is not null)
+{
+    <p class="mensaje-exito" role="status">@_aviso</p>
+}
+@if (_mensaje is not null)
+{
+    <p class="texto-error" role="alert">@_mensaje</p>
+}
+@if (_cargando)
+{
+    <p class="tabla-datos-estado">Cargando datos fiscales…</p>
+}
+else
+{
+    <div class="formulario-catalogo-secciones">
+        <section class="formulario-catalogo-seccion formulario-catalogo-seccion-ancha" aria-labelledby="proveedor-fiscal">
+            <h2 class="seccion-titulo" id="proveedor-fiscal">Emisor de las ventas de paquetes</h2>
+            <p class="seccion-ayuda">Datos de la empresa que vende los timbres.</p>
+            <MudForm @ref="_formulario">
+                <div class="catalogo-rejilla catalogo-rejilla-dos">
+                    <CampoRfc Valor="_rfc" ValorCambiado="@(v => _rfc = v)" Requerido="true"
+                              Deshabilitado="@(!PuedeEditar || _ocupado || _certificados.Count > 0)" />
+                    <MudTextField @bind-Value="_nombre" Label="Razón social" Required="true" MaxLength="254" Disabled="@(!PuedeEditar || _ocupado)" />
+                    <BuscadorCatalogo Catalogo="c_RegimenFiscal" Label="Régimen fiscal" Opciones="_regimenes"
+                                      @bind-Clave="_regimen" Requerido="true" Deshabilitado="@(!PuedeEditar || _ocupado)" />
+                    <BuscadorCatalogo Catalogo="c_CodigoPostal" Label="Código postal de expedición" @bind-Clave="_cp"
+                                      BusquedaPersonalizada="BuscarCp" MostrarSoloClave="true" MuestraSelectorEnLista="false"
+                                      Requerido="true" Deshabilitado="@(!PuedeEditar || _ocupado)" />
+                    <MudAutocomplete T="string" Label="Huso horario" @bind-Value="_zona" SearchFunc="BuscarHusos"
+                                     ToStringFunc="MostrarHuso" MinCharacters="0" Strict="false" CoerceText="true"
+                                     Required="true" Disabled="@(!PuedeEditar || _ocupado)" />
+                    <MudTextField @bind-Value="_serie" Label="Serie de facturación" Required="true" MaxLength="25"
+                                  HelperText="Serie exclusiva para las ventas de paquetes." Disabled="@(!PuedeEditar || _ocupado)" />
+                </div>
+            </MudForm>
+            @if (_certificados.Count > 0)
+            {
+                <p class="seccion-ayuda">El RFC queda fijo al cargar el CSD.</p>
+            }
+            @if (PuedeEditar)
+            {
+                <div class="acciones-formulario">
+                    <MudButton Variant="Variant.Filled" Color="Color.Primary" Disabled="_ocupado" OnClick="Guardar">Guardar datos fiscales</MudButton>
+                </div>
+            }
+        </section>
+        <section class="formulario-catalogo-seccion formulario-catalogo-seccion-ancha" aria-labelledby="proveedor-csd">
+            <h2 class="seccion-titulo" id="proveedor-csd">Certificado de sello digital</h2>
+            @if (_version is null)
+            {
+                <p class="seccion-ayuda">Guarda los datos fiscales para cargar el CSD.</p>
+            }
+            else
+            {
+                @if (_certificados.Count == 0)
+                {
+                    <p class="tabla-datos-estado">Sin certificado cargado.</p>
+                }
+                @foreach (var certificado in _certificados)
+                {
+                    <p><span class="cifra-tabular">@certificado.NumeroSerie</span> · @Estado(certificado)
+                        · Vigencia: @certificado.VigenciaDesdeUtc.ToString("dd/MM/yyyy") al @certificado.VigenciaHastaUtc.ToString("dd/MM/yyyy")</p>
+                }
+                @if (PuedeEditar)
+                {
+                    @if (HayCambios)
+                    {
+                        <p class="seccion-ayuda">Guarda los cambios fiscales antes de cargar el CSD.</p>
+                    }
+                    <div class="catalogo-rejilla catalogo-rejilla-dos" @key="_seleccionArchivos">
+                        <div><label for="proveedor-cer">Certificado .cer</label>
+                            <InputFile id="proveedor-cer" accept=".cer" OnChange="@(e => _cer = e.File)" disabled="@_ocupado" /></div>
+                        <div><label for="proveedor-key">Llave privada .key</label>
+                            <InputFile id="proveedor-key" accept=".key" OnChange="@(e => _key = e.File)" disabled="@_ocupado" /></div>
+                        <MudTextField @bind-Value="_contrasenaCsd" Label="Contraseña de la llave privada" InputType="InputType.Password"
+                                      MaxLength="512" Disabled="_ocupado" />
+                    </div>
+                    <div class="acciones-formulario">
+                        <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="CargarCsd"
+                                   Disabled="@(_ocupado || HayCambios || _cer is null || _key is null || string.IsNullOrEmpty(_contrasenaCsd))">Cargar CSD</MudButton>
+                    </div>
+                }
+            }
+        </section>
+    </div>
+}
+
+@code {
+    private bool PuedeEditar => Sesion.TienePermiso(PoliticasDelPanel.AdministrarConfiguracion);
+    private MudForm? _formulario;
+    private bool _cargando = true, _ocupado;
+    private DetalleProblema? _error;
+    private string? _aviso, _mensaje;
+    private string _rfc = "", _nombre = "", _regimen = "", _cp = "", _zona = "", _serie = "", _contrasenaCsd = "";
+    private byte[]? _version;
+    private ConfiguracionFiscalProveedorDto? _guardados;
+    private bool HayCambios => _guardados is not null &&
+        (_rfc != _guardados.Rfc || _nombre != _guardados.NombreFiscal || _regimen != _guardados.RegimenFiscal ||
+         _cp != _guardados.CodigoPostalExpedicion || _zona != _guardados.ZonaHoraria || _serie != _guardados.Serie);
+    private IReadOnlyList<ClaveSatDto> _regimenes = [];
+    private IReadOnlyList<CertificadoProveedorDto> _certificados = [];
+    private IBrowserFile? _cer, _key;
+    private int _seleccionArchivos;
+    private static readonly (string Id, string Texto)[] Husos =
+    [
+        ("America/Mexico_City", "Centro (Ciudad de México)"),
+        ("America/Cancun", "Quintana Roo"),
+        ("America/Mazatlan", "Pacífico (Mazatlán)"),
+        ("America/Chihuahua", "Chihuahua"),
+        ("America/Tijuana", "Noroeste (Tijuana)"),
+        ("America/Hermosillo", "Sonora")
+    ];
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            var (datos, error) = await Servicio.ObtenerAsync();
+            _error = error;
+            if (datos is not null) Aplicar(datos);
+            _regimenes = await Servicio.RegimenesAsync();
+        }
+        catch (HttpRequestException) { _mensaje = "No se pudieron cargar los datos fiscales. Recarga la pestaña."; }
+        finally { _cargando = false; }
+    }
+
+    private Task<IReadOnlyList<ClaveSatDto>> BuscarCp(string texto, CancellationToken ct)
+        => Servicio.CodigosPostalesAsync(texto, ct);
+    private static string MostrarHuso(string? id) => Husos.FirstOrDefault(x => x.Id == id).Texto ?? id ?? "";
+    private static Task<IEnumerable<string>> BuscarHusos(string texto, CancellationToken ct)
+        => Task.FromResult(Husos.Where(x => string.IsNullOrWhiteSpace(texto) ||
+            x.Texto.Contains(texto, StringComparison.OrdinalIgnoreCase) || x.Id.Contains(texto, StringComparison.OrdinalIgnoreCase))
+            .Select(x => x.Id));
+
+    private async Task<string?> Confirmar(string mensaje)
+    {
+        var parametros = new DialogParameters<DialogoConfirmarContrasenaOperador>
+        { { x => x.Mensaje, mensaje }, { x => x.TextoConfirmar, "Confirmar" } };
+        var dialogo = await Dialogos.ShowAsync<DialogoConfirmarContrasenaOperador>("Facturación del proveedor", parametros);
+        var r = await dialogo.Result;
+        return r is { Canceled: false, Data: string contrasena } ? contrasena : null;
+    }
+
+    private async Task Guardar()
+    {
+        if (_ocupado || !PuedeEditar || _formulario is null) return;
+        await _formulario.ValidateAsync();
+        if (!_formulario.IsValid) return;
+        _ocupado = true; _aviso = null; _mensaje = null; _error = null;
+        try
+        {
+            var contrasena = await Confirmar("Confirma tu contraseña para guardar los datos fiscales del proveedor.");
+            if (contrasena is null) return;
+            var (datos, error) = await Servicio.GuardarAsync(new(_rfc, _nombre, _regimen, _cp, _zona, _serie, _version, contrasena));
+            _error = error;
+            if (datos is not null)
+            {
+                var normalizado = _nombre.Trim() != datos.NombreFiscal;
+                Aplicar(datos);
+                _aviso = normalizado ? "Datos guardados. Se normalizó la razón social." : "Datos fiscales guardados.";
+            }
+        }
+        catch (HttpRequestException) { _mensaje = "No se pudieron guardar los datos. Revisa la conexión."; }
+        finally { _ocupado = false; }
+    }
+
+    private async Task CargarCsd()
+    {
+        if (_ocupado || !PuedeEditar || HayCambios || _version is null || _cer is null || _key is null) return;
+        _aviso = null; _mensaje = null; _error = null;
+        if (_cer.Size is 0 or > 65536 || _key.Size is 0 or > 65536)
+        { _mensaje = "Cada archivo admite hasta 64 KB."; return; }
+        _ocupado = true;
+        try
+        {
+            var contrasena = await Confirmar("Confirma tu contraseña para cargar el CSD del proveedor.");
+            if (contrasena is null) return;
+            await using var cer = _cer.OpenReadStream(65536);
+            await using var key = _key.OpenReadStream(65536);
+            var (datos, error) = await Servicio.CargarCsdAsync(cer, _cer.Name, key, _key.Name, _contrasenaCsd, contrasena, _version);
+            _error = error;
+            if (datos is not null)
+            {
+                Aplicar(datos); _aviso = "CSD validado y guardado.";
+                _cer = null; _key = null; _seleccionArchivos++;
+            }
+        }
+        catch (Exception ex) when (ex is HttpRequestException or IOException)
+        { _mensaje = "No se pudo cargar el CSD. Revisa los archivos y la conexión."; }
+        finally { _contrasenaCsd = ""; _ocupado = false; }
+    }
+
+    private void Aplicar(ConfiguracionFiscalProveedorDto d)
+    {
+        _guardados = d;
+        _rfc = d.Rfc; _nombre = d.NombreFiscal; _regimen = d.RegimenFiscal;
+        _cp = d.CodigoPostalExpedicion; _zona = d.ZonaHoraria; _serie = d.Serie;
+        _version = d.Version; _certificados = d.Certificados;
+    }
+    private static string Estado(CertificadoProveedorDto c)
+        => !c.Activo ? "Reemplazado" : c.VigenciaHastaUtc < DateTime.UtcNow ? "Vencido" : "Activo";
+}

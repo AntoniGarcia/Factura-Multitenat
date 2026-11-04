@@ -53,8 +53,8 @@ public static class SembradoDeDesarrollo
             LimiteDeEmpresas = 2
         };
 
-        var llantera = NuevaEmpresa(cuenta.Id, "LLANTERA DEL CENTRO", "LCE010101AA1", ahora);
-        var cementera = NuevaEmpresa(cuenta.Id, "CEMENTERA DEL BAJIO", "CBA010101BB2", ahora);
+        var llantera = NuevaEmpresa(cuenta.Id, "LLANTERA DEL CENTRO", "LCE010101AA5", ahora);
+        var cementera = NuevaEmpresa(cuenta.Id, "CEMENTERA DEL BAJIO", "CBA010101BB5", ahora);
 
         baseDeDatos.Cuentas.Add(cuenta);
         baseDeDatos.Empresas.AddRange(llantera, cementera);

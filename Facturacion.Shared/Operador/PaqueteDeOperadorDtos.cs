@@ -20,7 +20,9 @@ public sealed record PaqueteDeOperadorDto(
     int VigenciaMeses,
     bool Activo,
     int Orden,
-    int Compras);
+    int Compras,
+    string? ClaveProdServ = null,
+    string? ClaveUnidad = null);
 
 /// <summary>
 /// Alta o cambio de un paquete.
@@ -37,4 +39,6 @@ public sealed record PeticionGuardarPaquete(
     [property: Range(0.000001, 10_000_000)] decimal PrecioPorTimbre,
     [property: Range(0.000001, 10_000_000)] decimal PrecioTotal,
     [property: Range(1, 120)] int VigenciaMeses,
-    [property: Range(0, 999)] int Orden);
+    [property: Range(0, 999)] int Orden,
+    [property: MaxLength(8)] string? ClaveProdServ = null,
+    [property: MaxLength(3)] string? ClaveUnidad = null);

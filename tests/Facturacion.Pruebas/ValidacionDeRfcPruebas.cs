@@ -9,6 +9,8 @@ public sealed class ValidacionDeRfcPruebas
     // ── Dos personas morales válidas (12 caracteres) ───────────────────────────────────
     [InlineData("EKU9003173C9")]
     [InlineData("SAT970701NN3")]
+    [InlineData("LCE010101AA5")]
+    [InlineData("CBA010101BB5")]
     // ── Dos personas físicas válidas (13 caracteres) ───────────────────────────────────
     [InlineData("CACX7605101P8")]
     [InlineData("MOGA8001015B9")]

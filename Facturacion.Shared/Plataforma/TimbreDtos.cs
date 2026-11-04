@@ -33,7 +33,8 @@ public sealed record CompraDto(
     DateTime CreadaUtc,
     DateTime? AcreditadaUtc,
     DateTime? VenceUtc,
-    string Empresa);
+    string Empresa,
+    string? EstadoFactura = null);
 
 /// <summary>Un renglón del historial de movimientos.</summary>
 /// <param name="DeltaDisponible">Cuánto cambió el saldo disponible; negativo cuando baja.</param>

@@ -4,6 +4,7 @@
 @inject IServicioDeConfirmacion Confirmacion
 @inject NavigationManager Navegacion
 @inject IDialogService Dialogos
+@inject ServicioDeArchivosDeFacturaCompra ArchivosFactura
 
 <PageTitle>Timbres</PageTitle>
 <TituloDePagina Texto="Timbres /Membresía" />
@@ -79,8 +80,7 @@
 <h2 class="seccion-titulo">Comprar timbres</h2>
 
 <p class="seccion-ayuda">
-    Los timbres se abonan a tu cuenta y los usan todas sus empresas. La compra queda registrada
-    y los timbres entran en cuanto se confirma el pago.
+    La compra queda registrada y los timbres entran en cuanto se confirma el pago.
 </p>
 
 <div class="rejilla-paquetes">
@@ -130,6 +130,7 @@ else
                 <th class="cifra-tabular">Timbres</th>
                 <th class="cifra-tabular">Total</th>
                 <th>Estado</th>
+                <th>Factura</th>
                 <th>Acciones</th>
             </tr>
         </thead>
@@ -137,7 +138,7 @@ else
             @foreach (var compra in _compras)
             {
                 <tr class="@(compra.Estado == "pagada" ? "fila-previsualizable" : null)"
-                    @onclick="@(() => PrevisualizarComprobante(compra))">
+                    @onclick="@(() => compra.EstadoFactura == "timbrado" ? PrevisualizarFactura(compra) : PrevisualizarComprobante(compra))">
                     <td class="cifra-tabular">@compra.CreadaUtc.ToLocalTime().ToString("yyyy-MM-dd HH:mm")</td>
                     <td>@compra.NombrePaquete</td>
                     <td>@compra.Empresa</td>
@@ -148,20 +149,37 @@ else
                             @TextoDeCompra(compra.Estado)
                         </span>
                     </td>
+                    <td>@EstadoDeFactura(compra.EstadoFactura)</td>
                     <td>
                         @if (compra.Estado == "pagada")
                         {
                             <span @onclick:stopPropagation="true">
+                                @if (compra.EstadoFactura == "timbrado")
+                                {
+                                    <MudButton Size="Size.Small" Color="Color.Primary" Variant="Variant.Text"
+                                               Disabled="@(_previsualizando is not null)" OnClick="@(() => PrevisualizarFactura(compra))">Ver factura</MudButton>
+                                    <MudButton Size="Size.Small" Variant="Variant.Text" Disabled="@(_descargando is not null)"
+                                               OnClick="@(() => DescargarFactura(compra, false))">PDF</MudButton>
+                                    <MudButton Size="Size.Small" Variant="Variant.Text" Disabled="@(_descargando is not null)"
+                                               OnClick="@(() => DescargarFactura(compra, true))">XML</MudButton>
+                                    <MudMenu Label="Compra" Size="Size.Small" Disabled="@(_previsualizando is not null || _descargando is not null)">
+                                        <MudMenuItem OnClick="@(() => PrevisualizarComprobante(compra))">Ver comprobante de compra</MudMenuItem>
+                                        <MudMenuItem OnClick="@(() => DescargarComprobante(compra))">Descargar comprobante</MudMenuItem>
+                                    </MudMenu>
+                                }
+                                else
+                                {
                                 <MudButton Size="Size.Small" Variant="Variant.Text"
                                            Disabled="@(_previsualizando is not null)"
                                            OnClick="@(() => PrevisualizarComprobante(compra))">
-                                    @(_previsualizando == compra.Id ? "Abriendo…" : "Ver")
+                                    @(_previsualizando == compra.Id ? "Abriendo…" : "Comprobante")
                                 </MudButton>
                                 <MudButton Size="Size.Small" Variant="Variant.Text"
                                            Disabled="@(_descargando is not null)"
                                            OnClick="@(() => DescargarComprobante(compra))">
                                     @(_descargando == compra.Id ? "Descargando…" : "Descargar PDF")
                                 </MudButton>
+                                }
                             </span>
                         }
                     </td>
@@ -253,6 +271,37 @@ else
         {
             _descargando = null;
         }
+    }
+
+    private static string EstadoDeFactura(string? estado) => estado switch
+    {
+        "timbrado" => "Emitida", "timbrando" => "En proceso", "borrador" => "En preparación",
+        "error" => "En revisión", _ => "—"
+    };
+
+    private async Task DescargarFactura(CompraDto compra, bool xml)
+    {
+        if (_descargando is not null) return;
+        _descargando = compra.Id; _error = null;
+        try { _error = await ArchivosFactura.DescargarAsync(compra.Id, xml); }
+        finally { _descargando = null; }
+    }
+
+    private async Task PrevisualizarFactura(CompraDto compra)
+    {
+        if (_previsualizando is not null) return;
+        _previsualizando = compra.Id; _error = null;
+        try
+        {
+            var (archivo, error) = await ArchivosFactura.ObtenerAsync(compra.Id);
+            _error = error;
+            if (archivo is null) return;
+            await Dialogos.ShowAsync<DialogoDeComprobanteDeCompra>("Factura de la compra",
+                new DialogParameters<DialogoDeComprobanteDeCompra>
+                { { x => x.Archivo, archivo }, { x => x.TituloVistaPrevia, "Vista previa de la factura" }, { x => x.AvisoFiscal, "" } },
+                new DialogOptions { MaxWidth = MaxWidth.ExtraLarge, FullWidth = true, CloseOnEscapeKey = true });
+        }
+        finally { _previsualizando = null; }
     }
 
     private async Task PrevisualizarComprobante(CompraDto compra)

@@ -33,6 +33,8 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> opciones, IConte
     public DbSet<OperadorPlataforma> OperadoresPlataforma => Set<OperadorPlataforma>();
     public DbSet<RefreshTokenOperador> RefreshTokensOperador => Set<RefreshTokenOperador>();
     public DbSet<ConfiguracionDelSistema> ConfiguracionesDelSistema => Set<ConfiguracionDelSistema>();
+    public DbSet<ConfiguracionFiscalProveedor> ConfiguracionFiscalProveedor => Set<ConfiguracionFiscalProveedor>();
+    public DbSet<CertificadoProveedor> CertificadosProveedor => Set<CertificadoProveedor>();
     public DbSet<ClaveIdempotencia> ClavesIdempotencia => Set<ClaveIdempotencia>();
     public DbSet<RegistroBitacora> Bitacora => Set<RegistroBitacora>();
     public DbSet<ConfiguracionEmpresa> ConfiguracionesEmpresa => Set<ConfiguracionEmpresa>();
@@ -50,6 +52,9 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> opciones, IConte
     public DbSet<MovimientoTimbre> MovimientosTimbre => Set<MovimientoTimbre>();
     public DbSet<ReservaTimbre> ReservasTimbre => Set<ReservaTimbre>();
     public DbSet<CompraTimbres> ComprasTimbres => Set<CompraTimbres>();
+    public DbSet<FacturaDeCompra> FacturasDeCompras => Set<FacturaDeCompra>();
+    public DbSet<IntentoFacturaProveedor> IntentosFacturasProveedor => Set<IntentoFacturaProveedor>();
+    public DbSet<SerieFacturaProveedor> SeriesFacturasProveedor => Set<SerieFacturaProveedor>();
     public DbSet<Vehiculo> Vehiculos => Set<Vehiculo>();
     public DbSet<FiguraTransporte> FigurasTransporte => Set<FiguraTransporte>();
     public DbSet<TrasladoCartaPorte> TrasladosCartaPorte => Set<TrasladoCartaPorte>();

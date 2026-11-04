@@ -38,14 +38,18 @@ public static class OperadorModule
         servicios.AddScoped<ServicioDeCatalogosDeOperador>();
         servicios.AddSingleton<ActualizadorDeCatalogos>();
         servicios.AddHostedService(proveedor => proveedor.GetRequiredService<ActualizadorDeCatalogos>());
+        servicios.AddScoped<ClavesSatDePaquete>();
         servicios.AddScoped<ServicioDePaquetesDeOperador>();
         servicios.AddScoped<ServicioDePaquetesPersonalizados>();
         servicios.AddScoped<ServicioDeComprasDeOperador>();
+        servicios.AddScoped<ServicioDeFacturasDeCompras>();
+        servicios.AddScoped<Facturacion.Shared.Contratos.IEmisionDeFacturasDeCompras, EmisionDeFacturasDeCompras>();
         servicios.AddScoped<ServicioDeClientesDePlataforma>();
         servicios.AddScoped<ServicioDeUsuariosDePlataforma>();
         servicios.AddScoped<ServicioDeMembresias>();
         servicios.AddScoped<ServicioDeTableroDeOperador>();
         servicios.AddScoped<ServicioDeConfiguracionDelSistema>();
+        servicios.AddScoped<ServicioFiscalDelProveedor>();
         return servicios;
     }
 
@@ -56,10 +60,12 @@ public static class OperadorModule
         aplicacion.MapCatalogosDeOperador();
         aplicacion.MapPaquetesDeOperador();
         aplicacion.MapComprasDeOperador();
+        aplicacion.MapFacturasDeCompras();
         aplicacion.MapClientesDePlataforma();
         aplicacion.MapUsuariosDePlataforma();
         aplicacion.MapMembresiasYTablero();
         aplicacion.MapConfiguracionDelSistema();
+        aplicacion.MapFiscalDelProveedor();
 
         return aplicacion;
     }

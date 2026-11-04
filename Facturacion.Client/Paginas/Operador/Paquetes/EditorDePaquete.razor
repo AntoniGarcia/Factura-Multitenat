@@ -1,7 +1,9 @@
 @using Facturacion.Client.Componentes.Comunes
+@using Facturacion.Client.Componentes.Operador
 @using Facturacion.Client.Servicios.Operador
 @using Facturacion.Shared.Comun
 @using Facturacion.Shared.Operador
+@using Facturacion.Shared.Plataforma
 @inject ServicioDePaquetesDeOperador Paquetes
 
 <PanelErrores Problema="_error" />
@@ -30,6 +32,8 @@ else
                              Immediate="true"
                              Class="cifra-tabular" />
         </div>
+        <ClavesSatDelPaquete @bind-ClaveProdServ="_claveProdServ" @bind-ClaveUnidad="_claveUnidad" Deshabilitado="_guardando" />
+        <p class="seccion-ayuda">Se precargan al preparar la factura.</p>
         </section>
 
         <section class="formulario-catalogo-seccion formulario-catalogo-seccion-ancha" aria-labelledby="paquete-precio">
@@ -127,6 +131,8 @@ else
     private Guid? _idCargado;
 
     private string _nombre = string.Empty;
+    private string? _claveProdServ = ClavesSatPredeterminadasDePaquetes.ProductoServicio;
+    private string? _claveUnidad = ClavesSatPredeterminadasDePaquetes.UnidadServicio;
     private int _cantidadTimbres = 100;
     private decimal _precioTotal;
     private decimal _precioPorTimbre;
@@ -146,6 +152,8 @@ else
         if (await Paquetes.ObtenerAsync(id) is { } paquete)
         {
             _nombre = paquete.Nombre;
+            _claveProdServ = ClavesSatPredeterminadasDePaquetes.Producto(paquete.ClaveProdServ);
+            _claveUnidad = ClavesSatPredeterminadasDePaquetes.Unidad(paquete.ClaveUnidad);
             _cantidadTimbres = paquete.CantidadTimbres;
             _precioTotal = paquete.PrecioTotal;
             _precioPorTimbre = paquete.PrecioPorTimbre;
@@ -178,7 +186,8 @@ else
         _error = null;
 
         var peticion = new PeticionGuardarPaquete(
-            _nombre, _cantidadTimbres, _precioPorTimbre, _precioTotal, _vigenciaMeses, _orden);
+            _nombre, _cantidadTimbres, _precioPorTimbre, _precioTotal, _vigenciaMeses, _orden,
+            _claveProdServ, _claveUnidad);
 
         var (exito, error) = EsNuevo
             ? await Paquetes.CrearAsync(peticion)

@@ -43,11 +43,15 @@ public static class DocumentosModule
         servicios.AddScoped<GeneradorDePdfCartaPorte>();
         servicios.AddScoped<ServicioDePdfBorrador>();
         servicios.AddScoped<ServicioDeSalidasFiscales>();
+        servicios.AddScoped<SalidasDeFacturasProveedor>();
         servicios.AddScoped<ServicioDeEnvioDeComprobantes>();
         servicios.AddScoped<ServicioDeXmlCfdi>();
 
         servicios.AddScoped<CierreDeTimbrado>();
         servicios.AddScoped<ServicioDeTimbrado>();
+        servicios.AddScoped<XmlDeFacturaProveedor>();
+        servicios.AddScoped<TimbradoDeFacturasProveedor>();
+        servicios.AddHostedService<ConciliacionDeFacturasProveedor>();
         servicios.AddScoped<Emision.ServicioDeEmision>();
         servicios.AddScoped<ServicioDeCancelacion>();
         servicios.AddScoped<ServicioDeSolicitudesDeCancelacion>();
@@ -147,6 +151,8 @@ public static class DocumentosModule
     {
         aplicacion.MapEmision();
         aplicacion.MapTimbrado();
+        aplicacion.MapTimbradoDeFacturasProveedor();
+        aplicacion.MapSalidasDeFacturasProveedor();
         aplicacion.MapCancelacion();
         aplicacion.MapPagos();
         aplicacion.MapTrasladosCartaPorte();
