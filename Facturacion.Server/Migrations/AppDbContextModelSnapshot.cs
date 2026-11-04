@@ -182,6 +182,10 @@ namespace Facturacion.Server.Migrations
                         .HasPrecision(18, 6)
                         .HasColumnType("decimal(18,6)");
 
+                    b.Property<decimal?>("TasaIsh")
+                        .HasPrecision(18, 6)
+                        .HasColumnType("decimal(18,6)");
+
                     b.Property<decimal?>("TipoCambio")
                         .HasPrecision(18, 6)
                         .HasColumnType("decimal(18,6)");
@@ -261,6 +265,9 @@ namespace Facturacion.Server.Migrations
                 {
                     b.Property<Guid>("Id")
                         .HasColumnType("uniqueidentifier");
+
+                    b.Property<bool>("AplicaIsh")
+                        .HasColumnType("bit");
 
                     b.Property<decimal>("Cantidad")
                         .HasPrecision(18, 6)
@@ -2404,13 +2411,6 @@ namespace Facturacion.Server.Migrations
                         .HasMaxLength(2048)
                         .HasColumnType("nvarchar(2048)");
 
-                    b.Property<bool>("Habilitado")
-                        .HasColumnType("bit");
-
-                    b.Property<string>("NombreRemitenteSistema")
-                        .HasMaxLength(128)
-                        .HasColumnType("nvarchar(128)");
-
                     b.Property<int>("Puerto")
                         .HasColumnType("int");
 
@@ -2421,10 +2421,6 @@ namespace Facturacion.Server.Migrations
                     b.Property<string>("RemitenteNombre")
                         .HasMaxLength(128)
                         .HasColumnType("nvarchar(128)");
-
-                    b.Property<string>("ResponderA")
-                        .HasMaxLength(254)
-                        .HasColumnType("nvarchar(254)");
 
                     b.Property<string>("Servidor")
                         .HasMaxLength(253)

@@ -177,7 +177,7 @@
                     {
                         <div class="rejilla-formulario">
 <BuscadorCatalogo Catalogo="c_TipoRelacion" Opciones="@Catalogos.Obtener("c_TipoRelacion")" @bind-Clave="_tipoRelacion" Label="Tipo de relación" PuedeLimpiar="true" />
-                            <MudTextField T="string" @bind-Value="_serieRelacionado" Label="Serie" Immediate="true" MaxLength="25" />
+<BuscadorCatalogo Catalogo="serie" Opciones="@_seriesRelacionables" @bind-Clave="_serieRelacionado" Label="Serie" PuedeLimpiar="true" MuestraSelectorEnLista="false" />
                             <MudNumericField T="int?" @bind-Value="_folioRelacionado" Label="Folio" Immediate="true" Min="1" />
                         </div>
                         <MudButton Variant="Variant.Outlined" OnClick="AgregarRelacionadoAsync" Disabled="@(!PuedeAgregarRelacionado)">Agregar CFDI</MudButton>
@@ -256,7 +256,8 @@
     private UbicacionCartaPorteDto _destino = Vacio("Destino", 2);
     private readonly List<ComprobanteRelacionadoDto> _relacionados = [];
     private string? _tipoRelacion;
-    private string _serieRelacionado = string.Empty;
+    private string? _serieRelacionado;
+    private IReadOnlyList<ClaveSatDto> _seriesRelacionables = [];
     private int? _folioRelacionado;
     private string? _observaciones;
     private bool _precargaOrigenIntentada;
@@ -287,6 +288,7 @@
         }
         _vehiculos = await Transporte.VehiculosAsync(true) ?? [];
         _figuras = (await Transporte.FigurasAsync(true) ?? []).Where(x => x.TipoFigura == "01").ToList();
+        _seriesRelacionables = await Emision.ListarSeriesRelacionablesAsync();
 
         if (Id is { } id)
         {
@@ -390,7 +392,7 @@
     {
         if (!PuedeAgregarRelacionado) return;
 
-        var (resuelto, error) = await Emision.ResolverRelacionadoAsync(_serieRelacionado.Trim(), _folioRelacionado!.Value);
+        var (resuelto, error) = await Emision.ResolverRelacionadoAsync(_serieRelacionado!, _folioRelacionado!.Value);
         if (error is not null)
         {
             _error = error;
@@ -405,7 +407,7 @@
 
         _relacionados.Add(new ComprobanteRelacionadoDto(null, _tipoRelacion!, resuelto!.Uuid, resuelto.Serie, resuelto.Folio));
         _tipoRelacion = null;
-        _serieRelacionado = string.Empty;
+        _serieRelacionado = null;
         _folioRelacionado = null;
         _error = null;
     }

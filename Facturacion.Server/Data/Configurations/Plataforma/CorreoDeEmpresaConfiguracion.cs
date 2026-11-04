@@ -22,7 +22,5 @@ public sealed class CorreoDeEmpresaConfiguracion : IEntityTypeConfiguration<Corr
         constructor.Property(c => c.ContrasenaCifrada).HasMaxLength(2048);
         constructor.Property(c => c.RemitenteNombre).HasMaxLength(128);
         constructor.Property(c => c.RemitenteCorreo).HasMaxLength(254);
-        constructor.Property(c => c.NombreRemitenteSistema).HasMaxLength(128);
-        constructor.Property(c => c.ResponderA).HasMaxLength(254);
     }
 }

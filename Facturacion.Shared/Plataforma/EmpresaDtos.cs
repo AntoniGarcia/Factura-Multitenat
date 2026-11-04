@@ -90,30 +90,24 @@ public sealed record ConfiguracionEmpresaDto(
 /// Servidor SMTP propio de la empresa tal como sale del servidor: sin la contraseña, solo si
 /// hay una guardada.
 /// </summary>
+/// <param name="Configurado">Tiene todo lo necesario para enviar: sin esto no salen comprobantes.</param>
 public sealed record CorreoDeEmpresaDto(
-    bool Habilitado,
+    bool Configurado,
     string? Servidor,
     int Puerto,
     string? Usuario,
     bool TieneContrasena,
     string? RemitenteNombre,
-    string? RemitenteCorreo,
-    string? NombreRemitenteSistema,
-    string? ResponderA);
+    string? RemitenteCorreo);
 
 /// <param name="Contrasena">Vacía o nula conserva la guardada.</param>
-/// <param name="NombreRemitenteSistema">Solo aplica cuando sale del remitente del sistema.</param>
-/// <param name="ResponderA">Solo aplica cuando sale del remitente del sistema.</param>
 public sealed record PeticionGuardarCorreoDeEmpresa(
-    bool Habilitado,
     string? Servidor,
     int Puerto,
     string? Usuario,
     string? Contrasena,
     string? RemitenteNombre,
-    string? RemitenteCorreo,
-    string? NombreRemitenteSistema,
-    string? ResponderA);
+    string? RemitenteCorreo);
 
 /// <summary>
 /// Los dos únicos puertos admitidos para el SMTP de una empresa. El puerto decide el cifrado:

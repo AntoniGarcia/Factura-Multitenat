@@ -1,5 +1,6 @@
 using System.Net.Http.Json;
 using Facturacion.Shared.Comun;
+using Facturacion.Shared.Contratos;
 using Facturacion.Shared.Documentos;
 using Facturacion.Client.Servicios.Plataforma;
 
@@ -87,6 +88,34 @@ public sealed class ServicioDeEmision(IHttpClientFactory fabrica)
 
         return await LeerAsync<CfdiRelacionadoResueltoDto>(respuesta, ct);
     }
+
+    /// <summary>
+    /// Series que se pueden relacionar, como opciones del buscador: la clave es la serie y la
+    /// descripción dice qué tipos de CFDI tiene timbrados.
+    /// </summary>
+    public async Task<IReadOnlyList<ClaveSatDto>> ListarSeriesRelacionablesAsync(CancellationToken ct = default)
+    {
+        var series = await Cliente.GetFromJsonAsync<IReadOnlyList<SerieRelacionableDto>>(
+            "api/documentos/relacionados/series", ct) ?? [];
+
+        return [.. series.Select(s => new ClaveSatDto("serie", s.Serie,
+            $"{string.Join(", ", s.Tipos.Select(NombreDeTipo))} · {s.Timbrados} CFDI", true))];
+    }
+
+    /// <summary>Tasas de Configuración para capturar una factura básica: retenciones e ISH.</summary>
+    public async Task<TasasDeCapturaDto> ObtenerTasasDeCapturaAsync(CancellationToken ct = default)
+        => await Cliente.GetFromJsonAsync<TasasDeCapturaDto>("api/documentos/tasas-de-captura", ct)
+           ?? new TasasDeCapturaDto(0m, 0m, 0m, 0m);
+
+    private static string NombreDeTipo(string tipo) => tipo switch
+
+    {
+        "I" => "Ingreso",
+        "E" => "Egreso",
+        "P" => "Pago",
+        "T" => "Traslado",
+        _ => tipo
+    };
 
     /// <summary>Timbra el borrador. Requiere una clave nueva por cada intento real del usuario.</summary>
     public async Task<(RespuestaDeTimbradoDto? Exito, DetalleProblema? Error)> TimbrarAsync(

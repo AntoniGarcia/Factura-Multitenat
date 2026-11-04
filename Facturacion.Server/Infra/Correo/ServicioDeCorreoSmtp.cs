@@ -22,7 +22,7 @@ public sealed class ServicioDeCorreoSmtp(
 
         using var correo = new MailMessage
         {
-            From = new MailAddress(config.RemitenteCorreo, mensaje.NombreRemitente ?? config.RemitenteNombre),
+            From = new MailAddress(config.RemitenteCorreo, config.RemitenteNombre),
             Subject = mensaje.Asunto,
             Body = mensaje.CuerpoHtml,
             IsBodyHtml = true

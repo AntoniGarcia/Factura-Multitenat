@@ -9,6 +9,8 @@ namespace Facturacion.Shared.Documentos;
 /// dónde recuperar lo que el borrador traía guardado.
 /// </param>
 /// <param name="Variante">Una de <see cref="VariantesDeFactura"/>; nula en pagos y traslados.</param>
+/// <param name="TasaIsh">Impuesto sobre hospedaje, como fracción. Nula si ningún concepto lo aplica.</param>
+/// <param name="ImpuestosLocales">Los del complemento de impuestos locales; ya van dentro de <paramref name="Total"/>.</param>
 public sealed record ComprobanteDto(
     Guid Id,
     string Estatus,
@@ -41,13 +43,24 @@ public sealed record ComprobanteDto(
     Guid? Uuid,
     DateTime? FechaTimbradoUtc,
     IReadOnlyList<ConceptoDto> Conceptos,
-    IReadOnlyList<ComprobanteRelacionadoDto> Relacionados);
+    IReadOnlyList<ComprobanteRelacionadoDto> Relacionados,
+    decimal? TasaIsh = null,
+    IReadOnlyList<ImpuestoLocalDto>? ImpuestosLocales = null);
+
+/// <summary>Un renglón del complemento de impuestos locales: el ISH o la retención de obra.</summary>
+/// <param name="Tasa">Porcentaje: 3.00 es el 3 %.</param>
+public sealed record ImpuestoLocalDto(string Nombre, decimal Tasa, decimal Importe, bool EsRetencion);
 
 /// <param name="ProductoId">Producto de catálogo del que se resolvió, si vino de ahí.</param>
 /// <param name="Impuestos">
-/// Los que trae el producto en el momento de agregarlo. Quedan editables en el renglón: el
-/// motor de B1 recalcula sobre lo que haya aquí, no sobre lo que el producto tenga hoy.
+/// Los calculados del concepto. Al guardar no se leen: el servidor los vuelve a tomar del
+/// producto y, en factura básica, de <paramref name="Retenciones"/>.
 /// </param>
+/// <param name="Retenciones">
+/// Solo en factura básica: claves de <c>c_Impuesto</c> que el concepto retiene, según sus
+/// casillas. Nulo deja las retenciones del producto tal cual.
+/// </param>
+/// <param name="AplicaIsh">Solo en factura básica: el concepto paga impuesto sobre hospedaje.</param>
 public sealed record ConceptoDto(
     Guid? Id,
     int Orden,
@@ -62,7 +75,16 @@ public sealed record ConceptoDto(
     decimal Importe,
     decimal Descuento,
     string ObjetoImp,
-    IReadOnlyList<ImpuestoDeConceptoDto> Impuestos);
+    IReadOnlyList<ImpuestoDeConceptoDto> Impuestos,
+    IReadOnlyList<string>? Retenciones = null,
+    bool AplicaIsh = false);
+
+/// <summary>
+/// Tasas de Configuración, como fracción, para capturar una factura básica: las de retención
+/// deciden qué casillas muestra cada concepto —cero es que no aplica— y la de ISH precarga la
+/// tasa de la factura.
+/// </summary>
+public sealed record TasasDeCapturaDto(decimal RetencionIva, decimal RetencionIsr, decimal RetencionIeps, decimal Ish);
 
 public sealed record ImpuestoDeConceptoDto(
     string Impuesto,
@@ -88,6 +110,10 @@ public sealed record ComprobanteRelacionadoDto(
 /// Solo con el RFC XAXX010101000: el nombre de esta factura, que puede no ser el del cliente
 /// (ventas sueltas). Con cualquier otro RFC se ignora y va el del catálogo.
 /// </param>
+/// <param name="TasaIsh">
+/// Solo en factura básica con algún concepto que aplica ISH: la tasa de esta factura, como
+/// fracción. Se precarga desde Configuración y el capturista la puede cambiar.
+/// </param>
 public sealed record PeticionGuardarBorrador(
     string TipoDeComprobante,
     Guid? SerieId,
@@ -105,13 +131,25 @@ public sealed record PeticionGuardarBorrador(
     int? GlobalAnio,
     IReadOnlyList<ConceptoDto> Conceptos,
     IReadOnlyList<ComprobanteRelacionadoDto> Relacionados,
-    string? ReceptorNombre = null);
+    string? ReceptorNombre = null,
+    decimal? TasaIsh = null);
+
 
 /// <summary>Un CFDI relacionado resuelto por Serie+Folio, listo para agregar a la pestaña.</summary>
 public sealed record CfdiRelacionadoResueltoDto(
     Guid Uuid,
     string Serie,
     int Folio);
+
+/// <summary>
+/// Una serie con al menos un CFDI timbrado en la empresa: lo único que se puede relacionar.
+/// Incluye las series ya inactivas, porque sus comprobantes siguen vigentes.
+/// </summary>
+/// <param name="Tipos">Claves de <c>c_TipoDeComprobante</c> que tiene timbradas.</param>
+public sealed record SerieRelacionableDto(
+    string Serie,
+    IReadOnlyList<string> Tipos,
+    int Timbrados);
 
 /// <summary>Lo que devuelve <c>POST /api/documentos/{id}/timbrar</c> cuando el timbrado termina bien.</summary>
 public sealed record RespuestaDeTimbradoDto(

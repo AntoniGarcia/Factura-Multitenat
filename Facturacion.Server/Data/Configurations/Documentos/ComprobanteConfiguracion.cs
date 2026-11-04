@@ -51,6 +51,7 @@ public sealed class ComprobanteConfiguracion : IEntityTypeConfiguration<Comproba
         constructor.Property(c => c.TotalImpuestosTrasladados).HasPrecision(18, 6);
         constructor.Property(c => c.TotalImpuestosRetenidos).HasPrecision(18, 6);
         constructor.Property(c => c.Total).HasPrecision(18, 6);
+        constructor.Property(c => c.TasaIsh).HasPrecision(18, 6);
 
         constructor.Property(c => c.NoCertificadoEmisor).HasMaxLength(20);
         constructor.Property(c => c.NoCertificadoSat).HasMaxLength(20);

@@ -87,11 +87,6 @@ public sealed class ServicioDeXmlCfdi(
         if (esPago && GeneradorDeXmlPago.Validar(comprobante, decimales.Value) is { } errorPrecisionPago)
             return errorPrecisionPago;
 
-        if (comprobante.TipoDeComprobante == TiposDeComprobante.Ingreso &&
-            comprobante.Estatus is ("borrador" or "error" or "timbrando") &&
-            !ProyeccionMonetariaCfdi.Calcular(comprobante, decimales.Value).CoincideCon(comprobante))
-            return ErrorNegocio.Regla("totales-del-borrador-desactualizados",
-                "Los totales guardados no coinciden con el XML en los decimales de la moneda. Guarda de nuevo el borrador antes de emitirlo.");
 
         CsdDescifradoDto material;
         try
@@ -150,6 +145,12 @@ public sealed class ServicioDeXmlCfdi(
                 return ErrorNegocio.Regla("obra-sin-datos",
                     "Guarda la estimación de obra antes de preparar el XML de la factura.");
 
+            var proyeccion = ProyeccionMonetariaCfdi.Calcular(comprobante, decimales.Value, datosObra);
+            if (comprobante.Estatus is ("borrador" or "error" or "timbrando") && !proyeccion.CoincideCon(comprobante))
+                return ErrorNegocio.Regla("totales-del-borrador-desactualizados",
+                    "Los totales guardados no coinciden con el XML en los decimales de la moneda. Guarda de nuevo el borrador antes de emitirlo.");
+            datosDeEmision = datosDeEmision with { Obra = datosObra };
+
             if (datosObra is not null)
             {
                 if (ValidadorFiscalDeObra.Validar(comprobante, datosObra) is { } errorObra)
@@ -159,8 +160,11 @@ public sealed class ServicioDeXmlCfdi(
                         "Una estimación de obra no se puede combinar con Notaría o Comercio Exterior en esta factura.");
             }
 
-            if (RetencionLocalDeObra.Calcular(comprobante, datosObra) is { } retencionLocal)
+            if (proyeccion.Locales.Length > 0)
             {
+                if (contenidoComercio is not null || datosNotaria is not null)
+                    return ErrorNegocio.Regla("complementos-incompatibles",
+                        "Los impuestos locales no se pueden combinar con Notaría o Comercio Exterior en esta factura.");
                 documento = generador.Generar(comprobante, datosDeEmision);
                 var raiz = documento.Root!;
                 raiz.SetAttributeValue(XNamespace.Xmlns + "implocal", EsquemasSat.EspacioDeNombresImpuestosLocales);
@@ -168,7 +172,8 @@ public sealed class ServicioDeXmlCfdi(
                     $"{EsquemasSat.EspacioDeNombresCfdi} http://www.sat.gob.mx/sitio_internet/cfd/4/cfdv40.xsd " +
                     $"{EsquemasSat.EspacioDeNombresImpuestosLocales} http://www.sat.gob.mx/sitio_internet/cfd/implocal/implocal.xsd");
                 raiz.Add(new XElement(XNamespace.Get(EsquemasSat.EspacioDeNombresCfdi) + "Complemento",
-                    GeneradorDeXmlImpuestosLocalesDeObra.Generar(retencionLocal)));
+                    GeneradorDeXmlImpuestosLocales.Generar(proyeccion.Locales)));
+
             }
             else if (contenidoComercio is not null || comprobante.Exportacion == "02")
             {

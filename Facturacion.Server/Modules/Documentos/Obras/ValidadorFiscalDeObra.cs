@@ -59,8 +59,10 @@ public static class ValidadorFiscalDeObra
         var subtotalFiscal = comprobante.Conceptos.Sum(c => Redondear(c.Importe));
         var descuentoFiscal = comprobante.Conceptos.Sum(c => Redondear(c.Descuento));
         var ivaFiscal = impuestos.Sum(i => Redondear(i.Importe ?? 0));
+        var retencionLocal = RetencionLocalDeObra.Calcular(obra, subtotalFiscal)?.Importe ?? 0m;
         if (subtotalFiscal != Redondear(comprobante.SubTotal) ||
-            subtotalFiscal - descuentoFiscal + ivaFiscal != Redondear(comprobante.Total))
+            subtotalFiscal - descuentoFiscal + ivaFiscal - retencionLocal != Redondear(comprobante.Total))
+
             return ErrorNegocio.Regla("obra-total-no-coincide",
                 "El total guardado difiere del que saldría en el XML al redondear cada concepto. Revisa los importes de la factura antes de emitir.");
 

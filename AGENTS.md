@@ -460,3 +460,18 @@ CFDI 4.0 que rompen timbrados»).
   El tipo de cambio se sigue capturando en cada documento.
 - Los permisos asignables son 66: Configuración suma `configuracion_monedas`. Al migrar lo
   recibió quien tenía `configuracion_general`.
+
+**3 de noviembre de 2026 — SMTP obligatorio por empresa** (modifica §4 «Secretos y
+certificados», §6 «Correo» y la entrada del 5 de octubre «SMTP propio por empresa»).
+
+- Los comprobantes salen **solo** por el servidor SMTP de la empresa emisora. Ya no hay opción
+  de enviarlos con el remitente del sistema.
+- Si la empresa no tiene su SMTP completo —servidor, usuario, contraseña y correo del
+  remitente—, el envío falla con un error claro. Como antes, si su servidor falla, tampoco se
+  reenvía por el del SaaS.
+- El SMTP del SaaS queda solo para los correos del sistema: registro, contraseñas e
+  invitaciones.
+- El `Reply-To` del comprobante es el correo de contacto de la empresa, y la copia a la empresa
+  va oculta.
+- La migración `20261103_A` borró de `CorreosDeEmpresa` las columnas `Habilitado`,
+  `NombreRemitenteSistema` y `ResponderA`.

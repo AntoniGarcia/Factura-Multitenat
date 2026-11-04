@@ -2,6 +2,7 @@ using System.Net;
 using System.Net.Sockets;
 using System.Security.Cryptography;
 using Facturacion.Server.Data;
+using Facturacion.Server.Data.Entidades.Plataforma;
 using Facturacion.Server.Infra.Tenencia;
 using Facturacion.Shared.Plataforma;
 using MailKit;
@@ -19,17 +20,11 @@ namespace Facturacion.Server.Infra.Correo;
 public interface IServicioDeCorreoDeEmpresa
 {
     /// <summary>
-    /// Envía con el SMTP propio de la empresa activa si lo tiene habilitado; si no, con el del
-    /// SaaS. Cuando el servidor de la empresa falla lanza <see cref="FalloDeCorreoDeEmpresa"/>:
-    /// no se reenvía por el del SaaS.
+    /// Envía con el SMTP de la empresa activa, el único camino para sus comprobantes. Si no lo
+    /// tiene configurado, o si su servidor falla, lanza <see cref="FalloDeCorreoDeEmpresa"/>:
+    /// nunca se manda por el del SaaS.
     /// </summary>
     Task EnviarAsync(MensajeDeCorreo mensaje, CancellationToken ct);
-
-    /// <summary>
-    /// A dónde llegan las respuestas: el «Responder a» de la empresa si sale del remitente del
-    /// sistema y lo configuró; si no, <paramref name="predeterminado"/> (su correo de contacto).
-    /// </summary>
-    Task<string?> ResponderAAsync(string? predeterminado, CancellationToken ct);
 }
 
 /// <summary>
@@ -46,27 +41,24 @@ public sealed class ServicioDeCorreoDeEmpresa(
     AppDbContext baseDeDatos,
     IContextoEmpresaInterno contexto,
     IProtectorDeContrasenaSmtp protector,
-    IServicioDeCorreo correoDelSistema,
     ILogger<ServicioDeCorreoDeEmpresa> registro) : IServicioDeCorreoDeEmpresa
 {
     /// <summary>Tope para conectar y para cada operación con el servidor de la empresa.</summary>
     private static readonly TimeSpan Limite = TimeSpan.FromSeconds(15);
 
+    /// <summary>Tiene lo necesario para conectar y firmar el remitente.</summary>
+    public static bool EstaCompleto(CorreoDeEmpresa? config)
+        => config is { Servidor.Length: > 0, Usuario.Length: > 0, ContrasenaCifrada.Length: > 0, RemitenteCorreo.Length: > 0 };
+
     public async Task EnviarAsync(MensajeDeCorreo mensaje, CancellationToken ct)
     {
         var config = await baseDeDatos.CorreosDeEmpresa.AsNoTracking().FirstOrDefaultAsync(ct);
 
-        if (config is not { Habilitado: true })
-        {
-            await correoDelSistema.EnviarAsync(mensaje with { NombreRemitente = config?.NombreRemitenteSistema }, ct);
-            return;
-        }
-
         if (contexto.EmpresaActual is not { } empresa ||
             config is not { Servidor: { Length: > 0 } servidor, Usuario: { Length: > 0 } usuario,
                             ContrasenaCifrada: { Length: > 0 } cifrada, RemitenteCorreo: { Length: > 0 } remitente })
-            throw new FalloDeCorreoDeEmpresa("smtp-propio-incompleto",
-                "La configuración de tu servidor de correo está incompleta.");
+            throw new FalloDeCorreoDeEmpresa("smtp-sin-configurar",
+                "Esta empresa no tiene configurado su servidor de correo, y sin él no se envían comprobantes.");
 
         // El nombre se vuelve a resolver en cada envío: el DNS pudo cambiar desde que se guardó.
         var destino = await DestinoSmtp.ResolverAsync(servidor, ct);
@@ -88,13 +80,6 @@ public sealed class ServicioDeCorreoDeEmpresa(
 
         using var correo = Armar(mensaje, new MailboxAddress(config.RemitenteNombre ?? string.Empty, remitente));
         await EnviarPorSmtpAsync(correo, servidor, config.Puerto, destino.Valor, usuario, contrasena, ct);
-    }
-
-    public async Task<string?> ResponderAAsync(string? predeterminado, CancellationToken ct)
-    {
-        var config = await baseDeDatos.CorreosDeEmpresa.AsNoTracking().FirstOrDefaultAsync(ct);
-
-        return config is { Habilitado: false, ResponderA: { Length: > 0 } responderA } ? responderA : predeterminado;
     }
 
     private async Task EnviarPorSmtpAsync(
