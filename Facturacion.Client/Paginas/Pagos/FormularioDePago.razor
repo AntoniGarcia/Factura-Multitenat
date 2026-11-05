@@ -43,6 +43,19 @@ else
     <MudTabs Elevation="0" ApplyEffectsToContainer="true" Class="pestanas-pago">
         <MudTabPanel Text="General">
             <section class="seccion-formulario">
+                <h2 class="seccion-titulo">Sustitución de un pago</h2>
+                <div class="rejilla-formulario">
+                    <MudTextField T="string" Label="Folio fiscal del pago anterior" @bind-Value="_uuidSustituido"
+                                  Disabled="@(!EsEditable || _trabajando)" Immediate="true" Class="cifra-tabular"
+                                  HelperText="Opcional. Relación 04: sustituye el último pago de las mismas facturas." />
+                    @if (EsEditable)
+                    {
+                        <MudButton Variant="Variant.Outlined" Color="Color.Primary" OnClick="CargarAnterior"
+                                   Disabled="@(_trabajando || string.IsNullOrWhiteSpace(_uuidSustituido))">Cargar pago anterior</MudButton>
+                    }
+                </div>
+            </section>
+            <section class="seccion-formulario">
                 <h2 class="seccion-titulo">Datos del pago</h2>
 
                 <div class="rejilla-formulario">
@@ -60,11 +73,11 @@ else
                     <MudTimePicker Label="Hora del pago" @bind-Time="_horaPagoLocal"
                                    Disabled="@(!EsEditable)" Required="true" AmPm="false" />
 
-                    <BuscadorCatalogo Catalogo="c_FormaPago" Label="Forma de pago" @bind-Clave="_formaDePago"
+                    <BuscadorCatalogo Catalogo="c_FormaPago" Label="Forma de pago" Clave="_formaDePago" ClaveChanged="CambiarFormaDePago"
                                      Opciones="@Catalogos.Obtener("c_FormaPago").Where(x => x.Clave != "99").ToArray()"
                                      Deshabilitado="@(!EsEditable)" Requerido="true" PuedeLimpiar="false" />
 
-                    <MudSelect T="string" Label="Moneda" @bind-Value="_moneda" Disabled="@(!EsEditable)">
+                    <MudSelect T="string" Label="Moneda" Value="_moneda" ValueChanged="CambiarMoneda" Disabled="@(!EsEditable)">
                         @foreach (var moneda in _monedasDeCaptura)
                         {
                             <MudSelectItem T="string" Value="@moneda.Clave">@moneda.Clave — @moneda.Descripcion</MudSelectItem>
@@ -83,8 +96,8 @@ else
 
                     <MudNumericField T="decimal" Label="Importe del pago" @bind-Value="_monto"
                                      Immediate="true"
-                                     Disabled="@(!EsEditable)" Format="F2" Class="cifra-tabular"
-                                     HelperText="Debe coincidir con la suma de los abonos." />
+                                     Disabled="@(!EsEditable)" Format="@($"F{DecimalesPago}")" Class="cifra-tabular"
+                                     HelperText="Debe coincidir con los abonos convertidos a esta moneda." />
                 </div>
             </section>
 
@@ -127,8 +140,8 @@ else
                                 — saldo <strong class="cifra-tabular">@encontrado.SaldoPendiente.ToString("N2")</strong>
                                 @encontrado.Moneda, parcialidad @encontrado.NumParcialidad
                             </span>
-                            <MudNumericField T="decimal" Label="Importe a pagar" @bind-Value="_importeAPagar"
-                                             Format="F2" Class="cifra-tabular" Immediate="true" />
+                            <MudNumericField T="decimal" Label="@($"Abono en {encontrado.Moneda}")" @bind-Value="_importeAPagar"
+                                             Format="@($"F{encontrado.DecimalesMoneda}")" Class="cifra-tabular" Immediate="true" />
                             <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="Agregar">Agregar factura</MudButton>
                         </div>
                     }
@@ -146,6 +159,7 @@ else
                                 <MudTh>Folio fiscal</MudTh>
                                 <MudTh>Serie-folio</MudTh>
                                 <MudTh>Moneda</MudTh>
+                                <MudTh>Equivalencia</MudTh>
                                 <MudTh>Parcialidad</MudTh>
                                 <MudTh>Saldo anterior</MudTh>
                                 <MudTh>Importe pagado</MudTh>
@@ -156,22 +170,30 @@ else
                                     <MudTd DataLabel="Folio fiscal" Class="cifra-tabular pago-uuid">@renglon.IdDocumento</MudTd>
                                     <MudTd DataLabel="Serie-folio" Class="cifra-tabular">@renglon.Serie-@renglon.Folio</MudTd>
                                     <MudTd DataLabel="Moneda">@renglon.Moneda</MudTd>
+                                    <MudTd DataLabel="Equivalencia">
+                                        @if (EsEditable && renglon.Moneda != _moneda)
+                                        {
+                                            <MudNumericField T="decimal?" Value="renglon.EquivalenciaDR" ValueChanged="@(v => CambiarEquivalencia(renglon, v))"
+                                                Label="@($"{renglon.Moneda} por 1 {_moneda}")" Immediate="true" Format="0.##########" Min="0.0000000001m" Required="true" />
+                                        }
+                                        else { <span class="cifra-tabular">@renglon.EquivalenciaDR</span> }
+                                    </MudTd>
                                     <MudTd DataLabel="Parcialidad" Class="cifra-tabular">@renglon.NumParcialidad</MudTd>
-                                    <MudTd DataLabel="Saldo anterior" Class="cifra-tabular">@renglon.SaldoAnterior.ToString("N2")</MudTd>
+                                    <MudTd DataLabel="Saldo anterior" Class="cifra-tabular">@renglon.SaldoAnterior.ToString($"N{renglon.DecimalesMoneda}")</MudTd>
                                     <MudTd DataLabel="Importe pagado" Class="cifra-tabular pago-abono">
                                         @if (EsEditable)
                                         {
                                             <MudNumericField T="decimal" Value="renglon.ImpPagado"
                                                 ValueChanged="@(v => CambiarImporte(renglon, v))" Immediate="true"
-                                                Label="@($"Abono {renglon.Serie}-{renglon.Folio}")" Format="F2"
+                                                Label="@($"Abono {renglon.Serie}-{renglon.Folio}")" Format="@($"F{renglon.DecimalesMoneda}")"
                                                 Min="0" Max="renglon.SaldoAnterior" Class="cifra-tabular" />
                                         }
                                         else
                                         {
-                                            @renglon.ImpPagado.ToString("N2")
+                                            @renglon.ImpPagado.ToString($"N{renglon.DecimalesMoneda}")
                                         }
                                     </MudTd>
-                                    <MudTd DataLabel="Saldo insoluto" Class="cifra-tabular">@((renglon.SaldoAnterior - renglon.ImpPagado).ToString("N2"))</MudTd>
+                                    <MudTd DataLabel="Saldo insoluto" Class="cifra-tabular">@((renglon.SaldoAnterior - renglon.ImpPagado).ToString($"N{renglon.DecimalesMoneda}"))</MudTd>
                                     <MudTd DataLabel="Acciones">
                                         @if (EsEditable)
                                         {
@@ -213,15 +235,33 @@ else
                                   Disabled="@(!EsEditable)" Class="cifra-tabular" Immediate="true" />
                 </div>
             </section>
+            <section class="seccion-formulario">
+                <h2 class="seccion-titulo">Comprobante bancario SPEI</h2>
+                <MudCheckBox T="bool" Value="_incluirSpei" ValueChanged="CambiarIncluirSpei"
+                             Label="Incluir datos SPEI" Color="Color.Primary" Disabled="@(!EsEditable || _formaDePago != "03")" />
+                @if (_incluirSpei)
+                {
+                    <p class="seccion-ayuda">Copia los datos bancarios, no los del CSD de la empresa.</p>
+                    <div class="rejilla-formulario">
+                        <MudTextField T="string" Label="Tipo de cadena" Value="@("01 — SPEI")" ReadOnly="true" />
+                        <MudTextField T="string" Label="Certificado del pago (Base64)" @bind-Value="_certPago"
+                                      Lines="3" MaxLength="16384" Required="true" Immediate="true" Disabled="@(!EsEditable)" />
+                        <MudTextField T="string" Label="Cadena original del pago" @bind-Value="_cadPago"
+                                      Lines="3" MaxLength="8192" Required="true" Immediate="true" Disabled="@(!EsEditable)" />
+                        <MudTextField T="string" Label="Sello del pago (Base64)" @bind-Value="_selloPago"
+                                      Lines="3" MaxLength="4096" Required="true" Immediate="true" Disabled="@(!EsEditable)" />
+                    </div>
+                }
+            </section>
         </MudTabPanel>
     </MudTabs>
 
     <section class="pago-resumen @(CuadraElPago ? "" : "pago-resumen-diferencia")" aria-labelledby="pago-resumen-titulo">
         <h2 id="pago-resumen-titulo" class="seccion-titulo">Resumen del pago</h2>
         <dl class="pago-resumen-importes">
-            <div><dt>Importe recibido (@_moneda)</dt><dd class="cifra-tabular">@_monto.ToString("N2")</dd></div>
-            <div><dt>Repartido entre facturas</dt><dd class="cifra-tabular">@Repartido.ToString("N2")</dd></div>
-            <div><dt>Diferencia</dt><dd class="cifra-tabular">@((_monto - Repartido).ToString("N2"))</dd></div>
+            <div><dt>Importe recibido (@_moneda)</dt><dd class="cifra-tabular">@_monto.ToString($"N{DecimalesPago}")</dd></div>
+            <div><dt>Repartido (@_moneda)</dt><dd class="cifra-tabular">@Repartido.ToString($"N{DecimalesPago}")</dd></div>
+            <div><dt>Diferencia</dt><dd class="cifra-tabular">@((CuadraElPago ? 0m : _monto - Repartido).ToString($"N{DecimalesPago}"))</dd></div>
         </dl>
         <p class="seccion-ayuda" role="status">
             @if (!CuadraElPago)
@@ -285,6 +325,11 @@ else
     private string? _ctaOrdenante;
     private string? _rfcBeneficiario;
     private string? _ctaBeneficiario;
+    private string? _uuidSustituido;
+    private bool _incluirSpei;
+    private string? _certPago;
+    private string? _cadPago;
+    private string? _selloPago;
 
     private string _serieBusqueda = string.Empty;
     private int _folioBusqueda;
@@ -295,7 +340,7 @@ else
 
     private sealed record Renglon(
         Guid IdDocumento, string? Serie, string? Folio, string Moneda,
-        int NumParcialidad, decimal SaldoAnterior, decimal ImpPagado);
+        int NumParcialidad, decimal SaldoAnterior, decimal ImpPagado, decimal? EquivalenciaDR = 1m, int DecimalesMoneda = 2);
 
     private Guid? _borradorSinGuardar;
     private IDisposable? _registroDeSalida;
@@ -306,9 +351,11 @@ else
 
     private bool PuedeTimbrar => _integracionFiscal?.TimbradoDisponible == true;
 
-    private decimal Repartido => _renglones.Sum(r => r.ImpPagado);
+    private int DecimalesPago => _pago?.DecimalesPorMoneda.GetValueOrDefault(_moneda, 2) ?? 2;
+    private decimal Repartido => _renglones.Sum(r => r.EquivalenciaDR is > 0 ? r.ImpPagado / r.EquivalenciaDR.Value : 0);
 
-    private bool CuadraElPago => Math.Round(Repartido, 2) == Math.Round(_monto, 2);
+    private bool CuadraElPago => _renglones.All(r => ConversionDePago.EsEquivalenciaValida(r.Moneda, _moneda, r.EquivalenciaDR)) &&
+        ConversionDePago.Cuadra(_monto, DecimalesPago, _renglones.Select(r => (r.ImpPagado, r.EquivalenciaDR ?? 1m, r.DecimalesMoneda, r.Moneda == _moneda)));
 
     private string FolioMostrado => _pago?.Folio is { } folio
         ? $"{_pago.Serie}-{folio}"
@@ -379,10 +426,15 @@ else
         _ctaOrdenante = pago.CtaOrdenante;
         _rfcBeneficiario = pago.RfcEmisorCtaBen;
         _ctaBeneficiario = pago.CtaBeneficiario;
+        _uuidSustituido = pago.UuidSustituido?.ToString("D");
+        _incluirSpei = pago.TipoCadPago is not null;
+        _certPago = pago.CertPago;
+        _cadPago = pago.CadPago;
+        _selloPago = pago.SelloPago;
 
         _renglones.Clear();
         _renglones.AddRange(pago.Documentos.Select(d => new Renglon(
-            d.IdDocumento, d.Serie, d.Folio, d.MonedaDR, d.NumParcialidad, d.ImpSaldoAnt, d.ImpPagado)));
+            d.IdDocumento, d.Serie, d.Folio, d.MonedaDR, d.NumParcialidad, d.ImpSaldoAnt, d.ImpPagado, d.EquivalenciaDR, d.DecimalesMonedaDR)));
     }
 
     private void AlElegirCliente(ClienteEnListaDto? cliente)
@@ -396,6 +448,58 @@ else
         }
         _cliente = cliente;
         _clienteId = cliente?.Id;
+    }
+
+    private async Task CargarAnterior()
+    {
+        if (_trabajando || !EsEditable) return;
+        _aviso = null; _error = null;
+        if (!Guid.TryParse(_uuidSustituido, out var uuid) || uuid == Guid.Empty)
+        {
+            _aviso = "Escribe el folio fiscal del pago anterior.";
+            return;
+        }
+        _trabajando = true;
+        try
+        {
+            var (anterior, error) = await Pagos.ObtenerParaSustituirAsync(uuid);
+            _error = error;
+            if (anterior is null) return;
+            Rehidratar(anterior);
+            _cliente = null;
+            if (_clienteId is { } clienteId && await Clientes.ObtenerAsync(clienteId) is { } cliente)
+                _cliente = new ClienteEnListaDto(cliente.Id, cliente.ClaveInterna, cliente.Rfc, cliente.Nombre,
+                    cliente.RegimenFiscal, cliente.DomicilioFiscalCp, cliente.CorreoPrincipal, cliente.Activo);
+            _encontrado = null;
+            _aviso = "Revisa los datos. Después de emitir el sustituto, cancela el anterior con motivo 01.";
+        }
+        finally { _trabajando = false; }
+    }
+
+    private void CambiarMoneda(string moneda)
+    {
+        if (moneda == _moneda) return;
+        _moneda = moneda; _tipoCambio = null;
+        for (var i = 0; i < _renglones.Count; i++)
+            _renglones[i] = _renglones[i] with { EquivalenciaDR = _renglones[i].Moneda == moneda ? 1m : null };
+    }
+
+    private void CambiarFormaDePago(string forma)
+    {
+        _formaDePago = forma;
+        if (forma != "03") CambiarIncluirSpei(false);
+    }
+
+    private void CambiarIncluirSpei(bool incluir)
+    {
+        _incluirSpei = incluir;
+        if (!incluir) { _certPago = null; _cadPago = null; _selloPago = null; }
+    }
+
+    private void CambiarEquivalencia(Renglon renglon, decimal? valor)
+    {
+        var indice = _renglones.IndexOf(renglon);
+        if (indice >= 0) _renglones[indice] = renglon with { EquivalenciaDR = valor };
     }
 
     private void CambiarImporte(Renglon renglon, decimal importe)
@@ -444,11 +548,11 @@ else
 
         _renglones.Add(new Renglon(
             encontrado.IdDocumento, encontrado.Serie, encontrado.Folio, encontrado.Moneda,
-            encontrado.NumParcialidad, encontrado.SaldoPendiente, _importeAPagar));
+            encontrado.NumParcialidad, encontrado.SaldoPendiente, _importeAPagar, encontrado.Moneda == _moneda ? 1m : null, encontrado.DecimalesMoneda));
 
         // Cuando es el primer renglón, el importe del pago casi siempre es ese: se propone
         // para ahorrar teclear, y queda editable.
-        if (_renglones.Count == 1 && _monto == 0) _monto = _importeAPagar;
+        if (_renglones.Count == 1 && _monto == 0 && encontrado.Moneda == _moneda) _monto = _importeAPagar;
 
         _encontrado = null;
         _importeAPagar = 0;
@@ -471,6 +575,17 @@ else
             return false;
         }
 
+        Guid? sustituido = null;
+        if (!string.IsNullOrWhiteSpace(_uuidSustituido))
+        {
+            if (!Guid.TryParse(_uuidSustituido, out var uuid) || uuid == Guid.Empty)
+            {
+                _aviso = "El folio fiscal del pago anterior no es válido.";
+                return false;
+            }
+            sustituido = uuid;
+        }
+
         var peticion = new PeticionGuardarPago(
             clienteId,
             _fechaPagoUtc,
@@ -484,8 +599,13 @@ else
             _ctaOrdenante,
             _rfcBeneficiario,
             _ctaBeneficiario,
-            [.. _renglones.Select(r => new RenglonDePagoDto(r.IdDocumento, r.ImpPagado))])
+            [.. _renglones.Select(r => new RenglonDePagoDto(r.IdDocumento, r.ImpPagado, r.EquivalenciaDR))])
         {
+            UuidSustituido = sustituido,
+            TipoCadPago = _incluirSpei ? "01" : null,
+            CertPago = _incluirSpei ? _certPago : null,
+            CadPago = _incluirSpei ? _cadPago : null,
+            SelloPago = _incluirSpei ? _selloPago : null,
             FechaPagoLocal = DateTime.SpecifyKind(_fechaPagoLocal.Value.Date.Add(_horaPagoLocal.Value), DateTimeKind.Unspecified)
         };
 

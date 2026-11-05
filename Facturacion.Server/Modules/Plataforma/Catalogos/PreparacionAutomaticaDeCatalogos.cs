@@ -32,6 +32,8 @@ public sealed class PreparacionAutomaticaDeCatalogos(
         Base("c_TipoFactor", "SatTipoFactor"), Base("c_TasaOCuota", "SatTasaOCuota"),
         Base("c_Estado", "SatEstado"), Base("C_Municipio", "SatMunicipio"),
         Base("C_Colonia", "SatColonia"), Base("c_CodigoPostal", "SatCodigoPostal"),
+        Porte("c_MaterialPeligroso", "SatMaterialPeligroso"), Porte("c_TipoEmbalaje", "SatTipoEmbalaje"),
+        Porte("c_SubTipoRem", "SatSubTipoRemolque"),
         Porte("c_ConfigAutotransporte", "SatConfiguracionAutotransporte"),
         Porte("c_TipoPermiso", "SatTipoPermiso"), Porte("c_FiguraTransporte", "SatFiguraTransporte"),
         Porte("c_ClaveProdServCP", "SatClaveProdServCartaPorte"),
@@ -82,6 +84,16 @@ public sealed class PreparacionAutomaticaDeCatalogos(
                         && tablas.Any(t => t.Tabla == i.Tabla && t.Filas > 0)))
                     .Select(v => v.Catalogo).ToHashSet(StringComparer.OrdinalIgnoreCase);
                 var pendientes = Inventario.Where(i => !cargados.Contains(i.Catalogo)).ToArray();
+                // Los catálogos cargados antes de esta ampliación no conservaban los cruces fiscales.
+                var completarFracciones = await db.SatFraccionesArancelarias.AnyAsync(x => x.Vigente && x.UnidadMedida == null, ct);
+                var completarPaises = await db.SatPaises.AnyAsync(x => x.Clave == "USA" && x.FormatoCodigoPostal == null, ct);
+                var completarConfiguraciones = await db.SatConfiguracionesAutotransporte.AnyAsync(x => x.Vigente && x.Remolque == null, ct);
+                var completarMercancias = await db.SatClavesProdServCartaPorte.AnyAsync(x => x.Vigente && x.MaterialPeligroso == null, ct);
+                pendientes = Inventario.Where(i => !cargados.Contains(i.Catalogo) ||
+                    completarFracciones && i.Catalogo == "c_FraccionArancelaria" ||
+                    completarPaises && i.Catalogo == "c_Pais" ||
+                    completarConfiguraciones && i.Catalogo == "c_ConfigAutotransporte" ||
+                    completarMercancias && i.Catalogo == "c_ClaveProdServCP").ToArray();
                 var completados = Inventario.Length - pendientes.Length;
                 estado.Actualizar(new(false, "cargando", "", completados, Inventario.Length));
                 var directorio = configuracion["CatalogosSat:Directorio"]
@@ -134,7 +146,6 @@ public sealed class PreparacionAutomaticaDeCatalogos(
             registro.LogError(error, "Falló la preparación SAT. Referencia: {Referencia}", referencia);
         }
     }
-
     public sealed class FilasPorTabla
     {
         public string Tabla { get; set; } = "";

@@ -8,6 +8,12 @@ public static class ValidadorFiscalDeObra
 {
     public static ErrorNegocio? Validar(Comprobante comprobante, DatosObra obra)
     {
+        if (ServicioParcialConstruccion.Leer(obra.ServicioParcialJson) is { } parcial)
+        {
+            if (ServicioParcialConstruccion.Validar(parcial) is { } error) return error;
+            if (comprobante.TotalImpuestosTrasladados != 0)
+                return ErrorNegocio.Validacion("servicio-parcial-iva", "El servicio parcial con estímulo de vivienda no debe trasladar IVA. Revisa los conceptos.");
+        }
         if (obra.TipoObra is not (TiposDeObra.Publica or TiposDeObra.Privada))
             return ErrorNegocio.Validacion("obra-tipo-invalido",
                 "Indica si el contrato es de obra pública o privada.");

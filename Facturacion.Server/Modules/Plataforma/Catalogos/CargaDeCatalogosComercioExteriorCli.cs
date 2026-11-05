@@ -58,6 +58,11 @@ public static class CargaDeCatalogosComercioExteriorCli
             ?? throw new InvalidOperationException($"El libro no tiene una hoja identificable para {catalogo}.");
 
         var (filaCabecera, columnaClave, columnaDescripcion, columnaInicio, columnaFin) = BuscarCabecera(hoja, catalogo);
+        var cabecera = hoja.GetRow(filaCabecera);
+        var columnaUmt = Enumerable.Range(0, Math.Max(0, (int)cabecera.LastCellNum))
+            .Where(i => Normalizar(cabecera.GetCell(i)?.ToString()) == "umt").Cast<int?>().FirstOrDefault();
+        if (catalogo == "c_FraccionArancelaria" && columnaUmt is null)
+            throw new InvalidOperationException("El catálogo de fracciones debe incluir la columna UMT del SAT.");
         var entradas = new Dictionary<string, T>(StringComparer.OrdinalIgnoreCase);
         var formato = new DataFormatter(CultureInfo.InvariantCulture);
         for (var numero = filaCabecera + 1; numero <= hoja.LastRowNum; numero++)
@@ -78,7 +83,7 @@ public static class CargaDeCatalogosComercioExteriorCli
             var fin = columnaFin is { } indice ? Fecha(fila?.GetCell(indice), formato) : null;
             if (columnaFin is { } finIndice && Texto(fila, finIndice, formato) is not null && fin is null)
                 throw new InvalidOperationException($"La fecha de fin de la fila {numero + 1} no se pudo interpretar.");
-            if (!entradas.TryAdd(clave, new T
+            var nuevo = new T
             {
                 Clave = clave,
                 Descripcion = descripcion,
@@ -86,7 +91,15 @@ public static class CargaDeCatalogosComercioExteriorCli
                 FechaFinVigencia = fin,
                 Vigente = (inicio is null || inicio <= DateOnly.FromDateTime(DateTime.UtcNow)) &&
                     (fin is null || fin >= DateOnly.FromDateTime(DateTime.UtcNow))
-            }))
+            };
+            if (nuevo is SatFraccionArancelaria fraccion)
+            {
+                var unidad = Texto(fila, columnaUmt!.Value, formato);
+                if (!int.TryParse(unidad, NumberStyles.None, CultureInfo.InvariantCulture, out var numeroUnidad) || numeroUnidad is < 1 or > 99)
+                    throw new InvalidOperationException($"La fracción {clave} no tiene una UMT válida.");
+                fraccion.UnidadMedida = numeroUnidad.ToString("D2", CultureInfo.InvariantCulture);
+            }
+            if (!entradas.TryAdd(clave, nuevo))
                 throw new InvalidOperationException($"La clave {clave} está duplicada en el archivo.");
         }
         if (entradas.Count == 0) throw new InvalidOperationException("El archivo no contiene claves.");
@@ -104,6 +117,8 @@ public static class CargaDeCatalogosComercioExteriorCli
             anterior.FechaInicioVigencia = nuevo.FechaInicioVigencia;
             anterior.FechaFinVigencia = nuevo.FechaFinVigencia;
             anterior.Vigente = nuevo.Vigente;
+            if (anterior is SatFraccionArancelaria fraccion && nuevo is SatFraccionArancelaria datos)
+                fraccion.UnidadMedida = datos.UnidadMedida;
         }
         foreach (var (clave, anterior) in existentes)
             if (!entradas.ContainsKey(clave)) anterior.Vigente = false;

@@ -140,6 +140,7 @@
     private decimal _porcentajeAmortizacion;
     private decimal AmortizacionAEnviar => AnticipoRelacionado ? _porcentajeAmortizacion : 0;
     private string? _tipoObra;
+    private ServicioParcialConstruccionDto? _servicioParcial;
     private decimal _porcentajeRetenciones;
     private decimal _porcentajeDevoluciones;
     // Los nombres se asignan en OnParametersSetAsync, que restablece cada deducción. El segundo
@@ -194,6 +195,7 @@
     private bool CoincideConGuardado(decimal importe)
         => _resultado is { } datos && datos.ImporteTrabajos == importe &&
            datos.TipoObra == _tipoObra &&
+           datos.ServicioParcial == _servicioParcial &&
            datos.PorcentajeAmortizacion == AmortizacionAEnviar &&
            datos.PorcentajeRetenciones == _porcentajeRetenciones &&
            datos.PorcentajeDevoluciones == _porcentajeDevoluciones &&
@@ -210,6 +212,7 @@
         _resultado = null;
         _conciliacion = null;
         _tipoObra = null;
+        _servicioParcial = null;
         _porcentajeAmortizacion = 0;
         _porcentajeRetenciones = 0;
         _porcentajeDevoluciones = 0;
@@ -221,6 +224,7 @@
         if (datos is null) return;
         _resultado = datos;
         _tipoObra = datos.TipoObra;
+        _servicioParcial = datos.ServicioParcial;
         _porcentajeAmortizacion = datos.PorcentajeAmortizacion;
         _porcentajeRetenciones = datos.PorcentajeRetenciones ?? 0;
         _porcentajeDevoluciones = datos.PorcentajeDevoluciones ?? 0;
@@ -287,7 +291,7 @@
             if (!await GuardarFactura()) return false;
             var peticion = new PeticionGuardarDatosObra(AmortizacionAEnviar, _porcentajeRetenciones,
                 _porcentajeDevoluciones,
-                [.. _deducciones.Select(x => new PeticionDeduccionDeObra(x.NombreAEnviar, x.PorcentajeAEnviar))], _tipoObra);
+                [.. _deducciones.Select(x => new PeticionDeduccionDeObra(x.NombreAEnviar, x.PorcentajeAEnviar))], _tipoObra) { ServicioParcial = _servicioParcial };
             var (datos, error) = await Obras.GuardarAsync(ComprobanteId, peticion);
             _resultado = datos;
             if (datos is not null) _datosAnterioresSinTasa = false;

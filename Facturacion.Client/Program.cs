@@ -65,6 +65,7 @@ builder.Services.AddScoped<ServicioDeListado>();
 builder.Services.AddScoped<ServicioDeCancelacion>();
 builder.Services.AddScoped<ServicioDeEnvios>();
 builder.Services.AddScoped<ServicioDePagos>();
+builder.Services.AddScoped<ServicioDeNotasCredito>();
 
 // El mismo objeto atiende las dos cosas: la barra superior lo ve como IIndicadorDeTimbres y
 // las pantallas de timbres como ServicioDeTimbres. Se resuelve del contenedor y no se

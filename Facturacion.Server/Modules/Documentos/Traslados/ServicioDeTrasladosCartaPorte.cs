@@ -22,6 +22,7 @@ public sealed class ServicioDeTrasladosCartaPorte(
     IServicioEmpresaEmisora empresaEmisora,
     IServicioClientes clientes,
     HusoDeEmpresa huso,
+    ValidadorFiscalCartaPorte validacionFiscal,
     IServicioDeBitacora bitacora,
     ServicioDeXmlCfdi xml)
 {
@@ -97,7 +98,7 @@ public sealed class ServicioDeTrasladosCartaPorte(
             return ErrorNegocio.Conflicto(
                 "traslado-no-validable", "Solo se puede validar el XML de un traslado en borrador o con error.");
 
-        var resultado = await xml.GenerarAsync(traslado.Comprobante, ct);
+        var resultado = await xml.GenerarParaVistaPreviaAsync(traslado.Comprobante, ct);
         if (resultado.EsFallo)
         {
             if (resultado.Error!.Codigo == "cfdi-no-cumple-el-estandar")
@@ -142,7 +143,7 @@ public sealed class ServicioDeTrasladosCartaPorte(
         traslado.IdCcp ??= NuevoIdCcp();
         CopiarDatosDeTransporte(traslado, validacion.Valor);
         ReemplazarDetalles(traslado, peticion, traslado.Comprobante.EmisorRfc,
-            traslado.Comprobante.EmisorNombre, validacion.Valor.Destinatario);
+            traslado.Comprobante.EmisorNombre, validacion.Valor.Destinatario, validacion.Valor.IndicadoresMercancia);
         ReemplazarRelacionados(traslado.Comprobante, peticion.Relacionados);
         traslado.Comprobante.Observaciones = Recortar(peticion.Observaciones);
         traslado.Comprobante.ModificadoUtc = DateTime.UtcNow;
@@ -265,7 +266,10 @@ public sealed class ServicioDeTrasladosCartaPorte(
                 return ErrorNegocio.Validacion("destinatario-extranjero-no-admitido", "Este traslado nacional requiere un destinatario con RFC mexicano.");
         }
 
-        return new RecursosDeTransporte(vehiculo, figura, destinatario);
+        var fiscal = await validacionFiscal.ValidarAsync(vehiculo.ConfiguracionAutotransporte,
+            p.Mercancias, ct, remolques: p.Remolques, aseguradora: p.AseguraMedAmbiente, poliza: p.PolizaMedAmbiente);
+        if (fiscal.EsFallo) return fiscal.Error!;
+        return new RecursosDeTransporte(vehiculo, figura, destinatario, fiscal.Valor);
     }
 
     private async Task<(DateTime SalidaUtc, DateTime LlegadaUtc)> AFechasUtcAsync(
@@ -311,7 +315,7 @@ public sealed class ServicioDeTrasladosCartaPorte(
             TotalMercancias = p.Mercancias.Count, IdCcp = NuevoIdCcp()
         };
         CopiarDatosDeTransporte(traslado, recursos);
-        ReemplazarDetalles(traslado, p, comprobante.EmisorRfc, comprobante.EmisorNombre, recursos.Destinatario);
+        ReemplazarDetalles(traslado, p, comprobante.EmisorRfc, comprobante.EmisorNombre, recursos.Destinatario, recursos.IndicadoresMercancia);
         return traslado;
     }
 
@@ -335,10 +339,18 @@ public sealed class ServicioDeTrasladosCartaPorte(
 
     private static void ReemplazarDetalles(
         TrasladoCartaPorte traslado, PeticionGuardarTrasladoCartaPorte p, string rfcDeLaEmpresa,
-        string nombreDeLaEmpresa, ReceptorFiscalDto? destinatario)
+        string nombreDeLaEmpresa, ReceptorFiscalDto? destinatario, IReadOnlyDictionary<string, string> indicadores)
     {
+        traslado.AseguraMedAmbiente = Recortar(p.AseguraMedAmbiente);
+        traslado.PolizaMedAmbiente = Recortar(p.PolizaMedAmbiente);
         traslado.Ubicaciones.Clear();
         traslado.Mercancias.Clear();
+        traslado.Remolques.Clear();
+        traslado.Remolques.AddRange((p.Remolques ?? []).Select((x, i) => new RemolqueCartaPorte
+        {
+            Id = Guid.NewGuid(), Orden = i + 1, SubTipoRem = x.SubTipoRem.Trim(),
+            Placa = ReglasDeRemolques.NormalizarPlaca(x.Placa)
+        }));
         traslado.Ubicaciones.AddRange(p.Ubicaciones.Select(x => new UbicacionCartaPorte
         {
             Id = Guid.NewGuid(), Tipo = x.Tipo, Orden = x.Orden,
@@ -353,6 +365,8 @@ public sealed class ServicioDeTrasladosCartaPorte(
             Id = Guid.NewGuid(), Orden = x.Orden, ClaveProdServ = x.ClaveProdServ.Trim(),
             Descripcion = x.Descripcion.Trim(), Cantidad = x.Cantidad, ClaveUnidad = x.ClaveUnidad.Trim(), PesoEnKg = x.PesoEnKg,
             PesoUnitarioKg = x.PesoUnitarioKg, Unidad = Recortar(x.Unidad), Dimensiones = Recortar(x.Dimensiones),
+            MaterialPeligroso = indicadores[x.ClaveProdServ.Trim()] == "0" ? null : x.MaterialPeligroso,
+            CveMaterialPeligroso = Recortar(x.CveMaterialPeligroso), Embalaje = Recortar(x.Embalaje), DescripEmbalaje = Recortar(x.DescripEmbalaje),
             ProductoId = x.ProductoId
         }));
     }
@@ -373,7 +387,7 @@ public sealed class ServicioDeTrasladosCartaPorte(
         => baseDeDatos.TrasladosCartaPorte
             .Include(x => x.Comprobante).ThenInclude(x => x.Conceptos).ThenInclude(x => x.Impuestos)
             .Include(x => x.Comprobante).ThenInclude(x => x.Relacionados)
-            .Include(x => x.Ubicaciones).Include(x => x.Mercancias)
+            .Include(x => x.Ubicaciones).Include(x => x.Mercancias).Include(x => x.Remolques)
             .FirstOrDefaultAsync(x => x.ComprobanteId == comprobanteId, ct);
 
     private async Task<TrasladoCartaPorteDto> ADtoAsync(string estatus, TrasladoCartaPorte x, CancellationToken ct)
@@ -391,6 +405,7 @@ public sealed class ServicioDeTrasladosCartaPorte(
             y.NombreRemitenteDestinatario))],
         [.. x.Mercancias.OrderBy(y => y.Orden).Select(y => new MercanciaCartaPorteDto(y.Orden, y.ClaveProdServ,
             y.Descripcion, y.Cantidad, y.ClaveUnidad, y.PesoEnKg, y.Unidad, y.Dimensiones, y.PesoUnitarioKg,
+            y.MaterialPeligroso, y.CveMaterialPeligroso, y.Embalaje, y.DescripEmbalaje,
             y.ProductoId,
             y.ProductoId is { } productoId && productos.TryGetValue(productoId, out var producto) ? producto.IdInterno : null,
             y.ProductoId is { } otroId && productos.TryGetValue(otroId, out var otro) ? otro.Descripcion : null))],
@@ -399,6 +414,8 @@ public sealed class ServicioDeTrasladosCartaPorte(
             .Select(y => new Facturacion.Shared.Documentos.ComprobanteRelacionadoDto(y.Id, y.TipoRelacion, y.UuidRelacionado, null, null))],
         x.Comprobante.Observaciones)
         {
+            AseguraMedAmbiente = x.AseguraMedAmbiente, PolizaMedAmbiente = x.PolizaMedAmbiente,
+            Remolques = [.. x.Remolques.OrderBy(y => y.Orden).Select(y => new RemolqueCartaPorteDto(y.SubTipoRem, y.Placa))],
             // Son horas de captura: JSON no debe agregar un offset y convertirlas otra vez.
             FechaSalidaLocal = DateTime.SpecifyKind(TimeZoneInfo.ConvertTimeFromUtc(
                 DateTime.SpecifyKind(x.FechaSalidaUtc, DateTimeKind.Utc), zona), DateTimeKind.Unspecified),
@@ -418,10 +435,13 @@ public sealed class ServicioDeTrasladosCartaPorte(
             y.Tipo, y.Orden, y.RfcRemitenteDestinatario, y.NombreRemitenteDestinatario,
             y.Calle, y.NumeroExterior, y.NumeroInterior, y.Estado, y.Municipio, y.CodigoPostal
         }).ToArray(),
+        x.AseguraMedAmbiente, x.PolizaMedAmbiente,
+        Remolques = x.Remolques.OrderBy(y => y.Orden).Select(y => new { y.Orden, y.SubTipoRem, y.Placa }).ToArray(),
         Mercancias = x.Mercancias.OrderBy(y => y.Orden).Select(y => new
         {
             y.Orden, y.ClaveProdServ, y.Descripcion, y.Cantidad, y.ClaveUnidad,
-            y.Unidad, y.Dimensiones, y.PesoUnitarioKg, y.PesoEnKg, y.ProductoId
+            y.Unidad, y.Dimensiones, y.PesoUnitarioKg, y.PesoEnKg, y.MaterialPeligroso, y.CveMaterialPeligroso, y.Embalaje, y.DescripEmbalaje,
+            y.ProductoId
         }).ToArray(),
         Relacionados = x.Comprobante.Relacionados.OrderBy(y => y.TipoRelacion).ThenBy(y => y.UuidRelacionado)
             .Select(y => new { y.TipoRelacion, y.UuidRelacionado }).ToArray()
@@ -435,5 +455,6 @@ public sealed class ServicioDeTrasladosCartaPorte(
 
     private static string? Recortar(string? valor) => string.IsNullOrWhiteSpace(valor) ? null : valor.Trim();
 
-    private sealed record RecursosDeTransporte(Vehiculo Vehiculo, FiguraTransporte Figura, ReceptorFiscalDto? Destinatario);
+    private sealed record RecursosDeTransporte(Vehiculo Vehiculo, FiguraTransporte Figura, ReceptorFiscalDto? Destinatario,
+        IReadOnlyDictionary<string, string> IndicadoresMercancia);
 }

@@ -57,4 +57,10 @@ public sealed class ServicioDePagos(IHttpClientFactory fabrica)
         => respuesta.IsSuccessStatusCode
             ? (await respuesta.Content.ReadFromJsonAsync<T>(ct), null)
             : (default, await respuesta.Content.ReadFromJsonAsync<DetalleProblema>(ct));
+
+    public async Task<(PagoDto? Exito, DetalleProblema? Error)> ObtenerParaSustituirAsync(Guid uuid, CancellationToken ct = default)
+    {
+        using var respuesta = await Cliente.GetAsync($"api/pagos/sustitucion/{uuid}", ct);
+        return await LeerAsync<PagoDto>(respuesta, ct);
+    }
 }

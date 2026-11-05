@@ -44,7 +44,9 @@ public sealed record PeticionGuardarTrasladoCartaPorte(
     IReadOnlyList<MercanciaCartaPorteDto> Mercancias,
     Guid? ClienteDestinoId = null,
     IReadOnlyList<ComprobanteRelacionadoDto>? Relacionados = null,
-    string? Observaciones = null);
+    string? Observaciones = null,
+    IReadOnlyList<RemolqueCartaPorteDto>? Remolques = null,
+    string? AseguraMedAmbiente = null, string? PolizaMedAmbiente = null);
 
 public sealed record UbicacionCartaPorteDto(
     string Tipo,
@@ -68,12 +70,16 @@ public sealed record MercanciaCartaPorteDto(
     string? Unidad = null,
     string? Dimensiones = null,
     decimal? PesoUnitarioKg = null,
+    string? MaterialPeligroso = null,
+    string? CveMaterialPeligroso = null, string? Embalaje = null, string? DescripEmbalaje = null,
     Guid? ProductoId = null,
     string? ProductoIdInterno = null,
     string? ProductoNombre = null);
 
 /// <summary>Resultado de validar el XML de un traslado sin enviarlo a un PAC.</summary>
 public sealed record ValidacionXmlCartaPorteDto(string Mensaje);
+
+public sealed record RemolqueCartaPorteDto(string SubTipoRem, string Placa);
 
 /// <summary>Datos del traslado con instantes UTC y horarios de captura calculados por el servidor.</summary>
 public sealed record TrasladoCartaPorteDto(
@@ -92,6 +98,9 @@ public sealed record TrasladoCartaPorteDto(
     IReadOnlyList<ComprobanteRelacionadoDto>? Relacionados = null,
     string? Observaciones = null)
 {
+    public string? AseguraMedAmbiente { get; init; }
+    public string? PolizaMedAmbiente { get; init; }
     public DateTime FechaSalidaLocal { get; init; }
     public DateTime FechaLlegadaLocal { get; init; }
+    public IReadOnlyList<RemolqueCartaPorteDto> Remolques { get; init; } = [];
 }

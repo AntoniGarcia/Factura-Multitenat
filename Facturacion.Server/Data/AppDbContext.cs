@@ -1,4 +1,4 @@
-﻿using Facturacion.Server.Data.Entidades.Documentos;
+using Facturacion.Server.Data.Entidades.Documentos;
 using Facturacion.Server.Data.Entidades.Plataforma;
 using Facturacion.Server.Data.Entidades.Plataforma.Catalogos;
 using Facturacion.Server.Data.Entidades.Transporte;
@@ -92,6 +92,9 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> opciones, IConte
     public DbSet<SatCodigoPostal> SatCodigosPostales => Set<SatCodigoPostal>();
     public DbSet<SatConfiguracionAutotransporte> SatConfiguracionesAutotransporte => Set<SatConfiguracionAutotransporte>();
     public DbSet<SatTipoPermiso> SatTiposPermiso => Set<SatTipoPermiso>();
+    public DbSet<SatMaterialPeligroso> SatMaterialesPeligrosos => Set<SatMaterialPeligroso>();
+    public DbSet<SatTipoEmbalaje> SatTiposEmbalaje => Set<SatTipoEmbalaje>();
+    public DbSet<SatSubTipoRemolque> SatSubTiposRemolque => Set<SatSubTipoRemolque>();
     public DbSet<SatFiguraTransporte> SatFigurasTransporte => Set<SatFiguraTransporte>();
     public DbSet<SatClaveProdServCartaPorte> SatClavesProdServCartaPorte => Set<SatClaveProdServCartaPorte>();
     public DbSet<SatIncoterm> SatIncoterms => Set<SatIncoterm>();

@@ -12,6 +12,7 @@ public sealed class SatConfiguracionAutotransporteConfiguracion : IEntityTypeCon
     private static void Configurar(EntityTypeBuilder<SatConfiguracionAutotransporte> constructor, string tabla)
     {
         constructor.ToTable(tabla);
+        constructor.Property(x => x.Remolque).HasMaxLength(3);
         constructor.HasKey(x => x.Clave);
         constructor.Property(x => x.Clave).HasMaxLength(10);
         constructor.Property(x => x.Descripcion).HasMaxLength(500);
@@ -45,6 +46,7 @@ public sealed class SatClaveProdServCartaPorteConfiguracion : IEntityTypeConfigu
     public void Configure(EntityTypeBuilder<SatClaveProdServCartaPorte> constructor)
     {
         constructor.ToTable("SatClaveProdServCartaPorte");
+        constructor.Property(x => x.MaterialPeligroso).HasMaxLength(3);
         constructor.HasKey(x => x.Clave);
         constructor.Property(x => x.Clave).HasMaxLength(8);
         constructor.Property(x => x.Descripcion).HasMaxLength(500);

@@ -81,6 +81,10 @@ public sealed class SatPaisConfiguracion : IEntityTypeConfiguration<SatPais>
         c.HasKey(x => x.Clave);
         c.Property(x => x.Clave).HasMaxLength(3);
         c.Property(x => x.Descripcion).HasMaxLength(254);
+        c.Property(x => x.FormatoCodigoPostal).HasMaxLength(2000);
+        c.Property(x => x.FormatoRegistroTributario).HasMaxLength(2000);
+        c.Property(x => x.ValidacionRegistroTributario).HasMaxLength(2000);
+        c.Property(x => x.Agrupaciones).HasMaxLength(500);
     }
 }
 

@@ -721,7 +721,8 @@ else
                     Impuestos = concepto.Impuestos,
                     TasasDeRetencionDelProducto = TasasDeRetencion(concepto.Impuestos),
                     Retenciones = [.. concepto.Impuestos.Where(x => x.EsRetencion).Select(x => x.Impuesto)],
-                    AplicaIsh = concepto.AplicaIsh
+                    AplicaIsh = concepto.AplicaIsh,
+                    DatosFiscales = concepto.DatosFiscales
                 });
             }
 
@@ -793,8 +794,9 @@ else
     /// retiene ISR no ve esa casilla.
     /// </summary>
     private IReadOnlyList<string> RetencionesDisponibles(RenglonConcepto renglon)
-        => EsFacturaBasica && EsEditable && renglon.ObjetoImp == "02"
-            ? [.. ClavesDeRetencion.Where(c => renglon.TasasDeRetencionDelProducto.ContainsKey(c) || TasaDeConfiguracion(c) > 0)]
+        => EsFacturaBasica && EsEditable
+            ? [.. ClavesDeRetencion.Where(c => ReglasDeObjetoImpuesto.PermiteImpuesto(renglon.ObjetoImp, c, true) &&
+                (renglon.TasasDeRetencionDelProducto.ContainsKey(c) || TasaDeConfiguracion(c) > 0))]
             : [];
 
     private decimal TasaDeConfiguracion(string clave) => clave switch
@@ -1034,7 +1036,7 @@ else
                 EsFacturaComercio ? r.NoIdentificacion : null,
                 r.Descripcion!, r.Cantidad, r.ValorUnitario, r.Importe, r.Descuento, r.ObjetoImp!, r.Impuestos,
                 EsFacturaBasica ? [.. r.Retenciones] : null,
-                EsFacturaBasica && r.AplicaIsh))],
+                EsFacturaBasica && r.AplicaIsh) { DatosFiscales = r.DatosFiscales })],
             _relacionados,
             EsPublicoEnGeneral ? _receptorNombre ?? string.Empty : null,
             EsFacturaBasica && _renglones.Any(r => r.AplicaIsh) && _ishPct is { } ish ? ish / 100m : null);
@@ -1160,6 +1162,7 @@ else
         public HashSet<string> Retenciones { get; set; } = [];
 
         public bool AplicaIsh { get; set; }
+        public DatosFiscalesDeConceptoDto? DatosFiscales { get; set; }
 
         /// <summary>
         /// Retenciones con las que llegó el renglón, del producto o del borrador guardado. Sirven

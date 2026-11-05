@@ -6,6 +6,8 @@ using Facturacion.Server.Data;
 using Facturacion.Server.Data.Entidades.Documentos;
 using Facturacion.Server.Modules.Documentos.ComercioExterior;
 using Facturacion.Server.Modules.Documentos.Obras;
+using Facturacion.Server.Modules.Documentos.Egresos;
+using Facturacion.Server.Modules.Documentos.Traslados;
 using Facturacion.Shared.ComercioExterior;
 using Facturacion.Server.Infra.Tenencia;
 using Facturacion.Shared.Comun;
@@ -42,10 +44,14 @@ public sealed class ServicioDeXmlCfdi(
     GeneradorDeXmlCartaPorte generadorCartaPorte,
     GeneradorDeXmlNotaria generadorNotaria,
     GeneradorDeXmlComercioExterior generadorComercio,
+    ValidadorFiscalDeComercioExterior validacionComercio,
+    ValidadorFiscalCartaPorte validacionCartaPorte,
     EsquemasSat esquemas,
     HusoDeEmpresa huso,
+    ServicioDeNotasCredito notasCredito,
     IProveedorCsdParaTimbrado csd,
-    ILogger<ServicioDeXmlCfdi> registro)
+    ILogger<ServicioDeXmlCfdi> registro,
+    RevisionDeDocumentos? revision = null)
 {
     // XNamespace y no string: «espacio + "Nodo"» entre dos string solo concatena, y el nombre
     // resultante —con los «:» de la URL— hace que XName reviente al buscar el nodo.
@@ -54,9 +60,26 @@ public sealed class ServicioDeXmlCfdi(
     private static readonly XNamespace EspacioImpuestosLocales = EsquemasSat.EspacioDeNombresImpuestosLocales;
     private static readonly XNamespace EspacioPagos = EsquemasSat.EspacioDeNombresPagos20;
 
-    public async Task<Resultado<CfdiSellado>> GenerarAsync(Comprobante comprobante, CancellationToken ct)
+    public Task<Resultado<CfdiSellado>> GenerarAsync(Comprobante comprobante, CancellationToken ct)
+        => GenerarInternoAsync(comprobante, false, ct);
+
+    public Task<Resultado<CfdiSellado>> GenerarParaVistaPreviaAsync(Comprobante comprobante, CancellationToken ct)
+        => revision?.Habilitada == true ? GenerarParaRevisionAsync(comprobante, ct) : GenerarAsync(comprobante, ct);
+
+    public Task<Resultado<CfdiSellado>> GenerarParaRevisionAsync(Comprobante comprobante, CancellationToken ct)
+        => revision?.Admite(comprobante.Estatus, comprobante.TipoDeComprobante) == true
+            ? GenerarInternoAsync(comprobante, true, ct)
+            : Task.FromResult<Resultado<CfdiSellado>>(ErrorNegocio.Conflicto("revision-no-disponible", "El XML de revisión no está disponible para este documento."));
+
+    private async Task<Resultado<CfdiSellado>> GenerarInternoAsync(Comprobante comprobante, bool esRevision, CancellationToken ct)
     {
         var esPago = comprobante.TipoDeComprobante == TiposDeComprobante.Pago;
+
+        if (comprobante.TipoDeComprobante == "E")
+        {
+            var notaValida = await notasCredito.ValidarParaEmisionAsync(comprobante, ct);
+            if (notaValida.EsFallo) return notaValida.Error!;
+        }
 
         // Un CFDI de pago no guarda conceptos: lleva uno fijo que sintetiza el generador. Lo
         // que no puede faltarle es el pago en sí.
@@ -69,6 +92,14 @@ public sealed class ServicioDeXmlCfdi(
         {
             return ErrorNegocio.Regla("comprobante-sin-conceptos", "El comprobante no tiene conceptos.");
         }
+
+        if (ReglasDeObjetoImpuesto.ValidarCombinacion(comprobante.Conceptos.Select(c => c.ObjetoImp)) is { } mezcla)
+            return ErrorNegocio.Validacion("objeto-05-no-combinable", mezcla);
+
+        foreach (var concepto in comprobante.Conceptos)
+            if (ReglasDeObjetoImpuesto.Validar(concepto.ObjetoImp,
+                    concepto.Impuestos.Select(i => (i.Impuesto, i.EsRetencion))) is { } errorObjeto)
+                return ErrorNegocio.Validacion("objeto-impuesto-invalido", $"Renglón {concepto.Orden}: {errorObjeto}");
 
         // La raíz de un pago va en XXX, que no tiene decimales. Los importes que sí llevan
         // dinero viven dentro del complemento y usan la moneda del pago: tomar los decimales
@@ -89,7 +120,7 @@ public sealed class ServicioDeXmlCfdi(
         CsdDescifradoDto material;
         try
         {
-            material = await csd.ObtenerAsync(ct);
+            material = esRevision ? RevisionDeDocumentos.CrearCertificado() : await csd.ObtenerAsync(ct);
         }
         catch (InvalidOperationException ex)
         {
@@ -112,7 +143,7 @@ public sealed class ServicioDeXmlCfdi(
             var traslado = await baseDeDatos.TrasladosCartaPorte
                 .AsNoTracking()
                 .Include(x => x.Ubicaciones)
-                .Include(x => x.Mercancias)
+                .Include(x => x.Mercancias).Include(x => x.Remolques)
                 .FirstOrDefaultAsync(x => x.ComprobanteId == comprobante.Id, ct);
 
             if (traslado is null)
@@ -120,6 +151,12 @@ public sealed class ServicioDeXmlCfdi(
                     "traslado-sin-carta-porte",
                     "El CFDI de traslado no tiene los datos de Carta Porte requeridos.");
 
+            var fiscal = await validacionCartaPorte.ValidarAsync(traslado.VehiculoConfiguracionAutotransporte ?? "",
+                traslado.Mercancias.Select(x => new Facturacion.Shared.Transporte.MercanciaCartaPorteDto(x.Orden, x.ClaveProdServ, x.Descripcion, x.Cantidad, x.ClaveUnidad, x.PesoEnKg,
+                    x.Unidad, x.Dimensiones, x.PesoUnitarioKg, x.MaterialPeligroso, x.CveMaterialPeligroso, x.Embalaje, x.DescripEmbalaje)).ToArray(), ct, guardadas: true,
+                remolques: traslado.Remolques.Select(x => new Facturacion.Shared.Transporte.RemolqueCartaPorteDto(x.SubTipoRem, x.Placa)).ToArray(),
+                aseguradora: traslado.AseguraMedAmbiente, poliza: traslado.PolizaMedAmbiente);
+            if (fiscal.EsFallo) return fiscal.Error!;
             var cartaPorte = generadorCartaPorte.Generar(comprobante, datosDeEmision, traslado, zonaHoraria);
             if (cartaPorte.EsFallo) return cartaPorte.Error!;
 
@@ -186,9 +223,11 @@ public sealed class ServicioDeXmlCfdi(
                     return ErrorNegocio.Regla("comercio-datos-corruptos",
                         "No se pudieron leer los datos de Comercio Exterior guardados.");
                 Resultado<XElement> complemento;
+                if (await validacionComercio.ValidarAsync(comprobante, datosComercio, ct) is { } errorComercio)
+                    return errorComercio;
                 try
                 {
-                    complemento = generadorComercio.GenerarElemento(comprobante, datosComercio);
+                    complemento = generadorComercio.GenerarElemento(comprobante, datosComercio, decimales.Value);
                 }
                 catch (FileNotFoundException ex)
                 {
@@ -213,6 +252,18 @@ public sealed class ServicioDeXmlCfdi(
                 var notarial = generadorNotaria.Generar(comprobante, datosDeEmision, datosNotaria, notario);
                 if (notarial.EsFallo) return notarial.Error!;
                 documento = notarial.Valor;
+            }
+            if (ServicioParcialConstruccion.Leer(datosObra?.ServicioParcialJson) is { } parcial)
+            {
+                var raiz = documento.Root!;
+                XNamespace cfdi = EsquemasSat.EspacioDeNombresCfdi;
+                var complemento = raiz.Element(cfdi + "Complemento");
+                if (complemento is null) { complemento = new XElement(cfdi + "Complemento"); raiz.Add(complemento); }
+                complemento.Add(ServicioParcialConstruccion.Generar(parcial));
+                raiz.SetAttributeValue(XNamespace.Xmlns + "servicioparcial", ServicioParcialConstruccion.Espacio);
+                XNamespace xsi = "http://www.w3.org/2001/XMLSchema-instance";
+                raiz.SetAttributeValue(xsi + "schemaLocation", (string?)raiz.Attribute(xsi + "schemaLocation") + " " +
+                    ServicioParcialConstruccion.Espacio + " http://www.sat.gob.mx/sitio_internet/cfd/servicioparcialconstruccion/servicioparcialconstruccion.xsd");
             }
         }
         else
@@ -254,6 +305,8 @@ public sealed class ServicioDeXmlCfdi(
             return ErrorNegocio.Regla("esquemas-sat-incompletos", "Falta un esquema del SAT para validar el XML. Avisa a soporte.");
         }
 
+        if (esRevision)
+            documento.AddFirst(new XComment("BORRADOR DE REVISION. CERTIFICADO SINTETICO. SIN TIMBRE NI VALIDEZ FISCAL."));
         return new CfdiSellado(FirmaDeXmlCfdi.Serializar(documento), cadena, sello, material.NumeroSerie);
     }
 
@@ -273,6 +326,7 @@ public sealed class ServicioDeXmlCfdi(
         {
             ValidationType = ValidationType.Schema,
             Schemas = esCartaPorte ? esquemas.EsquemaCartaPorte : esNotaria ? esquemas.EsquemaNotaria :
+                documento.Descendants(XNamespace.Get(ServicioParcialConstruccion.Espacio) + "parcialesconstruccion").Any() ? esquemas.EsquemaServiciosParciales :
                 esComercio ? esquemas.EsquemaCfdiComercioExterior :
                 esImpuestosLocales ? esquemas.EsquemaCfdiImpuestosLocales :
                 esPago ? esquemas.EsquemaCfdiPagos : esquemas.Esquema,

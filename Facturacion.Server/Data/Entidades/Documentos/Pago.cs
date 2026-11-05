@@ -62,6 +62,11 @@ public sealed class Pago : IEntidadDeEmpresa
 
     public string? CtaBeneficiario { get; set; }
 
+    public string? TipoCadPago { get; set; }
+    public string? CertPago { get; set; }
+    public string? CadPago { get; set; }
+    public string? SelloPago { get; set; }
+
     public List<DocumentoPagado> Documentos { get; set; } = [];
 }
 
@@ -75,6 +80,7 @@ public sealed class Pago : IEntidadDeEmpresa
 /// </summary>
 public sealed class DocumentoPagado : IEntidadDeEmpresa
 {
+    public int DecimalesMonedaDR { get; set; } = 2;
     public Guid Id { get; set; }
 
     public Guid EmpresaId { get; set; }

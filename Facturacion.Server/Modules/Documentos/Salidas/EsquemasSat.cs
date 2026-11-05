@@ -89,6 +89,7 @@ public sealed class EsquemasSat
     private readonly Lazy<XmlSchemaSet> _esquemaCfdiComercioExterior;
     private readonly Lazy<XmlSchemaSet> _esquemaCfdiImpuestosLocales;
     private readonly Lazy<XmlSchemaSet> _esquemaCfdiPagos;
+    private readonly Lazy<XmlSchemaSet> _esquemaServiciosParciales;
     private readonly Lazy<XslCompiledTransform> _cadenaOriginal;
 
     public EsquemasSat(IHostEnvironment entorno, Microsoft.Extensions.Options.IOptions<OpcionesDeEsquemasSat> opciones)
@@ -109,6 +110,13 @@ public sealed class EsquemasSat
         _esquemaCfdiComercioExterior = new Lazy<XmlSchemaSet>(CargarEsquemaCfdiComercioExterior);
         _esquemaCfdiImpuestosLocales = new Lazy<XmlSchemaSet>(CargarEsquemaCfdiImpuestosLocales);
         _esquemaCfdiPagos = new Lazy<XmlSchemaSet>(CargarEsquemaCfdiPagos);
+        _esquemaServiciosParciales = new Lazy<XmlSchemaSet>(() =>
+        {
+            var conjunto = new XmlSchemaSet { XmlResolver = new ResolutorDeEsquemasSat(_raiz) };
+            conjunto.Add(EsquemaCfdiImpuestosLocales);
+            using var lector = XmlReader.Create(Path.Combine(_raiz, "servicioparcialconstruccion.xsd"), new XmlReaderSettings { DtdProcessing = DtdProcessing.Prohibit });
+            conjunto.Add(Obras.ServicioParcialConstruccion.Espacio, lector); conjunto.Compile(); return conjunto;
+        });
         _cadenaOriginal = new Lazy<XslCompiledTransform>(CargarCadenaOriginal);
     }
 
@@ -127,6 +135,7 @@ public sealed class EsquemasSat
 
     /// <summary>Esquema de CFDI 4.0 con el complemento de pagos 2.0.</summary>
     public XmlSchemaSet EsquemaCfdiPagos => _esquemaCfdiPagos.Value;
+    public XmlSchemaSet EsquemaServiciosParciales => _esquemaServiciosParciales.Value;
 
     public XslCompiledTransform CadenaOriginal => _cadenaOriginal.Value;
 

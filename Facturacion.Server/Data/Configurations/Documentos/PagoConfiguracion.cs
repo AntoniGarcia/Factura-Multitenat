@@ -21,6 +21,10 @@ public sealed class PagoConfiguracion : IEntityTypeConfiguration<Pago>
         constructor.Property(p => p.CtaOrdenante).HasMaxLength(50);
         constructor.Property(p => p.RfcEmisorCtaBen).HasMaxLength(13);
         constructor.Property(p => p.CtaBeneficiario).HasMaxLength(50);
+        constructor.Property(p => p.TipoCadPago).HasMaxLength(2);
+        constructor.Property(p => p.CertPago).HasMaxLength(16384);
+        constructor.Property(p => p.CadPago).HasMaxLength(8192);
+        constructor.Property(p => p.SelloPago).HasMaxLength(4096);
 
         constructor.Property(p => p.Monto).HasPrecision(18, 6);
         constructor.Property(p => p.TipoCambioP).HasPrecision(18, 6);
@@ -57,7 +61,8 @@ public sealed class DocumentoPagadoConfiguracion : IEntityTypeConfiguration<Docu
         constructor.Property(d => d.MonedaDR).HasMaxLength(3);
         constructor.Property(d => d.ObjetoImpDR).HasMaxLength(2);
 
-        constructor.Property(d => d.EquivalenciaDR).HasPrecision(18, 6);
+        constructor.Property(d => d.EquivalenciaDR).HasPrecision(28, 10);
+        constructor.Property(d => d.DecimalesMonedaDR).HasDefaultValue(2).HasSentinel(-1);
         constructor.Property(d => d.ImpSaldoAnt).HasPrecision(18, 6);
         constructor.Property(d => d.ImpPagado).HasPrecision(18, 6);
         constructor.Property(d => d.ImpSaldoInsoluto).HasPrecision(18, 6);

@@ -71,6 +71,10 @@ public sealed class SatTipoRelacion : ISatCatalogoSimple
 
 public sealed class SatPais : ISatCatalogoSimple
 {
+    public string? FormatoCodigoPostal { get; set; }
+    public string? FormatoRegistroTributario { get; set; }
+    public string? ValidacionRegistroTributario { get; set; }
+    public string? Agrupaciones { get; set; }
     public string Clave { get; set; } = "";
     public string Descripcion { get; set; } = "";
     public DateOnly FechaInicioVigencia { get; set; }

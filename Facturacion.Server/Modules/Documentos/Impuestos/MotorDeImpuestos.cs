@@ -91,6 +91,9 @@ public static class MotorDeImpuestos
         if (comprobante.Conceptos.Count == 0)
             return ErrorNegocio.Validacion("sin-conceptos", "El comprobante necesita al menos un concepto.");
 
+        if (ReglasDeObjetoImpuesto.ValidarCombinacion(comprobante.Conceptos.Select(c => c.ObjetoImp)) is { } mezcla)
+            return ErrorNegocio.Validacion("objeto-05-no-combinable", mezcla);
+
         if (string.IsNullOrWhiteSpace(comprobante.Moneda))
             return ErrorNegocio.Validacion("sin-moneda", "El comprobante necesita una moneda.");
 
@@ -141,6 +144,10 @@ public static class MotorDeImpuestos
             return ErrorNegocio.Validacion(
                 "si-objeto-sin-impuestos",
                 $"El renglón {renglon} está marcado como objeto de impuesto y no trae ninguno.");
+
+        if (ReglasDeObjetoImpuesto.Validar(concepto.ObjetoImp,
+                concepto.Impuestos.Select(i => (i.Impuesto, i.EsRetencion))) is { } errorObjeto)
+            return ErrorNegocio.Validacion("objeto-impuesto-invalido", $"Renglón {renglon}: {errorObjeto}");
 
         foreach (var impuesto in concepto.Impuestos)
         {

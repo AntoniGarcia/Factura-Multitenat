@@ -27,7 +27,8 @@ public static class TimbradoEndpoints
     private static IResult ObtenerEstadoDeIntegracion(IServiceProvider servicios)
     {
         var pac = servicios.GetService<IProveedorPac>();
-        return Results.Ok(new EstadoDeIntegracionFiscalDto(pac is not null, pac is Dobles.DobleProveedorPac));
+        return Results.Ok(new EstadoDeIntegracionFiscalDto(pac is not null, pac is Dobles.DobleProveedorPac,
+            servicios.GetService<Salidas.RevisionDeDocumentos>()?.Habilitada == true));
     }
 
     private static async Task<IResult> Timbrar(

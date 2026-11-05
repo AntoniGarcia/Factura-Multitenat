@@ -184,6 +184,18 @@ public sealed class GeneradorDeXmlCfdi
                 nodo.Add(impuestos);
             }
 
+            var fiscales = Emision.DatosFiscalesDeConcepto.Leer(c.Concepto.DatosFiscalesJson);
+            if (fiscales?.Tercero is { } tercero)
+                nodo.Add(new XElement(Cfdi + "ACuentaTerceros", new XAttribute("RfcACuentaTerceros", tercero.Rfc),
+                    new XAttribute("NombreACuentaTerceros", tercero.Nombre), new XAttribute("RegimenFiscalACuentaTerceros", tercero.RegimenFiscal),
+                    new XAttribute("DomicilioFiscalACuentaTerceros", tercero.CodigoPostal)));
+            if (fiscales is not null)
+            {
+                foreach (var pedimento in fiscales.Pedimentos)
+                    nodo.Add(new XElement(Cfdi + "InformacionAduanera", new XAttribute("NumeroPedimento", pedimento)));
+                foreach (var cuenta in fiscales.CuentasPrediales)
+                    nodo.Add(new XElement(Cfdi + "CuentaPredial", new XAttribute("Numero", cuenta)));
+            }
             return nodo;
         })));
 

@@ -290,10 +290,11 @@ public sealed class ServicioDeNotaria(
     {
         if (peticion.NumeroInstrumentoNotarial is < 1 or > 999999 ||
             peticion.FechaInstrumentoNotarial == default ||
-            peticion.MontoOperacion < 0 || peticion.SubtotalOperacion < 0 || peticion.IvaOperacion < 0)
+            !ImporteValido(peticion.MontoOperacion) || !ImporteValido(peticion.SubtotalOperacion) ||
+            !ImporteValido(peticion.IvaOperacion))
             return ErrorNegocio.Validacion(
                 "operacion-notarial-invalida",
-                "Completa el instrumento, su fecha y los importes no negativos de la operación.");
+                "Revisa el instrumento y su fecha. Los importes admiten hasta 12 enteros y 6 decimales, sin negativos.");
 
         if (decimal.Round(peticion.SubtotalOperacion + peticion.IvaOperacion, 6, MidpointRounding.ToEven) !=
             decimal.Round(peticion.MontoOperacion, 6, MidpointRounding.ToEven))
@@ -345,6 +346,9 @@ public sealed class ServicioDeNotaria(
 
         return true;
     }
+
+    private static bool ImporteValido(decimal importe)
+        => importe is >= 0 and <= 999999999999.999999m && decimal.Round(importe, 6) == importe;
 
     private static string? ErrorDeInmueble(InmuebleNotarialDto inmueble)
     {

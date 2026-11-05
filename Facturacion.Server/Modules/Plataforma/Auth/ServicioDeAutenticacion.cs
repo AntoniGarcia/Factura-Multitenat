@@ -204,7 +204,10 @@ public sealed class ServicioDeAutenticacion(
     {
         var (usuario, familiaId) = await LeerDelToken(ct);
 
-        if (usuario is null || familiaId is null)
+        if (usuario is null || !usuario.Activo || familiaId is null ||
+            !await baseDeDatos.RefreshTokens.AnyAsync(t => t.UsuarioId == usuario.Id && t.FamiliaId == familiaId.Value &&
+                t.ConsumidoUtc == null && t.RevocadoUtc == null && t.ExpiraUtc > DateTime.UtcNow, ct) ||
+            await baseDeDatos.RefreshTokens.AnyAsync(t => t.FamiliaId == familiaId.Value && t.RevocadoUtc != null, ct))
             return ErrorNegocio.Validacion("sesion-no-valida", "Tu sesión terminó. Inicia sesión otra vez.");
 
         var tieneAcceso = await baseDeDatos.UsuariosEmpresas.AnyAsync(

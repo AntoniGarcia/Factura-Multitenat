@@ -1,5 +1,6 @@
 using System.Globalization;
 using System.Text;
+using Facturacion.Shared.Comun;
 using Facturacion.Shared.Plataforma;
 
 namespace Facturacion.Server.Modules.Plataforma.Productos;
@@ -151,12 +152,10 @@ public static class LectorDeCsvDeProductos
     {
         error = null;
 
-        // Objeto de impuesto sin desglose: el renglón no lleva impuestos, y si el archivo
-        // trae algo en la columna es que el contador se contradijo.
-        if (objetoImp is "01" or "03")
+        if (!ReglasDeObjetoImpuesto.PermiteImpuesto(objetoImp, "002", false))
         {
             if (!string.IsNullOrWhiteSpace(iva) && !iva.Equals("no", StringComparison.OrdinalIgnoreCase))
-                error = $"El objeto de impuesto {objetoImp} no lleva desglose, pero la columna Iva dice «{iva}».";
+                error = $"El objeto de impuesto {objetoImp} no admite IVA desglosado. Deja la columna Iva vacía o escribe no.";
 
             return [];
         }

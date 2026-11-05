@@ -100,7 +100,7 @@ else
                 @if (!LlevaDesglose)
                 {
                     <div class="aviso-reservado" role="note">
-                        <p>Con este objeto de impuesto el concepto no lleva desglose, así que no se configuran impuestos.</p>
+                        <p>Este objeto de impuesto no lleva desglose.</p>
                     </div>
                 }
                 else
@@ -110,7 +110,7 @@ else
                     </p>
 
                     <div class="atajos-iva">
-                        @foreach (var atajo in Atajos)
+                        @foreach (var atajo in Atajos.Where(_ => ReglasDeObjetoImpuesto.PermiteImpuesto(_objetoImp, "002", false)))
                         {
                             <MudButton Variant="@(EsAtajoActivo(atajo) ? Variant.Filled : Variant.Outlined)"
                                        Size="Size.Small"
@@ -168,7 +168,7 @@ else
 
                     <h3 class="seccion-subtitulo">Agregar otro impuesto</h3>
                     <div class="rejilla-campos">
-<BuscadorCatalogo Catalogo="c_Impuesto" Opciones="@Catalogos.Obtener("c_Impuesto")" @bind-Clave="_nuevoImpuesto" Label="Impuesto" PuedeLimpiar="false" />
+<BuscadorCatalogo Catalogo="c_Impuesto" Opciones="@(Catalogos.Obtener("c_Impuesto").Where(i => ReglasDeObjetoImpuesto.PermiteImpuesto(_objetoImp, i.Clave, _nuevoEsRetencion)).ToArray())" @bind-Clave="_nuevoImpuesto" Label="Impuesto" PuedeLimpiar="false" />
 
 <BuscadorCatalogo Catalogo="c_TipoFactor" Opciones="@Catalogos.Obtener("c_TipoFactor")" @bind-Clave="_nuevoFactor" Label="Tipo de factor" PuedeLimpiar="false" />
 
@@ -176,11 +176,15 @@ else
                                          Class="cifra-tabular" HelperText="0.16 es 16 %. Vacío si es exento." />
 
                         <MudSelect T="bool" @bind-Value="_nuevoEsRetencion" Label="Sentido">
-                            <MudSelectItem T="bool" Value="false">Traslado</MudSelectItem>
+                            @if (_objetoImp is not ("06" or "08"))
+                            {
+                                <MudSelectItem T="bool" Value="false">Traslado</MudSelectItem>
+                            }
                             <MudSelectItem T="bool" Value="true">Retención</MudSelectItem>
                         </MudSelect>
 
-                        <MudButton Variant="Variant.Outlined" OnClick="AgregarImpuesto">Agregar</MudButton>
+                        <MudButton Variant="Variant.Outlined" OnClick="AgregarImpuesto"
+                                   Disabled="@(!ReglasDeObjetoImpuesto.PermiteImpuesto(_objetoImp, _nuevoImpuesto, _nuevoEsRetencion))">Agregar</MudButton>
                     </div>
                 }
                 </section>
@@ -212,8 +216,7 @@ else
 
     private bool EsNuevo => Id is null;
 
-    /// <summary>Objetos de impuesto que no llevan desglose; los mismos que valida el servidor.</summary>
-    private bool LlevaDesglose => _objetoImp is not ("01" or "03");
+    private bool LlevaDesglose => ReglasDeObjetoImpuesto.PermiteDesglose(_objetoImp);
 
     private DetalleProblema? _error;
     private bool _cargando = true;
@@ -278,6 +281,7 @@ else
 
                 _impuestos.Clear();
                 _impuestos.AddRange(producto.Impuestos);
+                PrepararNuevoImpuesto();
 
                 // Se resuelven contra el catálogo para poder mostrar la descripción, que es
                 // lo que le dice al capturista si eligió la clave correcta.
@@ -315,9 +319,22 @@ else
 
     private void AlCambiarObjeto()
     {
-        // Cambiar a un objeto sin desglose limpia los impuestos: dejarlos produciría un
-        // error del servidor que el usuario no entendería.
-        if (!LlevaDesglose) _impuestos.Clear();
+        _impuestos.RemoveAll(i => !ReglasDeObjetoImpuesto.PermiteImpuesto(_objetoImp, i.Impuesto, i.EsRetencion));
+        PrepararNuevoImpuesto();
+    }
+
+    private void PrepararNuevoImpuesto()
+    {
+        if (_objetoImp is "06" or "08")
+        {
+            _nuevoImpuesto = "001";
+            _nuevoEsRetencion = true;
+        }
+        else if (_objetoImp == "07")
+        {
+            _nuevoImpuesto = "003";
+            _nuevoEsRetencion = false;
+        }
     }
 
     private string NombreImpuesto(string clave)
@@ -331,6 +348,7 @@ else
 
     private void AplicarAtajo((string Etiqueta, string Factor, decimal? Tasa) atajo)
     {
+        if (!ReglasDeObjetoImpuesto.PermiteImpuesto(_objetoImp, "002", false)) return;
         // Solo reemplaza el traslado de IVA; si el producto tiene retenciones o IEPS
         // configurados a mano, se respetan.
         _impuestos.RemoveAll(i => i is { Impuesto: "002", EsRetencion: false });
@@ -361,10 +379,13 @@ else
         if (configuracion.TasaRetencionIepsPorDefecto > 0)
             _impuestos.Add(new ImpuestoDeProductoDto(
                 "003", "Tasa", configuracion.TasaRetencionIepsPorDefecto, EsRetencion: true));
+
+        _impuestos.RemoveAll(i => !ReglasDeObjetoImpuesto.PermiteImpuesto(_objetoImp, i.Impuesto, i.EsRetencion));
     }
 
     private void AgregarImpuesto()
     {
+        if (!ReglasDeObjetoImpuesto.PermiteImpuesto(_objetoImp, _nuevoImpuesto, _nuevoEsRetencion)) return;
         _impuestos.RemoveAll(i => i.Impuesto == _nuevoImpuesto && i.EsRetencion == _nuevoEsRetencion);
 
         _impuestos.Add(new ImpuestoDeProductoDto(

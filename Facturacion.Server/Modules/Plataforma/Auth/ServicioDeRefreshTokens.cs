@@ -64,6 +64,7 @@ public sealed class ServicioDeRefreshTokens(
         string enClaro, string? ip, string? agente, CancellationToken ct)
     {
         var hash = Hash(enClaro);
+        await using var transaccion = await baseDeDatos.Database.BeginTransactionAsync(ct);
 
         var actual = await baseDeDatos.RefreshTokens
             .Include(t => t.Usuario)
@@ -73,22 +74,43 @@ public sealed class ServicioDeRefreshTokens(
             return SesionNoValida();
 
         if (actual.ConsumidoUtc is not null)
-            return await ReutilizacionDetectada(actual, ct);
+        {
+            var error = await ReutilizacionDetectada(actual, ct);
+            await transaccion.CommitAsync(ct);
+            return error;
+        }
 
-        if (actual.RevocadoUtc is not null || actual.ExpiraUtc <= DateTime.UtcNow)
+        if (actual.RevocadoUtc is not null || actual.ExpiraUtc <= DateTime.UtcNow ||
+            await baseDeDatos.RefreshTokens.AnyAsync(t => t.FamiliaId == actual.FamiliaId && t.RevocadoUtc != null, ct))
             return SesionNoValida();
 
         if (!actual.Usuario.Activo)
         {
             await InvalidarFamiliaAsync(actual.FamiliaId, "usuario desactivado", ct);
+            await baseDeDatos.SaveChangesAsync(ct);
+            await transaccion.CommitAsync(ct);
             return SesionNoValida();
+        }
+
+        var consumido = DateTime.UtcNow;
+        // Solo una petición puede consumir el registro; el sucesor se guarda en la misma transacción.
+        var tomados = await baseDeDatos.RefreshTokens.Where(t => t.Id == actual.Id && t.ConsumidoUtc == null &&
+            t.RevocadoUtc == null && t.ExpiraUtc > consumido)
+            .ExecuteUpdateAsync(s => s.SetProperty(t => t.ConsumidoUtc, consumido), ct);
+        if (tomados == 0)
+        {
+            await baseDeDatos.Entry(actual).ReloadAsync(ct);
+            if (actual.ConsumidoUtc is null) return SesionNoValida();
+            var error = await ReutilizacionDetectada(actual, ct);
+            await transaccion.CommitAsync(ct);
+            return error;
         }
 
         // La expiración no se mueve: la familia caduca cuando dijo que caducaría. La empresa
         // activa sí se arrastra, que es lo que evita volver al selector en cada renovación.
         var nuevo = Crear(actual.UsuarioId, actual.FamiliaId, actual.ExpiraUtc, ip, agente, actual.EmpresaActivaId);
 
-        actual.ConsumidoUtc = DateTime.UtcNow;
+        actual.ConsumidoUtc = consumido;
         actual.ReemplazadoPorId = nuevo.Registro.Id;
 
         bitacora.Registrar(
@@ -99,6 +121,7 @@ public sealed class ServicioDeRefreshTokens(
             usuarioId: actual.UsuarioId);
 
         await baseDeDatos.SaveChangesAsync(ct);
+        await transaccion.CommitAsync(ct);
 
         return nuevo;
     }

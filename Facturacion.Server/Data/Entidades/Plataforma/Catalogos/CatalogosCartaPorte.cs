@@ -7,6 +7,7 @@ namespace Facturacion.Server.Data.Entidades.Plataforma.Catalogos;
 /// </summary>
 public sealed class SatConfiguracionAutotransporte : ISatCatalogoSimple
 {
+    public string? Remolque { get; set; }
     public string Clave { get; set; } = "";
     public string Descripcion { get; set; } = "";
     public DateOnly FechaInicioVigencia { get; set; }
@@ -35,6 +36,7 @@ public sealed class SatFiguraTransporte : ISatCatalogoSimple
 /// <summary>Claves de bienes transportados permitidas exclusivamente por Carta Porte.</summary>
 public sealed class SatClaveProdServCartaPorte : ISatCatalogoSimple
 {
+    public string? MaterialPeligroso { get; set; }
     public string Clave { get; set; } = "";
     public string Descripcion { get; set; } = "";
     public DateOnly FechaInicioVigencia { get; set; }

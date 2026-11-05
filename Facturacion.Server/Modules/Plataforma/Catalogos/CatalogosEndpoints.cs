@@ -69,6 +69,8 @@ public static class CatalogosEndpoints
         {
             "c_ConfigAutotransporte" => await Proyectar(db.SatConfiguracionesAutotransporte, catalogo, ct),
             "c_TipoPermiso" => await Proyectar(db.SatTiposPermiso, catalogo, ct),
+            "c_TipoEmbalaje" => await Proyectar(db.SatTiposEmbalaje, catalogo, ct),
+            "c_SubTipoRem" => await Proyectar(db.SatSubTiposRemolque, catalogo, ct),
             "c_FiguraTransporte" => await Proyectar(db.SatFigurasTransporte, catalogo, ct),
             "c_INCOTERM" => await Proyectar(db.SatIncoterms, catalogo, ct),
             "c_UnidadAduana" => await Proyectar(db.SatUnidadesAduana, catalogo, ct),

@@ -16,7 +16,8 @@ public sealed record ArchivoXmlDeComercio(string Nombre, string TipoContenido, b
 
 public sealed class ServicioDeComercioExterior(
     AppDbContext db, IContextoEmpresaInterno contexto, IServicioDeBitacora bitacora,
-    GeneradorDeXmlComercioExterior generadorXml, ServicioDeXmlCfdi xmlCfdi)
+    GeneradorDeXmlComercioExterior generadorXml, ServicioDeXmlCfdi xmlCfdi,
+    ValidadorFiscalDeComercioExterior validacionFiscal)
 {
     public async Task<Resultado<string>> ValidarXmlCfdiAsync(Guid comprobanteId, CancellationToken ct)
     {
@@ -51,10 +52,14 @@ public sealed class ServicioDeComercioExterior(
         var datos = JsonSerializer.Deserialize<DatosComercioExteriorDto>(contenido);
         if (datos is null)
             return ErrorNegocio.Regla("comercio-datos-corruptos", "No se pudieron leer los datos de comercio exterior guardados.");
+        if (await validacionFiscal.ValidarAsync(comprobante, datos, ct) is { } errorFiscal) return errorFiscal;
+        var decimales = await db.SatMonedas.AsNoTracking().Where(x => x.Clave == comprobante.Moneda)
+            .Select(x => (int?)x.Decimales).FirstOrDefaultAsync(ct);
+        if (decimales is null) return ErrorNegocio.Validacion("comercio-moneda-invalida", "Revisa la moneda de la factura.");
         Resultado<byte[]> generado;
         try
         {
-            generado = generadorXml.Generar(comprobante, datos);
+            generado = generadorXml.Generar(comprobante, datos, decimales.Value);
         }
         catch (FileNotFoundException)
         {
@@ -81,7 +86,7 @@ public sealed class ServicioDeComercioExterior(
         Guid comprobanteId, DatosComercioExteriorDto peticion, CancellationToken ct)
     {
         if (await ValidarLicenciaAsync(ct) is { } licencia) return licencia;
-        var comprobante = await db.Comprobantes
+        var comprobante = await db.Comprobantes.Include(c => c.Conceptos)
             .FirstOrDefaultAsync(x => x.Id == comprobanteId && x.TipoDeComprobante == "I", ct);
         if (comprobante is null)
             return ErrorNegocio.NoEncontrado("factura-no-encontrada", "No se encontró la factura.");
@@ -148,6 +153,9 @@ public sealed class ServicioDeComercioExterior(
              !await db.SatMunicipios.AsNoTracking().AnyAsync(x => x.Clave == municipio &&
                  x.ClaveEstado == peticion.DomicilioEmisor.Estado && x.Vigente, ct)))
             return ErrorNegocio.Validacion("comercio-emisor-municipio-invalido", "Selecciona un municipio del estado indicado.");
+
+        if (await validacionFiscal.ValidarAsync(comprobante, peticion, ct, completo: false) is { } errorFiscal)
+            return errorFiscal;
 
         var datos = await db.DatosComercioExterior
             .FirstOrDefaultAsync(x => x.ComprobanteId == comprobanteId, ct);

@@ -1,14 +1,6 @@
 @using Facturacion.Shared.Documentos
 
-@*
-    Los cuatro motivos de cancelación del SAT. El 01 exige el folio fiscal del comprobante que
-    lo sustituye y los otros tres lo prohíben, así que el campo aparece y desaparece con el
-    motivo en vez de estar siempre visible y deshabilitado: un campo permanentemente gris
-    invita a preguntarse qué falta para llenarlo.
-
-    Aquí no se valida de verdad. Esto solo evita el viaje de ida y vuelta obvio; quien decide
-    es el servidor, siempre.
-*@
+@* El servidor vuelve a validar el motivo y el folio sustituto. *@
 
 <MudDialog>
     <DialogContent>
@@ -24,7 +16,7 @@
                    Label="Motivo de cancelación"
                    @bind-Value="_motivo"
                    Required="true">
-            @foreach (var (clave, texto) in Motivos)
+            @foreach (var (clave, texto) in MotivosDisponibles)
             {
                 <MudSelectItem T="string" Value="@clave">@clave — @texto</MudSelectItem>
             }
@@ -75,12 +67,19 @@
     [Parameter]
     public string? Folio { get; set; }
 
+    [Parameter]
+    public bool EsNotaCredito { get; set; }
+
+    private IEnumerable<(string Clave, string Texto)> MotivosDisponibles
+        => EsNotaCredito ? Motivos.Where(m => m.Clave is "02" or "03") : Motivos;
+
     private string _motivo = "02";
     private string _uuidSustituye = string.Empty;
 
     private bool UuidEsValido => Guid.TryParse(_uuidSustituye, out _);
 
-    private bool SePuedeConfirmar => _motivo != MotivoConSustituto || UuidEsValido;
+    private bool SePuedeConfirmar => MotivosDisponibles.Any(m => m.Clave == _motivo) &&
+        (_motivo != MotivoConSustituto || UuidEsValido);
 
     private void Confirmar()
         => Dialogo.Close(DialogResult.Ok(new PeticionDeCancelacion(

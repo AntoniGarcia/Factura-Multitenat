@@ -22,7 +22,8 @@ public sealed class ServicioDeEnvioDeComprobantes(
     IServicioClientes clientes,
     IContextoEmpresaInterno contexto,
     HusoDeEmpresa huso,
-    ILogger<ServicioDeEnvioDeComprobantes> registro)
+    ILogger<ServicioDeEnvioDeComprobantes> registro,
+    RevisionDeDocumentos? revision = null)
 {
     /// <summary>Asunto base al que se agrega el folio del comprobante.</summary>
     private const string AsuntoPredeterminado = "Documento CFDI";
@@ -41,10 +42,10 @@ public sealed class ServicioDeEnvioDeComprobantes(
 
         return new PropuestaDeEnvioDto(
             await DestinatariosDelClienteAsync(c.ClienteId, ct),
-            $"{AsuntoPredeterminado} {Folio(c)}".TrimEnd(),
+            c.Estatus == "borrador" ? "Borrador de revisión" : $"{AsuntoPredeterminado} {Folio(c)}".TrimEnd(),
             string.IsNullOrWhiteSpace(emisor.CorreoContacto) ? null : emisor.CorreoContacto,
-            NombreDeArchivoFiscal.Construir(c, zona, "pdf"),
-            NombreDeArchivoFiscal.Construir(c, zona, "xml"),
+            c.Estatus == "borrador" ? $"borrador-{c.Id:N}.pdf" : NombreDeArchivoFiscal.Construir(c, zona, "pdf"),
+            c.Estatus == "borrador" ? $"borrador-{c.Id:N}.xml" : NombreDeArchivoFiscal.Construir(c, zona, "xml"),
             await HistorialAsync(comprobanteId, ct));
     }
 
@@ -69,6 +70,9 @@ public sealed class ServicioDeEnvioDeComprobantes(
         if (asunto.Length > ReglasDeEnvio.LongitudMaximaAsunto || asunto.Contains('\r') || asunto.Contains('\n'))
             return ErrorNegocio.Validacion("asunto-invalido",
                 $"El asunto admite hasta {ReglasDeEnvio.LongitudMaximaAsunto} caracteres en una sola línea.");
+
+        if (c.Estatus == "borrador")
+            asunto = "[BORRADOR] " + asunto[..Math.Min(asunto.Length, ReglasDeEnvio.LongitudMaximaAsunto - 11)];
 
         if (peticion.Mensaje?.Length > ReglasDeEnvio.LongitudMaximaMensaje)
             return ErrorNegocio.Validacion("mensaje-demasiado-largo",
@@ -173,7 +177,8 @@ public sealed class ServicioDeEnvioDeComprobantes(
 
         // Un borrador no es un CFDI, y uno cancelado o en cancelación ya no se le entrega a nadie
         // como si estuviera vigente.
-        if (comprobante.Estatus != EstatusComprobante.Timbrado.ACadena() || comprobante.Uuid is null)
+        if ((comprobante.Estatus != EstatusComprobante.Timbrado.ACadena() || comprobante.Uuid is null) &&
+            revision?.Admite(comprobante.Estatus, comprobante.TipoDeComprobante) != true)
             return ErrorNegocio.Conflicto("comprobante-no-enviable",
                 "Solo se pueden enviar por correo comprobantes timbrados y vigentes.");
 
@@ -243,17 +248,21 @@ public sealed class ServicioDeEnvioDeComprobantes(
     {
         var partes = new List<string>();
 
+        if (c.Estatus == "borrador")
+            partes.Add("<p><strong>Borrador de revisión sin validez fiscal. El XML utiliza un certificado sintético y no está timbrado.</strong></p>");
+
         if (!string.IsNullOrWhiteSpace(mensajeDelUsuario))
             partes.Add(PlantillaDeCorreo.Renderizar(mensajeDelUsuario));
 
-        var documento = c.TipoDeComprobante == "P" ? "el complemento de pago" : "el comprobante fiscal";
+        var documento = c.Estatus == "borrador" ? "el borrador del documento" : c.TipoDeComprobante == "P" ? "el complemento de pago" : "el comprobante fiscal";
         var folio = Folio(c);
 
         partes.Add(
             $"<p>Te enviamos {documento}{(folio.Length > 0 ? $" {E(folio)}" : string.Empty)} " +
             $"emitido por {E(c.EmisorNombre)} (RFC {E(c.EmisorRfc)}) a {E(c.ReceptorNombre)}.</p>");
 
-        partes.Add($"<p>Folio fiscal: {E(c.Uuid!.Value.ToString().ToUpperInvariant())}</p>");
+        if (c.Uuid is { } uuid)
+            partes.Add($"<p>Folio fiscal: {E(uuid.ToString().ToUpperInvariant())}</p>");
 
         if (respondeALaEmpresa)
             partes.Add($"<p>Si tienes alguna duda, responde a este correo: la respuesta le llega a {E(c.EmisorNombre)}.</p>");

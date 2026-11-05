@@ -545,3 +545,6 @@ almacenamiento/
 # Paquetes y pruebas de despliegue armados en la máquina: publicaciones, catálogos del SAT y
 # scripts de pruebas anteriores. Pesan cientos de MB y se regeneran con dotnet publish.
 /Despliegue/
+
+# Publicaciones y evidencias generadas en la máquina.
+/outputs/

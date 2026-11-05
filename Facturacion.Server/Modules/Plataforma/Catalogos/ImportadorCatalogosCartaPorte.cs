@@ -17,7 +17,7 @@ public sealed class ImportadorCatalogosCartaPorte(AppDbContext baseDeDatos)
     private const string RevisionDelArchivo = "archivo SAT";
 
     private static readonly string[] CatalogosDisponibles =
-        ["c_ConfigAutotransporte", "c_TipoPermiso", "c_FiguraTransporte", "c_ClaveProdServCP"];
+        ["c_ConfigAutotransporte", "c_TipoPermiso", "c_FiguraTransporte", "c_ClaveProdServCP", "c_SubTipoRem", "c_MaterialPeligroso", "c_TipoEmbalaje"];
 
     public async Task<IReadOnlyList<string>> ImportarAsync(
         string rutaArchivo, CancellationToken ct, string? soloEsteCatalogo = null,
@@ -28,6 +28,9 @@ public sealed class ImportadorCatalogosCartaPorte(AppDbContext baseDeDatos)
 
         var catalogos = new (string Nombre, Func<Task<string>> Importar)[]
         {
+            ("c_MaterialPeligroso", () => ImportarSimpleAsync(libro, "c_MaterialPeligroso", baseDeDatos.SatMaterialesPeligrosos, ct)),
+            ("c_TipoEmbalaje", () => ImportarSimpleAsync(libro, "c_TipoEmbalaje", baseDeDatos.SatTiposEmbalaje, ct)),
+            ("c_SubTipoRem", () => ImportarSimpleAsync(libro, "c_SubTipoRem", baseDeDatos.SatSubTiposRemolque, ct)),
             ("c_ConfigAutotransporte", () => ImportarSimpleAsync(
                 libro, "c_ConfigAutotransporte", baseDeDatos.SatConfiguracionesAutotransporte, ct)),
             ("c_TipoPermiso", () => ImportarSimpleAsync(
@@ -65,9 +68,19 @@ public sealed class ImportadorCatalogosCartaPorte(AppDbContext baseDeDatos)
         IWorkbook libro, string nombre, DbSet<TEntidad> tabla, CancellationToken ct)
         where TEntidad : class, ISatCatalogoSimple, new()
     {
-        var hoja = libro.GetSheet(nombre)
+        var hoja = libro.GetSheet(nombre) ?? Enumerable.Range(0, libro.NumberOfSheets)
+            .Select(libro.GetSheetAt).FirstOrDefault(x => string.Equals(x.SheetName.Trim(), nombre, StringComparison.OrdinalIgnoreCase))
             ?? throw new InvalidOperationException($"El archivo no tiene la hoja '{nombre}'.");
         var encabezado = EncabezadoDe(hoja);
+        var cabecera = hoja.GetRow(encabezado.Fila);
+        var columnas = Enumerable.Range(0, Math.Max(0, (int)cabecera.LastCellNum))
+            .Select(i => (Nombre: Normalizar(Texto(cabecera, i)), Indice: i))
+            .Where(x => x.Nombre.Length > 0).GroupBy(x => x.Nombre)
+            .ToDictionary(g => g.Key, g => g.First().Indice, StringComparer.Ordinal);
+        var nombreIndicador = nombre == "c_ConfigAutotransporte" ? "remolque" : nombre == "c_ClaveProdServCP" ? "materialpeligroso" : null;
+        int? columnaIndicador = nombreIndicador is not null && columnas.TryGetValue(nombreIndicador, out var indice) ? indice : null;
+        if (nombreIndicador is not null && columnaIndicador is null)
+            throw new InvalidOperationException($"La hoja {nombre} debe incluir la columna {nombreIndicador} del SAT.");
         var nuevos = new Dictionary<string, TEntidad>(StringComparer.OrdinalIgnoreCase);
 
         for (var renglon = encabezado.Fila + 1; renglon <= hoja.LastRowNum; renglon++)
@@ -75,18 +88,41 @@ public sealed class ImportadorCatalogosCartaPorte(AppDbContext baseDeDatos)
             var fila = hoja.GetRow(renglon);
             var clave = Texto(fila, encabezado.Clave);
             if (clave is null) continue;
+            if (nombre == "c_MaterialPeligroso")
+            {
+                if (clave.Length > 4 || clave.Any(c => c is < '0' or > '9'))
+                    throw new InvalidOperationException($"La clave de material peligroso '{clave}' debe tener cuatro dígitos.");
+                clave = clave.PadLeft(4, '0');
+            }
 
             var fin = encabezado.Fin is { } columnaFin ? Fecha(fila, columnaFin) : null;
-            nuevos[clave] = new TEntidad
+            var inicio = encabezado.Inicio is { } columnaInicio ? Fecha(fila, columnaInicio) ?? DateOnly.MinValue : DateOnly.MinValue;
+            var nuevo = new TEntidad
             {
                 Clave = clave,
                 Descripcion = Texto(fila, encabezado.Descripcion) ?? clave,
-                FechaInicioVigencia = encabezado.Inicio is { } columnaInicio
-                    ? Fecha(fila, columnaInicio) ?? DateOnly.MinValue
-                    : DateOnly.MinValue,
+                FechaInicioVigencia = inicio,
                 FechaFinVigencia = fin,
-                Vigente = fin is null
+                Vigente = inicio <= DateOnly.FromDateTime(DateTime.UtcNow) && (fin is null || fin >= DateOnly.FromDateTime(DateTime.UtcNow))
             };
+            if (nombre == "c_MaterialPeligroso" && nuevos.TryGetValue(clave, out var anterior))
+            {
+                nuevo.Descripcion = string.Join(" / ", anterior.Descripcion.Split(" / ").Append(nuevo.Descripcion).Distinct());
+                nuevo.Vigente |= anterior.Vigente;
+                nuevo.FechaInicioVigencia = anterior.FechaInicioVigencia < inicio ? anterior.FechaInicioVigencia : inicio;
+                nuevo.FechaFinVigencia = anterior.FechaFinVigencia is null || fin is null ? null : anterior.FechaFinVigencia > fin ? anterior.FechaFinVigencia : fin;
+            }
+            if (nombre == "c_MaterialPeligroso" && nuevo.Descripcion.Length > 8000)
+                throw new InvalidOperationException($"Las descripciones de la clave {clave} exceden 8000 caracteres.");
+            nuevos[clave] = nuevo;
+            if (columnaIndicador is { } columna)
+            {
+                var indicador = Texto(fila, columna)?.Replace(" ", "");
+                if (indicador is not ("0" or "1" or "0,1"))
+                    throw new InvalidOperationException($"El indicador de la clave {clave} no es 0, 1 o 0,1.");
+                if (nuevos[clave] is SatConfiguracionAutotransporte configuracion) configuracion.Remolque = indicador;
+                if (nuevos[clave] is SatClaveProdServCartaPorte mercancia) mercancia.MaterialPeligroso = indicador;
+            }
         }
 
         if (nuevos.Count == 0)
@@ -106,6 +142,10 @@ public sealed class ImportadorCatalogosCartaPorte(AppDbContext baseDeDatos)
             actual.FechaInicioVigencia = nuevo.FechaInicioVigencia;
             actual.FechaFinVigencia = nuevo.FechaFinVigencia;
             actual.Vigente = nuevo.Vigente;
+            if (actual is SatConfiguracionAutotransporte configuracion && nuevo is SatConfiguracionAutotransporte datosConfiguracion)
+                configuracion.Remolque = datosConfiguracion.Remolque;
+            if (actual is SatClaveProdServCartaPorte mercancia && nuevo is SatClaveProdServCartaPorte datosMercancia)
+                mercancia.MaterialPeligroso = datosMercancia.MaterialPeligroso;
         }
 
         foreach (var (clave, existente) in existentes)
@@ -191,7 +231,7 @@ public sealed class ImportadorCatalogosCartaPorte(AppDbContext baseDeDatos)
     private static bool EsEncabezadoDeClave(string texto) =>
         texto.StartsWith("clave", StringComparison.Ordinal) ||
         texto is "cconfigautotransporte" or "ctipopermiso" or "cfiguratransporte" or "cclaveprodservcp"
-            or "cclaveprodserv";
+            or "cclaveprodserv" or "csubtiporem";
 
     // Unas hojas dicen «FechaInicioVigencia» y otras «Fecha de inicio de vigencia»: ya
     // normalizado, el «de» intermedio impide buscar «fechainicio» como un solo bloque.
@@ -204,6 +244,7 @@ public sealed class ImportadorCatalogosCartaPorte(AppDbContext baseDeDatos)
 
     private static bool EsEncabezadoDeDescripcion(string texto) =>
         texto.StartsWith("descripcion", StringComparison.Ordinal) ||
+        texto == "remolqueosemirremolque" ||
         texto.StartsWith("nombre", StringComparison.Ordinal);
 
     private static string Normalizar(string? texto)

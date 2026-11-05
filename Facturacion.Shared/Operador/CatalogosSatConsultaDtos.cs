@@ -24,6 +24,8 @@ public static class CatalogosSatDeConsulta
         new("c_Municipio", "Municipios", true), new("c_CodigoPostal", "Códigos postales", true),
         new("c_Colonia", "Colonias", true), new("c_ConfigAutotransporte", "Configuraciones de autotransporte"),
         new("c_TipoPermiso", "Permisos de transporte"), new("c_FiguraTransporte", "Figuras de transporte"),
+        new("c_MaterialPeligroso", "Materiales peligrosos", true), new("c_TipoEmbalaje", "Tipos de embalaje"),
+        new("c_SubTipoRem", "Subtipos de remolque"),
         new("c_ClaveProdServCP", "Mercancías de Carta Porte", true),
         new("c_INCOTERM", "Incoterms"), new("c_UnidadAduana", "Unidades de aduana"),
         new("c_FraccionArancelaria", "Fracciones arancelarias", true)

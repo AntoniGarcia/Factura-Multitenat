@@ -64,6 +64,7 @@
                Clearable="true">
         <MudSelectItem T="string" Value="@(null)">Todos</MudSelectItem>
         <MudSelectItem T="string" Value="@("I")">Facturas</MudSelectItem>
+        <MudSelectItem T="string" Value="@("E")">Notas de crédito</MudSelectItem>
         <MudSelectItem T="string" Value="@("P")">Pagos</MudSelectItem>
         <MudSelectItem T="string" Value="@("T")">Traslados</MudSelectItem>
     </MudSelect>
@@ -180,6 +181,10 @@
                         {
                             <div><dt>Impuestos retenidos</dt><dd>−@detalle.TotalImpuestosRetenidos.ToString("N2")</dd></div>
                         }
+                        @foreach (var impuesto in detalle.ImpuestosLocales ?? [])
+                        {
+                            <div><dt>@impuesto.Nombre @impuesto.Tasa.ToString("0.##") %</dt><dd>@(impuesto.EsRetencion ? "−" : "")@impuesto.Importe.ToString("N2")</dd></div>
+                        }
                         <div class="vista-documento-total"><dt>Total @detalle.Moneda</dt><dd>@detalle.Total.ToString("N2")</dd></div>
                     </dl>
 
@@ -213,7 +218,7 @@
                     </MudButton>
                 }
 
-                @if (_detalleSeleccionado is { } detalleFiscal && TienePdfFiscal(detalleFiscal) &&
+                @if (_detalleSeleccionado is { } detalleFiscal && (TienePdfFiscal(detalleFiscal) || EsBorradorDeRevision(detalleFiscal)) &&
                      Sesion.TienePermiso(Permisos.DocumentosDescarga))
                 {
                     <MudButton Variant="Variant.Outlined"
@@ -235,7 +240,7 @@
                     </MudButton>
                 }
 
-                @if (_detalleSeleccionado is { } detalleConXml && EsCfdiFiscal(detalleConXml) &&
+                @if (_detalleSeleccionado is { } detalleConXml && (EsCfdiFiscal(detalleConXml) || EsBorradorDeRevision(detalleConXml)) &&
                      Sesion.TienePermiso(Permisos.DocumentosDescarga))
                 {
                     <MudButton Variant="Variant.Text"
@@ -337,7 +342,8 @@
             new DialogOptions { MaxWidth = MaxWidth.Small, FullWidth = true });
 
     private void AbrirDocumento(ComprobanteEnListaDto d)
-    => Navegacion.NavigateTo(d.TipoDeComprobante == "P" ? $"/pagos/{d.Id}" : $"/facturas/{d.Id}");
+    => Navegacion.NavigateTo(d.TipoDeComprobante == "P" ? $"/pagos/{d.Id}" :
+        d.TipoDeComprobante == "E" ? $"/notas-credito/{d.Id}" : $"/facturas/{d.Id}");
 
     protected override void OnInitialized() => _columnas =
     [
@@ -395,6 +401,7 @@
         var ruta = detalle.TipoDeComprobante switch
         {
             "P" => "pagos",
+            "E" => "notas-credito",
             "T" => "traslados-carta-porte",
             _ => "facturas"
         };
@@ -405,11 +412,14 @@
         => comprobante.Estatus is "timbrado" or "cancelado" && comprobante.Uuid is not null;
 
     private static bool TienePdfFiscal(ComprobanteDto comprobante)
-        => EsCfdiFiscal(comprobante) && comprobante.TipoDeComprobante is "I" or "T" or "P";
+        => EsCfdiFiscal(comprobante) && comprobante.TipoDeComprobante is "I" or "E" or "T" or "P";
 
-    /// <summary>Lo mismo que exige el servidor: solo lo timbrado y vigente se le manda a alguien.</summary>
-    private static bool EsEnviable(ComprobanteDto comprobante)
-        => comprobante.Estatus == "timbrado" && comprobante.Uuid is not null;
+    private bool EsBorradorDeRevision(ComprobanteDto comprobante)
+        => _integracionFiscal?.RevisionDocumentos == true && comprobante.Estatus == "borrador" &&
+           comprobante.TipoDeComprobante is "I" or "T" or "P";
+
+    private bool EsEnviable(ComprobanteDto comprobante)
+        => comprobante.Estatus == "timbrado" && comprobante.Uuid is not null || EsBorradorDeRevision(comprobante);
 
     private async Task EnviarPorCorreoAsync()
     {
@@ -455,8 +465,9 @@
             var parametros = new DialogParameters<DialogoDeComprobanteDeCompra>
             {
                 { x => x.Archivo, archivo },
-                { x => x.TituloVistaPrevia, "Representación impresa del CFDI" },
+                { x => x.TituloVistaPrevia, EsBorradorDeRevision(_detalleSeleccionado) ? "Vista previa del borrador" : "Representación impresa del CFDI" },
                 { x => x.AvisoFiscal,
+                    EsBorradorDeRevision(_detalleSeleccionado) ? "Documento de revisión. Sin timbrar." :
                     "Representación impresa del CFDI. Incluye los datos fiscales del comprobante timbrado." }
             };
 
@@ -696,7 +707,8 @@
         {
             var parametros = new DialogParameters<DialogoDeCancelacion>
             {
-                { x => x.Folio, Folio(documento) }
+                { x => x.Folio, Folio(documento) },
+                { x => x.EsNotaCredito, documento.TipoDeComprobante == "E" }
             };
 
             var referencia = await Dialogos.ShowAsync<DialogoDeCancelacion>(

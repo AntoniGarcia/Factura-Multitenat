@@ -1,4 +1,4 @@
-﻿-- Actualización del esquema entregado en script.sql. Ejecutar completo en la base del sistema.
+-- Actualización del esquema entregado en script.sql. Ejecutar completo en la base del sistema.
 SET NOCOUNT ON;
 SET XACT_ABORT ON;
 SET QUOTED_IDENTIFIER ON;
@@ -1578,8 +1578,201 @@ ALTER TABLE dbo.Comprobantes ADD TasaIsh decimal(18,6) NULL;
     OR EXISTS(SELECT 1 FROM sys.columns WHERE object_id=OBJECT_ID(N'dbo.CorreosDeEmpresa')
        AND name IN (N'Habilitado',N'NombreRemitenteSistema',N'ResponderA'))
   THROW 51207,N'La estructura final está incompleta. No iniciar la aplicación.',1;
+-- ActualizacionDesdePrimerZip20261105
+EXEC(N'-- Actualiza solamente los metadatos SAT de esta fase sobre una base ya existente.
+SET XACT_ABORT ON;
+BEGIN TRANSACTION;
+
+IF OBJECT_ID(N''dbo.SatPais'', N''U'') IS NULL OR OBJECT_ID(N''dbo.SatFraccionArancelaria'', N''U'') IS NULL
+    THROW 50000, N''La base seleccionada no tiene los catalogos requeridos.'', 1;
+
+IF COL_LENGTH(N''dbo.SatPais'', N''Agrupaciones'') IS NULL
+    ALTER TABLE dbo.SatPais ADD Agrupaciones nvarchar(500) NULL;
+IF COL_LENGTH(N''dbo.SatPais'', N''FormatoCodigoPostal'') IS NULL
+    ALTER TABLE dbo.SatPais ADD FormatoCodigoPostal nvarchar(2000) NULL;
+IF COL_LENGTH(N''dbo.SatPais'', N''FormatoRegistroTributario'') IS NULL
+    ALTER TABLE dbo.SatPais ADD FormatoRegistroTributario nvarchar(2000) NULL;
+IF COL_LENGTH(N''dbo.SatPais'', N''ValidacionRegistroTributario'') IS NULL
+    ALTER TABLE dbo.SatPais ADD ValidacionRegistroTributario nvarchar(2000) NULL;
+IF COL_LENGTH(N''dbo.SatFraccionArancelaria'', N''UnidadMedida'') IS NULL
+    ALTER TABLE dbo.SatFraccionArancelaria ADD UnidadMedida nvarchar(2) NULL;
+
+-- No inventa el historial de una base creada manualmente.
+IF OBJECT_ID(N''dbo.__EFMigrationsHistory'', N''U'') IS NOT NULL
+    EXEC sys.sp_executesql N''
+        IF EXISTS (SELECT 1 FROM dbo.__EFMigrationsHistory WHERE MigrationId=N''''20261103231509_20261103_B_IshEnFactura'''')
+           AND NOT EXISTS (SELECT 1 FROM dbo.__EFMigrationsHistory WHERE MigrationId=N''''20261104193407_20261104_A_CrucesFiscalesComercioExterior'''')
+            INSERT dbo.__EFMigrationsHistory (MigrationId, ProductVersion)
+            VALUES (N''''20261104193407_20261104_A_CrucesFiscalesComercioExterior'''', N''''10.0.14'''');'';
+
+COMMIT;
+');
+EXEC(N'-- Actualiza los indicadores SAT y la declaración capturada de cada mercancía.
+SET XACT_ABORT ON;
+BEGIN TRANSACTION;
+IF OBJECT_ID(N''dbo.SatConfiguracionAutotransporte'', N''U'') IS NULL
+   OR OBJECT_ID(N''dbo.SatClaveProdServCartaPorte'', N''U'') IS NULL
+   OR OBJECT_ID(N''dbo.MercanciasCartaPorte'', N''U'') IS NULL
+    THROW 50000, N''La base seleccionada no tiene las tablas de Carta Porte.'', 1;
+IF COL_LENGTH(N''dbo.SatConfiguracionAutotransporte'', N''Remolque'') IS NULL
+    ALTER TABLE dbo.SatConfiguracionAutotransporte ADD Remolque nvarchar(3) NULL;
+IF COL_LENGTH(N''dbo.SatClaveProdServCartaPorte'', N''MaterialPeligroso'') IS NULL
+    ALTER TABLE dbo.SatClaveProdServCartaPorte ADD MaterialPeligroso nvarchar(3) NULL;
+IF COL_LENGTH(N''dbo.MercanciasCartaPorte'', N''MaterialPeligroso'') IS NULL
+    ALTER TABLE dbo.MercanciasCartaPorte ADD MaterialPeligroso nvarchar(2) NULL;
+IF OBJECT_ID(N''dbo.__EFMigrationsHistory'', N''U'') IS NOT NULL
+    EXEC sys.sp_executesql N''
+        IF EXISTS (SELECT 1 FROM dbo.__EFMigrationsHistory WHERE MigrationId=N''''20261104193407_20261104_A_CrucesFiscalesComercioExterior'''')
+           AND NOT EXISTS (SELECT 1 FROM dbo.__EFMigrationsHistory WHERE MigrationId=N''''20261104223450_20261104_B_ClasificacionCartaPorte'''')
+            INSERT dbo.__EFMigrationsHistory (MigrationId, ProductVersion)
+            VALUES (N''''20261104223450_20261104_B_ClasificacionCartaPorte'''', N''''10.0.14'''');'';
+COMMIT;
+');
+EXEC(N'SET XACT_ABORT ON;
+BEGIN TRANSACTION;
+IF OBJECT_ID(N''dbo.TrasladosCartaPorte'', N''U'') IS NULL
+    THROW 50000, N''Falta la tabla de traslados Carta Porte.'', 1;
+IF OBJECT_ID(N''dbo.SatSubTipoRemolque'', N''U'') IS NULL
+    CREATE TABLE dbo.SatSubTipoRemolque (
+        Clave nvarchar(6) NOT NULL CONSTRAINT PK_SatSubTipoRemolque PRIMARY KEY,
+        Descripcion nvarchar(500) NOT NULL,
+        FechaInicioVigencia date NOT NULL,
+        FechaFinVigencia date NULL,
+        Vigente bit NOT NULL
+    );
+IF OBJECT_ID(N''dbo.RemolquesCartaPorte'', N''U'') IS NULL
+    CREATE TABLE dbo.RemolquesCartaPorte (
+        Id uniqueidentifier NOT NULL CONSTRAINT PK_RemolquesCartaPorte PRIMARY KEY,
+        EmpresaId uniqueidentifier NOT NULL,
+        TrasladoCartaPorteId uniqueidentifier NOT NULL,
+        Orden int NOT NULL,
+        SubTipoRem nvarchar(6) NOT NULL,
+        Placa nvarchar(7) NOT NULL,
+        CONSTRAINT FK_RemolquesCartaPorte_TrasladosCartaPorte_TrasladoCartaPorteId
+            FOREIGN KEY (TrasladoCartaPorteId) REFERENCES dbo.TrasladosCartaPorte(Id) ON DELETE CASCADE
+    );
+IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE object_id=OBJECT_ID(N''dbo.RemolquesCartaPorte'')
+    AND name=N''IX_RemolquesCartaPorte_TrasladoCartaPorteId_Orden'')
+    CREATE UNIQUE INDEX IX_RemolquesCartaPorte_TrasladoCartaPorteId_Orden
+        ON dbo.RemolquesCartaPorte(TrasladoCartaPorteId, Orden);
+IF OBJECT_ID(N''dbo.__EFMigrationsHistory'', N''U'') IS NOT NULL
+    EXEC sys.sp_executesql N''
+        IF EXISTS (SELECT 1 FROM dbo.__EFMigrationsHistory WHERE MigrationId=N''''20261104223450_20261104_B_ClasificacionCartaPorte'''')
+           AND NOT EXISTS (SELECT 1 FROM dbo.__EFMigrationsHistory WHERE MigrationId=N''''20261104224848_20261104_B_RemolquesCartaPorte'''')
+            INSERT dbo.__EFMigrationsHistory (MigrationId, ProductVersion)
+            VALUES (N''''20261104224848_20261104_B_RemolquesCartaPorte'''', N''''10.0.14'''');'';
+COMMIT;
+');
+EXEC(N'SET XACT_ABORT ON;
+BEGIN TRANSACTION;
+IF OBJECT_ID(N''dbo.TrasladosCartaPorte'', N''U'') IS NULL OR OBJECT_ID(N''dbo.MercanciasCartaPorte'', N''U'') IS NULL
+    THROW 50000, N''Faltan las tablas de Carta Porte.'', 1;
+IF COL_LENGTH(N''dbo.TrasladosCartaPorte'', N''AseguraMedAmbiente'') IS NULL
+    ALTER TABLE dbo.TrasladosCartaPorte ADD AseguraMedAmbiente nvarchar(50) NULL;
+IF COL_LENGTH(N''dbo.TrasladosCartaPorte'', N''PolizaMedAmbiente'') IS NULL
+    ALTER TABLE dbo.TrasladosCartaPorte ADD PolizaMedAmbiente nvarchar(30) NULL;
+IF COL_LENGTH(N''dbo.MercanciasCartaPorte'', N''CveMaterialPeligroso'') IS NULL
+    ALTER TABLE dbo.MercanciasCartaPorte ADD CveMaterialPeligroso nvarchar(4) NULL;
+IF COL_LENGTH(N''dbo.MercanciasCartaPorte'', N''Embalaje'') IS NULL
+    ALTER TABLE dbo.MercanciasCartaPorte ADD Embalaje nvarchar(5) NULL;
+IF COL_LENGTH(N''dbo.MercanciasCartaPorte'', N''DescripEmbalaje'') IS NULL
+    ALTER TABLE dbo.MercanciasCartaPorte ADD DescripEmbalaje nvarchar(100) NULL;
+IF OBJECT_ID(N''dbo.SatMaterialPeligroso'', N''U'') IS NULL
+    CREATE TABLE dbo.SatMaterialPeligroso (
+        Clave nvarchar(4) NOT NULL CONSTRAINT PK_SatMaterialPeligroso PRIMARY KEY,
+        Descripcion nvarchar(max) NOT NULL,
+        FechaInicioVigencia date NOT NULL, FechaFinVigencia date NULL, Vigente bit NOT NULL
+    );
+IF OBJECT_ID(N''dbo.SatTipoEmbalaje'', N''U'') IS NULL
+    CREATE TABLE dbo.SatTipoEmbalaje (
+        Clave nvarchar(5) NOT NULL CONSTRAINT PK_SatTipoEmbalaje PRIMARY KEY,
+        Descripcion nvarchar(500) NOT NULL,
+        FechaInicioVigencia date NOT NULL, FechaFinVigencia date NULL, Vigente bit NOT NULL
+    );
+IF OBJECT_ID(N''dbo.__EFMigrationsHistory'', N''U'') IS NOT NULL
+    EXEC sys.sp_executesql N''
+        IF EXISTS (SELECT 1 FROM dbo.__EFMigrationsHistory WHERE MigrationId=N''''20261104224848_20261104_B_RemolquesCartaPorte'''')
+           AND NOT EXISTS (SELECT 1 FROM dbo.__EFMigrationsHistory WHERE MigrationId=N''''20261104230741_20261104_B_MaterialPeligrosoCartaPorte'''')
+            INSERT dbo.__EFMigrationsHistory (MigrationId, ProductVersion)
+            VALUES (N''''20261104230741_20261104_B_MaterialPeligrosoCartaPorte'''', N''''10.0.14'''');'';
+COMMIT;
+');
+EXEC(N'SET XACT_ABORT ON;
+BEGIN TRANSACTION;
+IF OBJECT_ID(N''dbo.PagosDocumentos'', N''U'') IS NULL OR OBJECT_ID(N''dbo.SatMoneda'', N''U'') IS NULL
+    THROW 50000, N''Faltan las tablas de pagos o monedas.'', 1;
+IF EXISTS (SELECT 1 FROM PagosDocumentos d LEFT JOIN SatMoneda m ON m.Clave=d.MonedaDR
+    WHERE m.Clave IS NULL OR m.Decimales NOT BETWEEN 0 AND 6)
+    THROW 50000, N''Revisa las monedas de los documentos pagados antes de actualizar.'', 1;
+IF EXISTS (SELECT 1 FROM sys.columns WHERE object_id=OBJECT_ID(N''dbo.PagosDocumentos'')
+    AND name=N''EquivalenciaDR'' AND (precision<>28 OR scale<>10))
+    ALTER TABLE dbo.PagosDocumentos ALTER COLUMN EquivalenciaDR decimal(28,10) NOT NULL;
+IF COL_LENGTH(N''dbo.PagosDocumentos'', N''DecimalesMonedaDR'') IS NULL
+BEGIN
+    ALTER TABLE dbo.PagosDocumentos ADD DecimalesMonedaDR int NOT NULL
+        CONSTRAINT DF_PagosDocumentos_DecimalesMonedaDR DEFAULT 2;
+    EXEC sys.sp_executesql N''UPDATE d SET DecimalesMonedaDR=m.Decimales FROM PagosDocumentos d JOIN SatMoneda m ON m.Clave=d.MonedaDR;'';
+END;
+IF OBJECT_ID(N''dbo.__EFMigrationsHistory'', N''U'') IS NOT NULL
+    EXEC sys.sp_executesql N''
+        IF EXISTS (SELECT 1 FROM dbo.__EFMigrationsHistory WHERE MigrationId=N''''20261104230741_20261104_B_MaterialPeligrosoCartaPorte'''')
+           AND NOT EXISTS (SELECT 1 FROM dbo.__EFMigrationsHistory WHERE MigrationId=N''''20261104233416_20261104_B_EquivalenciasDePago'''')
+            INSERT dbo.__EFMigrationsHistory (MigrationId, ProductVersion)
+            VALUES (N''''20261104233416_20261104_B_EquivalenciasDePago'''', N''''10.0.14'''');'';
+COMMIT;
+');
+EXEC(N'SET XACT_ABORT ON;
+BEGIN TRANSACTION;
+IF OBJECT_ID(N''dbo.Pagos'', N''U'') IS NULL
+    THROW 50000, N''Falta la tabla de pagos.'', 1;
+IF COL_LENGTH(N''dbo.Pagos'', N''TipoCadPago'') IS NULL
+    ALTER TABLE dbo.Pagos ADD TipoCadPago nvarchar(2) NULL;
+IF COL_LENGTH(N''dbo.Pagos'', N''CertPago'') IS NULL
+    ALTER TABLE dbo.Pagos ADD CertPago nvarchar(max) NULL;
+IF COL_LENGTH(N''dbo.Pagos'', N''CadPago'') IS NULL
+    ALTER TABLE dbo.Pagos ADD CadPago nvarchar(max) NULL;
+IF COL_LENGTH(N''dbo.Pagos'', N''SelloPago'') IS NULL
+    ALTER TABLE dbo.Pagos ADD SelloPago nvarchar(max) NULL;
+IF EXISTS (SELECT 1 FROM sys.columns WHERE object_id=OBJECT_ID(N''dbo.Pagos'')
+    AND name IN (N''TipoCadPago'', N''CertPago'', N''CadPago'', N''SelloPago'')
+    AND (system_type_id<>231 OR is_nullable<>1 OR
+        (name=N''TipoCadPago'' AND max_length<>4) OR
+        (name<>N''TipoCadPago'' AND max_length<>-1)))
+    THROW 50000, N''Las columnas SPEI existentes no tienen el tipo esperado.'', 1;
+IF OBJECT_ID(N''dbo.__EFMigrationsHistory'', N''U'') IS NOT NULL
+    EXEC sys.sp_executesql N''
+        IF EXISTS (SELECT 1 FROM dbo.__EFMigrationsHistory WHERE MigrationId=N''''20261104233416_20261104_B_EquivalenciasDePago'''')
+           AND NOT EXISTS (SELECT 1 FROM dbo.__EFMigrationsHistory WHERE MigrationId=N''''20261105041146_20261104_B_CadenaSpeiPago'''')
+            INSERT dbo.__EFMigrationsHistory (MigrationId, ProductVersion)
+            VALUES (N''''20261105041146_20261104_B_CadenaSpeiPago'''', N''''10.0.14'''');'';
+COMMIT;
+');
+EXEC(N'SET XACT_ABORT ON;
+BEGIN TRANSACTION;
+IF OBJECT_ID(N''dbo.Conceptos'',N''U'') IS NULL OR OBJECT_ID(N''dbo.DatosObra'',N''U'') IS NULL
+    THROW 50000,N''Faltan las tablas de conceptos u obra.'',1;
+IF COL_LENGTH(N''dbo.Conceptos'',N''DatosFiscalesJson'') IS NULL
+    ALTER TABLE dbo.Conceptos ADD DatosFiscalesJson nvarchar(max) NULL;
+IF COL_LENGTH(N''dbo.DatosObra'',N''ServicioParcialJson'') IS NULL
+    ALTER TABLE dbo.DatosObra ADD ServicioParcialJson nvarchar(max) NULL;
+IF EXISTS(SELECT 1 FROM sys.columns WHERE
+    ((object_id=OBJECT_ID(N''dbo.Conceptos'') AND name=N''DatosFiscalesJson'') OR
+     (object_id=OBJECT_ID(N''dbo.DatosObra'') AND name=N''ServicioParcialJson''))
+    AND (system_type_id<>231 OR max_length<>-1 OR is_nullable<>1))
+    THROW 50000,N''Las columnas fiscales existentes no tienen el tipo esperado.'',1;
+IF OBJECT_ID(N''dbo.__EFMigrationsHistory'',N''U'') IS NOT NULL
+    EXEC sys.sp_executesql N''
+        IF EXISTS(SELECT 1 FROM dbo.__EFMigrationsHistory WHERE MigrationId=N''''20261105041146_20261104_B_CadenaSpeiPago'''')
+        BEGIN
+            IF NOT EXISTS(SELECT 1 FROM dbo.__EFMigrationsHistory WHERE MigrationId=N''''20261105125228_20261105_B_DatosFiscalesConceptos'''')
+                INSERT dbo.__EFMigrationsHistory(MigrationId,ProductVersion) VALUES(N''''20261105125228_20261105_B_DatosFiscalesConceptos'''',N''''10.0.14'''');
+            IF NOT EXISTS(SELECT 1 FROM dbo.__EFMigrationsHistory WHERE MigrationId=N''''20261105131603_20261105_B_ServiciosParcialesConstruccion'''')
+                INSERT dbo.__EFMigrationsHistory(MigrationId,ProductVersion) VALUES(N''''20261105131603_20261105_B_ServiciosParcialesConstruccion'''',N''''10.0.14'''');
+        END;'';
+COMMIT;
+');
  EXEC sys.sp_releaseapplock @Resource=N'Facturacion.ActualizacionCompleta.20261104',@LockOwner='Session';
- SELECT N'Actualización completa: cambios de las 15 migraciones aplicados.' AS Resultado;
+ SELECT N'Actualización completa desde el esquema del primer ZIP hasta la revisión del 5 de noviembre de 2026.' AS Resultado;
 END TRY
 BEGIN CATCH
  IF XACT_STATE()<>0 ROLLBACK TRANSACTION;

@@ -3,6 +3,7 @@ using Facturacion.Server.Data;
 using Facturacion.Server.Infra.Tenencia;
 using Facturacion.Server.Modules.Documentos.ComercioExterior;
 using Facturacion.Server.Modules.Documentos.Obras;
+using Facturacion.Server.Modules.Documentos.Egresos;
 using Facturacion.Server.Modules.Plataforma.Empresas;
 using Facturacion.Shared.ComercioExterior;
 using Facturacion.Shared.Comun;
@@ -21,6 +22,7 @@ public sealed class ServicioDePdfBorrador(
     GeneradorDePdfCfdi generador,
     GeneradorDeXmlComercioExterior generadorComercio,
     HusoDeEmpresa huso,
+    ServicioDeNotasCredito notasCredito,
     ServicioDeLogo logos)
 {
     public async Task<Resultado<byte[]>> GenerarAsync(Guid comprobanteId, CancellationToken ct)
@@ -41,6 +43,12 @@ public sealed class ServicioDePdfBorrador(
             return ErrorNegocio.Conflicto(
                 "comprobante-no-es-borrador",
                 "La vista previa sin timbrar solo está disponible para borradores.");
+
+        if (comprobante.TipoDeComprobante == "E")
+        {
+            var valida = await notasCredito.ValidarParaEmisionAsync(comprobante, ct);
+            if (valida.EsFallo) return valida.Error!;
+        }
 
         var obra = await baseDeDatos.DatosObra.AsNoTracking()
             .FirstOrDefaultAsync(x => x.ComprobanteId == comprobanteId, ct);
@@ -95,11 +103,15 @@ public sealed class ServicioDePdfBorrador(
             return ErrorNegocio.Validacion(
                 "borrador-sin-conceptos", "Agrega al menos un concepto y guarda el borrador antes de generar el PDF.");
 
+        var monedaDeImportes = comprobante.TipoDeComprobante == "P" && comprobante.Pagos.Count > 0
+            ? comprobante.Pagos[0].MonedaP : comprobante.Moneda;
         var decimales = await baseDeDatos.SatMonedas
             .AsNoTracking()
-            .Where(m => m.Clave == comprobante.Moneda)
+            .Where(m => m.Clave == monedaDeImportes)
             .Select(m => (int?)m.Decimales)
             .FirstOrDefaultAsync(ct) ?? 2;
+        if (comprobante.TipoDeComprobante == "P" && GeneradorDeXmlPago.Validar(comprobante, decimales) is { } errorPrecision)
+            return errorPrecision;
 
         var zona = await huso.ObtenerAsync(ct);
         var fechaLocal = TimeZoneInfo.ConvertTimeFromUtc(
@@ -128,6 +140,7 @@ public sealed class ServicioDePdfBorrador(
             comprobante,
             new DatosDelPdf(fechaLocal, decimales, logo?.Contenido, EsBorrador: true,
                 Notaria: notariaPdf, ComercioExterior: comercioPdf,
-                ImpuestosLocales: ProyeccionMonetariaCfdi.Calcular(comprobante, decimales, obra).Locales) { ZonaHoraria = zona });
+                ImpuestosLocales: ProyeccionMonetariaCfdi.Calcular(comprobante, decimales, obra).Locales) { ZonaHoraria = zona,
+                ServicioParcial = ServicioParcialConstruccion.Leer(obra?.ServicioParcialJson) });
     }
 }
