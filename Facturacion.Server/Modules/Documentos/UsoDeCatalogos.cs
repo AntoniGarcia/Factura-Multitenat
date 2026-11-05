@@ -19,8 +19,9 @@ public sealed class UsoDeCatalogos(AppDbContext baseDeDatos) : IUsoDeCatalogos
         => await ComprobantesDeLaCuenta().AnyAsync(c => c.ClienteId == clienteId, ct) ||
            await TrasladosDeLaCuenta().AnyAsync(t => t.ClienteDestinoId == clienteId, ct);
 
-    public Task<bool> ProductoUsadoAsync(Guid productoId, CancellationToken ct)
-        => ComprobantesDeLaCuenta().AnyAsync(c => c.Conceptos.Any(x => x.ProductoId == productoId), ct);
+    public async Task<bool> ProductoUsadoAsync(Guid productoId, CancellationToken ct)
+        => await ComprobantesDeLaCuenta().AnyAsync(c => c.Conceptos.Any(x => x.ProductoId == productoId), ct) ||
+           await TrasladosDeLaCuenta().AnyAsync(t => t.Mercancias.Any(x => x.ProductoId == productoId), ct);
 
     // IgnoreQueryFilters justificado: el filtro global deja solo la empresa activa, y aquí
     // hacen falta todas las de la cuenta del claim, ninguna más.

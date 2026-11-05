@@ -67,7 +67,10 @@ public sealed record MercanciaCartaPorteDto(
     decimal PesoEnKg,
     string? Unidad = null,
     string? Dimensiones = null,
-    decimal? PesoUnitarioKg = null);
+    decimal? PesoUnitarioKg = null,
+    Guid? ProductoId = null,
+    string? ProductoIdInterno = null,
+    string? ProductoNombre = null);
 
 /// <summary>Resultado de validar el XML de un traslado sin enviarlo a un PAC.</summary>
 public sealed record ValidacionXmlCartaPorteDto(string Mensaje);

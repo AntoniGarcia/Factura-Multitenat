@@ -129,6 +129,10 @@
     grid-column: span 2;
 }
 
+.catalogo-rejilla-tres > .catalogo-campo-amplio {
+    grid-column: span 4;
+}
+
 .catalogo-opcional {
     min-width: 0;
     border: 1px solid var(--borde);
@@ -375,7 +379,8 @@
         grid-template-columns: minmax(0, 1fr);
     }
 
-    .catalogo-rejilla > * {
+    .catalogo-rejilla > *,
+    .catalogo-rejilla-tres > .catalogo-campo-amplio {
         grid-column: auto;
     }
 
@@ -416,6 +421,18 @@
 
 .carta-porte-formulario .rejilla-formulario > * {
     min-width: 0;
+}
+
+.carta-porte-formulario .carta-porte-dimensiones {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
+/* Vehículo y operador elegidos: solo consulta, debajo de sus selectores. */
+.carta-porte-formulario .seccion-formulario > h3 {
+    margin: 1rem 0 0.5rem;
+    color: var(--texto-suave);
+    font-size: 0.875rem;
+    font-weight: 500;
 }
 
 .carta-porte-formulario .carta-porte-rejilla-dos,
@@ -946,13 +963,29 @@
     margin-left: auto;
 }
 
-.concepto-editor-identidad > div {
+/* Datos del producto en una fila: la etiqueta arriba y el valor abajo. */
+.concepto-editor-producto {
+    display: flex;
+    flex-wrap: wrap;
+    min-width: 0;
+    margin: 0;
+    gap: 0.25rem 1.25rem;
+}
+
+.concepto-editor-producto > div {
     display: flex;
     flex-direction: column;
     min-width: 0;
 }
 
-.concepto-editor-identidad strong {
+.concepto-editor-producto dt {
+    color: var(--texto-suave);
+    font-size: var(--etiqueta-tam);
+}
+
+.concepto-editor-producto dd {
+    max-width: 20rem;
+    margin: 0;
     overflow: hidden;
     color: var(--texto);
     font-size: 0.875rem;
@@ -962,7 +995,6 @@
     white-space: nowrap;
 }
 
-.concepto-editor-identidad div > span,
 .concepto-editor-dato > span {
     color: var(--texto-suave);
     font-size: var(--etiqueta-tam);

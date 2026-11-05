@@ -14,6 +14,7 @@
 @inject ServicioDeComercioExterior ComercioExterior
 @inject ServicioDeClientes Clientes
 @inject ServicioDeProductos Productos
+@inject ServicioDeTransporte Transporte
 @inject ServicioDeEmpresa Empresa
 @inject ServicioDeCatalogos Catalogos
 @inject NavigationManager Navegacion
@@ -69,6 +70,14 @@ else
             <h2 class="seccion-titulo">General</h2>
             <div class="rejilla-campos">
                 <MudTextField T="string" Value="@NombreDeVariante" Label="Tipo de documento" ReadOnly="true" />
+
+                <MudSelect T="Guid?" Value="@(_serie?.Id)" ValueChanged="AlCambiarSerie" Label="Serie">
+                    @foreach (var s in _seriesActivas)
+                    {
+                        <MudSelectItem T="Guid?" Value="@((Guid?)s.Id)">@s.Prefijo</MudSelectItem>
+                    }
+                </MudSelect>
+
                 <MudTextField T="string" Value="@FolioMostrado" Label="Folio" ReadOnly="true" Class="cifra-tabular" />
 
                 <MudSelect T="string" @bind-Value="_moneda" @bind-Value:after="ActualizarVistaPreviaAsync" Label="Moneda">
@@ -86,18 +95,15 @@ else
                               Label="Tipo de cambio" Deshabilitado="@(_moneda == "MXN")"
                               Requerido="@(_moneda != "MXN")" />
 
-                <MudSelect T="Guid?" Value="@(_serie?.Id)" ValueChanged="AlCambiarSerie" Label="Serie">
-                    @foreach (var s in _seriesActivas)
-                    {
-                        <MudSelectItem T="Guid?" Value="@((Guid?)s.Id)">@s.Prefijo</MudSelectItem>
-                    }
-                </MudSelect>
+                @* Solo informa: cada concepto lleva el IVA de su producto, que puede ser otro. *@
+                <MudTextField T="string" Value="@IvaPorDefecto" Label="IVA trasladado" ReadOnly="true" Class="cifra-tabular"
+                              HelperText="Tasa de Configuración. Cada concepto usa la de su producto." />
             </div>
             </section>
 
             <section class="emision-seccion">
             <h2 class="seccion-titulo">Datos del cliente</h2>
-            <div class="rejilla-campos">
+            <div class="catalogo-rejilla catalogo-rejilla-tres">
                 <BuscadorDeCliente Valor="@_cliente" ValorCambiado="AlElegirClienteAsync" Requerido="true" />
                 <MudTextField T="string" Value="@(_cliente?.Rfc)" Label="R.F.C." ReadOnly="true" Class="cifra-tabular" />
                 @if (EsPublicoEnGeneral)
@@ -112,6 +118,8 @@ else
                 }
                 <MudTextField T="string" Value="@(_cliente?.DomicilioFiscalCp)" Label="CP del cliente" ReadOnly="true" Class="cifra-tabular"
                               HelperText="@(_cliente?.Rfc is "XAXX010101000" or "XEXX010101000" ? "El CFDI usará el CP de expedición." : null)" />
+                <MudTextField T="string" Value="@(_domicilioDelCliente ?? "—")" Label="Domicilio" ReadOnly="true"
+                              Class="catalogo-campo-amplio" />
 
 <BuscadorCatalogo Catalogo="c_MetodoPago" Opciones="@Catalogos.Obtener("c_MetodoPago")" @bind-Clave="_metodoPago" Label="Método de pago" PuedeLimpiar="true" />
 
@@ -149,10 +157,12 @@ else
                             <div class="concepto-editor-cabecera">
                                 <div class="concepto-editor-identidad">
                                     <span class="concepto-editor-numero">@(indice + 1)</span>
-                                    <div>
-                                        <strong class="cifra-tabular">@renglon.ClaveProdServ</strong>
-                                        <span>@renglon.UnidadTexto</span>
-                                    </div>
+                                    <dl class="concepto-editor-producto">
+                                        <div><dt>Código SAT</dt><dd class="cifra-tabular">@renglon.ClaveProdServ</dd></div>
+                                        <div><dt>Producto</dt><dd title="@renglon.ProductoNombre">@(renglon.ProductoNombre ?? "—")</dd></div>
+                                        <div><dt>ID interno</dt><dd class="cifra-tabular">@(renglon.ProductoIdInterno ?? "—")</dd></div>
+                                        <div><dt>Unidad</dt><dd><span class="cifra-tabular">@renglon.ClaveUnidad</span> — @renglon.UnidadTexto</dd></div>
+                                    </dl>
                                 </div>
 
                                 @if (EsFacturaBasica && EsEditable)
@@ -211,6 +221,15 @@ else
                                 <strong class="cifra-tabular">@(renglon.ImporteSeguro?.ToString("N2") ?? "—")</strong>
                             </div>
 
+                            @if (EsFacturaBasica && renglon.AplicaIsh)
+                            {
+                                @* Una sola tasa por factura: el SAT lleva un solo renglón de ISH. *@
+                                <MudNumericField T="decimal?" Value="@_ishPct" ValueChanged="async v => { _ishPct = v; await ActualizarVistaPreviaAsync(); }"
+                                                 Label="Tasa de ISH %" Min="0.01m" Max="100m" Step="0.5m" Format="N2"
+                                                 ReadOnly="@(!EsEditable)" Class="cifra-tabular"
+                                                 HelperText="Una para toda la factura. Se precarga desde Configuración." />
+                            }
+
                             @if (renglon.ObjetoImp == "02" && renglon.Impuestos.Count == 0)
                             {
                                 <div class="concepto-editor-aviso" role="alert">
@@ -222,16 +241,6 @@ else
                     </div>
                 }
             </div>
-
-            @if (EsFacturaBasica && _renglones.Any(r => r.AplicaIsh))
-            {
-                <div class="rejilla-campos">
-                    <MudNumericField T="decimal?" Value="@_ishPct" ValueChanged="async v => { _ishPct = v; await ActualizarVistaPreviaAsync(); }"
-                                     Label="Tasa de ISH %" Min="0.01m" Max="100m" Step="0.5m" Format="N2"
-                                     ReadOnly="@(!EsEditable)" Class="cifra-tabular"
-                                     HelperText="Se precarga desde Configuración. Aplica a los conceptos marcados con ISH, sin contar el IVA." />
-                </div>
-            }
 
             @if (_renglones.Count == 0)
             {
@@ -295,20 +304,16 @@ else
             }
         </MudTabPanel>
 
+        @if (EsPublicoEnGeneral)
+        {
         <MudTabPanel Text="Información global">
-            @if (!EsPublicoEnGeneral)
-            {
-                <p class="seccion-ayuda">Selecciona un cliente con RFC XAXX010101000 para capturar estos datos.</p>
-            }
-            else
-            {
                 <div class="rejilla-campos">
 <BuscadorCatalogo Catalogo="c_Periodicidad" Opciones="@Catalogos.Obtener("c_Periodicidad")" @bind-Clave="_globalPeriodicidad" Label="Periodicidad" Requerido="true" PuedeLimpiar="false" />
 <BuscadorCatalogo Catalogo="c_Meses" Opciones="@Catalogos.Obtener("c_Meses")" @bind-Clave="_globalMeses" Label="Mes" Requerido="true" PuedeLimpiar="false" />
                     <MudNumericField T="int?" @bind-Value="_globalAnio" Label="Año" Required="true" />
                 </div>
-            }
         </MudTabPanel>
+        }
         @if (EsFacturaNotarial)
         {
             <MudTabPanel Text="Notaría">
@@ -328,8 +333,7 @@ else
         @if (EsFacturaComercio)
         {
             <MudTabPanel Text="Comercio exterior">
-                <DatosDeComercioExteriorDeFactura ComprobanteId="@_comprobante.Id" GuardarFactura="GuardarAsync"
-                                                   VistaPreviaPdf="AbrirVistaPreviaAsync"
+                <DatosDeComercioExteriorDeFactura @ref="_datosComercio" ComprobanteId="@_comprobante.Id" GuardarFactura="GuardarAsync"
                                                    ObtenerConceptos="@(() => _comprobante.Conceptos)"
                                                    ResidenciaFiscalSugerida="@_clienteDetalle?.ResidenciaFiscal"
                                                    NumeroRegistroTributarioSugerido="@_clienteDetalle?.NumRegIdTrib"
@@ -417,7 +421,7 @@ else
             </MudButton>
             <MudButton Variant="Variant.Outlined" StartIcon="@Icons.Material.Filled.PictureAsPdf"
                        OnClick="VistaPreviaAsync"
-                       Disabled="@(_guardando || _generando || _preparandoVista || _renglones.Count == 0 || (EsFacturaDeObra && !_obraGuardada) || EsFacturaComercio)">
+                       Disabled="@(_guardando || _generando || _preparandoVista || _renglones.Count == 0 || (EsFacturaDeObra && !_obraGuardada) || (EsFacturaComercio && !_comercioGuardado && _datosComercio is not { EstaVisible: true }))">
                 @(_preparandoVista ? "Preparando…" : "Vista previa PDF")
             </MudButton>
             <MudButton Variant="Variant.Filled" Color="Color.Primary"
@@ -482,6 +486,42 @@ else
     // Conceptos
     private readonly List<RenglonConcepto> _renglones = [];
     private TasasDeCapturaDto _tasasDeCaptura = new(0m, 0m, 0m, 0m);
+    private string? _domicilioDelCliente;
+    private DatosDeComercioExteriorDeFactura? _datosComercio;
+
+    private string IvaPorDefecto => $"{_tasasDeCaptura.Iva * 100m:0.##} %";
+
+    /// <summary>
+    /// El domicilio del catálogo en una línea, solo para consulta. El nacional guarda claves del
+    /// SAT; sus nombres se resuelven con el código postal.
+    /// </summary>
+    private async Task<string?> DomicilioDelClienteAsync(ClienteDto cliente)
+    {
+        string? estado = cliente.Estado, municipio = cliente.Municipio;
+        if (cliente.Pais is null or "MEX" && cliente.CodigoPostal is { Length: 5 } cp)
+        {
+            try
+            {
+                if (await Transporte.ResolverDomicilioPorCodigoPostalAsync(cp) is { } resuelto && resuelto.Estado == estado)
+                {
+                    estado = resuelto.NombreEstado;
+                    if (resuelto.Municipio == municipio) municipio = resuelto.NombreMunicipio ?? municipio;
+                }
+            }
+            catch (HttpRequestException)
+            {
+                // Sin los nombres se muestran las claves: el domicilio solo es informativo.
+            }
+        }
+
+        var calle = string.Join(" ", new[] { cliente.Calle, cliente.NumeroExterior,
+                cliente.NumeroInterior is { Length: > 0 } interior ? $"int. {interior}" : null }
+            .Where(x => !string.IsNullOrWhiteSpace(x)));
+        var partes = new[] { calle, cliente.Colonia, cliente.Localidad, municipio, estado,
+                cliente.CodigoPostal is { Length: > 0 } codigo ? $"C.P. {codigo}" : null }
+            .Where(x => !string.IsNullOrWhiteSpace(x)).ToList();
+        return partes.Count == 0 ? null : string.Join(", ", partes);
+    }
     private decimal? _ishPct;
 
     // Pie
@@ -607,9 +647,9 @@ else
 
         var comprobante = await Emision.ObtenerAsync(Id!.Value);
         _comprobante = comprobante;
+        if (comprobante is not null) _tasasDeCaptura = await Emision.ObtenerTasasDeCapturaAsync();
         if (comprobante is not null && EsFacturaBasica)
         {
-            _tasasDeCaptura = await Emision.ObtenerTasasDeCapturaAsync();
             // La del borrador si ya la tenía; si no, la de Configuración.
             var tasaIsh = comprobante.TasaIsh ?? _tasasDeCaptura.Ish;
             _ishPct = tasaIsh > 0 ? tasaIsh * 100m : null;
@@ -654,6 +694,7 @@ else
                 if (cliente is not null)
                 {
                     _clienteDetalle = cliente;
+                    _domicilioDelCliente = await DomicilioDelClienteAsync(cliente);
                     _cliente = new ClienteEnListaDto(
                         cliente.Id, cliente.ClaveInterna, cliente.Rfc, cliente.Nombre,
                         cliente.RegimenFiscal, cliente.DomicilioFiscalCp, cliente.CorreoPrincipal, cliente.Activo);
@@ -669,6 +710,8 @@ else
                     ClaveProdServ = concepto.ClaveProdServ,
                     ClaveUnidad = concepto.ClaveUnidad,
                     UnidadTexto = concepto.UnidadTexto,
+                    ProductoNombre = concepto.ProductoNombre,
+                    ProductoIdInterno = concepto.ProductoIdInterno,
                     NoIdentificacion = concepto.NoIdentificacion,
                     Descripcion = concepto.Descripcion,
                     ObjetoImp = concepto.ObjetoImp,
@@ -697,6 +740,7 @@ else
     {
         _cliente = seleccion;
         _clienteDetalle = null;
+        _domicilioDelCliente = null;
         _receptorNombre = seleccion?.Nombre;
 
         if (seleccion is null) return;
@@ -708,6 +752,7 @@ else
         if (completo is null) return;
 
         _clienteDetalle = completo;
+        _domicilioDelCliente = await DomicilioDelClienteAsync(completo);
 
         _usoCfdi = completo.UsoCfdiPreferido;
         _metodoPago = completo.MetodoPagoPreferido;
@@ -727,6 +772,8 @@ else
         renglon.ClaveProdServ = producto.ClaveProdServ;
         renglon.ClaveUnidad = producto.ClaveUnidad;
         renglon.UnidadTexto = producto.UnidadTexto;
+        renglon.ProductoNombre = producto.Descripcion;
+        renglon.ProductoIdInterno = producto.IdInterno;
         renglon.Descripcion = DescripcionDeConcepto(producto);
         if (EsFacturaComercio && producto.IdInterno is { } idInterno) renglon.NoIdentificacion = idInterno;
         renglon.ObjetoImp = producto.ObjetoImp;
@@ -996,7 +1043,13 @@ else
     {
         if (_comprobante is null || _preparandoVista) return;
 
-        if (!await GuardarAsync()) return;
+        // Con la pestaña de Comercio Exterior abierta se guarda también el complemento, que
+        // guarda primero la factura. MudTabs descarta las pestañas ocultas, así que fuera de
+        // ella cuenta lo que el complemento ya tenga guardado.
+        var guardado = EsFacturaComercio && _datosComercio is { EstaVisible: true }
+            ? await _datosComercio.GuardarDatosAsync()
+            : await GuardarAsync();
+        if (!guardado) return;
 
         await AbrirVistaPreviaAsync();
     }
@@ -1090,6 +1143,11 @@ else
         public string? ClaveProdServ { get; set; }
         public string? ClaveUnidad { get; set; }
         public string? UnidadTexto { get; set; }
+
+        /// <summary>Del catálogo, solo para mostrar: no viajan al servidor ni al CFDI.</summary>
+        public string? ProductoNombre { get; set; }
+        public string? ProductoIdInterno { get; set; }
+
         public string? NoIdentificacion { get; set; }
         public string? Descripcion { get; set; }
         public string? ObjetoImp { get; set; }

@@ -211,6 +211,12 @@ public sealed class ServicioDeTrasladosCartaPorte(
             p.Mercancias.Select(x => x.Orden).Distinct().Count() != p.Mercancias.Count)
             return ErrorNegocio.Validacion("orden-repetido", "Cada ubicación y mercancía debe tener un orden distinto.");
 
+        // El filtro de la cuenta deja fuera los productos ajenos: un id de otra cuenta no cuenta.
+        var productos = p.Mercancias.Where(x => x.ProductoId is not null).Select(x => x.ProductoId!.Value).Distinct().ToList();
+        if (productos.Count > 0 &&
+            await baseDeDatos.Productos.AsNoTracking().CountAsync(x => productos.Contains(x.Id), ct) != productos.Count)
+            return ErrorNegocio.Validacion("producto-no-encontrado", "Uno de los productos elegidos ya no está en el catálogo.");
+
         var vehiculo = await baseDeDatos.Vehiculos.AsNoTracking()
             .FirstOrDefaultAsync(x => x.Id == p.VehiculoId && x.Activo, ct);
         var figura = await baseDeDatos.FigurasTransporte.AsNoTracking()
@@ -346,7 +352,8 @@ public sealed class ServicioDeTrasladosCartaPorte(
         {
             Id = Guid.NewGuid(), Orden = x.Orden, ClaveProdServ = x.ClaveProdServ.Trim(),
             Descripcion = x.Descripcion.Trim(), Cantidad = x.Cantidad, ClaveUnidad = x.ClaveUnidad.Trim(), PesoEnKg = x.PesoEnKg,
-            PesoUnitarioKg = x.PesoUnitarioKg, Unidad = Recortar(x.Unidad), Dimensiones = Recortar(x.Dimensiones)
+            PesoUnitarioKg = x.PesoUnitarioKg, Unidad = Recortar(x.Unidad), Dimensiones = Recortar(x.Dimensiones),
+            ProductoId = x.ProductoId
         }));
     }
 
@@ -372,6 +379,10 @@ public sealed class ServicioDeTrasladosCartaPorte(
     private async Task<TrasladoCartaPorteDto> ADtoAsync(string estatus, TrasladoCartaPorte x, CancellationToken ct)
     {
         var zona = await huso.ObtenerAsync(ct);
+        var ids = x.Mercancias.Where(y => y.ProductoId is not null).Select(y => y.ProductoId!.Value).Distinct().ToList();
+        var productos = await baseDeDatos.Productos.AsNoTracking().Where(y => ids.Contains(y.Id))
+            .Select(y => new { y.Id, y.IdInterno, y.Descripcion })
+            .ToDictionaryAsync(y => y.Id, ct);
         return new(
         x.ComprobanteId, estatus, x.VehiculoId, x.FiguraTransporteId, x.FechaSalidaUtc, x.FechaLlegadaUtc,
         x.DistanciaRecorridaKm, x.PesoBrutoTotalKg, x.TotalMercancias,
@@ -379,7 +390,10 @@ public sealed class ServicioDeTrasladosCartaPorte(
             y.RfcRemitenteDestinatario, y.Calle, y.NumeroExterior, y.NumeroInterior, y.Estado, y.Municipio, y.CodigoPostal,
             y.NombreRemitenteDestinatario))],
         [.. x.Mercancias.OrderBy(y => y.Orden).Select(y => new MercanciaCartaPorteDto(y.Orden, y.ClaveProdServ,
-            y.Descripcion, y.Cantidad, y.ClaveUnidad, y.PesoEnKg, y.Unidad, y.Dimensiones, y.PesoUnitarioKg))],
+            y.Descripcion, y.Cantidad, y.ClaveUnidad, y.PesoEnKg, y.Unidad, y.Dimensiones, y.PesoUnitarioKg,
+            y.ProductoId,
+            y.ProductoId is { } productoId && productos.TryGetValue(productoId, out var producto) ? producto.IdInterno : null,
+            y.ProductoId is { } otroId && productos.TryGetValue(otroId, out var otro) ? otro.Descripcion : null))],
         x.ClienteDestinoId,
         [.. x.Comprobante.Relacionados.OrderBy(y => y.TipoRelacion).ThenBy(y => y.UuidRelacionado)
             .Select(y => new Facturacion.Shared.Documentos.ComprobanteRelacionadoDto(y.Id, y.TipoRelacion, y.UuidRelacionado, null, null))],
@@ -407,7 +421,7 @@ public sealed class ServicioDeTrasladosCartaPorte(
         Mercancias = x.Mercancias.OrderBy(y => y.Orden).Select(y => new
         {
             y.Orden, y.ClaveProdServ, y.Descripcion, y.Cantidad, y.ClaveUnidad,
-            y.Unidad, y.Dimensiones, y.PesoUnitarioKg, y.PesoEnKg
+            y.Unidad, y.Dimensiones, y.PesoUnitarioKg, y.PesoEnKg, y.ProductoId
         }).ToArray(),
         Relacionados = x.Comprobante.Relacionados.OrderBy(y => y.TipoRelacion).ThenBy(y => y.UuidRelacionado)
             .Select(y => new { y.TipoRelacion, y.UuidRelacionado }).ToArray()

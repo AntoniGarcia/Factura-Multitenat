@@ -5843,6 +5843,428 @@ GO
 BEGIN TRANSACTION;
 IF NOT EXISTS (
     SELECT * FROM [__EFMigrationsHistory]
+    WHERE [MigrationId] = N'20261103173722_20261103_A_FiscalDelProveedor'
+)
+BEGIN
+    EXEC(N'CREATE TABLE [ConfiguracionFiscalProveedor] (
+        [Id] tinyint NOT NULL,
+        [Rfc] nvarchar(13) NOT NULL,
+        [NombreFiscal] nvarchar(254) NOT NULL,
+        [RegimenFiscal] nvarchar(3) NOT NULL,
+        [CodigoPostalExpedicion] nvarchar(5) NOT NULL,
+        [ZonaHoraria] nvarchar(64) NOT NULL,
+        [Serie] nvarchar(25) NOT NULL,
+        [ActualizadaUtc] datetime2 NOT NULL,
+        [ActualizadaPorOperadorId] uniqueidentifier NOT NULL,
+        [Version] rowversion NOT NULL,
+        CONSTRAINT [PK_ConfiguracionFiscalProveedor] PRIMARY KEY ([Id]),
+        CONSTRAINT [CK_ConfiguracionFiscalProveedor_Unica] CHECK ([Id] = 1)
+    );');
+END;
+
+IF NOT EXISTS (
+    SELECT * FROM [__EFMigrationsHistory]
+    WHERE [MigrationId] = N'20261103173722_20261103_A_FiscalDelProveedor'
+)
+BEGIN
+    EXEC(N'CREATE TABLE [CertificadosProveedor] (
+        [Id] uniqueidentifier NOT NULL,
+        [ConfiguracionId] tinyint NOT NULL,
+        [Rfc] nvarchar(13) NOT NULL,
+        [NumeroSerie] nvarchar(40) NOT NULL,
+        [VigenciaDesdeUtc] datetime2 NOT NULL,
+        [VigenciaHastaUtc] datetime2 NOT NULL,
+        [CerCifrado] varbinary(max) NOT NULL,
+        [KeyCifrada] varbinary(max) NOT NULL,
+        [ContrasenaCifrada] nvarchar(3000) NOT NULL,
+        [Activo] bit NOT NULL,
+        [CargadoUtc] datetime2 NOT NULL,
+        [CargadoPorOperadorId] uniqueidentifier NOT NULL,
+        CONSTRAINT [PK_CertificadosProveedor] PRIMARY KEY ([Id]),
+        CONSTRAINT [FK_CertificadosProveedor_ConfiguracionFiscalProveedor_ConfiguracionId] FOREIGN KEY ([ConfiguracionId]) REFERENCES [ConfiguracionFiscalProveedor] ([Id]) ON DELETE NO ACTION
+    );');
+END;
+
+IF NOT EXISTS (
+    SELECT * FROM [__EFMigrationsHistory]
+    WHERE [MigrationId] = N'20261103173722_20261103_A_FiscalDelProveedor'
+)
+BEGIN
+    EXEC(N'EXEC(N''CREATE UNIQUE INDEX [IX_CertificadosProveedor_ConfiguracionId] ON [CertificadosProveedor] ([ConfiguracionId]) WHERE [Activo] = 1'');');
+END;
+
+IF NOT EXISTS (
+    SELECT * FROM [__EFMigrationsHistory]
+    WHERE [MigrationId] = N'20261103173722_20261103_A_FiscalDelProveedor'
+)
+BEGIN
+    EXEC(N'CREATE UNIQUE INDEX [IX_CertificadosProveedor_ConfiguracionId_NumeroSerie] ON [CertificadosProveedor] ([ConfiguracionId], [NumeroSerie]);');
+END;
+
+IF NOT EXISTS (
+    SELECT * FROM [__EFMigrationsHistory]
+    WHERE [MigrationId] = N'20261103173722_20261103_A_FiscalDelProveedor'
+)
+BEGIN
+    EXEC(N'INSERT INTO [__EFMigrationsHistory] ([MigrationId], [ProductVersion])
+    VALUES (N''20261103173722_20261103_A_FiscalDelProveedor'', N''10.0.10'');');
+END;
+
+COMMIT;
+GO
+
+BEGIN TRANSACTION;
+IF NOT EXISTS (
+    SELECT * FROM [__EFMigrationsHistory]
+    WHERE [MigrationId] = N'20261103180949_20261103_A_FacturasDeCompras'
+)
+BEGIN
+    EXEC(N'CREATE TABLE [FacturasDeCompras] (
+        [Id] uniqueidentifier NOT NULL,
+        [CompraId] uniqueidentifier NOT NULL,
+        [CuentaId] uniqueidentifier NOT NULL,
+        [EmpresaId] uniqueidentifier NOT NULL,
+        [Estado] nvarchar(20) NOT NULL,
+        [EmisorRfc] nvarchar(13) NOT NULL,
+        [EmisorNombre] nvarchar(254) NOT NULL,
+        [EmisorRegimen] nvarchar(3) NOT NULL,
+        [EmisorCodigoPostal] nvarchar(5) NOT NULL,
+        [EmisorZonaHoraria] nvarchar(64) NOT NULL,
+        [Serie] nvarchar(25) NOT NULL,
+        [VersionProveedor] varbinary(8) NOT NULL,
+        [ReceptorRfc] nvarchar(13) NOT NULL,
+        [ReceptorNombre] nvarchar(254) NOT NULL,
+        [ReceptorRegimen] nvarchar(3) NOT NULL,
+        [ReceptorCodigoPostal] nvarchar(5) NOT NULL,
+        [UsoCfdi] nvarchar(3) NOT NULL,
+        [Descripcion] nvarchar(1000) NOT NULL,
+        [CantidadTimbres] int NOT NULL,
+        [ClaveProdServ] nvarchar(8) NOT NULL,
+        [ClaveUnidad] nvarchar(3) NOT NULL,
+        [Subtotal] decimal(18,6) NOT NULL,
+        [Iva] decimal(18,6) NOT NULL,
+        [TasaIva] decimal(18,6) NOT NULL,
+        [Total] decimal(18,6) NOT NULL,
+        [FormaPago] nvarchar(2) NOT NULL,
+        [CreadaUtc] datetime2 NOT NULL,
+        [ActualizadaUtc] datetime2 NOT NULL,
+        [CreadaPorOperadorId] uniqueidentifier NOT NULL,
+        [ActualizadaPorOperadorId] uniqueidentifier NOT NULL,
+        [Version] rowversion NOT NULL,
+        CONSTRAINT [PK_FacturasDeCompras] PRIMARY KEY ([Id]),
+        CONSTRAINT [FK_FacturasDeCompras_ComprasTimbres_CompraId] FOREIGN KEY ([CompraId]) REFERENCES [ComprasTimbres] ([Id]) ON DELETE NO ACTION
+    );');
+END;
+
+IF NOT EXISTS (
+    SELECT * FROM [__EFMigrationsHistory]
+    WHERE [MigrationId] = N'20261103180949_20261103_A_FacturasDeCompras'
+)
+BEGIN
+    EXEC(N'CREATE UNIQUE INDEX [IX_FacturasDeCompras_CompraId] ON [FacturasDeCompras] ([CompraId]);');
+END;
+
+IF NOT EXISTS (
+    SELECT * FROM [__EFMigrationsHistory]
+    WHERE [MigrationId] = N'20261103180949_20261103_A_FacturasDeCompras'
+)
+BEGIN
+    EXEC(N'CREATE INDEX [IX_FacturasDeCompras_CuentaId_CreadaUtc] ON [FacturasDeCompras] ([CuentaId], [CreadaUtc]);');
+END;
+
+IF NOT EXISTS (
+    SELECT * FROM [__EFMigrationsHistory]
+    WHERE [MigrationId] = N'20261103180949_20261103_A_FacturasDeCompras'
+)
+BEGIN
+    EXEC(N'INSERT INTO dbo.OperadoresPermisos (OperadorId, Permiso)
+    SELECT o.Id, N''panel_facturar_compras'' FROM dbo.OperadoresPlataforma o
+    WHERE o.EsPrincipal = 1 AND NOT EXISTS (
+        SELECT 1 FROM dbo.OperadoresPermisos p
+        WHERE p.OperadorId = o.Id AND p.Permiso = N''panel_facturar_compras'');');
+END;
+
+IF NOT EXISTS (
+    SELECT * FROM [__EFMigrationsHistory]
+    WHERE [MigrationId] = N'20261103180949_20261103_A_FacturasDeCompras'
+)
+BEGIN
+    EXEC(N'INSERT INTO [__EFMigrationsHistory] ([MigrationId], [ProductVersion])
+    VALUES (N''20261103180949_20261103_A_FacturasDeCompras'', N''10.0.10'');');
+END;
+
+COMMIT;
+GO
+
+BEGIN TRANSACTION;
+IF NOT EXISTS (
+    SELECT * FROM [__EFMigrationsHistory]
+    WHERE [MigrationId] = N'20261103185621_20261103_A_TimbradoFacturasProveedor'
+)
+BEGIN
+    EXEC(N'ALTER TABLE [FacturasDeCompras] ADD [FechaTimbradoUtc] datetime2 NULL;');
+END;
+
+IF NOT EXISTS (
+    SELECT * FROM [__EFMigrationsHistory]
+    WHERE [MigrationId] = N'20261103185621_20261103_A_TimbradoFacturasProveedor'
+)
+BEGIN
+    EXEC(N'ALTER TABLE [FacturasDeCompras] ADD [Folio] int NULL;');
+END;
+
+IF NOT EXISTS (
+    SELECT * FROM [__EFMigrationsHistory]
+    WHERE [MigrationId] = N'20261103185621_20261103_A_TimbradoFacturasProveedor'
+)
+BEGIN
+    EXEC(N'ALTER TABLE [FacturasDeCompras] ADD [Uuid] uniqueidentifier NULL;');
+END;
+
+IF NOT EXISTS (
+    SELECT * FROM [__EFMigrationsHistory]
+    WHERE [MigrationId] = N'20261103185621_20261103_A_TimbradoFacturasProveedor'
+)
+BEGIN
+    EXEC(N'CREATE TABLE [IntentosFacturasProveedor] (
+        [Id] uniqueidentifier NOT NULL,
+        [CuentaId] uniqueidentifier NOT NULL,
+        [FacturaId] uniqueidentifier NOT NULL,
+        [CertificadoId] uniqueidentifier NOT NULL,
+        [OperadorId] uniqueidentifier NOT NULL,
+        [ClaveSolicitud] nvarchar(128) NOT NULL,
+        [VersionSolicitada] varbinary(8) NOT NULL,
+        [Control] uniqueidentifier NOT NULL,
+        [Estado] nvarchar(20) NOT NULL,
+        [Folio] int NOT NULL,
+        [FechaEmisionUtc] datetime2 NOT NULL,
+        [ActualizadaUtc] datetime2 NOT NULL,
+        [XmlEnviado] nvarchar(max) NULL,
+        [CadenaOriginal] nvarchar(max) NULL,
+        [Sello] nvarchar(max) NULL,
+        [NoCertificado] nvarchar(40) NULL,
+        [CodigoError] nvarchar(100) NULL,
+        [XmlTimbrado] nvarchar(max) NULL,
+        [Uuid] uniqueidentifier NULL,
+        [FechaTimbradoUtc] datetime2 NULL,
+        [NoCertificadoSat] nvarchar(40) NULL,
+        [SelloSat] nvarchar(max) NULL,
+        [CadenaOriginalSat] nvarchar(max) NULL,
+        CONSTRAINT [PK_IntentosFacturasProveedor] PRIMARY KEY ([Id]),
+        CONSTRAINT [FK_IntentosFacturasProveedor_CertificadosProveedor_CertificadoId] FOREIGN KEY ([CertificadoId]) REFERENCES [CertificadosProveedor] ([Id]) ON DELETE NO ACTION,
+        CONSTRAINT [FK_IntentosFacturasProveedor_FacturasDeCompras_FacturaId] FOREIGN KEY ([FacturaId]) REFERENCES [FacturasDeCompras] ([Id]) ON DELETE NO ACTION
+    );');
+END;
+
+IF NOT EXISTS (
+    SELECT * FROM [__EFMigrationsHistory]
+    WHERE [MigrationId] = N'20261103185621_20261103_A_TimbradoFacturasProveedor'
+)
+BEGIN
+    EXEC(N'CREATE TABLE [SeriesFacturasProveedor] (
+        [Rfc] nvarchar(13) NOT NULL,
+        [Serie] nvarchar(25) NOT NULL,
+        [UltimoFolio] int NOT NULL,
+        CONSTRAINT [PK_SeriesFacturasProveedor] PRIMARY KEY ([Rfc], [Serie])
+    );');
+END;
+
+IF NOT EXISTS (
+    SELECT * FROM [__EFMigrationsHistory]
+    WHERE [MigrationId] = N'20261103185621_20261103_A_TimbradoFacturasProveedor'
+)
+BEGIN
+    EXEC(N'CREATE INDEX [IX_IntentosFacturasProveedor_CertificadoId] ON [IntentosFacturasProveedor] ([CertificadoId]);');
+END;
+
+IF NOT EXISTS (
+    SELECT * FROM [__EFMigrationsHistory]
+    WHERE [MigrationId] = N'20261103185621_20261103_A_TimbradoFacturasProveedor'
+)
+BEGIN
+    EXEC(N'CREATE INDEX [IX_IntentosFacturasProveedor_Estado_ActualizadaUtc] ON [IntentosFacturasProveedor] ([Estado], [ActualizadaUtc]);');
+END;
+
+IF NOT EXISTS (
+    SELECT * FROM [__EFMigrationsHistory]
+    WHERE [MigrationId] = N'20261103185621_20261103_A_TimbradoFacturasProveedor'
+)
+BEGIN
+    EXEC(N'EXEC(N''CREATE UNIQUE INDEX [IX_IntentosFacturasProveedor_FacturaId] ON [IntentosFacturasProveedor] ([FacturaId]) WHERE [Estado] = N''''timbrando'''''');');
+END;
+
+IF NOT EXISTS (
+    SELECT * FROM [__EFMigrationsHistory]
+    WHERE [MigrationId] = N'20261103185621_20261103_A_TimbradoFacturasProveedor'
+)
+BEGIN
+    EXEC(N'CREATE UNIQUE INDEX [IX_IntentosFacturasProveedor_OperadorId_ClaveSolicitud] ON [IntentosFacturasProveedor] ([OperadorId], [ClaveSolicitud]);');
+END;
+
+IF NOT EXISTS (
+    SELECT * FROM [__EFMigrationsHistory]
+    WHERE [MigrationId] = N'20261103185621_20261103_A_TimbradoFacturasProveedor'
+)
+BEGIN
+    EXEC(N'CREATE PROCEDURE dbo.ReservarFolioProveedor
+        @Rfc nvarchar(13), @Serie nvarchar(25)
+    AS
+    BEGIN
+        SET NOCOUNT ON;
+        SET XACT_ABORT ON;
+        BEGIN TRY
+            BEGIN TRANSACTION;
+            IF NOT EXISTS (SELECT 1 FROM dbo.SeriesFacturasProveedor WITH (UPDLOCK, HOLDLOCK)
+                           WHERE Rfc = @Rfc AND Serie = @Serie)
+                INSERT dbo.SeriesFacturasProveedor (Rfc, Serie, UltimoFolio) VALUES (@Rfc, @Serie, 0);
+            UPDATE dbo.SeriesFacturasProveedor WITH (UPDLOCK, ROWLOCK)
+            SET UltimoFolio = UltimoFolio + 1
+            OUTPUT inserted.UltimoFolio AS Value
+            WHERE Rfc = @Rfc AND Serie = @Serie AND UltimoFolio < 2147483647;
+            IF @@ROWCOUNT <> 1 THROW 51000, N''La serie del proveedor no tiene folios disponibles.'', 1;
+            COMMIT TRANSACTION;
+        END TRY
+        BEGIN CATCH
+            IF XACT_STATE() <> 0 ROLLBACK TRANSACTION;
+            THROW;
+        END CATCH;
+    END;');
+END;
+
+IF NOT EXISTS (
+    SELECT * FROM [__EFMigrationsHistory]
+    WHERE [MigrationId] = N'20261103185621_20261103_A_TimbradoFacturasProveedor'
+)
+BEGIN
+    EXEC(N'INSERT dbo.OperadoresPermisos (OperadorId, Permiso)
+    SELECT o.Id, N''panel_timbrar_compras'' FROM dbo.OperadoresPlataforma o
+    WHERE o.EsPrincipal = 1 AND NOT EXISTS
+        (SELECT 1 FROM dbo.OperadoresPermisos p WHERE p.OperadorId = o.Id AND p.Permiso = N''panel_timbrar_compras'');');
+END;
+
+IF NOT EXISTS (
+    SELECT * FROM [__EFMigrationsHistory]
+    WHERE [MigrationId] = N'20261103185621_20261103_A_TimbradoFacturasProveedor'
+)
+BEGIN
+    EXEC(N'INSERT INTO [__EFMigrationsHistory] ([MigrationId], [ProductVersion])
+    VALUES (N''20261103185621_20261103_A_TimbradoFacturasProveedor'', N''10.0.10'');');
+END;
+
+COMMIT;
+GO
+
+BEGIN TRANSACTION;
+IF NOT EXISTS (
+    SELECT * FROM [__EFMigrationsHistory]
+    WHERE [MigrationId] = N'20261103195727_20261103_A_ClavesSatDePaquetes'
+)
+BEGIN
+    EXEC(N'ALTER TABLE [Paquetes] ADD [ClaveProdServ] nvarchar(8) NULL;');
+END;
+
+IF NOT EXISTS (
+    SELECT * FROM [__EFMigrationsHistory]
+    WHERE [MigrationId] = N'20261103195727_20261103_A_ClavesSatDePaquetes'
+)
+BEGIN
+    EXEC(N'ALTER TABLE [Paquetes] ADD [ClaveUnidad] nvarchar(3) NULL;');
+END;
+
+IF NOT EXISTS (
+    SELECT * FROM [__EFMigrationsHistory]
+    WHERE [MigrationId] = N'20261103195727_20261103_A_ClavesSatDePaquetes'
+)
+BEGIN
+    EXEC(N'ALTER TABLE [ComprasTimbres] ADD [ClaveProdServAlComprar] nvarchar(8) NULL;');
+END;
+
+IF NOT EXISTS (
+    SELECT * FROM [__EFMigrationsHistory]
+    WHERE [MigrationId] = N'20261103195727_20261103_A_ClavesSatDePaquetes'
+)
+BEGIN
+    EXEC(N'ALTER TABLE [ComprasTimbres] ADD [ClaveUnidadAlComprar] nvarchar(3) NULL;');
+END;
+
+IF NOT EXISTS (
+    SELECT * FROM [__EFMigrationsHistory]
+    WHERE [MigrationId] = N'20261103195727_20261103_A_ClavesSatDePaquetes'
+)
+BEGIN
+    EXEC(N'INSERT INTO [__EFMigrationsHistory] ([MigrationId], [ProductVersion])
+    VALUES (N''20261103195727_20261103_A_ClavesSatDePaquetes'', N''10.0.10'');');
+END;
+
+COMMIT;
+GO
+
+BEGIN TRANSACTION;
+IF NOT EXISTS (
+    SELECT * FROM [__EFMigrationsHistory]
+    WHERE [MigrationId] = N'20261103212648_20261103_A_ClavesSatPredeterminadas'
+)
+BEGIN
+    EXEC(N'DECLARE @var9 nvarchar(max);
+    SELECT @var9 = QUOTENAME([d].[name])
+    FROM [sys].[default_constraints] [d]
+    INNER JOIN [sys].[columns] [c] ON [d].[parent_column_id] = [c].[column_id] AND [d].[parent_object_id] = [c].[object_id]
+    WHERE ([d].[parent_object_id] = OBJECT_ID(N''[Paquetes]'') AND [c].[name] = N''ClaveUnidad'');
+    IF @var9 IS NOT NULL EXEC(N''ALTER TABLE [Paquetes] DROP CONSTRAINT '' + @var9 + '';'');
+    ALTER TABLE [Paquetes] ADD DEFAULT N''E48'' FOR [ClaveUnidad];');
+END;
+
+IF NOT EXISTS (
+    SELECT * FROM [__EFMigrationsHistory]
+    WHERE [MigrationId] = N'20261103212648_20261103_A_ClavesSatPredeterminadas'
+)
+BEGIN
+    EXEC(N'DECLARE @var10 nvarchar(max);
+    SELECT @var10 = QUOTENAME([d].[name])
+    FROM [sys].[default_constraints] [d]
+    INNER JOIN [sys].[columns] [c] ON [d].[parent_column_id] = [c].[column_id] AND [d].[parent_object_id] = [c].[object_id]
+    WHERE ([d].[parent_object_id] = OBJECT_ID(N''[Paquetes]'') AND [c].[name] = N''ClaveProdServ'');
+    IF @var10 IS NOT NULL EXEC(N''ALTER TABLE [Paquetes] DROP CONSTRAINT '' + @var10 + '';'');
+    ALTER TABLE [Paquetes] ADD DEFAULT N''81112106'' FOR [ClaveProdServ];');
+END;
+
+IF NOT EXISTS (
+    SELECT * FROM [__EFMigrationsHistory]
+    WHERE [MigrationId] = N'20261103212648_20261103_A_ClavesSatPredeterminadas'
+)
+BEGIN
+    EXEC(N'DECLARE @Cambios TABLE (
+        Id uniqueidentifier, CuentaId uniqueidentifier,
+        ProductoAnterior nvarchar(8), UnidadAnterior nvarchar(3),
+        ProductoNuevo nvarchar(8), UnidadNueva nvarchar(3));
+    UPDATE dbo.Paquetes
+    SET ClaveProdServ = CASE WHEN NULLIF(LTRIM(RTRIM(ClaveProdServ)), N'''') IS NULL THEN N''81112106'' ELSE ClaveProdServ END,
+        ClaveUnidad = CASE WHEN NULLIF(LTRIM(RTRIM(ClaveUnidad)), N'''') IS NULL THEN N''E48'' ELSE ClaveUnidad END
+    OUTPUT inserted.Id, inserted.CuentaId, deleted.ClaveProdServ, deleted.ClaveUnidad,
+        inserted.ClaveProdServ, inserted.ClaveUnidad INTO @Cambios
+    WHERE NULLIF(LTRIM(RTRIM(ClaveProdServ)), N'''') IS NULL OR NULLIF(LTRIM(RTRIM(ClaveUnidad)), N'''') IS NULL;
+    INSERT dbo.Bitacora (CuentaId, Entidad, EntidadId, Accion, ValorAnterior, ValorNuevo, MomentoUtc)
+    SELECT CuentaId, N''Paquete'', LOWER(CONVERT(nvarchar(36), Id)), N''paquete_claves_predeterminadas'',
+        N''{"ClaveProdServ":'' + CASE WHEN ProductoAnterior IS NULL THEN N''null'' ELSE N''"'' + REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(ProductoAnterior, N''\'', N''\\''), N''"'', N''\"''), NCHAR(13), N''\r''), NCHAR(10), N''\n''), NCHAR(9), N''\t'') + N''"'' END + N'',"ClaveUnidad":'' + CASE WHEN UnidadAnterior IS NULL THEN N''null'' ELSE N''"'' + REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(UnidadAnterior, N''\'', N''\\''), N''"'', N''\"''), NCHAR(13), N''\r''), NCHAR(10), N''\n''), NCHAR(9), N''\t'') + N''"'' END + N''}'' ,
+        N''{"ClaveProdServ":'' + CASE WHEN ProductoNuevo IS NULL THEN N''null'' ELSE N''"'' + REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(ProductoNuevo, N''\'', N''\\''), N''"'', N''\"''), NCHAR(13), N''\r''), NCHAR(10), N''\n''), NCHAR(9), N''\t'') + N''"'' END + N'',"ClaveUnidad":'' + CASE WHEN UnidadNueva IS NULL THEN N''null'' ELSE N''"'' + REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(UnidadNueva, N''\'', N''\\''), N''"'', N''\"''), NCHAR(13), N''\r''), NCHAR(10), N''\n''), NCHAR(9), N''\t'') + N''"'' END + N''}'' , SYSUTCDATETIME()
+    FROM @Cambios;');
+END;
+
+IF NOT EXISTS (
+    SELECT * FROM [__EFMigrationsHistory]
+    WHERE [MigrationId] = N'20261103212648_20261103_A_ClavesSatPredeterminadas'
+)
+BEGIN
+    EXEC(N'INSERT INTO [__EFMigrationsHistory] ([MigrationId], [ProductVersion])
+    VALUES (N''20261103212648_20261103_A_ClavesSatPredeterminadas'', N''10.0.10'');');
+END;
+
+COMMIT;
+GO
+
+BEGIN TRANSACTION;
+IF NOT EXISTS (
+    SELECT * FROM [__EFMigrationsHistory]
     WHERE [MigrationId] = N'20261103231509_20261103_B_IshEnFactura'
 )
 BEGIN
@@ -5864,6 +6286,27 @@ IF NOT EXISTS (
 BEGIN
     EXEC(N'INSERT INTO [__EFMigrationsHistory] ([MigrationId], [ProductVersion])
     VALUES (N''20261103231509_20261103_B_IshEnFactura'', N''10.0.10'');');
+END;
+
+COMMIT;
+GO
+
+BEGIN TRANSACTION;
+IF NOT EXISTS (
+    SELECT * FROM [__EFMigrationsHistory]
+    WHERE [MigrationId] = N'20261104225217_20261104_A_ProductoEnMercanciaCartaPorte'
+)
+BEGIN
+    EXEC(N'ALTER TABLE [MercanciasCartaPorte] ADD [ProductoId] uniqueidentifier NULL;');
+END;
+
+IF NOT EXISTS (
+    SELECT * FROM [__EFMigrationsHistory]
+    WHERE [MigrationId] = N'20261104225217_20261104_A_ProductoEnMercanciaCartaPorte'
+)
+BEGIN
+    EXEC(N'INSERT INTO [__EFMigrationsHistory] ([MigrationId], [ProductVersion])
+    VALUES (N''20261104225217_20261104_A_ProductoEnMercanciaCartaPorte'', N''10.0.10'');');
 END;
 
 COMMIT;

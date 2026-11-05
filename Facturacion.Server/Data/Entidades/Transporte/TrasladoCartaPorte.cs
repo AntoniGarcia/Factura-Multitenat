@@ -69,4 +69,10 @@ public sealed class MercanciaCartaPorte : IEntidadDeEmpresa
     public decimal? PesoUnitarioKg { get; set; }
     public string? Unidad { get; set; }
     public string? Dimensiones { get; set; }
+
+    /// <summary>
+    /// Producto del catálogo de la cuenta del que se tomó el renglón, solo para mostrar su ID
+    /// interno y su nombre. No viaja al CFDI: el XML lleva la clave del SAT y la descripción.
+    /// </summary>
+    public Guid? ProductoId { get; set; }
 }

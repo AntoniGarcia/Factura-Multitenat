@@ -4,7 +4,7 @@
 @using Facturacion.Shared.Contratos
 @using Facturacion.Shared.Documentos
 @inject ServicioDeComercioExterior Comercio
-@inject ServicioDeDescargas Descargas
+@implements IDisposable
 
 <PanelErrores Problema="_error" />
 
@@ -150,15 +150,11 @@
         @(_guardando ? "Guardando…" : "Guardar datos de comercio exterior")
     </MudButton>
 </div>
-<div class="comercio-herramientas" role="group" aria-label="Archivos y validación de comercio exterior">
-    <MudButton Variant="Variant.Outlined" OnClick="DescargarXmlAsync" Disabled="@(_guardando || !_tieneDatosGuardados)">
-        Descargar XML del complemento
-    </MudButton>
+@* La vista previa está en el resumen de la factura, y los archivos timbrados se descargan
+   desde Documentos. *@
+<div class="comercio-herramientas" role="group" aria-label="Validación de comercio exterior">
     <MudButton Variant="Variant.Outlined" OnClick="ValidarXmlAsync" Disabled="@(_guardando || _validandoXml || !_tieneDatosGuardados)">
         @(_validandoXml ? "Validando…" : "Validar CFDI completo")
-    </MudButton>
-    <MudButton Variant="Variant.Outlined" OnClick="VistaPreviaAsync" Disabled="@(_guardando || _preparandoVista)">
-        @(_preparandoVista ? "Preparando…" : "Vista previa PDF")
     </MudButton>
 </div>
 @if (_mensajeValidacion is not null)
@@ -170,11 +166,19 @@
 @code {
     [Parameter, EditorRequired] public Guid ComprobanteId { get; set; }
     [Parameter, EditorRequired] public Func<Task<bool>> GuardarFactura { get; set; } = null!;
-    [Parameter, EditorRequired] public Func<Task> VistaPreviaPdf { get; set; } = null!;
+
     [Parameter, EditorRequired] public Func<IReadOnlyList<ConceptoDto>> ObtenerConceptos { get; set; } = null!;
     [Parameter] public EventCallback AlGuardar { get; set; }
     [Parameter] public string? ResidenciaFiscalSugerida { get; set; }
     [Parameter] public string? NumeroRegistroTributarioSugerido { get; set; }
+
+    /// <summary>
+    /// Falso cuando la pestaña se cierra: MudTabs desecha el componente, pero la referencia que
+    /// guarda la factura sigue viva y no debe usarse para guardar datos que ya no se ven.
+    /// </summary>
+    public bool EstaVisible { get; private set; } = true;
+
+    public void Dispose() => EstaVisible = false;
 
     private static readonly DomicilioComercioExteriorDto Vacio =
         new(null, null, null, null, null, null, null, null, null, null);
@@ -184,7 +188,7 @@
     private Guid? _idCargado;
     private bool _guardando;
     private bool _validandoXml;
-    private bool _preparandoVista;
+
     private string? _mensajeValidacion;
     private bool _tieneDatosGuardados;
     private string? _ultimaResidenciaSugerida;
@@ -251,7 +255,11 @@
 
     private async Task GuardarAsync() => await GuardarDatosAsync();
 
-    private async Task<bool> GuardarDatosAsync()
+    /// <summary>
+    /// Guarda la factura y después el complemento. La vista previa del resumen lo llama para no
+    /// mostrar datos del complemento que aún no se guardan.
+    /// </summary>
+    public async Task<bool> GuardarDatosAsync()
     {
         if (_guardando) return false;
         _guardando = true;
@@ -274,15 +282,6 @@
         }
     }
 
-    private async Task DescargarXmlAsync()
-    {
-        if (!await GuardarDatosAsync()) return;
-        _error = null;
-        var (archivo, error) = await Comercio.ObtenerXmlBorradorAsync(ComprobanteId);
-        _error = error;
-        if (archivo is not null) await Descargas.GuardarAsync(archivo);
-    }
-
     private async Task ValidarXmlAsync()
     {
         if (!await GuardarDatosAsync()) return;
@@ -298,20 +297,6 @@
         finally
         {
             _validandoXml = false;
-        }
-    }
-
-    private async Task VistaPreviaAsync()
-    {
-        if (_preparandoVista) return;
-        _preparandoVista = true;
-        try
-        {
-            if (await GuardarDatosAsync()) await VistaPreviaPdf();
-        }
-        finally
-        {
-            _preparandoVista = false;
         }
     }
 }

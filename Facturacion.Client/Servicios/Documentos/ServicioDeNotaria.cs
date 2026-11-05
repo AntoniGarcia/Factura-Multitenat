@@ -18,6 +18,13 @@ public sealed class ServicioDeNotaria(IHttpClientFactory fabrica)
         return await LeerAsync(respuesta, ct);
     }
 
+    /// <summary>Los mismos datos, para mostrarlos en la factura con el permiso de emitir.</summary>
+    public async Task<(ConfiguracionNotarioDto? Exito, DetalleProblema? Error)> ObtenerNotarioAsync(CancellationToken ct = default)
+    {
+        using var respuesta = await Cliente.GetAsync("api/notaria/notario", ct);
+        return await LeerAsync(respuesta, ct);
+    }
+
     public async Task<(ConfiguracionNotarioDto? Exito, DetalleProblema? Error)> GuardarAsync(
         PeticionGuardarConfiguracionNotario peticion, CancellationToken ct = default)
     {

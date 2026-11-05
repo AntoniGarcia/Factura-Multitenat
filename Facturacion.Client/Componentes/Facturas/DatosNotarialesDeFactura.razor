@@ -18,6 +18,26 @@ else
 {
     <div class="notaria-formulario">
     <section class="emision-seccion">
+        <h2 class="seccion-titulo">Datos del notario</h2>
+        @if (_notario is null)
+        {
+            <p class="seccion-ayuda" role="status">
+                La empresa aún no tiene capturados los datos del notario. Se configuran en Configuración, perfil de Notaría.
+            </p>
+        }
+        else
+        {
+            <p class="seccion-ayuda">Vienen de Configuración y se editan ahí.</p>
+            <div class="notaria-rejilla notaria-rejilla-dos">
+                <MudTextField T="string" Value="@_notario.Curp" Label="CURP" ReadOnly="true" Class="cifra-tabular" />
+                <MudTextField T="string" Value="@_notario.NumeroNotaria.ToString()" Label="Número de notaría" ReadOnly="true" Class="cifra-tabular" />
+                <MudTextField T="string" Value="@_notario.Estado" Label="Estado" ReadOnly="true" />
+                <MudTextField T="string" Value="@(_notario.Adscripcion ?? "—")" Label="Adscrito a la plaza" ReadOnly="true" />
+            </div>
+        }
+    </section>
+
+    <section class="emision-seccion">
         <h2 class="seccion-titulo">Datos de la operación</h2>
         <p class="seccion-ayuda">
             Datos del instrumento y de la operación inmobiliaria.
@@ -138,6 +158,7 @@ else
     private decimal _montoOperacion, _subtotalOperacion, _ivaOperacion;
     private readonly List<InmuebleEditable> _inmuebles = [];
     private Guid? _comprobanteCargado;
+    private ConfiguracionNotarioDto? _notario;
 
     protected override async Task OnParametersSetAsync()
     {
@@ -147,6 +168,9 @@ else
         _falloCarga = false;
         try
         {
+            // Si no se pueden leer, la sección avisa y la captura sigue: el servidor los vuelve
+            // a exigir al timbrar.
+            (_notario, _) = await Notaria.ObtenerNotarioAsync();
             var (datos, error) = await Notaria.ObtenerParaComprobanteAsync(ComprobanteId);
             _error = error;
             _falloCarga = error is not null;

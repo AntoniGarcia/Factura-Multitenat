@@ -109,20 +109,33 @@ else
 
         <section class="formulario-catalogo-seccion formulario-catalogo-seccion-ancha">
         <h2 class="seccion-titulo">Domicilio</h2>
-        <p class="seccion-ayuda">Opcional. Se muestra en el PDF y no sustituye el domicilio fiscal.</p>
 
-        <div class="rejilla-campos">
-            <MudTextField @bind-Value="_calle" Label="Calle" MaxLength="128" />
-            <MudTextField @bind-Value="_numeroExterior" Label="Número exterior" MaxLength="32" />
-            <MudTextField @bind-Value="_numeroInterior" Label="Número interior" MaxLength="32" />
-            <MudTextField @bind-Value="_colonia" Label="Colonia" MaxLength="128" />
-            <MudTextField @bind-Value="_localidad" Label="Localidad" MaxLength="128" />
-            <MudTextField @bind-Value="_municipio" Label="Municipio" MaxLength="128" />
-            <MudTextField @bind-Value="_estado" Label="Estado" MaxLength="128" />
-            <MudTextField @bind-Value="_pais" Label="País" MaxLength="64" />
-            <MudTextField @bind-Value="_codigoPostal" Label="Código postal" Class="cifra-tabular" MaxLength="5" />
-            <MudTextField @bind-Value="_referencia" Label="Referencia" MaxLength="256" />
-        </div>
+        @if (_esGenericoExtranjero)
+        {
+            <div class="rejilla-campos">
+                <MudTextField @bind-Value="_calle" Label="Calle" MaxLength="128" />
+                <MudTextField @bind-Value="_numeroExterior" Label="Número exterior" MaxLength="32" />
+                <MudTextField @bind-Value="_numeroInterior" Label="Número interior" MaxLength="32" />
+                <MudTextField @bind-Value="_colonia" Label="Colonia" MaxLength="128" />
+                <MudTextField @bind-Value="_localidad" Label="Localidad" MaxLength="128" />
+                <MudTextField @bind-Value="_municipio" Label="Municipio" MaxLength="128" />
+                <MudTextField @bind-Value="_estado" Label="Estado" MaxLength="128" />
+                <MudTextField @bind-Value="_pais" Label="País" MaxLength="64" />
+                <MudTextField @bind-Value="_codigoPostal" Label="Código postal" Class="cifra-tabular" MaxLength="5" />
+                <MudTextField @bind-Value="_referencia" Label="Referencia" MaxLength="256" />
+            </div>
+        }
+        else
+        {
+            @* Estado, municipio y código postal se guardan como claves del SAT: así la Carta Porte
+               puede precargar este domicilio como destino. *@
+            <EditorDomicilioCartaPorte Valor="@DomicilioSat" ValorCambiado="AlCambiarDomicilioSat" Requerido="false" />
+            <div class="rejilla-campos">
+                <MudTextField @bind-Value="_colonia" Label="Colonia" MaxLength="128" />
+                <MudTextField @bind-Value="_localidad" Label="Localidad" MaxLength="128" />
+                <MudTextField @bind-Value="_referencia" Label="Referencia" MaxLength="256" />
+            </div>
+        }
         </section>
 
         <details class="catalogo-opcional formulario-catalogo-seccion-ancha" open="@TienePreferencias">
@@ -191,6 +204,21 @@ else
 
     private bool _esGenericoNacional;
     private bool _esGenericoExtranjero;
+
+    private DomicilioSatDto DomicilioSat => new(_calle ?? string.Empty, _numeroExterior, _numeroInterior,
+        _estado ?? string.Empty, _municipio ?? string.Empty, _codigoPostal ?? string.Empty);
+
+    private void AlCambiarDomicilioSat(DomicilioSatDto domicilio)
+    {
+        _calle = Vacio(domicilio.Calle);
+        _numeroExterior = Vacio(domicilio.NumeroExterior);
+        _numeroInterior = Vacio(domicilio.NumeroInterior);
+        _estado = Vacio(domicilio.Estado);
+        _municipio = Vacio(domicilio.Municipio);
+        _codigoPostal = Vacio(domicilio.CodigoPostal);
+    }
+
+    private static string? Vacio(string? valor) => string.IsNullOrWhiteSpace(valor) ? null : valor;
 
     private ClaveSatDto? ResidenciaFiscalSeleccionada => string.IsNullOrWhiteSpace(_residenciaFiscal)
         ? null : new ClaveSatDto("c_Pais", _residenciaFiscal, _residenciaFiscal, true);
@@ -276,6 +304,11 @@ else
     {
         await OcupadoCambiado.InvokeAsync(true);
         _error = null;
+
+        // El domicilio nacional va con claves del SAT; el país se fija para que la Carta Porte
+        // lo reconozca como mexicano.
+        if (!_esGenericoExtranjero)
+            _pais = new[] { _calle, _estado, _municipio, _codigoPostal }.Any(x => x is not null) ? "MEX" : null;
 
         var peticion = new PeticionGuardarCliente(
             _rfc, _nombre, _regimenFiscal, _domicilioFiscalCp,

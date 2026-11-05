@@ -24,6 +24,12 @@ public static class NotariaEndpoints
         grupoDocumentos.MapGet("/{comprobanteId:guid}/partes", ObtenerPartes);
         grupoDocumentos.MapPut("/{comprobanteId:guid}/partes", GuardarPartes);
         grupoDocumentos.MapPost("/{comprobanteId:guid}/validar-xml", ValidarXml);
+
+        // Solo lectura para quien emite: los datos del notario se muestran en la factura, pero se
+        // editan desde Configuración, que pide otro permiso.
+        rutas.MapGet("/api/notaria/notario", Obtener)
+            .WithTags("Notaría")
+            .RequireAuthorization(Permisos.Politicas.Notaria);
     }
 
     private static async Task<IResult> Obtener(

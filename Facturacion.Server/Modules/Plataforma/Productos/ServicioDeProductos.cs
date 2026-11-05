@@ -68,6 +68,8 @@ public sealed class ServicioDeProductos(
         {
             ("codigo", false) => consulta.OrderBy(p => p.CodigoInterno),
             ("codigo", true) => consulta.OrderByDescending(p => p.CodigoInterno),
+            ("idInterno", false) => consulta.OrderBy(p => p.IdInterno).ThenBy(p => p.CodigoInterno),
+            ("idInterno", true) => consulta.OrderByDescending(p => p.IdInterno).ThenByDescending(p => p.CodigoInterno),
             ("precio", false) => consulta.OrderBy(p => p.ValorUnitario),
             ("precio", true) => consulta.OrderByDescending(p => p.ValorUnitario),
             (_, true) => consulta.OrderByDescending(p => p.Descripcion),

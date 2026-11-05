@@ -77,14 +77,17 @@ public sealed record ConceptoDto(
     string ObjetoImp,
     IReadOnlyList<ImpuestoDeConceptoDto> Impuestos,
     IReadOnlyList<string>? Retenciones = null,
-    bool AplicaIsh = false);
+    bool AplicaIsh = false,
+    string? ProductoNombre = null,
+    string? ProductoIdInterno = null);
 
 /// <summary>
 /// Tasas de Configuración, como fracción, para capturar una factura básica: las de retención
 /// deciden qué casillas muestra cada concepto —cero es que no aplica— y la de ISH precarga la
-/// tasa de la factura.
+/// tasa de la factura. La de IVA solo se muestra: cada concepto lleva el IVA de su producto.
 /// </summary>
-public sealed record TasasDeCapturaDto(decimal RetencionIva, decimal RetencionIsr, decimal RetencionIeps, decimal Ish);
+public sealed record TasasDeCapturaDto(decimal RetencionIva, decimal RetencionIsr, decimal RetencionIeps, decimal Ish,
+    decimal Iva = 0m);
 
 public sealed record ImpuestoDeConceptoDto(
     string Impuesto,

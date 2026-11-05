@@ -66,10 +66,10 @@
 
     private IReadOnlyList<ColumnaDeTabla<ProductoEnListaDto>> Columnas =>
     [
-        new("Código", p => @<span class="cifra-tabular">@p.CodigoInterno</span>, ClaveOrden: "codigo", Tabular: true),
+        new("ID interno", p => @<span class="cifra-tabular">@(p.IdInterno ?? "—")</span>, ClaveOrden: "idInterno", Tabular: true),
         new("Producto o servicio", p => @<div class="catalogo-celda-principal">
                                             <strong>@p.Descripcion</strong>
-                                            <span>@(p.IdInterno is { } id ? $"{id} · {p.UnidadTexto}" : p.UnidadTexto)</span>
+                                            <span>@($"Código {p.CodigoInterno} · {p.UnidadTexto}")</span>
                                         </div>, ClaveOrden: "descripcion"),
         new("Clave SAT", p => @<span class="cifra-tabular">@p.ClaveProdServ</span>, Tabular: true),
         new("Precio", p => @<div class="catalogo-celda-precio">

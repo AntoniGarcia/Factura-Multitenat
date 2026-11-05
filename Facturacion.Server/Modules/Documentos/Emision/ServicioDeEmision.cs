@@ -158,7 +158,28 @@ public sealed class ServicioDeEmision(
         var decimales = await baseDeDatos.SatMonedas.AsNoTracking().Where(m => m.Clave == comprobante.Moneda)
             .Select(m => (int?)m.Decimales).FirstOrDefaultAsync(ct) ?? 2;
         var obra = await ObtenerDatosDeObraAsync(comprobante, ct);
-        return ADto(comprobante, ALocales(ProyeccionMonetariaCfdi.Calcular(comprobante, decimales, obra)));
+        var dto = ADto(comprobante, ALocales(ProyeccionMonetariaCfdi.Calcular(comprobante, decimales, obra)));
+        return dto with { Conceptos = await ConDatosDelProductoAsync(dto.Conceptos, ct) };
+    }
+
+    /// <summary>
+    /// Nombre e ID interno actuales del producto, solo para mostrarlos en la captura. No son
+    /// parte del comprobante: lo que va al CFDI es la copia que guarda cada concepto.
+    /// </summary>
+    private async Task<IReadOnlyList<ConceptoDto>> ConDatosDelProductoAsync(
+        IReadOnlyList<ConceptoDto> conceptos, CancellationToken ct)
+    {
+        var ids = conceptos.Where(x => x.ProductoId is not null).Select(x => x.ProductoId!.Value).Distinct().ToList();
+        if (ids.Count == 0) return conceptos;
+
+        var productos = await baseDeDatos.Productos.AsNoTracking()
+            .Where(p => ids.Contains(p.Id))
+            .Select(p => new { p.Id, p.Descripcion, p.IdInterno })
+            .ToDictionaryAsync(p => p.Id, ct);
+
+        return [.. conceptos.Select(x => x.ProductoId is { } id && productos.TryGetValue(id, out var p)
+            ? x with { ProductoNombre = p.Descripcion, ProductoIdInterno = p.IdInterno }
+            : x)];
     }
 
     public async Task<Resultado<ComprobanteDto>> GuardarAsync(
@@ -588,7 +609,7 @@ public sealed class ServicioDeEmision(
         => await baseDeDatos.ConfiguracionesEmpresa.AsNoTracking()
             .Select(c => new TasasDeCapturaDto(
                 c.TasaRetencionIvaPorDefecto, c.TasaRetencionIsrPorDefecto, c.TasaRetencionIepsPorDefecto,
-                c.TasaIshPorDefecto))
+                c.TasaIshPorDefecto, c.TasaIvaPorDefecto))
             .FirstOrDefaultAsync(ct)
            ?? new TasasDeCapturaDto(0m, 0m, 0m, 0m);
 
