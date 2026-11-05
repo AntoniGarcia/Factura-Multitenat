@@ -5,7 +5,7 @@ namespace Facturacion.Shared.Documentos;
 /// tanto para un borrador como para uno ya timbrado: es la misma entidad en dos momentos.
 /// </summary>
 /// <param name="Monto">
-/// Importe total del pago. La suma de <see cref="Documentos"/> tiene que cuadrar con él; lo
+/// Importe total en la moneda recibida. Los abonos convertidos tienen que cuadrar con él; lo
 /// comprueba el servidor.
 /// </param>
 public sealed record PagoDto(
@@ -32,6 +32,12 @@ public sealed record PagoDto(
 {
     public DateTime? FechaPagoLocal { get; init; }
     public string? ZonaHoraria { get; init; }
+    public Guid? UuidSustituido { get; init; }
+    public string? TipoCadPago { get; init; }
+    public string? CertPago { get; init; }
+    public string? CadPago { get; init; }
+    public string? SelloPago { get; init; }
+    public IReadOnlyDictionary<string, int> DecimalesPorMoneda { get; init; } = new Dictionary<string, int>();
 }
 
 /// <summary>Un renglón de la rejilla de documentos pagados (§27).</summary>
@@ -44,7 +50,9 @@ public sealed record DocumentoPagadoDto(
     decimal ImpSaldoAnt,
     decimal ImpPagado,
     decimal ImpSaldoInsoluto,
-    string ObjetoImpDR);
+    string ObjetoImpDR,
+    decimal EquivalenciaDR = 1m,
+    int DecimalesMonedaDR = 2);
 
 /// <summary>
 /// Lo que devuelve el botón «Consulta» de §27 al buscar una factura por serie y folio.
@@ -63,7 +71,8 @@ public sealed record DocumentoPorPagarDto(
     decimal TotalDelDocumento,
     decimal SaldoPendiente,
     int NumParcialidad,
-    string ObjetoImpDR);
+    string ObjetoImpDR,
+    int DecimalesMoneda = 2);
 
 /// <summary>
 /// Guarda el borrador de pago completo: cabecera, banco y rejilla de documentos, de una sola
@@ -86,13 +95,20 @@ public sealed record PeticionGuardarPago(
 {
     // Sin desplazamiento: el servidor interpreta esta hora en el huso de la empresa activa.
     public DateTime? FechaPagoLocal { get; init; }
+    public Guid? UuidSustituido { get; init; }
+    public string? TipoCadPago { get; init; }
+    public string? CertPago { get; init; }
+    public string? CadPago { get; init; }
+    public string? SelloPago { get; init; }
 }
 
 /// <summary>
-/// Un renglón que el cliente propone pagar. Solo manda el folio fiscal y el importe: el saldo
+/// Un renglón que propone pagar: folio fiscal, abono en la moneda de la factura y equivalencia.
+/// El saldo
 /// y el número de parcialidad los recalcula el servidor contra la base, porque entre la
 /// consulta y el guardado pudo entrar otro pago.
 /// </summary>
 public sealed record RenglonDePagoDto(
     Guid IdDocumento,
-    decimal ImpPagado);
+    decimal ImpPagado,
+    decimal? EquivalenciaDR = null);

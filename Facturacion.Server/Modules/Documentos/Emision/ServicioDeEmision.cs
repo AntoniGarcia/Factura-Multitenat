@@ -21,6 +21,7 @@ public sealed class ServicioDeEmision(
     IServicioClientes clientes,
     IServicioProductos productos,
     IServicioFolios folios,
+    IServicioCatalogosSat catalogos,
     IServicioDeBitacora bitacora)
 {
     /// <summary>Único tipo de comprobante de esta fase: factura de ingreso estándar.</summary>
@@ -177,7 +178,7 @@ public sealed class ServicioDeEmision(
 
         if (comprobante.TipoDeComprobante != TipoFactura)
             return ErrorNegocio.Conflicto("tipo-comprobante-incompatible",
-                "Este documento debe modificarse desde su formulario de pago o traslado, no desde una factura.");
+                "Este documento debe modificarse desde su formulario correspondiente.");
 
         if (peticion.SerieId is { } serieId)
         {
@@ -223,6 +224,11 @@ public sealed class ServicioDeEmision(
 
         var conceptosResueltos = await ResolverConceptosAsync(peticion.Conceptos, comprobante.Variante, ct);
         if (conceptosResueltos.EsFallo) return conceptosResueltos.Error!;
+        if (peticion.Conceptos.Any(c => c.DatosFiscales?.Tercero is { } tercero &&
+                (string.Equals(tercero.Rfc?.Trim(), comprobante.EmisorRfc, StringComparison.OrdinalIgnoreCase) ||
+                 string.Equals(tercero.Rfc?.Trim(), receptor.Valor?.Rfc, StringComparison.OrdinalIgnoreCase))))
+            return ErrorNegocio.Validacion("tercero-igual-emisor-receptor",
+                "El RFC del tercero debe ser distinto al del emisor y al del receptor.");
 
         var calculado = MotorDeImpuestos.Calcular(new ComprobanteACalcular(
             peticion.Moneda,
@@ -517,6 +523,8 @@ public sealed class ServicioDeEmision(
         for (var i = 0; i < conceptos.Count; i++)
         {
             var linea = conceptos[i];
+            var datosFiscales = await DatosFiscalesDeConcepto.PrepararAsync(linea.DatosFiscales, catalogos, ct);
+            if (datosFiscales.EsFallo) return datosFiscales.Error!;
 
             if (linea.ProductoId is not { } productoId)
                 return ErrorNegocio.Validacion(
@@ -573,6 +581,7 @@ public sealed class ServicioDeEmision(
                 ValorUnitario: linea.ValorUnitario,
                 Descuento: linea.Descuento,
                 AplicaIsh: conCasillas && linea.AplicaIsh,
+                DatosFiscalesJson: datosFiscales.Valor,
                 ACalcular: new ConceptoACalcular(
                     linea.Cantidad,
                     linea.ValorUnitario,
@@ -616,9 +625,9 @@ public sealed class ServicioDeEmision(
                 return ErrorNegocio.Validacion("retencion-invalida",
                     $"El renglón {renglon} trae una retención que no existe.");
 
-            if (producto.ObjetoImp != "02")
+            if (!ReglasDeObjetoImpuesto.PermiteImpuesto(producto.ObjetoImp, clave, true))
                 return ErrorNegocio.Validacion("retencion-sin-objeto",
-                    $"El producto del renglón {renglon} no es objeto de impuesto, así que no admite la retención de {nombre}.");
+                    $"El objeto de impuesto del renglón {renglon} no admite retención de {nombre}.");
 
             var delProducto = producto.Impuestos.FirstOrDefault(x => x.EsRetencion && x.Impuesto == clave);
             var tasa = delProducto?.TasaOCuota ?? deConfiguracion;
@@ -636,7 +645,7 @@ public sealed class ServicioDeEmision(
 
     private sealed record ConceptoResuelto(
         int Orden, ProductoParaConceptoDto Producto, string Descripcion, string? NoIdentificacion,
-        decimal Cantidad, decimal ValorUnitario, decimal Descuento, bool AplicaIsh, ConceptoACalcular ACalcular);
+        decimal Cantidad, decimal ValorUnitario, decimal Descuento, bool AplicaIsh, string? DatosFiscalesJson, ConceptoACalcular ACalcular);
 
     // ── Aplicar al comprobante ──────────────────────────────────────────────────────────
 
@@ -699,7 +708,8 @@ public sealed class ServicioDeEmision(
                 Importe = calculo.Importe,
                 Descuento = calculo.Descuento,
                 ObjetoImp = producto.ObjetoImp,
-                AplicaIsh = origen.AplicaIsh
+                AplicaIsh = origen.AplicaIsh,
+                DatosFiscalesJson = origen.DatosFiscalesJson
             };
 
             foreach (var impuestoCalculado in calculo.Impuestos)
@@ -789,7 +799,7 @@ public sealed class ServicioDeEmision(
             x.Id, x.Orden, x.ProductoId, x.ClaveProdServ, x.ClaveUnidad, x.UnidadTexto, x.NoIdentificacion,
             x.Descripcion, x.Cantidad, x.ValorUnitario, x.Importe, x.Descuento, x.ObjetoImp,
             [.. x.Impuestos.Select(i => new ImpuestoDeConceptoDto(i.Impuesto, i.TipoFactor, i.TasaOCuota, i.EsRetencion))],
-            AplicaIsh: x.AplicaIsh))],
+            AplicaIsh: x.AplicaIsh) { DatosFiscales = DatosFiscalesDeConcepto.Leer(x.DatosFiscalesJson) })],
         [.. c.Relacionados.Select(r => new ComprobanteRelacionadoDto(r.Id, r.TipoRelacion, r.UuidRelacionado, null, null))],
         c.TasaIsh, locales);
 

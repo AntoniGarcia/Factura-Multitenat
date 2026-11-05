@@ -31,6 +31,14 @@ internal static class FirmaDeXmlCfdi
         using (var escritor = XmlWriter.Create(salida, new XmlWriterSettings
         { Indent = false, Encoding = new UTF8Encoding(false), OmitXmlDeclaration = false }))
             documento.Save(escritor);
-        return Encoding.UTF8.GetString(salida.ToArray());
+        var xml = Encoding.UTF8.GetString(salida.ToArray());
+        // La guía de pagos pide representar las plecas de CadPago como referencias XML.
+        foreach (var atributo in documento.Descendants(XName.Get("Pago", EsquemasSat.EspacioDeNombresPagos20))
+            .Attributes("CadPago"))
+        {
+            var texto = atributo.ToString();
+            xml = xml.Replace(texto, texto.Replace("|", "&#124;", StringComparison.Ordinal), StringComparison.Ordinal);
+        }
+        return xml;
     }
 }

@@ -54,6 +54,8 @@ public sealed class ServicioDeCatalogosDeOperador(AppDbContext db)
         "c_Exportacion" => Simples(db.SatExportaciones), "c_TipoDeComprobante" => Simples(db.SatTiposDeComprobante),
         "c_Impuesto" => Simples(db.SatImpuestos), "c_Pais" => Simples(db.SatPaises),
         "c_ConfigAutotransporte" => Simples(db.SatConfiguracionesAutotransporte), "c_TipoPermiso" => Simples(db.SatTiposPermiso),
+        "c_MaterialPeligroso" => Simples(db.SatMaterialesPeligrosos), "c_TipoEmbalaje" => Simples(db.SatTiposEmbalaje),
+        "c_SubTipoRem" => Simples(db.SatSubTiposRemolque),
         "c_FiguraTransporte" => Simples(db.SatFigurasTransporte), "c_ClaveProdServCP" => Simples(db.SatClavesProdServCartaPorte),
         "c_INCOTERM" => Simples(db.SatIncoterms), "c_UnidadAduana" => Simples(db.SatUnidadesAduana),
         "c_FraccionArancelaria" => Simples(db.SatFraccionesArancelarias),

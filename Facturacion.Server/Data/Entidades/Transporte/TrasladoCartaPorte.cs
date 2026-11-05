@@ -21,6 +21,8 @@ public sealed class TrasladoCartaPorte : IEntidadDeEmpresa
     public decimal? VehiculoPesoBruto { get; set; }
     public string? VehiculoAseguradora { get; set; }
     public string? VehiculoPoliza { get; set; }
+    public string? AseguraMedAmbiente { get; set; }
+    public string? PolizaMedAmbiente { get; set; }
     public string? VehiculoTipoPermiso { get; set; }
     public string? VehiculoNumeroPermiso { get; set; }
     public string? FiguraTipo { get; set; }
@@ -34,6 +36,18 @@ public sealed class TrasladoCartaPorte : IEntidadDeEmpresa
     public decimal TotalMercancias { get; set; }
     public List<UbicacionCartaPorte> Ubicaciones { get; set; } = [];
     public List<MercanciaCartaPorte> Mercancias { get; set; } = [];
+    public List<RemolqueCartaPorte> Remolques { get; set; } = [];
+}
+
+public sealed class RemolqueCartaPorte : IEntidadDeEmpresa
+{
+    public Guid Id { get; set; }
+    public Guid EmpresaId { get; set; }
+    public Guid TrasladoCartaPorteId { get; set; }
+    public TrasladoCartaPorte TrasladoCartaPorte { get; set; } = null!;
+    public int Orden { get; set; }
+    public required string SubTipoRem { get; set; }
+    public required string Placa { get; set; }
 }
 
 public sealed class UbicacionCartaPorte : IEntidadDeEmpresa
@@ -56,6 +70,10 @@ public sealed class UbicacionCartaPorte : IEntidadDeEmpresa
 
 public sealed class MercanciaCartaPorte : IEntidadDeEmpresa
 {
+    public string? MaterialPeligroso { get; set; }
+    public string? CveMaterialPeligroso { get; set; }
+    public string? Embalaje { get; set; }
+    public string? DescripEmbalaje { get; set; }
     public Guid Id { get; set; }
     public Guid EmpresaId { get; set; }
     public Guid TrasladoCartaPorteId { get; set; }

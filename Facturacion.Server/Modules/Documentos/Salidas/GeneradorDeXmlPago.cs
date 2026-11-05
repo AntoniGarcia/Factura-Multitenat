@@ -4,6 +4,7 @@ using Facturacion.Server.Data.Entidades.Documentos;
 using Facturacion.Server.Modules.Documentos.Impuestos;
 using Facturacion.Server.Modules.Documentos.Pagos;
 using Facturacion.Shared.Comun;
+using Facturacion.Shared.Documentos;
 
 namespace Facturacion.Server.Modules.Documentos.Salidas;
 
@@ -47,6 +48,9 @@ public static class GeneradorDeXmlPago
 
     public static ErrorNegocio? Validar(Comprobante comprobante, int? decimalesMoneda = null)
     {
+        if (comprobante.Relacionados.Count > 1 || comprobante.Relacionados.Any(r =>
+            r.TipoRelacion != "04" || r.UuidRelacionado == Guid.Empty || r.UuidRelacionado == comprobante.Uuid))
+            return ErrorNegocio.Validacion("relacion-pago-invalida", "El pago solo admite un folio anterior con relación 04 de sustitución.");
         if (comprobante.Pagos.Count == 0 || comprobante.Pagos.Any(p => p.Documentos.Count == 0))
             return ErrorNegocio.Validacion("pago-sin-datos", "Guarda el pago con al menos una factura relacionada.");
         if (comprobante.Pagos.Select(p => p.MonedaP).Distinct().Count() != 1)
@@ -54,6 +58,9 @@ public static class GeneradorDeXmlPago
 
         foreach (var pago in comprobante.Pagos)
         {
+            if (ReglasDeCadenaPago.Validar(pago.FormaDePagoP, pago.TipoCadPago,
+                pago.CertPago, pago.CadPago, pago.SelloPago) is { } errorCadena)
+                return errorCadena;
             if (pago.MonedaP == "XXX" || pago.Monto <= 0 || pago.FechaPagoUtc == default || pago.FormaDePagoP == "99")
                 return ErrorNegocio.Validacion("pago-datos-invalidos", "Revisa la moneda, el importe y la fecha del pago.");
             if (pago.MonedaP != "MXN" && pago.TipoCambioP is not > 0m)
@@ -61,35 +68,36 @@ public static class GeneradorDeXmlPago
             if ((pago.MonedaP == "MXN" && pago.TipoCambioP is { } cambioMxn && cambioMxn != 1m) ||
                 (pago.TipoCambioP is { } cambio && Math.Round(cambio, 6) != cambio))
                 return ErrorNegocio.Validacion("tipo-cambio-pago-invalido", "Revisa el tipo de cambio: en MXN es 1 y admite hasta seis decimales.");
-            if (decimalesMoneda is { } precision &&
-                (Math.Round(pago.Monto, precision) != pago.Monto || pago.Documentos.Any(d =>
-                    Math.Round(d.ImpPagado, precision) != d.ImpPagado ||
-                    Math.Round(d.ImpSaldoAnt, precision) != d.ImpSaldoAnt ||
-                    Math.Round(d.ImpSaldoInsoluto, precision) != d.ImpSaldoInsoluto)))
+            if ((decimalesMoneda is { } precision && Math.Round(pago.Monto, precision) != pago.Monto) || pago.Documentos.Any(d =>
+                    d.DecimalesMonedaDR is < 0 or > 6 || Math.Round(d.ImpPagado, d.DecimalesMonedaDR) != d.ImpPagado ||
+                    Math.Round(d.ImpSaldoAnt, d.DecimalesMonedaDR) != d.ImpSaldoAnt ||
+                    Math.Round(d.ImpSaldoInsoluto, d.DecimalesMonedaDR) != d.ImpSaldoInsoluto))
                 return ErrorNegocio.Validacion("precision-pago-invalida", "Los saldos guardados no respetan los decimales de la moneda. Guarda nuevamente el borrador.");
             if (pago.Documentos.Select(d => d.IdDocumento).Distinct().Count() != pago.Documentos.Count)
                 return ErrorNegocio.Validacion("documento-repetido", "El pago contiene facturas duplicadas. Guarda nuevamente el borrador.");
 
             foreach (var documento in pago.Documentos)
             {
-                if (documento.MonedaDR != pago.MonedaP || documento.EquivalenciaDR != 1m)
-                    return ErrorNegocio.Validacion("monedas-distintas-no-admitidas", "La captura actual requiere que el pago y las facturas estén en la misma moneda, con equivalencia 1.");
+                if (!ConversionDePago.EsEquivalenciaValida(documento.MonedaDR, pago.MonedaP, documento.EquivalenciaDR))
+                    return ErrorNegocio.Validacion("equivalencia-pago-invalida", "La equivalencia guardada no corresponde a las monedas del pago y de la factura.");
                 if (documento.IdDocumento == Guid.Empty || documento.NumParcialidad < 1 ||
                     documento.ImpPagado <= 0 || documento.ImpSaldoAnt < documento.ImpPagado ||
                     documento.ImpSaldoInsoluto != documento.ImpSaldoAnt - documento.ImpPagado)
                     return ErrorNegocio.Validacion("saldos-pago-invalidos", "Los saldos o la parcialidad del pago son inconsistentes. Guarda nuevamente el borrador.");
-                if ((documento.ObjetoImpDR == "02" && documento.Impuestos.Count == 0) ||
-                    (documento.ObjetoImpDR != "02" && documento.Impuestos.Count > 0))
-                    return ErrorNegocio.Validacion("impuestos-pago-inconsistentes", "El objeto de impuesto del documento no coincide con su desglose. Guarda nuevamente el borrador.");
-                if (documento.Impuestos.Any(i => i.Base < 0 || i.Importe < 0 ||
+                if (ReglasDeObjetoImpuesto.Validar(documento.ObjetoImpDR,
+                        documento.Impuestos.Select(i => (i.Impuesto, i.EsRetencion))) is { } errorObjeto)
+                    return ErrorNegocio.Validacion("impuestos-pago-inconsistentes", errorObjeto);
+                if (documento.Impuestos.Any(i => i.Base <= 0 || i.Importe < 0 ||
                     (i.TipoFactor == TiposDeFactor.Exento && (i.EsRetencion || i.TasaOCuota is not null || i.Importe is not null)) ||
                     (i.TipoFactor != TiposDeFactor.Exento && (i.Importe is null || i.TasaOCuota is null))))
-                    return ErrorNegocio.Validacion("impuestos-pago-invalidos", "El desglose del pago tiene impuestos incompletos o negativos.");
+                    return ErrorNegocio.Validacion("impuestos-pago-invalidos", "Revisa las bases y los importes de los impuestos del pago.");
                 if (documento.Impuestos.Any(i => i.TipoFactor == TiposDeFactor.Tasa &&
                     RedondearImpuesto(i.Base * i.TasaOCuota!.Value) != i.Importe))
                     return ErrorNegocio.Validacion("impuestos-pago-desactualizados", "El desglose guardado no coincide con el cálculo a seis decimales. Guarda nuevamente el borrador.");
             }
-            if (pago.Monto != pago.Documentos.Sum(d => d.ImpPagado))
+            if (decimalesMoneda is { } dPago ? !ConversionDePago.Cuadra(pago.Monto, dPago, pago.Documentos.Select(d =>
+                    (d.ImpPagado, d.EquivalenciaDR, d.DecimalesMonedaDR, d.MonedaDR == pago.MonedaP)))
+                : pago.Documentos.All(d => d.MonedaDR == pago.MonedaP) && pago.Monto != pago.Documentos.Sum(d => d.ImpPagado))
                 return ErrorNegocio.Validacion("pago-no-cuadra", "El monto del pago no coincide con lo abonado a las facturas. Guarda nuevamente el borrador.");
         }
         return null;
@@ -261,7 +269,11 @@ public static class GeneradorDeXmlPago
             Opcional("NomBancoOrdExt", pago.NomBancoOrdExt),
             Opcional("CtaOrdenante", pago.CtaOrdenante),
             Opcional("RfcEmisorCtaBen", pago.RfcEmisorCtaBen),
-            Opcional("CtaBeneficiario", pago.CtaBeneficiario));
+            Opcional("CtaBeneficiario", pago.CtaBeneficiario),
+            Opcional("TipoCadPago", pago.TipoCadPago),
+            Opcional("CertPago", pago.CertPago),
+            Opcional("CadPago", pago.CadPago),
+            Opcional("SelloPago", pago.SelloPago));
 
         foreach (var documento in pago.Documentos.OrderBy(x => x.NumParcialidad).ThenBy(x => x.IdDocumento))
             nodo.Add(NodoDeDocumento(documento, d));
@@ -287,12 +299,13 @@ public static class GeneradorDeXmlPago
 
     private static XElement NodoDeDocumento(DocumentoPagado documento, int d)
     {
+        d = documento.DecimalesMonedaDR;
         var nodo = new XElement(Pago20 + "DoctoRelacionado",
             new XAttribute("IdDocumento", documento.IdDocumento.ToString().ToUpperInvariant()),
             Opcional("Serie", documento.Serie),
             Opcional("Folio", documento.Folio),
             new XAttribute("MonedaDR", documento.MonedaDR),
-            new XAttribute("EquivalenciaDR", Moneda(documento.EquivalenciaDR, DecimalesDeTasa)),
+            new XAttribute("EquivalenciaDR", Moneda(documento.EquivalenciaDR, 10)),
             new XAttribute("NumParcialidad", documento.NumParcialidad.ToString(CultureInfo.InvariantCulture)),
             new XAttribute("ImpSaldoAnt", Moneda(documento.ImpSaldoAnt, d)),
             new XAttribute("ImpPagado", Moneda(documento.ImpPagado, d)),

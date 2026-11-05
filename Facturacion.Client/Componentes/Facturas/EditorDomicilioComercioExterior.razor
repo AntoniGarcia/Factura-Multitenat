@@ -8,7 +8,7 @@
     <MudTextField T="string" Value="@Valor.NumeroExterior" ValueChanged="v => Cambiar(Valor with { NumeroExterior = v })" Label="Número exterior" MaxLength="55" />
     <MudTextField T="string" Value="@Valor.NumeroInterior" ValueChanged="v => Cambiar(Valor with { NumeroInterior = v })" Label="Número interior" MaxLength="55" />
     <MudTextField T="string" Value="@Valor.Colonia" ValueChanged="v => Cambiar(Valor with { Colonia = v })" Label="Colonia" MaxLength="120" />
-    <MudTextField T="string" Value="@Valor.Localidad" ValueChanged="v => Cambiar(Valor with { Localidad = v })" Label="Localidad" MaxLength="120" />
+    <MudTextField T="string" Value="@Valor.Localidad" ValueChanged="v => Cambiar(Valor with { Localidad = v })" Label="@(EsEmisor ? "Clave SAT de localidad" : "Localidad")" MaxLength="120" />
     <MudTextField T="string" Value="@Valor.Referencia" ValueChanged="v => Cambiar(Valor with { Referencia = v })" Label="Referencia" MaxLength="120" />
     @if (EsEmisor)
     {

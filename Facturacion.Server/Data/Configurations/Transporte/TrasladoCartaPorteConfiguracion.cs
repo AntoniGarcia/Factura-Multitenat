@@ -18,6 +18,8 @@ public sealed class TrasladoCartaPorteConfiguracion : IEntityTypeConfiguration<T
         c.Property(x => x.VehiculoPesoBruto).HasPrecision(18, 6);
         c.Property(x => x.VehiculoAseguradora).HasMaxLength(150);
         c.Property(x => x.VehiculoPoliza).HasMaxLength(50);
+        c.Property(x => x.AseguraMedAmbiente).HasMaxLength(50);
+        c.Property(x => x.PolizaMedAmbiente).HasMaxLength(30);
         c.Property(x => x.VehiculoTipoPermiso).HasMaxLength(10);
         c.Property(x => x.VehiculoNumeroPermiso).HasMaxLength(50);
         c.Property(x => x.FiguraTipo).HasMaxLength(10);
@@ -32,6 +34,18 @@ public sealed class TrasladoCartaPorteConfiguracion : IEntityTypeConfiguration<T
         c.HasOne<FiguraTransporte>().WithMany().HasForeignKey(x => x.FiguraTransporteId).OnDelete(DeleteBehavior.Restrict);
         c.HasMany(x => x.Ubicaciones).WithOne(x => x.TrasladoCartaPorte).HasForeignKey(x => x.TrasladoCartaPorteId).OnDelete(DeleteBehavior.Cascade);
         c.HasMany(x => x.Mercancias).WithOne(x => x.TrasladoCartaPorte).HasForeignKey(x => x.TrasladoCartaPorteId).OnDelete(DeleteBehavior.Cascade);
+        c.HasMany(x => x.Remolques).WithOne(x => x.TrasladoCartaPorte).HasForeignKey(x => x.TrasladoCartaPorteId).OnDelete(DeleteBehavior.Cascade);
+    }
+}
+
+public sealed class RemolqueCartaPorteConfiguracion : IEntityTypeConfiguration<RemolqueCartaPorte>
+{
+    public void Configure(EntityTypeBuilder<RemolqueCartaPorte> c)
+    {
+        c.ToTable("RemolquesCartaPorte"); c.HasKey(x => x.Id);
+        c.Property(x => x.SubTipoRem).HasMaxLength(6);
+        c.Property(x => x.Placa).HasMaxLength(7);
+        c.HasIndex(x => new { x.TrasladoCartaPorteId, x.Orden }).IsUnique();
     }
 }
 
@@ -53,6 +67,10 @@ public sealed class MercanciaCartaPorteConfiguracion : IEntityTypeConfiguration<
     public void Configure(EntityTypeBuilder<MercanciaCartaPorte> c)
     {
         c.ToTable("MercanciasCartaPorte"); c.HasKey(x => x.Id);
+        c.Property(x => x.MaterialPeligroso).HasMaxLength(2);
+        c.Property(x => x.CveMaterialPeligroso).HasMaxLength(4);
+        c.Property(x => x.Embalaje).HasMaxLength(5);
+        c.Property(x => x.DescripEmbalaje).HasMaxLength(100);
         c.Property(x => x.ClaveProdServ).HasMaxLength(8); c.Property(x => x.ClaveUnidad).HasMaxLength(20); c.Property(x => x.Descripcion).HasMaxLength(1000);
         c.Property(x => x.Unidad).HasMaxLength(20); c.Property(x => x.Dimensiones).HasMaxLength(14);
         c.Property(x => x.Cantidad).HasPrecision(18, 6); c.Property(x => x.PesoEnKg).HasPrecision(18, 6);

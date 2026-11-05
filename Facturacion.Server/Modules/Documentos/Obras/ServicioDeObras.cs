@@ -7,13 +7,16 @@ using Facturacion.Shared.Comun;
 using Facturacion.Shared.Documentos;
 using Facturacion.Shared.Obras;
 using Microsoft.EntityFrameworkCore;
+using Facturacion.Shared.Contratos;
+using System.Text.Json;
 
 namespace Facturacion.Server.Modules.Documentos.Obras;
 
 public sealed class ServicioDeObras(
     AppDbContext baseDeDatos,
     IContextoEmpresaInterno contexto,
-    IServicioDeBitacora bitacora)
+    IServicioDeBitacora bitacora,
+    IServicioCatalogosSat catalogos)
 {
     public async Task<Resultado<DatosObraDto?>> ObtenerAsync(Guid comprobanteId, CancellationToken ct)
     {
@@ -72,6 +75,12 @@ public sealed class ServicioDeObras(
             return ErrorNegocio.Validacion("obra-sin-trabajos", "Guarda primero los conceptos de la factura.");
         if (peticion.TipoObra is not (TiposDeObra.Publica or TiposDeObra.Privada))
             return ErrorNegocio.Validacion("obra-tipo-invalido", "Indica si el contrato es de obra pública o privada.");
+        if (peticion.ServicioParcial is { } parcial)
+        {
+            if (ServicioParcialConstruccion.Validar(parcial) is { } errorParcial) return errorParcial;
+            if (await catalogos.ResolverAsync("c_CodigoPostal", parcial.CodigoPostal, ct) is not { Vigente: true })
+                return ErrorNegocio.Validacion("servicio-parcial-cp", "El código postal del inmueble no está vigente en el catálogo SAT.");
+        }
 
         if (peticion.Deducciones is null || peticion.Deducciones.Count != 4 ||
             !TasaValida(peticion.PorcentajeAmortizacion) ||
@@ -97,6 +106,7 @@ public sealed class ServicioDeObras(
         }
 
         datos.TipoObra = peticion.TipoObra;
+        datos.ServicioParcialJson = peticion.ServicioParcial is null ? null : JsonSerializer.Serialize(peticion.ServicioParcial);
         datos.PorcentajeAmortizacion = peticion.PorcentajeAmortizacion;
         datos.PorcentajeRetenciones = peticion.PorcentajeRetenciones;
         datos.Retenciones = retenciones;
@@ -165,6 +175,6 @@ public sealed class ServicioDeObras(
             datos.PorcentajeRetenciones, datos.Retenciones, datos.PorcentajeDevoluciones,
             datos.Devoluciones, subtotal, iva, total,
             deducciones, total - datos.Retenciones - datos.Devoluciones - deducciones.Sum(x => x.Importe),
-            datos.TipoObra);
+            datos.TipoObra) { ServicioParcial = ServicioParcialConstruccion.Leer(datos.ServicioParcialJson) };
     }
 }

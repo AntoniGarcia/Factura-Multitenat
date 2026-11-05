@@ -1,4 +1,4 @@
-﻿using System.Globalization;
+using System.Globalization;
 using Facturacion.Server.Infra.Pdf;
 using Facturacion.Server.Data.Entidades.Documentos;
 using Facturacion.Server.Data.Entidades.Transporte;
@@ -34,7 +34,11 @@ public sealed class GeneradorDePdfCartaPorte
                     c.Item().PaddingTop(3).Border(0.5f).Padding(4).Text($"{ubicacion.Tipo}: {ubicacion.NombreRemitenteDestinatario ?? ubicacion.RfcRemitenteDestinatario} · RFC {ubicacion.RfcRemitenteDestinatario} · {ubicacion.Calle} {ubicacion.NumeroExterior} {ubicacion.NumeroInterior}, {ubicacion.Municipio}, {ubicacion.Estado}, C.P. {ubicacion.CodigoPostal}");
                 c.Item().PaddingTop(8).Element(e => EstiloDeComprobante.Seccion(e, "Autotransporte y operador"));
                 c.Item().Text($"Vehículo: {traslado.VehiculoPlaca} · Configuración {traslado.VehiculoConfiguracionAutotransporte} · Permiso {traslado.VehiculoTipoPermiso} {traslado.VehiculoNumeroPermiso}");
+                foreach (var remolque in traslado.Remolques.OrderBy(x => x.Orden))
+                    c.Item().Text($"Remolque {remolque.Orden}: {remolque.SubTipoRem} · Placa {remolque.Placa}");
                 c.Item().Text($"Seguro: {traslado.VehiculoAseguradora} · Póliza {traslado.VehiculoPoliza}");
+                if (traslado.AseguraMedAmbiente is { } aseguradoraAmbiental)
+                    c.Item().Text($"Seguro ambiental: {aseguradoraAmbiental} · Póliza {traslado.PolizaMedAmbiente}");
                 c.Item().Text($"Operador: {traslado.FiguraNombre} · RFC {traslado.FiguraRfc} · Licencia {traslado.FiguraNumeroLicencia ?? "—"}");
                 c.Item().PaddingTop(8).Element(e => EstiloDeComprobante.Seccion(e, "Mercancías"));
                 c.Item().Table(tabla =>
@@ -44,7 +48,10 @@ public sealed class GeneradorDePdfCartaPorte
                     foreach (var m in traslado.Mercancias.OrderBy(x => x.Orden))
                     {
                         EstiloDeComprobante.Celda(tabla.Cell()).Text(m.ClaveProdServ);
-                        EstiloDeComprobante.Celda(tabla.Cell()).Text(string.IsNullOrWhiteSpace(m.Dimensiones) ? m.Descripcion : $"{m.Descripcion} · {m.Dimensiones}");
+                        var descripcion = string.IsNullOrWhiteSpace(m.Dimensiones) ? m.Descripcion : $"{m.Descripcion} · {m.Dimensiones}";
+                        if (m.MaterialPeligroso is { } material) descripcion += $" · Material peligroso: {material}";
+                        if (m.CveMaterialPeligroso is { } claveMaterial) descripcion += $" · Clave {claveMaterial} · Embalaje {m.Embalaje} {m.DescripEmbalaje}";
+                        EstiloDeComprobante.Celda(tabla.Cell()).Text(descripcion);
                         EstiloDeComprobante.Celda(tabla.Cell()).AlignRight().Text(m.Cantidad.ToString("N6", CultureInfo.InvariantCulture));
                         EstiloDeComprobante.Celda(tabla.Cell()).Text(string.IsNullOrWhiteSpace(m.Unidad) ? m.ClaveUnidad : $"{m.ClaveUnidad} · {m.Unidad}");
                         EstiloDeComprobante.Celda(tabla.Cell()).AlignRight().Text(m.PesoUnitarioKg?.ToString("N6", CultureInfo.InvariantCulture) ?? "—");

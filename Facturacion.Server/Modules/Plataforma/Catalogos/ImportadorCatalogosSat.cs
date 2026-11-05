@@ -114,15 +114,22 @@ public sealed class ImportadorCatalogosSat(AppDbContext db)
             var clave = digitosClave > 0 ? ClaveConCeros(fila, 0, digitosClave) : Texto(fila, 0);
             if (clave is null) continue;
 
-            var fin = Fecha(fila, columnaFin);
+            var fin = typeof(TEntidad) == typeof(SatPais) ? null : Fecha(fila, columnaFin);
             nuevos[clave] = new TEntidad
             {
                 Clave = clave,
                 Descripcion = Texto(fila, 1) ?? clave,
-                FechaInicioVigencia = Fecha(fila, columnaInicio) ?? DateOnly.MinValue,
+                FechaInicioVigencia = typeof(TEntidad) == typeof(SatPais) ? DateOnly.MinValue : Fecha(fila, columnaInicio) ?? DateOnly.MinValue,
                 FechaFinVigencia = fin,
                 Vigente = fin is null
             };
+            if (nuevos[clave] is SatPais pais)
+            {
+                pais.FormatoCodigoPostal = Texto(fila, 2);
+                pais.FormatoRegistroTributario = Texto(fila, 3);
+                pais.ValidacionRegistroTributario = Texto(fila, 4);
+                pais.Agrupaciones = Texto(fila, 5);
+            }
         }
 
         var vigentes = await SincronizarAsync(
@@ -133,6 +140,13 @@ public sealed class ImportadorCatalogosSat(AppDbContext db)
                 actual.FechaInicioVigencia = nuevo.FechaInicioVigencia;
                 actual.FechaFinVigencia = nuevo.FechaFinVigencia;
                 actual.Vigente = nuevo.Vigente;
+                if (actual is SatPais pais && nuevo is SatPais datos)
+                {
+                    pais.FormatoCodigoPostal = datos.FormatoCodigoPostal;
+                    pais.FormatoRegistroTributario = datos.FormatoRegistroTributario;
+                    pais.ValidacionRegistroTributario = datos.ValidacionRegistroTributario;
+                    pais.Agrupaciones = datos.Agrupaciones;
+                }
             },
             e => { e.Vigente = false; e.FechaFinVigencia ??= Hoy(); }, ct);
 
@@ -157,11 +171,13 @@ public sealed class ImportadorCatalogosSat(AppDbContext db)
             if (clave is null) continue;
 
             var fin = Fecha(fila, 5);
+            if (!int.TryParse(Texto(fila, 2), NumberStyles.Integer, CultureInfo.InvariantCulture, out var decimales) || decimales is < 0 or > 6)
+                throw new InvalidOperationException($"La moneda {clave} no tiene una cantidad válida de decimales.");
             nuevos[clave] = new SatMoneda
             {
                 Clave = clave,
                 Descripcion = Texto(fila, 1) ?? clave,
-                Decimales = (int)(Numero(fila, 2) ?? 2m),
+                Decimales = decimales,
                 FechaInicioVigencia = Fecha(fila, 4) ?? DateOnly.MinValue,
                 FechaFinVigencia = fin,
                 Vigente = fin is null

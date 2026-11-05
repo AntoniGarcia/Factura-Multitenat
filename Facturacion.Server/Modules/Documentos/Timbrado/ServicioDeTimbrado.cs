@@ -3,6 +3,7 @@ using Facturacion.Server.Data.Entidades.Documentos;
 using Facturacion.Server.Infra.Bitacora;
 using Facturacion.Server.Infra.Tenencia;
 using Facturacion.Server.Modules.Documentos.Pagos;
+using Facturacion.Server.Modules.Documentos.Egresos;
 using Facturacion.Server.Modules.Documentos.Pac;
 using Facturacion.Server.Modules.Documentos.Obras;
 using Facturacion.Server.Modules.Documentos.Salidas;
@@ -50,6 +51,7 @@ public sealed class ServicioDeTimbrado(
     IServicioDeBitacora bitacora,
     IContextoEmpresaInterno contexto,
     ServicioDePagos pagos,
+    ServicioDeNotasCredito notasCredito,
     ILogger<ServicioDeTimbrado> registro,
     IProveedorPac? pac = null)
 {
@@ -158,6 +160,14 @@ public sealed class ServicioDeTimbrado(
             if (serie.EsFallo) return serie.Error!;
         }
 
+        if (ReglasDeObjetoImpuesto.ValidarCombinacion(comprobante.Conceptos.Select(c => c.ObjetoImp)) is { } mezcla)
+            return ErrorNegocio.Validacion("objeto-05-no-combinable", mezcla);
+
+        foreach (var concepto in comprobante.Conceptos)
+            if (ReglasDeObjetoImpuesto.Validar(concepto.ObjetoImp,
+                    concepto.Impuestos.Select(i => (i.Impuesto, i.EsRetencion))) is { } errorObjeto)
+                return ErrorNegocio.Validacion("objeto-impuesto-invalido", $"Renglón {concepto.Orden}: {errorObjeto}");
+
         var obra = await baseDeDatos.DatosObra.AsNoTracking()
             .FirstOrDefaultAsync(x => x.ComprobanteId == comprobanteId, ct);
 
@@ -242,6 +252,14 @@ public sealed class ServicioDeTimbrado(
         {
             var validacionFactura = await xml.GenerarAsync(comprobante, ct);
             if (validacionFactura.EsFallo) return validacionFactura.Error!;
+        }
+
+        if (comprobante.TipoDeComprobante == TiposDeComprobante.Egreso)
+        {
+            var notaValida = await notasCredito.ValidarParaEmisionAsync(comprobante, ct);
+            if (notaValida.EsFallo) return notaValida.Error!;
+            var xmlValido = await xml.GenerarAsync(comprobante, ct);
+            if (xmlValido.EsFallo) return xmlValido.Error!;
         }
 
         if (comprobante.TipoDeComprobante == TiposDeComprobante.Pago)

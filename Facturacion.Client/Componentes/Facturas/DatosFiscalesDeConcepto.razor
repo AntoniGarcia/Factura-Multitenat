@@ -1,0 +1,33 @@
+@using Facturacion.Shared.Documentos
+<MudExpansionPanels Elevation="0" Dense="true">
+    <MudExpansionPanel Text="Datos fiscales del concepto">
+        <div class="rejilla-campos">
+            <MudTextField T="string" Label="Pedimentos" Value="@string.Join(Environment.NewLine, Datos?.Pedimentos ?? [])"
+                          ValueChanged="CambiarPedimentos" Lines="2" HelperText="Uno por línea: AA  AD  PPPP  NNNNNNN." />
+            <MudTextField T="string" Label="Cuentas prediales" Value="@string.Join(Environment.NewLine, Datos?.CuentasPrediales ?? [])"
+                          ValueChanged="CambiarCuentas" Lines="2" HelperText="Una por línea." />
+        </div>
+        <MudCheckBox T="bool" Label="Operación por cuenta de terceros" Value="@(Datos?.Tercero is not null)" ValueChanged="ActivarTercero" />
+        @if (Datos?.Tercero is { } t)
+        {
+            <div class="rejilla-campos">
+                <MudTextField T="string" Label="RFC del tercero" Value="t.Rfc" ValueChanged="@(v => CambiarTercero(t with { Rfc = v }))" MaxLength="13" />
+                <MudTextField T="string" Label="Nombre fiscal del tercero" Value="t.Nombre" ValueChanged="@(v => CambiarTercero(t with { Nombre = v }))" MaxLength="300" />
+                <BuscadorCatalogo Catalogo="c_RegimenFiscal" Label="Régimen fiscal del tercero" Clave="t.RegimenFiscal"
+                                 ClaveChanged="@(v => CambiarTercero(t with { RegimenFiscal = v ?? string.Empty }))" />
+                <BuscadorCatalogo Catalogo="c_CodigoPostal" Label="Código postal del tercero" Clave="t.CodigoPostal"
+                                 ClaveChanged="@(v => CambiarTercero(t with { CodigoPostal = v ?? string.Empty }))" />
+            </div>
+        }
+    </MudExpansionPanel>
+</MudExpansionPanels>
+@code {
+    [Parameter] public DatosFiscalesDeConceptoDto? Datos { get; set; }
+    [Parameter] public EventCallback<DatosFiscalesDeConceptoDto?> DatosChanged { get; set; }
+    private DatosFiscalesDeConceptoDto Actual => Datos ?? new([], []);
+    private Task CambiarPedimentos(string? valor) => DatosChanged.InvokeAsync(Actual with { Pedimentos = Lineas(valor) });
+    private Task CambiarCuentas(string? valor) => DatosChanged.InvokeAsync(Actual with { CuentasPrediales = Lineas(valor) });
+    private Task ActivarTercero(bool activo) => DatosChanged.InvokeAsync(Actual with { Tercero = activo ? new("", "", "", "") : null });
+    private Task CambiarTercero(TerceroDeConceptoDto tercero) => DatosChanged.InvokeAsync(Actual with { Tercero = tercero });
+    private static string[] Lineas(string? texto) => (texto ?? "").Split(['\r', '\n'], StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+}

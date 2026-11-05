@@ -7,6 +7,7 @@ public sealed class DatosObra : IEntidadDeEmpresa
     public Guid ComprobanteId { get; set; }
     public Comprobante Comprobante { get; set; } = null!;
     public string? TipoObra { get; set; }
+    public string? ServicioParcialJson { get; set; }
     public decimal PorcentajeAmortizacion { get; set; }
     public decimal? PorcentajeRetenciones { get; set; }
     public decimal Retenciones { get; set; }

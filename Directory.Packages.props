@@ -3,30 +3,26 @@
     <ManagePackageVersionsCentrally>true</ManagePackageVersionsCentrally>
     <CentralPackageTransitivePinningEnabled>true</CentralPackageTransitivePinningEnabled>
   </PropertyGroup>
-  <!-- Las versiones de Microsoft.* se fijan al runtime instalado (10.0.10) para no cargar
-       ensamblados más nuevos que el host. Un solo archivo evita que las dos mitades
-       diverjan de versión en sus .csproj. -->
+  <!-- Los paquetes de .NET usan la revisión 10.0.14. El servidor debe tener ese runtime o uno posterior de .NET 10. -->
   <ItemGroup>
     <PackageVersion Include="MailKit" Version="4.18.1" />
-    <PackageVersion Include="Microsoft.AspNetCore.Components.WebAssembly" Version="10.0.10" />
+    <PackageVersion Include="Microsoft.AspNetCore.Components.WebAssembly" Version="10.0.14" />
     <PackageVersion Include="MudBlazor" Version="9.8.0" />
-    <PackageVersion Include="Microsoft.AspNetCore.Components.WebAssembly.DevServer" Version="10.0.10" />
-    <PackageVersion Include="Microsoft.AspNetCore.Components.Authorization" Version="10.0.10" />
-    <PackageVersion Include="Microsoft.AspNetCore.Components.WebAssembly.Server" Version="10.0.10" />
-    <PackageVersion Include="Microsoft.AspNetCore.Authentication.JwtBearer" Version="10.0.10" />
-    <PackageVersion Include="Microsoft.AspNetCore.Identity.EntityFrameworkCore" Version="10.0.10" />
-    <PackageVersion Include="Microsoft.AspNetCore.OpenApi" Version="10.0.10" />
-    <PackageVersion Include="Microsoft.EntityFrameworkCore.Design" Version="10.0.10" />
-    <PackageVersion Include="Microsoft.EntityFrameworkCore.SqlServer" Version="10.0.10" />
-    <PackageVersion Include="Microsoft.Extensions.Http" Version="10.0.10" />
+    <PackageVersion Include="Microsoft.AspNetCore.Components.WebAssembly.DevServer" Version="10.0.14" />
+    <PackageVersion Include="Microsoft.AspNetCore.Components.Authorization" Version="10.0.14" />
+    <PackageVersion Include="Microsoft.AspNetCore.Components.WebAssembly.Server" Version="10.0.14" />
+    <PackageVersion Include="Microsoft.AspNetCore.Authentication.JwtBearer" Version="10.0.14" />
+    <PackageVersion Include="Microsoft.AspNetCore.Identity.EntityFrameworkCore" Version="10.0.14" />
+    <PackageVersion Include="Microsoft.AspNetCore.OpenApi" Version="10.0.14" />
+    <PackageVersion Include="Microsoft.EntityFrameworkCore.Design" Version="10.0.14" />
+    <PackageVersion Include="Microsoft.EntityFrameworkCore.SqlServer" Version="10.0.14" />
+    <PackageVersion Include="Microsoft.Extensions.Http" Version="10.0.14" />
     <!-- NPOI 2.8.0 arrastra SourceLink 8.0.0 y, con él, Microsoft.Build.Tasks.Git 8.0.0.
          Esa versión expone datos sensibles del proceso de compilación (GHSA-23fw-v26w-5fgq).
          Es una herramienta de build, pero se fija igual para que CI no use la vulnerable. -->
     <PackageVersion Include="Microsoft.Build.Tasks.Git" Version="10.0.401" />
-    <!-- Fijado por transitividad: Microsoft.AspNetCore.OpenApi 10.0.10 arrastra
-         Microsoft.OpenApi 2.0.0, que tiene la vulnerabilidad GHSA-v5pm-xwqc-g5wc
-         (corregida a partir de 2.7.5). -->
-    <PackageVersion Include="Microsoft.OpenApi" Version="2.11.0" />
+    <!-- Versión mínima requerida por Microsoft.AspNetCore.OpenApi 10.0.14. -->
+    <PackageVersion Include="Microsoft.OpenApi" Version="2.12.2" />
   </ItemGroup>
   <!-- Lee el .xls (formato binario legado) del catálogo del SAT sin depender de Excel
        instalado. Solo el Server la referencia: es una herramienta de carga, no algo que
@@ -37,7 +33,8 @@
     <!-- Fijado por transitividad: NPOI arrastra System.Security.Cryptography.Xml 8.0.2 para
          firmar/verificar OOXML, algo que este proyecto no usa —solo lee .xls—, pero la
          versión igual trae varias vulnerabilidades conocidas (NU1903) que hay que tapar. -->
-    <PackageVersion Include="System.Security.Cryptography.Xml" Version="10.0.11" />
+    <PackageVersion Include="System.Security.Cryptography.Xml" Version="10.0.14" />
+    <PackageVersion Include="System.Security.Cryptography.Pkcs" Version="10.0.14" />
   </ItemGroup>
   <!-- Representación impresa del CFDI (fase B5).
 

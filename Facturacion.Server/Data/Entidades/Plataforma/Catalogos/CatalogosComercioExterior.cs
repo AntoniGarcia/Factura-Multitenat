@@ -20,6 +20,7 @@ public sealed class SatUnidadAduana : ISatCatalogoSimple
 
 public sealed class SatFraccionArancelaria : ISatCatalogoSimple
 {
+    public string? UnidadMedida { get; set; }
     public string Clave { get; set; } = "";
     public string Descripcion { get; set; } = "";
     public DateOnly FechaInicioVigencia { get; set; }

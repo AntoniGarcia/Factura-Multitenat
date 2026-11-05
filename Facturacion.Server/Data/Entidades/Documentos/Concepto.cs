@@ -51,4 +51,5 @@ public sealed class Concepto : IEntidadDeEmpresa
     public bool AplicaIsh { get; set; }
 
     public List<ImpuestoConcepto> Impuestos { get; set; } = [];
+    public string? DatosFiscalesJson { get; set; }
 }

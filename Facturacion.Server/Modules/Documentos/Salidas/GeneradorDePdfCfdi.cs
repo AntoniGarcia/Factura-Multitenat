@@ -1,4 +1,4 @@
-﻿using System.Globalization;
+using System.Globalization;
 using Facturacion.Server.Infra.Pdf;
 using Facturacion.Server.Data.Entidades.Documentos;
 using Facturacion.Server.Modules.Documentos.Impuestos;
@@ -28,6 +28,7 @@ public sealed record DatosDelPdf(
     string? LeyendaDelTimbre = null)
 {
     public TimeZoneInfo? ZonaHoraria { get; init; }
+    public Facturacion.Shared.Obras.ServicioParcialConstruccionDto? ServicioParcial { get; init; }
 }
 
 /// <summary>
@@ -176,6 +177,30 @@ public sealed class GeneradorDePdfCfdi
             }
             if (datos.ComercioExterior is { } comercio)
                 columna.Item().PaddingTop(10).Element(e => SeccionComercioExterior(e, c, comercio));
+            if (datos.ServicioParcial is { } parcial)
+            {
+                columna.Item().PaddingTop(8).Element(e => EstiloDeComprobante.Seccion(e, "Servicios parciales de construcción"));
+                columna.Item().Padding(4).Text($"Permiso: {parcial.NumeroPermiso}");
+                var calle = string.Join(" ", new[] { parcial.Calle, parcial.NoExterior, parcial.NoInterior }
+                    .Where(x => !string.IsNullOrWhiteSpace(x)));
+                var direccion = string.Join(", ", new[] { calle, parcial.Colonia, parcial.Localidad,
+                    parcial.Municipio, $"Estado {parcial.Estado}", $"C.P. {parcial.CodigoPostal}" }
+                    .Where(x => !string.IsNullOrWhiteSpace(x)));
+                columna.Item().Padding(4).Text(direccion);
+                if (!string.IsNullOrWhiteSpace(parcial.Referencia)) columna.Item().Padding(4).Text(parcial.Referencia);
+            }
+            if (c.TipoDeComprobante == "P" && c.Relacionados.Count > 0)
+            {
+                columna.Item().PaddingTop(8).Element(e => EstiloDeComprobante.Seccion(e, "Pago sustituido · Relación 04"));
+                foreach (var relacionado in c.Relacionados)
+                    columna.Item().Padding(4).Text(relacionado.UuidRelacionado.ToString("D").ToUpperInvariant());
+            }
+            if (c.TipoDeComprobante == "E" && c.Relacionados.Count > 0)
+            {
+                columna.Item().PaddingTop(8).Element(e => EstiloDeComprobante.Seccion(e, "Factura relacionada"));
+                foreach (var relacionado in c.Relacionados)
+                    columna.Item().Padding(4).Text($"Relación {relacionado.TipoRelacion} · {relacionado.UuidRelacionado:D}");
+            }
             if (!string.IsNullOrWhiteSpace(c.Observaciones))
             {
                 columna.Item().PaddingTop(8).Element(e => EstiloDeComprobante.Seccion(e, "Observaciones"));
@@ -296,7 +321,15 @@ public sealed class GeneradorDePdfCfdi
                 EstiloDeComprobante.Celda(renglon.Cell()).AlignRight().Text(concepto.Cantidad.ToString("#,0.00####", CultureInfo.InvariantCulture));
                 EstiloDeComprobante.Celda(renglon.Cell()).Text(concepto.ClaveUnidad);
                 EstiloDeComprobante.Celda(renglon.Cell()).Text(concepto.ClaveProdServ);
-                EstiloDeComprobante.Celda(renglon.Cell()).Text(concepto.Descripcion);
+                EstiloDeComprobante.Celda(renglon.Cell()).Column(detalle =>
+                {
+                    detalle.Item().Text(concepto.Descripcion);
+                    var fiscales = Emision.DatosFiscalesDeConcepto.Leer(concepto.DatosFiscalesJson);
+                    if (fiscales is null) return;
+                    foreach (var pedimento in fiscales.Pedimentos) detalle.Item().Text($"Pedimento: {pedimento}").FontSize(6.5f);
+                    foreach (var cuenta in fiscales.CuentasPrediales) detalle.Item().Text($"Cuenta predial: {cuenta}").FontSize(6.5f);
+                    if (fiscales.Tercero is { } tercero) detalle.Item().Text($"A cuenta de {tercero.Rfc} · {tercero.Nombre}").FontSize(6.5f);
+                });
                 EstiloDeComprobante.Celda(renglon.Cell()).AlignCenter().Text(concepto.ObjetoImp);
                 EstiloDeComprobante.Celda(renglon.Cell()).AlignRight().Text(concepto.ValorUnitario.ToString("#,0.00####", CultureInfo.InvariantCulture));
                 EstiloDeComprobante.Celda(renglon.Cell()).AlignRight().Text(Cifra(concepto.Importe, decimales));
@@ -517,6 +550,8 @@ public sealed class GeneradorDePdfCfdi
                         });
                     }
 
+                    if (pago.TipoCadPago == "01")
+                        bloque.Item().PaddingTop(3).Text("Cadena de pago: 01 — SPEI").FontSize(7);
                     bloque.Item().PaddingTop(4).Element(e => DocumentosPagados(e, pago.Documentos, decimales));
                 });
             }
@@ -548,7 +583,7 @@ public sealed class GeneradorDePdfCfdi
             .Select(g => (
                 Etiqueta: EtiquetaDeTraslado(g.Key.Impuesto, g.Key.TipoFactor, g.Key.TasaOCuota),
                 Base: g.Sum(i => i.Base),
-                Importe: g.Sum(i => i.Importe ?? 0m)))
+                Importe: g.Key.TipoFactor == TiposDeFactor.Exento ? (decimal?)null : g.Sum(i => i.Importe ?? 0m)))
             .OrderBy(t => t.Etiqueta);
 
         columna.Item().PaddingTop(3).Element(e => EstiloDeComprobante.Seccion(e, "TOTALES DEL COMPLEMENTO (MXN)"));
@@ -561,7 +596,8 @@ public sealed class GeneradorDePdfCfdi
         foreach (var (etiqueta, baseImportes, importe) in traslados)
         {
             if (importe <= 0 && baseImportes <= 0) continue;
-            columna.Item().Element(e => Dato(e, $"Traslado {etiqueta} (base {Cifra(baseImportes, decimales)})", Cifra(importe, decimales)));
+            columna.Item().Element(e => Dato(e, $"Traslado {etiqueta} (base {Cifra(baseImportes, decimales)})",
+                importe is { } valor ? Cifra(valor, decimales) : "—"));
         }
 
         columna.Item().PaddingTop(2).BorderTop(0.5f).Element(e =>
@@ -602,11 +638,11 @@ public sealed class GeneradorDePdfCfdi
             foreach (var doc in documentos)
             {
                 tabla.Cell().Padding(3).Text(doc.IdDocumento.ToString().ToUpperInvariant()).FontSize(7);
-                tabla.Cell().Padding(3).Text(FolioDeDocumento(doc));
+                tabla.Cell().Padding(3).Text($"{FolioDeDocumento(doc)} · {doc.MonedaDR}\nEquiv. {doc.EquivalenciaDR:0.##########}");
                 tabla.Cell().Padding(3).AlignCenter().Text(doc.NumParcialidad.ToString());
-                tabla.Cell().Padding(3).AlignRight().Text(Cifra(doc.ImpSaldoAnt, decimales));
-                tabla.Cell().Padding(3).AlignRight().Text(Cifra(doc.ImpPagado, decimales));
-                tabla.Cell().Padding(3).AlignRight().Text(Cifra(doc.ImpSaldoInsoluto, decimales));
+                tabla.Cell().Padding(3).AlignRight().Text(Cifra(doc.ImpSaldoAnt, doc.DecimalesMonedaDR));
+                tabla.Cell().Padding(3).AlignRight().Text(Cifra(doc.ImpPagado, doc.DecimalesMonedaDR));
+                tabla.Cell().Padding(3).AlignRight().Text(Cifra(doc.ImpSaldoInsoluto, doc.DecimalesMonedaDR));
 
                 if (doc.Impuestos.Count == 0) continue;
 
@@ -628,11 +664,11 @@ public sealed class GeneradorDePdfCfdi
 
                     foreach (var impuesto in doc.Impuestos)
                     {
-                        sub.Cell().Padding(2).Text(Cifra(impuesto.Base, decimales)).FontSize(7);
+                        sub.Cell().Padding(2).Text(Cifra(impuesto.Base, doc.DecimalesMonedaDR)).FontSize(7);
                         sub.Cell().Padding(2).Text(NombreDeImpuesto(impuesto.Impuesto, impuesto.EsRetencion)).FontSize(7);
                         sub.Cell().Padding(2).Text(impuesto.TipoFactor).FontSize(7);
                         sub.Cell().Padding(2).Text(impuesto.TasaOCuota is { } t ? Cifra(t, 6) : "—").FontSize(7);
-                        sub.Cell().Padding(2).Text(impuesto.Importe is { } i ? Cifra(i, decimales) : "—").FontSize(7);
+                        sub.Cell().Padding(2).Text(impuesto.Importe is { } i ? Cifra(i, doc.DecimalesMonedaDR) : "—").FontSize(7);
                     }
                 });
             }

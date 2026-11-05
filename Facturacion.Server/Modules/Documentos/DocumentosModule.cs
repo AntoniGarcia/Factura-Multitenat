@@ -1,6 +1,7 @@
 using Facturacion.Server.Modules.Documentos.Cancelacion;
 using Facturacion.Server.Modules.Documentos.ComercioExterior;
 using Facturacion.Server.Modules.Documentos.Emision;
+using Facturacion.Server.Modules.Documentos.Egresos;
 using Facturacion.Server.Modules.Documentos.Pagos;
 using Facturacion.Server.Modules.Documentos.Pac;
 using Facturacion.Server.Modules.Documentos.Notaria;
@@ -18,7 +19,10 @@ public static class DocumentosModule
     public static IServiceCollection AddDocumentos(
         this IServiceCollection servicios, IConfiguration configuracion, IHostEnvironment entorno)
     {
-
+        var revision = configuracion.GetValue<bool>("RevisionDocumentos:Habilitada");
+        if (revision && !entorno.IsStaging() && !entorno.IsDevelopment())
+            throw new InvalidOperationException("La revisión de borradores solo se permite en Staging o Development.");
+        servicios.AddSingleton(new RevisionDeDocumentos(revision));
         // El tablero obtiene sus cifras desde el resumen real de comprobantes.
 
         servicios.AddScoped<IResumenDocumentos, ResumenDocumentos>();
@@ -56,11 +60,14 @@ public static class DocumentosModule
         servicios.AddScoped<ServicioDeCancelacion>();
         servicios.AddScoped<ServicioDeSolicitudesDeCancelacion>();
         servicios.AddScoped<ServicioDePagos>();
+        servicios.AddScoped<ServicioDeNotasCredito>();
         servicios.AddScoped<ServicioDeTrasladosCartaPorte>();
         servicios.AddScoped<ServicioDeSalidasCartaPorte>();
         servicios.AddScoped<ServicioDeNotaria>();
         servicios.AddScoped<ServicioDeObras>();
         servicios.AddScoped<ServicioDeComercioExterior>();
+        servicios.AddScoped<ValidadorFiscalCartaPorte>();
+        servicios.AddScoped<ValidadorFiscalDeComercioExterior>();
         servicios.AddScoped<GeneradorDeXmlComercioExterior>();
         servicios.AddScoped<GeneradorDePdfEstimacionObra>();
         servicios.AddScoped<ServicioDePdfEstimacionObra>();
@@ -155,6 +162,7 @@ public static class DocumentosModule
         aplicacion.MapSalidasDeFacturasProveedor();
         aplicacion.MapCancelacion();
         aplicacion.MapPagos();
+        aplicacion.MapNotasCredito();
         aplicacion.MapTrasladosCartaPorte();
         aplicacion.MapNotaria();
         aplicacion.MapObras();

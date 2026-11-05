@@ -276,10 +276,11 @@ public sealed class ServicioDeProductos(
             {
                 // El CSV solo expresa IVA trasladado. Una reimportación no debe borrar
                 // retenciones ni IEPS configurados manualmente para este producto.
-                var adicionales = peticion.ObjetoImp is "01" or "03"
+                var adicionales = !ReglasDeObjetoImpuesto.PermiteDesglose(peticion.ObjetoImp)
                     ? []
                     : existente.Impuestos
-                        .Where(i => i.Impuesto != "002" || i.EsRetencion)
+                        .Where(i => (i.Impuesto != "002" || i.EsRetencion) &&
+                            ReglasDeObjetoImpuesto.PermiteImpuesto(peticion.ObjetoImp, i.Impuesto, i.EsRetencion))
                         .Select(i => new ImpuestoDeProductoDto(
                             i.Impuesto, i.TipoFactor, i.TasaOCuota, i.EsRetencion))
                         .ToList();

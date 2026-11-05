@@ -1,0 +1,252 @@
+@page "/notas-credito/{Id:guid}"
+@attribute [Authorize(Policy = Permisos.Politicas.EditarFacturas)]
+@using Facturacion.Client.Servicios.Documentos
+@using Facturacion.Client.Servicios.Plataforma
+@using Facturacion.Shared.Documentos
+@using Facturacion.Shared.Contratos
+@inject ServicioDeNotasCredito Notas
+@inject ServicioDeEmision Emision
+@inject ServicioDeEmpresa Empresa
+@inject ServicioDeCatalogos Catalogos
+@inject ServicioDeSesion Sesion
+@inject NavigationManager Navegacion
+@inject IDialogService Dialogos
+@implements IDisposable
+
+<PageTitle>Nota de crédito</PageTitle>
+<TituloDePagina Texto="Nota de crédito" />
+<TarjetaFormulario Ancha="true" RutaVolver="/documentos">
+    <PanelErrores Problema="_error" />
+    @if (_aviso is not null) { <p role="status">@_aviso</p> }
+    @if (_cargando)
+    {
+        <p role="status">Cargando…</p>
+    }
+    else if (Id is null)
+    {
+        <section class="seccion-formulario">
+            <h2 class="seccion-titulo">Factura original</h2>
+            <p class="seccion-ayuda">Factura básica PUE o PPD en MXN. Se acredita solo el importe pendiente de cada grupo fiscal.</p>
+            <div class="rejilla-formulario">
+                <MudTextField T="string" Label="Serie" @bind-Value="_serieBusqueda" Immediate="true" />
+                <MudNumericField T="int" Label="Folio" @bind-Value="_folioBusqueda" Immediate="true" Min="1" />
+                <MudButton OnClick="Buscar" Variant="Variant.Outlined" Color="Color.Primary" Disabled="_trabajando">Buscar factura</MudButton>
+            </div>
+            @if (_origen is { } origen)
+            {
+                <p><strong>@origen.Nombre</strong> · @origen.Rfc · @origen.Serie-@origen.Folio</p>
+                <p>Total original: <span class="cifra-tabular">@origen.TotalOriginal.ToString("N2") MXN</span></p>
+                @if (origen.SaldoPendiente is { } saldo)
+                { <p>Saldo pendiente: <span class="cifra-tabular">@saldo.ToString("N2") MXN</span></p> }
+                <MudButton OnClick="Crear" Variant="Variant.Filled" Color="Color.Primary"
+                           Disabled="@(_trabajando || !Sesion.TienePermiso(Permisos.FacturaCrear) || origen.SaldoPendiente == 0 || !origen.Conceptos.Any(c => c.BaseDisponible > 0))">Crear nota de crédito</MudButton>
+            }
+        </section>
+    }
+    else if (_nota is { } nota)
+    {
+        <section class="seccion-formulario">
+            <h2 class="seccion-titulo">Datos de la nota</h2>
+            @if (_series.Count == 0 && Editable)
+            { <p class="seccion-ayuda">Configura una serie de tipo Egreso en Empresa → Series y folios.</p> }
+            <div class="rejilla-formulario">
+                <MudTextField T="string" Label="Folio" Value="@(nota.Comprobante.Folio is { } f ? $"{nota.Comprobante.Serie}-{f}" : "Se asigna al emitir")" ReadOnly="true" />
+                <MudTextField T="string" Label="Cliente" Value="nota.Origen.Nombre" ReadOnly="true" />
+                <MudTextField T="string" Label="R.F.C." Value="nota.Origen.Rfc" ReadOnly="true" Class="cifra-tabular" />
+                <MudTextField T="string" Label="Factura original" Value="@($"{nota.Origen.Serie}-{nota.Origen.Folio}")" ReadOnly="true" />
+                <MudTextField T="string" Label="Folio fiscal original" Value="@(nota.Origen.Uuid.ToString())" ReadOnly="true" Class="cifra-tabular" />
+                <MudSelect T="Guid?" Label="Serie de egreso" Value="_serieId" ValueChanged="CambiarSerie" Disabled="@(!Editable || _trabajando)">
+                    @foreach (var serie in _series)
+                    { <MudSelectItem T="Guid?" Value="@((Guid?)serie.Id)">@serie.Prefijo</MudSelectItem> }
+                    @if (_serieId is { } actual && !_series.Any(s => s.Id == actual))
+                    { <MudSelectItem T="Guid?" Value="@((Guid?)actual)" Disabled="true">Serie guardada</MudSelectItem> }
+                </MudSelect>
+                <MudSelect T="string" Label="Motivo" @bind-Value="_relacion" @bind-Value:after="MarcarCambios" Disabled="@(!Editable || _trabajando)">
+                    <MudSelectItem T="string" Value="@("01")">01 — Descuento o bonificación</MudSelectItem>
+                    <MudSelectItem T="string" Value="@("03")">03 — Devolución de mercancía</MudSelectItem>
+                </MudSelect>
+                <BuscadorCatalogo Catalogo="c_FormaPago" Label="Forma de devolución o bonificación"
+                                 Opciones="@Catalogos.Obtener("c_FormaPago").Where(f => f.Clave is not ("99" or "30")).ToArray()"
+                                 @bind-Clave="_formaPago" @bind-Clave:after="MarcarCambios" Requerido="true" PuedeLimpiar="false"
+                                 Deshabilitado="@(!Editable || _trabajando)" />
+                <MudTextField T="string" Label="Método de pago" Value="@("PUE")" ReadOnly="true" />
+                <MudTextField T="string" Label="Moneda" Value="@("MXN")" ReadOnly="true" />
+                <MudTextField T="string" Label="Uso de CFDI" Value="@("G02 — Devoluciones, descuentos o bonificaciones")" ReadOnly="true" />
+            </div>
+        </section>
+        <section class="seccion-formulario">
+            <h2 class="seccion-titulo">Importes a acreditar</h2>
+            @if (nota.Origen.SaldoPendiente is { } saldo)
+            { <p>Saldo disponible para esta nota, con IVA: <span class="cifra-tabular">@saldo.ToString("N2") MXN</span></p> }
+            <p class="seccion-ayuda">Importes sin impuestos. Los pagos previos limitan lo acreditable por grupo fiscal.</p>
+            <MudTable T="ConceptoAcreditableDto" Items="nota.Origen.Conceptos" Dense="true" Elevation="0" Breakpoint="Breakpoint.Sm">
+                <HeaderContent><MudTh>Concepto original</MudTh><MudTh>Base menos notas previas</MudTh><MudTh>Importe sin impuestos</MudTh><MudTh>Descripción de la nota</MudTh></HeaderContent>
+                <RowTemplate>
+                    <MudTd DataLabel="Concepto original">@context.Descripcion</MudTd>
+                    <MudTd DataLabel="Base menos notas previas" Class="cifra-tabular">@context.BaseDisponible.ToString("N2")</MudTd>
+                    <MudTd DataLabel="Importe sin impuestos">
+                        <MudNumericField T="decimal" Label="@($"Importe del concepto {context.Orden}")"
+                            Value="@_bases.GetValueOrDefault(context.Orden)" ValueChanged="@(v => CambiarBase(context.Orden, v))"
+                            Min="0" Max="context.BaseDisponible" Format="F2" Immediate="true" Disabled="@(!Editable || _trabajando)" />
+                    </MudTd>
+                    <MudTd DataLabel="Descripción de la nota">
+                        <MudTextField T="string" Label="@($"Descripción del concepto {context.Orden}")"
+                            Value="@_descripciones.GetValueOrDefault(context.Orden)" ValueChanged="@(v => CambiarDescripcion(context.Orden, v))"
+                            MaxLength="1000" Immediate="true" Disabled="@(!Editable || _trabajando)" />
+                    </MudTd>
+                </RowTemplate>
+            </MudTable>
+            <MudTextField T="string" Label="Observaciones" @bind-Value="_observaciones" @bind-Value:after="MarcarCambios"
+                          MaxLength="1000" Immediate="true" Disabled="@(!Editable || _trabajando)" />
+        </section>
+        <section class="seccion-formulario">
+            <h2 class="seccion-titulo">@(_hayCambios ? "Totales guardados · hay cambios pendientes" : "Totales guardados")</h2>
+            <div class="rejilla-formulario">
+                <MudTextField T="string" Label="Subtotal" Value="@nota.Comprobante.SubTotal.ToString("N2")" ReadOnly="true" Class="cifra-tabular" />
+                <MudTextField T="string" Label="IVA" Value="@nota.Comprobante.TotalImpuestosTrasladados.ToString("N2")" ReadOnly="true" Class="cifra-tabular" />
+                <MudTextField T="string" Label="Total MXN" Value="@nota.Comprobante.Total.ToString("N2")" ReadOnly="true" Class="cifra-tabular" />
+            </div>
+        </section>
+        @if (Editable)
+        {
+            <div class="acciones-formulario">
+                <MudButton OnClick="Guardar" Variant="Variant.Filled" Color="Color.Primary" Disabled="_trabajando">Guardar borrador</MudButton>
+                <MudButton OnClick="VistaPrevia" Variant="Variant.Outlined" Color="Color.Primary" Disabled="_trabajando">Vista previa PDF</MudButton>
+                <SiTienePermiso Permiso="@Permisos.FacturaTimbrar">
+                    <MudButton OnClick="Timbrar" Variant="Variant.Outlined" Color="Color.Primary" Disabled="@(_trabajando || !_puedeTimbrar)">Timbrar</MudButton>
+                </SiTienePermiso>
+            </div>
+        }
+        else
+        {
+            <p>Estado: @nota.Comprobante.Estatus</p>
+            @if (nota.Comprobante.Uuid is { } uuid) { <p class="cifra-tabular">Folio fiscal: @uuid</p> }
+        }
+    }
+</TarjetaFormulario>
+
+@code {
+    [Parameter] public Guid? Id { get; set; }
+    private NotaCreditoDto? _nota;
+    private OrigenNotaCreditoDto? _origen;
+    private DetalleProblema? _error;
+    private string? _aviso;
+    private bool _cargando, _trabajando, _hayCambios, _puedeTimbrar;
+    private string _serieBusqueda = "", _formaPago = "", _relacion = "01";
+    private int _folioBusqueda = 1;
+    private string? _observaciones;
+    private Guid? _serieId, _sinGuardar;
+    private IReadOnlyList<SerieParaEmisionDto> _series = [];
+    private readonly Dictionary<int, decimal> _bases = [];
+    private readonly Dictionary<int, string?> _descripciones = [];
+    private IDisposable? _salida;
+    private bool Editable => _nota?.PuedeEditar == true;
+
+    protected override async Task OnParametersSetAsync()
+    {
+        _cargando = true; _error = null; _nota = null; _sinGuardar = null;
+        try
+        {
+            _series = await Empresa.ListarSeriesActivasAsync("E");
+            _puedeTimbrar = (await Emision.ObtenerEstadoDeIntegracionAsync())?.TimbradoDisponible == true;
+            if (Id is { } id)
+            {
+                var (nota, error) = await Notas.ObtenerAsync(id); _error = error;
+                if (nota is not null) Rehidratar(nota);
+            }
+        }
+        catch (HttpRequestException) { _aviso = "No se pudo cargar la nota. Vuelve a intentarlo."; }
+        finally { _cargando = false; }
+    }
+    private void Rehidratar(NotaCreditoDto nota)
+    {
+        _nota = nota; _origen = nota.Origen; _serieId = nota.Comprobante.SerieId ?? _series.FirstOrDefault()?.Id;
+        _formaPago = nota.Comprobante.FormaPago ?? "";
+        _relacion = nota.Comprobante.Relacionados.FirstOrDefault()?.TipoRelacion ?? "01";
+        _observaciones = nota.Comprobante.Observaciones; _hayCambios = false;
+        _bases.Clear(); _descripciones.Clear();
+        foreach (var origen in nota.Origen.Conceptos)
+        {
+            var concepto = nota.Comprobante.Conceptos.SingleOrDefault(c => c.Orden == origen.Orden);
+            _bases[origen.Orden] = concepto?.Importe ?? 0;
+            _descripciones[origen.Orden] = concepto?.Descripcion ?? origen.Descripcion;
+        }
+        _sinGuardar = nota.Comprobante.Estatus == "borrador" && nota.Comprobante.Conceptos.Count == 0 ? nota.Comprobante.Id : null;
+    }
+    private async Task Buscar()
+    {
+        if (_trabajando) return;
+        _trabajando = true; _error = null; _origen = null;
+        try { var (origen, error) = await Notas.ConsultarAsync(_serieBusqueda.Trim(), _folioBusqueda); _origen = origen; _error = error; }
+        finally { _trabajando = false; }
+    }
+    private async Task Crear()
+    {
+        if (_trabajando || _origen is null) return;
+        _trabajando = true; _error = null;
+        try
+        {
+            var (nota, error) = await Notas.CrearAsync(_origen.Uuid); _error = error;
+            if (nota is not null) Navegacion.NavigateTo($"/notas-credito/{nota.Comprobante.Id}", replace: true);
+        }
+        finally { _trabajando = false; }
+    }
+    private void MarcarCambios() => _hayCambios = true;
+    private void CambiarSerie(Guid? id) { _serieId = id; MarcarCambios(); }
+    private void CambiarBase(int orden, decimal valor) { _bases[orden] = valor; MarcarCambios(); }
+    private void CambiarDescripcion(int orden, string? valor) { _descripciones[orden] = valor; MarcarCambios(); }
+    private async Task<bool> GuardarInterno()
+    {
+        if (_nota is null || !Editable) return false;
+        var peticion = new PeticionGuardarNotaCredito(_serieId, _formaPago, _relacion, _observaciones,
+            _bases.Where(x => x.Value != 0).Select(x => new RenglonNotaCreditoDto(x.Key, x.Value, _descripciones.GetValueOrDefault(x.Key))).ToArray());
+        var (nota, error) = await Notas.GuardarAsync(_nota.Comprobante.Id, peticion); _error = error;
+        if (nota is null) return false;
+        Rehidratar(nota); _sinGuardar = null; return true;
+    }
+    private async Task Guardar()
+    {
+        if (_trabajando) return; _trabajando = true; _aviso = null;
+        try { if (await GuardarInterno()) _aviso = "Borrador guardado."; }
+        finally { _trabajando = false; }
+    }
+    private async Task VistaPrevia()
+    {
+        if (_trabajando) return; _trabajando = true; _aviso = null;
+        try
+        {
+            if (!await GuardarInterno()) return;
+            var (archivo, error) = await Emision.ObtenerVistaPreviaPdfAsync(_nota!.Comprobante.Id); _error = error;
+            if (archivo is not null) await Dialogos.ShowAsync<DialogoDeComprobanteDeCompra>("Nota de crédito",
+                new DialogParameters<DialogoDeComprobanteDeCompra> { { x => x.Archivo, archivo }, { x => x.TituloVistaPrevia, "Nota de crédito" } },
+                new DialogOptions { MaxWidth = MaxWidth.ExtraLarge, FullWidth = true, CloseOnEscapeKey = true });
+        }
+        finally { _trabajando = false; }
+    }
+    private async Task Timbrar()
+    {
+        if (_trabajando || !_puedeTimbrar) return; _trabajando = true; _aviso = null;
+        try
+        {
+            if (!await GuardarInterno()) return;
+            var (emitido, error) = await Emision.TimbrarAsync(_nota!.Comprobante.Id, Guid.NewGuid().ToString("N")); _error = error;
+            if (emitido is not null)
+            {
+                var (nota, problema) = await Notas.ObtenerAsync(emitido.ComprobanteId); _error = problema;
+                if (nota is not null) Rehidratar(nota);
+                _aviso = "Nota procesada. Consulta su estado en Documentos.";
+            }
+        }
+        finally { _trabajando = false; }
+    }
+    protected override void OnAfterRender(bool firstRender)
+    {
+        if (firstRender) _salida = Navegacion.RegisterLocationChangingHandler(AlSalir);
+    }
+    private async ValueTask AlSalir(LocationChangingContext cambio)
+    {
+        if (_sinGuardar is not { } id) return; _sinGuardar = null;
+        try { await Emision.EliminarBorradorAsync(id); } catch (HttpRequestException) { }
+    }
+    public void Dispose() => _salida?.Dispose();
+}

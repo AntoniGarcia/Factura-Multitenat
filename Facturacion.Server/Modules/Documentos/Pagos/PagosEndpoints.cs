@@ -19,11 +19,20 @@ public static class PagosEndpoints
         grupo.MapGet("/{id:guid}", Obtener);
         grupo.MapPut("/{id:guid}", Guardar);
         grupo.MapGet("/por-pagar", ConsultarSaldo);
+        grupo.MapGet("/sustitucion/{uuid:guid}", ObtenerParaSustituir);
         grupo.MapDelete("/{id:guid}", EliminarBorrador).RequireAuthorization(Permisos.PagoEliminar);
     }
 
     private static async Task<IResult> CrearBorrador(ServicioDePagos pagos, HusoDeEmpresa huso, CancellationToken ct)
         => Results.Ok(await ConHoraLocal(await pagos.CrearBorradorAsync(ct), huso, ct));
+
+    private static async Task<IResult> ObtenerParaSustituir(
+        Guid uuid, ServicioDePagos pagos, HusoDeEmpresa huso, HttpContext http, CancellationToken ct)
+    {
+        var resultado = await pagos.ObtenerParaSustituirAsync(uuid, ct);
+        return resultado.EsFallo ? resultado.Error!.AResultado(http)
+            : Results.Ok(await ConHoraLocal(resultado.Valor, huso, ct));
+    }
 
     private static async Task<IResult> Obtener(Guid id, ServicioDePagos pagos, HusoDeEmpresa huso, CancellationToken ct)
     {

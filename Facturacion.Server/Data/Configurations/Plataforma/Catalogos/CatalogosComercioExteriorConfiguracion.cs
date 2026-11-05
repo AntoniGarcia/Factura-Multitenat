@@ -34,6 +34,7 @@ public sealed class SatFraccionArancelariaConfiguracion : IEntityTypeConfigurati
         entidad.HasKey(x => x.Clave);
         entidad.Property(x => x.Clave).HasMaxLength(12);
         entidad.Property(x => x.Descripcion).HasMaxLength(2000);
+        entidad.Property(x => x.UnidadMedida).HasMaxLength(2);
         entidad.HasIndex(x => new { x.Vigente, x.Clave });
     }
 }

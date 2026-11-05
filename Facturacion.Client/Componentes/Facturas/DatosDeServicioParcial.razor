@@ -1,0 +1,28 @@
+@using Facturacion.Shared.Obras
+<MudCheckBox T="bool" Label="Servicios parciales de construcción de casa habitación" Value="@(Datos is not null)"
+             ValueChanged="@(v => DatosChanged.InvokeAsync(v ? new ServicioParcialConstruccionDto("", "", "", "", "") : null))" />
+@if (Datos is { } d)
+{
+    <div class="rejilla-campos">
+        <MudTextField T="string" Label="Permiso, licencia o autorización" Value="d.NumeroPermiso" ValueChanged="@(v => Cambiar(d with { NumeroPermiso = v }))" MaxLength="40" />
+        <MudTextField T="string" Label="Calle del inmueble" Value="d.Calle" ValueChanged="@(v => Cambiar(d with { Calle = v }))" MaxLength="150" />
+        <MudTextField T="string" Label="Número exterior" Value="d.NoExterior" ValueChanged="@(v => Cambiar(d with { NoExterior = v }))" MaxLength="55" />
+        <MudTextField T="string" Label="Número interior" Value="d.NoInterior" ValueChanged="@(v => Cambiar(d with { NoInterior = v }))" MaxLength="30" />
+        <MudTextField T="string" Label="Colonia" Value="d.Colonia" ValueChanged="@(v => Cambiar(d with { Colonia = v }))" MaxLength="100" />
+        <MudTextField T="string" Label="Localidad" Value="d.Localidad" ValueChanged="@(v => Cambiar(d with { Localidad = v }))" MaxLength="100" />
+        <MudTextField T="string" Label="Municipio" Value="d.Municipio" ValueChanged="@(v => Cambiar(d with { Municipio = v }))" MaxLength="100" />
+        <MudAutocomplete T="string" Label="Estado" Value="d.Estado" ValueChanged="@(v => Cambiar(d with { Estado = v ?? "" }))"
+                         SearchFunc="BuscarEstados" ToStringFunc="MostrarEstado" CoerceValue="true" MaxItems="32" />
+        <BuscadorCatalogo Catalogo="c_CodigoPostal" Label="Código postal del inmueble" Clave="d.CodigoPostal" ClaveChanged="@(v => Cambiar(d with { CodigoPostal = v ?? "" }))" />
+        <MudTextField T="string" Label="Referencia del inmueble" Value="d.Referencia" ValueChanged="@(v => Cambiar(d with { Referencia = v }))" MaxLength="100" />
+    </div>
+}
+@code {
+    [Parameter] public ServicioParcialConstruccionDto? Datos { get; set; }
+    [Parameter] public EventCallback<ServicioParcialConstruccionDto?> DatosChanged { get; set; }
+    private Task Cambiar(ServicioParcialConstruccionDto datos) => DatosChanged.InvokeAsync(datos);
+    private static readonly string[] Nombres = ["Aguascalientes","Baja California","Baja California Sur","Campeche","Coahuila","Colima","Chiapas","Chihuahua","Ciudad de México","Durango","Guanajuato","Guerrero","Hidalgo","Jalisco","México","Michoacán","Morelos","Nayarit","Nuevo León","Oaxaca","Puebla","Querétaro","Quintana Roo","San Luis Potosí","Sinaloa","Sonora","Tabasco","Tamaulipas","Tlaxcala","Veracruz","Yucatán","Zacatecas"];
+    private static string MostrarEstado(string? clave) => int.TryParse(clave, out var n) && n is >= 1 and <= 32 ? $"{clave} — {Nombres[n-1]}" : clave ?? "";
+    private static Task<IEnumerable<string>> BuscarEstados(string? texto, CancellationToken ct)
+        => Task.FromResult(Enumerable.Range(1,32).Select(n => n.ToString("D2")).Where(c => MostrarEstado(c).Contains(texto ?? "", StringComparison.OrdinalIgnoreCase)));
+}

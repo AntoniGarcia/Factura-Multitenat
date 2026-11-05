@@ -10,10 +10,13 @@ public sealed class PreparacionDeCatalogosPruebas
     public void El_inventario_no_repite_catalogos_y_cubre_los_tres_grupos()
     {
         var inventario = PreparacionAutomaticaDeCatalogos.Inventario;
-        Assert.Equal(28, inventario.Length);
+        Assert.Equal(31, inventario.Length);
         Assert.Equal(inventario.Length, inventario.Select(i => i.Catalogo).Distinct(StringComparer.OrdinalIgnoreCase).Count());
         Assert.Equal(21, inventario.Count(i => i.Grupo == "cfdi"));
-        Assert.Equal(4, inventario.Count(i => i.Grupo == "porte"));
+        Assert.Equal(7, inventario.Count(i => i.Grupo == "porte"));
+        Assert.Contains(inventario, i => i.Catalogo == "c_MaterialPeligroso");
+        Assert.Contains(inventario, i => i.Catalogo == "c_TipoEmbalaje");
+        Assert.Contains(inventario, i => i.Catalogo == "c_SubTipoRem" && i.Tabla == "SatSubTipoRemolque");
         Assert.Equal(3, inventario.Count(i => i.Grupo == "comercio"));
         Assert.All(inventario, entrada => Assert.Equal(Path.GetFileName(entrada.Archivo), entrada.Archivo));
     }

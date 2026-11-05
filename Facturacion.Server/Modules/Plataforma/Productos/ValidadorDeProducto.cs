@@ -12,12 +12,6 @@ namespace Facturacion.Server.Modules.Plataforma.Productos;
 /// </summary>
 public sealed class ValidadorDeProducto(AppDbContext baseDeDatos)
 {
-    /// <summary>
-    /// Claves de <c>c_ObjetoImp</c> que <b>no</b> llevan desglose de impuestos en el
-    /// comprobante: «no objeto» y «sí objeto pero no obligado al desglose».
-    /// </summary>
-    private static readonly string[] SinDesglose = ["01", "03"];
-
     public async Task<ErrorNegocio?> ValidarAsync(PeticionGuardarProducto peticion, CancellationToken ct)
     {
         if (string.IsNullOrWhiteSpace(peticion.Descripcion))
@@ -70,26 +64,16 @@ public sealed class ValidadorDeProducto(AppDbContext baseDeDatos)
             return ErrorNegocio.Validacion("objeto-imp-desconocido",
                 $"El objeto de impuesto {peticion.ObjetoImp} no está en el catálogo del SAT.");
 
-        return await ValidarImpuestosAsync(peticion, objeto.Descripcion, ct);
+        return await ValidarImpuestosAsync(peticion, ct);
     }
 
     private async Task<ErrorNegocio?> ValidarImpuestosAsync(
-        PeticionGuardarProducto peticion, string descripcionObjeto, CancellationToken ct)
+        PeticionGuardarProducto peticion, CancellationToken ct)
     {
         var impuestos = peticion.Impuestos;
-        var llevaDesglose = !SinDesglose.Contains(peticion.ObjetoImp);
-
-        // Coherencia entre el objeto de impuesto y los impuestos configurados. Un concepto
-        // marcado «no objeto» que además trae desglose es una contradicción que el SAT
-        // rechaza, y es fácil de producir cambiando el objeto y olvidando los impuestos.
-        if (!llevaDesglose && impuestos.Count > 0)
-            return ErrorNegocio.Validacion("impuestos-sobran",
-                $"Marcaste «{descripcionObjeto}», así que el concepto no lleva desglose de impuestos. " +
-                "Quita los impuestos configurados o cambia el objeto de impuesto.");
-
-        if (llevaDesglose && impuestos.Count == 0)
-            return ErrorNegocio.Validacion("impuestos-faltan",
-                $"Marcaste «{descripcionObjeto}», así que hay que configurar al menos un impuesto.");
+        if (ReglasDeObjetoImpuesto.Validar(peticion.ObjetoImp,
+                impuestos.Select(i => (i.Impuesto, i.EsRetencion))) is { } errorObjeto)
+            return ErrorNegocio.Validacion("objeto-impuesto-invalido", errorObjeto);
 
         var repetido = impuestos
             .GroupBy(i => (i.Impuesto, i.EsRetencion))

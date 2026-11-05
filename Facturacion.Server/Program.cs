@@ -26,7 +26,7 @@ while (true)
     constructor.AgregarRegistro();
 
     await ArranqueDeRevision.PrepararAlArrancarAsync(constructor, CancellationToken.None);
-    var instalacion = InstalacionModule.Preparar(constructor);                                      /////////////
+    var instalacion = InstalacionModule.Preparar(constructor);
     if (constructor.Configuration.GetValue<bool>("Instalacion:PrepararRevision"))
     {
         var preparada = await ArranqueDeRevision.PrepararAsync(constructor, RutasDeInstalacion.Obtener(constructor).Interna, CancellationToken.None);

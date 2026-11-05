@@ -8,8 +8,10 @@ using Facturacion.Server.Data.Entidades.Documentos;
 using Facturacion.Server.Infra.Almacen;
 using Facturacion.Server.Infra.Tenencia;
 using Facturacion.Server.Modules.Documentos.Obras;
+using Facturacion.Server.Modules.Documentos.Traslados;
 using Facturacion.Server.Modules.Plataforma.Empresas;
 using Facturacion.Shared.Comun;
+using Facturacion.Shared.ComercioExterior;
 using Microsoft.EntityFrameworkCore;
 
 namespace Facturacion.Server.Modules.Documentos.Salidas;
@@ -26,7 +28,11 @@ public sealed class ServicioDeSalidasFiscales(
     HusoDeEmpresa huso,
     ServicioDeLogo logos,
     IAlmacenDeArchivos almacen,
-    ILogger<ServicioDeSalidasFiscales> registro)
+    ILogger<ServicioDeSalidasFiscales> registro,
+    RevisionDeDocumentos? revision = null,
+    ServicioDeXmlCfdi? xmlRevision = null,
+    ServicioDePdfBorrador? pdfBorrador = null,
+    ServicioDeSalidasCartaPorte? cartaPorte = null)
 {
     public async Task<Resultado<ArchivoFiscal>> GenerarPdfAsync(Guid comprobanteId, CancellationToken ct)
     {
@@ -36,13 +42,26 @@ public sealed class ServicioDeSalidasFiscales(
             return ErrorNegocio.NoEncontrado(
                 "comprobante-no-encontrado", "Ese comprobante no existe.");
 
+        if (revision?.Admite(comprobante.Estatus, comprobante.TipoDeComprobante) == true)
+        {
+            if (comprobante.TipoDeComprobante == "T" && cartaPorte is not null)
+            {
+                var borrador = await cartaPorte.PdfAsync(comprobanteId, ct);
+                return borrador.EsFallo ? borrador.Error! : borrador.Valor with { Nombre = $"borrador-{comprobanteId:N}.pdf" };
+            }
+            if (pdfBorrador is not null)
+            {
+                var borrador = await pdfBorrador.GenerarAsync(comprobanteId, ct);
+                return borrador.EsFallo ? borrador.Error! : new ArchivoFiscal($"borrador-{comprobanteId:N}.pdf", "application/pdf", borrador.Valor);
+            }
+        }
         if (!EsFiscal(comprobante))
             return ErrorNegocio.Conflicto(
                 "comprobante-sin-cfdi", "El PDF fiscal solo está disponible después del timbrado.");
 
         // Carta Porte usa su propio generador; el complemento de pagos tiene su propia sección
-        // en GeneradorDePdfCfdi, sin conceptos. Nómina y egresos no se emiten todavía.
-        if (comprobante.TipoDeComprobante is not ("I" or "T" or "P"))
+        // en GeneradorDePdfCfdi, sin conceptos. Nómina sigue fuera del alcance.
+        if (comprobante.TipoDeComprobante is not ("I" or "E" or "T" or "P"))
             return ErrorNegocio.Conflicto(
                 "pdf-no-disponible-para-tipo",
                 "La representación PDF para este tipo de comprobante todavía no está disponible.");
@@ -65,7 +84,7 @@ public sealed class ServicioDeSalidasFiscales(
             var traslado = await baseDeDatos.TrasladosCartaPorte
                 .AsNoTracking()
                 .Include(x => x.Ubicaciones)
-                .Include(x => x.Mercancias)
+                .Include(x => x.Mercancias).Include(x => x.Remolques)
                 .FirstOrDefaultAsync(x => x.ComprobanteId == comprobante.Id, ct);
 
             if (traslado is null)
@@ -99,13 +118,17 @@ public sealed class ServicioDeSalidasFiscales(
         if (archivoXml.EsFallo) return archivoXml.Error!;
 
         DatosNotarialesDelPdf? datosNotariales;
+        DatosComercioExteriorDto? datosComercio;
         IReadOnlyList<ImpuestoLocalCfdi> impuestosLocales;
         string? leyenda;
+        Facturacion.Shared.Obras.ServicioParcialConstruccionDto? servicioParcial;
         try
         {
             datosNotariales = DatosNotarialesDelPdf.DesdeXml(archivoXml.Valor.Contenido);
+            datosComercio = DatosComercioExteriorDelPdf.DesdeXml(archivoXml.Valor.Contenido);
             impuestosLocales = LeerImpuestosLocales(archivoXml.Valor.Contenido);
             leyenda = LeerLeyendaDelTimbre(archivoXml.Valor.Contenido);
+            servicioParcial = LeerServicioParcial(archivoXml.Valor.Contenido);
         }
         catch (Exception ex) when (ex is XmlException or InvalidDataException or FormatException or OverflowException)
         {
@@ -116,9 +139,23 @@ public sealed class ServicioDeSalidasFiscales(
 
         var contenido = generadorPdf.Generar(comprobante,
             new DatosDelPdf(fechaLocal, decimales, logo?.Contenido, Notaria: datosNotariales,
-                ImpuestosLocales: impuestosLocales, LeyendaDelTimbre: leyenda) { ZonaHoraria = zona });
+                ComercioExterior: datosComercio, ImpuestosLocales: impuestosLocales,
+                LeyendaDelTimbre: leyenda) { ZonaHoraria = zona, ServicioParcial = servicioParcial });
 
         return new ArchivoFiscal(NombreDeArchivoFiscal.Construir(comprobante, zona, "pdf"), "application/pdf", contenido);
+    }
+
+    private static Facturacion.Shared.Obras.ServicioParcialConstruccionDto? LeerServicioParcial(byte[] contenido)
+    {
+        using var lector = XmlReader.Create(new MemoryStream(contenido), new XmlReaderSettings { DtdProcessing = DtdProcessing.Prohibit, XmlResolver = null });
+        var documento = XDocument.Load(lector); XNamespace ns = ServicioParcialConstruccion.Espacio;
+        var parcial = documento.Descendants(ns + "parcialesconstruccion").SingleOrDefault();
+        if (parcial is null) return null;
+        var inmueble = parcial.Element(ns + "Inmueble") ?? throw new InvalidDataException("Falta el inmueble del servicio parcial.");
+        return new((string?)parcial.Attribute("NumPerLicoAut") ?? "", (string?)inmueble.Attribute("Calle") ?? "",
+            (string?)inmueble.Attribute("Municipio") ?? "", (string?)inmueble.Attribute("Estado") ?? "", (string?)inmueble.Attribute("CodigoPostal") ?? "",
+            (string?)inmueble.Attribute("NoExterior"), (string?)inmueble.Attribute("NoInterior"), (string?)inmueble.Attribute("Colonia"),
+            (string?)inmueble.Attribute("Localidad"), (string?)inmueble.Attribute("Referencia"));
     }
 
     private static string? LeerLeyendaDelTimbre(byte[] contenido)
@@ -186,6 +223,13 @@ public sealed class ServicioDeSalidasFiscales(
             return ErrorNegocio.NoEncontrado(
                 "comprobante-no-encontrado", "Ese comprobante no existe.");
 
+        if (revision?.Admite(comprobante.Estatus, comprobante.TipoDeComprobante) == true && xmlRevision is not null)
+        {
+            var contenido = await CargarAsync(comprobanteId, ct);
+            var resultado = await xmlRevision.GenerarParaRevisionAsync(contenido!, ct);
+            return resultado.EsFallo ? resultado.Error! : new ArchivoFiscal($"borrador-{comprobanteId:N}.xml", "application/xml",
+                System.Text.Encoding.UTF8.GetBytes(resultado.Valor.Xml));
+        }
         if (!EsFiscal(comprobante))
             return ErrorNegocio.Conflicto(
                 "comprobante-sin-cfdi", "El XML fiscal solo está disponible después del timbrado.");

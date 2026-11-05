@@ -24,12 +24,12 @@ public sealed class ServicioDeSalidasCartaPorte(AppDbContext db, ServicioDeXmlCf
         var traslado = await CargarAsync(comprobanteId, ct);
         if (traslado is null) return ErrorNegocio.NoEncontrado("traslado-no-encontrado", "No se encontró ese traslado Carta Porte.");
         if (traslado.Comprobante.Estatus is not ("borrador" or "error")) return ErrorNegocio.Conflicto("traslado-no-es-borrador", "El XML de revisión solo está disponible para borradores.");
-        var resultado = await xml.GenerarAsync(traslado.Comprobante, ct);
+        var resultado = await xml.GenerarParaVistaPreviaAsync(traslado.Comprobante, ct);
         return resultado.EsFallo ? resultado.Error! : new ArchivoFiscal($"borrador-carta-porte-{comprobanteId:N}.xml", "application/xml", Encoding.UTF8.GetBytes(resultado.Valor.Xml));
     }
 
     private Task<TrasladoCartaPorte?> CargarAsync(Guid comprobanteId, CancellationToken ct) => db.TrasladosCartaPorte
         .Include(x => x.Comprobante).ThenInclude(x => x.Conceptos).ThenInclude(x => x.Impuestos)
         .Include(x => x.Comprobante).ThenInclude(x => x.Relacionados)
-        .Include(x => x.Ubicaciones).Include(x => x.Mercancias).FirstOrDefaultAsync(x => x.ComprobanteId == comprobanteId, ct);
+        .Include(x => x.Ubicaciones).Include(x => x.Mercancias).Include(x => x.Remolques).FirstOrDefaultAsync(x => x.ComprobanteId == comprobanteId, ct);
 }

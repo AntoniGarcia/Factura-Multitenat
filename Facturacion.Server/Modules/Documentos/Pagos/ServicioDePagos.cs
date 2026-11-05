@@ -2,7 +2,6 @@ using Facturacion.Server.Data;
 using Facturacion.Server.Data.Entidades.Documentos;
 using Facturacion.Server.Infra.Bitacora;
 using Facturacion.Server.Infra.Tenencia;
-using Facturacion.Server.Modules.Documentos.Impuestos;
 using Facturacion.Server.Modules.Documentos.Salidas;
 using Facturacion.Shared.Comun;
 using Facturacion.Shared.Contratos;
@@ -61,13 +60,21 @@ public sealed class ServicioDePagos(
         baseDeDatos.Comprobantes.Add(comprobante);
         await baseDeDatos.SaveChangesAsync(ct);
 
-        return ADto(comprobante, null);
+        return await ConDecimalesAsync(ADto(comprobante, null), ct);
     }
 
     public async Task<PagoDto?> ObtenerAsync(Guid id, CancellationToken ct)
     {
         var comprobante = await CargarAsync(id, ct);
-        return comprobante is null ? null : ADto(comprobante, comprobante.Pagos.FirstOrDefault());
+        return comprobante is null ? null : await ConDecimalesAsync(ADto(comprobante, comprobante.Pagos.FirstOrDefault()), ct);
+    }
+
+    public async Task<Resultado<PagoDto>> ObtenerParaSustituirAsync(Guid uuid, CancellationToken ct)
+    {
+        var origen = await SustitucionDePago.ResolverAsync(baseDeDatos, uuid, Guid.Empty, null, ct);
+        if (origen.EsFallo) return origen.Error!;
+        var comprobante = origen.Valor!;
+        return await ConDecimalesAsync(ADto(comprobante, comprobante.Pagos[0]) with { UuidSustituido = uuid }, ct);
     }
 
     // ── Consulta de saldo (§27) ─────────────────────────────────────────────────────────
@@ -103,12 +110,19 @@ public sealed class ServicioDePagos(
                 $"Esa factura se emitió con método de pago «{factura.MetodoPago ?? "sin método"}». " +
                 "El complemento de pagos solo aplica a las PPD.");
 
+        if (await SustitucionDePago.TienePendienteAsync(baseDeDatos, uuid, ct))
+            return ErrorNegocio.Conflicto("sustitucion-pago-pendiente", "Termina la cancelación del pago anterior antes de registrar otro pago.");
         var (abonado, parcialidades) = await AbonadoAsync(uuid, ct);
-        var saldo = factura.Total - abonado;
+        var egresos = await Egresos.SaldoDeNotasCredito.ObtenerAsync(baseDeDatos, uuid, ct);
+        if (egresos.EsFallo) return egresos.Error!;
+        var saldo = factura.Total - abonado - egresos.Valor;
 
         if (saldo <= 0)
             return ErrorNegocio.Validacion(
                 "factura-ya-saldada", "Esa factura ya está saldada: no le queda saldo pendiente.");
+
+        var desglose = await Egresos.SaldoDeNotasCredito.CalcularDesgloseAsync(baseDeDatos, factura, saldo, ct);
+        if (desglose.EsFallo) return desglose.Error!;
 
         return new DocumentoPorPagarDto(
             factura.Id,
@@ -119,18 +133,19 @@ public sealed class ServicioDePagos(
             factura.Total,
             saldo,
             parcialidades + 1,
-            ObjetoDeImpuestoDe(factura));
+            desglose.Valor.ObjetoImpDR,
+            await baseDeDatos.SatMonedas.Where(x => x.Clave == factura.Moneda).Select(x => x.Decimales).SingleAsync(ct));
     }
 
     /// <summary>
     /// Los pagos en proceso apartan saldo; una cancelación pendiente todavía lo consume.
     /// Las parcialidades canceladas no se reutilizan, aunque su importe ya no consuma saldo.
     /// </summary>
-    private async Task<(decimal Abonado, int Parcialidades)> AbonadoAsync(Guid uuid, CancellationToken ct)
+    private async Task<(decimal Abonado, int Parcialidades)> AbonadoAsync(Guid uuid, CancellationToken ct, Guid? excluir = null)
     {
         var renglones = await baseDeDatos.PagosDocumentos
             .AsNoTracking()
-            .Where(d => d.IdDocumento == uuid &&
+            .Where(d => d.IdDocumento == uuid && d.Pago.ComprobanteId != excluir &&
                 (d.Pago.Comprobante.Estatus == "timbrando" || d.Pago.Comprobante.Estatus == "timbrado" ||
                  d.Pago.Comprobante.Estatus == "en_cancelacion" || d.Pago.Comprobante.Estatus == "cancelado"))
             .Select(d => new { d.ImpPagado, d.NumParcialidad, d.Pago.Comprobante.Estatus })
@@ -145,6 +160,11 @@ public sealed class ServicioDePagos(
     public async Task<Resultado<PagoDto>> GuardarAsync(
         Guid id, PeticionGuardarPago peticion, CancellationToken ct)
     {
+        peticion = peticion with
+        {
+            TipoCadPago = Opcional(peticion.TipoCadPago), CertPago = Opcional(peticion.CertPago),
+            CadPago = Opcional(peticion.CadPago), SelloPago = Opcional(peticion.SelloPago)
+        };
         if (peticion.FechaPagoLocal is { } local)
         {
             var zona = await huso.ObtenerAsync(ct);
@@ -189,14 +209,29 @@ public sealed class ServicioDePagos(
         if (receptor is null)
             return ErrorNegocio.Validacion("cliente-no-encontrado", "Ese cliente no existe o está dado de baja.");
 
-        var documentos = await ResolverDocumentosAsync(peticion, receptor.Rfc, ct);
+        var documentos = await ResolverDocumentosAsync(peticion, receptor.Rfc, id, ct);
         if (documentos.EsFallo) return documentos.Error!;
+        var precisionPago = await baseDeDatos.SatMonedas.Where(x => x.Clave == peticion.MonedaP).Select(x => x.Decimales).SingleAsync(ct);
+        if (!ConversionDePago.Cuadra(peticion.Monto, precisionPago, documentos.Valor.Select(x =>
+            (x.ImpPagado, x.EquivalenciaDR, x.DecimalesMoneda, x.Factura.Moneda == peticion.MonedaP))))
+            return ErrorNegocio.Validacion("pago-no-cuadra", "El monto recibido no coincide con los abonos convertidos a la moneda del pago.");
 
         // Mismo criterio que en ServicioDeEmision: sin guardado previo, el registro es un alta.
         var antes = comprobante.ModificadoUtc is null ? null : ADto(comprobante, comprobante.Pagos.FirstOrDefault());
 
         AplicarCabecera(comprobante, receptor);
         AplicarPago(comprobante, peticion, documentos.Valor);
+        baseDeDatos.ComprobantesRelacionados.RemoveRange(comprobante.Relacionados);
+        comprobante.Relacionados.Clear();
+        if (peticion.UuidSustituido is { } uuidSustituido)
+            comprobante.Relacionados.Add(new ComprobanteRelacionado
+            {
+                Id = Guid.NewGuid(), ComprobanteId = comprobante.Id,
+                TipoRelacion = "04", UuidRelacionado = uuidSustituido
+            });
+
+        if (GeneradorDeXmlPago.Validar(comprobante, precisionPago) is { } errorPago)
+            return errorPago;
 
         comprobante.ModificadoUtc = DateTime.UtcNow;
 
@@ -210,7 +245,7 @@ public sealed class ServicioDePagos(
             "Pago {Comprobante} guardado con {Documentos} documento(s).", comprobante.Id, documentos.Valor.Count);
 
         await transaccion.CommitAsync(ct);
-        return ADto(comprobante, comprobante.Pagos.FirstOrDefault());
+        return await ConDecimalesAsync(ADto(comprobante, comprobante.Pagos.FirstOrDefault()), ct);
     }
 
     internal async Task<Resultado> ValidarSaldosParaEmisionAsync(Comprobante comprobante, CancellationToken ct)
@@ -221,17 +256,25 @@ public sealed class ServicioDePagos(
         var peticion = new PeticionGuardarPago(clienteId, pago.FechaPagoUtc, pago.FormaDePagoP,
             pago.MonedaP, pago.TipoCambioP, pago.Monto, pago.NumOperacion, pago.RfcEmisorCtaOrd,
             pago.NomBancoOrdExt, pago.CtaOrdenante, pago.RfcEmisorCtaBen, pago.CtaBeneficiario,
-            [.. pago.Documentos.Select(d => new RenglonDePagoDto(d.IdDocumento, d.ImpPagado))]);
-        var actuales = await ResolverDocumentosAsync(peticion, comprobante.ReceptorRfc, ct);
+            [.. pago.Documentos.Select(d => new RenglonDePagoDto(d.IdDocumento, d.ImpPagado, d.EquivalenciaDR))])
+        {
+            UuidSustituido = comprobante.Relacionados.FirstOrDefault(r => r.TipoRelacion == "04")?.UuidRelacionado,
+            TipoCadPago = pago.TipoCadPago, CertPago = pago.CertPago, CadPago = pago.CadPago, SelloPago = pago.SelloPago
+        };
+        var actuales = await ResolverDocumentosAsync(peticion, comprobante.ReceptorRfc, comprobante.Id, ct);
         if (actuales.EsFallo) return actuales.Error!;
         foreach (var actual in actuales.Valor)
         {
             var guardado = pago.Documentos.Single(d => d.IdDocumento == actual.Factura.Uuid);
             if (guardado.ImpSaldoAnt != actual.SaldoAnterior ||
+                guardado.DecimalesMonedaDR != actual.DecimalesMoneda ||
                 guardado.NumParcialidad != actual.NumParcialidad ||
                 guardado.ImpSaldoInsoluto != actual.SaldoAnterior - guardado.ImpPagado)
                 return ErrorNegocio.Conflicto("saldo-pago-desactualizado",
-                    "Otro pago cambió el saldo o la parcialidad. Guarda de nuevo el borrador y revisa sus importes antes de emitir; no se reservó folio ni timbre.");
+                    "Un pago o nota de crédito cambió el saldo o la parcialidad. Guarda de nuevo el borrador y revisa sus importes antes de emitir; no se reservó folio ni timbre.");
+            if (guardado.MonedaDR != actual.Factura.Moneda || !actual.Desglose.CoincideCon(guardado))
+                return ErrorNegocio.Conflicto("desglose-pago-desactualizado",
+                    "Los impuestos guardados no coinciden con la factura. Guarda nuevamente el borrador antes de emitirlo; no se reservó folio ni timbre.");
         }
         return Resultado.Exito();
     }
@@ -273,6 +316,9 @@ public sealed class ServicioDePagos(
     /// </summary>
     private async Task<Resultado> ValidarAsync(PeticionGuardarPago peticion, CancellationToken ct)
     {
+        if (ReglasDeCadenaPago.Validar(peticion.FormaDePagoP, peticion.TipoCadPago,
+            peticion.CertPago, peticion.CadPago, peticion.SelloPago) is { } cadenaInvalida)
+            return cadenaInvalida;
         const decimal maximoImporte = 999999999999.999999m;
         if (peticion.Monto <= 0 || peticion.Monto > maximoImporte ||
             peticion.Documentos.Any(d => d.ImpPagado <= 0 || d.ImpPagado > maximoImporte))
@@ -290,7 +336,7 @@ public sealed class ServicioDePagos(
         var decimales = await baseDeDatos.SatMonedas.AsNoTracking()
             .Where(x => x.Clave == peticion.MonedaP && x.Vigente && x.Clave != "XXX")
             .Select(x => (int?)x.Decimales).FirstOrDefaultAsync(ct);
-        if (decimales is null)
+        if (decimales is null or < 0 or > 6)
             return ErrorNegocio.Validacion("moneda-invalida", "Selecciona una moneda vigente del catálogo SAT; XXX no es una moneda de pago.");
 
         if (await MonedaHabilitada.ExigirAsync(baseDeDatos, peticion.MonedaP, ct) is { } monedaNoHabilitada)
@@ -300,17 +346,8 @@ public sealed class ServicioDePagos(
                 .AnyAsync(x => x.Clave == peticion.FormaDePagoP && x.Vigente, ct))
             return ErrorNegocio.Validacion("forma-pago-invalida", "Selecciona la forma en que se recibió el pago; no puede ser por definir.");
 
-        if (Math.Round(peticion.Monto, decimales.Value) != peticion.Monto ||
-            peticion.Documentos.Any(d => Math.Round(d.ImpPagado, decimales.Value) != d.ImpPagado))
+        if (Math.Round(peticion.Monto, decimales.Value) != peticion.Monto)
             return ErrorNegocio.Validacion("precision-pago-invalida", $"Los importes en {peticion.MonedaP} admiten {decimales.Value} decimales.");
-
-        var suma = peticion.Documentos.Sum(d => d.ImpPagado);
-        var monto = peticion.Monto;
-
-        if (suma != monto)
-            return ErrorNegocio.Validacion(
-                "pago-no-cuadra",
-                $"Lo repartido entre las facturas ({suma:N2}) no coincide con el importe del pago ({monto:N2}).");
 
         if (peticion.MonedaP != "MXN" && peticion.TipoCambioP is null)
             return ErrorNegocio.Validacion(
@@ -320,6 +357,9 @@ public sealed class ServicioDePagos(
                  (valor <= 0 || valor > maximoImporte || Math.Round(valor, 6) != valor))
             return ErrorNegocio.Validacion(
                 "tipo-de-cambio-invalido", "El tipo de cambio debe ser positivo y tener hasta seis decimales.");
+
+        if (peticion.MonedaP == "MXN" && peticion.TipoCambioP is not (null or 1m))
+            return ErrorNegocio.Validacion("tipo-de-cambio-invalido", "El tipo de cambio en pesos debe ser 1.");
 
         if (peticion.NumOperacion?.Length > 100 || peticion.NomBancoOrdExt?.Length > 300 ||
             peticion.CtaOrdenante?.Length > 50 || peticion.CtaBeneficiario?.Length > 50 ||
@@ -335,9 +375,17 @@ public sealed class ServicioDePagos(
     /// pago, y aceptar su saldo a ciegas emitiría un complemento que ya no cuadra.
     /// </summary>
     private async Task<Resultado<IReadOnlyList<DocumentoResuelto>>> ResolverDocumentosAsync(
-        PeticionGuardarPago peticion, string rfcReceptor, CancellationToken ct)
+        PeticionGuardarPago peticion, string rfcReceptor, Guid comprobanteId, CancellationToken ct)
     {
         var resueltos = new List<DocumentoResuelto>(peticion.Documentos.Count);
+        var origen = await SustitucionDePago.ResolverAsync(baseDeDatos, peticion.UuidSustituido,
+            comprobanteId, peticion.ClienteId, ct);
+        if (origen.EsFallo) return origen.Error!;
+        var sustituido = origen.Valor;
+        if (sustituido is not null && (sustituido.ReceptorRfc != rfcReceptor ||
+            !sustituido.Pagos[0].Documentos.Select(d => d.IdDocumento).ToHashSet()
+                .SetEquals(peticion.Documentos.Select(d => d.IdDocumento))))
+            return ErrorNegocio.Validacion("sustitucion-documentos-distintos", "Conserva el receptor y las mismas facturas del pago anterior.");
 
         for (var i = 0; i < peticion.Documentos.Count; i++)
         {
@@ -359,17 +407,23 @@ public sealed class ServicioDePagos(
             if (factura.ClienteId != peticion.ClienteId || factura.ReceptorRfc != rfcReceptor)
                 return ErrorNegocio.Validacion("documento-de-otro-cliente", $"La factura del renglón {i + 1} no corresponde al cliente seleccionado.");
 
-            // La captura aún no admite EquivalenciaDR: nunca suponer 1 entre monedas distintas.
-            if (factura.Moneda != peticion.MonedaP)
-                return ErrorNegocio.Validacion("monedas-distintas-no-admitidas", $"La factura del renglón {i + 1} está en {factura.Moneda}. Por ahora el pago debe recibirse en esa misma moneda.");
+            if (!ConversionDePago.EsEquivalenciaValida(factura.Moneda, peticion.MonedaP, linea.EquivalenciaDR))
+                return ErrorNegocio.Validacion("equivalencia-pago-invalida", $"Revisa la equivalencia del renglón {i + 1}: en la misma moneda es 1; entre monedas distintas se requiere un valor positivo con hasta diez decimales.");
+            var precision = await baseDeDatos.SatMonedas.Where(x => x.Clave == factura.Moneda).Select(x => (int?)x.Decimales).SingleOrDefaultAsync(ct);
+            if (precision is null || precision is < 0 or > 6 || Math.Round(linea.ImpPagado, precision.Value) != linea.ImpPagado)
+                return ErrorNegocio.Validacion("precision-documento-pagado-invalida", $"El abono del renglón {i + 1} debe respetar los decimales de la moneda de la factura.");
 
             if (factura.MetodoPago != MetodoDiferido)
                 return ErrorNegocio.Validacion(
                     "documento-no-es-ppd",
                     $"La factura del renglón {i + 1} no se emitió como PPD.");
 
-            var (abonado, parcialidades) = await AbonadoAsync(linea.IdDocumento, ct);
-            var saldoAnterior = factura.Total - abonado;
+            if (sustituido is null && await SustitucionDePago.TienePendienteAsync(baseDeDatos, linea.IdDocumento, ct))
+                return ErrorNegocio.Conflicto("sustitucion-pago-pendiente", "Termina la cancelación del pago anterior antes de registrar otro pago.");
+            var (abonado, parcialidades) = await AbonadoAsync(linea.IdDocumento, ct, sustituido?.Id);
+            var egresos = await Egresos.SaldoDeNotasCredito.ObtenerAsync(baseDeDatos, linea.IdDocumento, ct);
+            if (egresos.EsFallo) return egresos.Error!;
+            var saldoAnterior = factura.Total - abonado - egresos.Valor;
 
             if (linea.ImpPagado <= 0)
                 return ErrorNegocio.Validacion(
@@ -383,12 +437,15 @@ public sealed class ServicioDePagos(
                     $"El renglón {i + 1} abona {linea.ImpPagado:N2} a una factura que solo debe " +
                     $"{saldoAnterior:N2}.");
 
+            var desglose = await Egresos.SaldoDeNotasCredito.CalcularDesgloseAsync(baseDeDatos, factura,
+                linea.ImpPagado, ct, sustituido?.Id, comprobanteId);
+            if (desglose.EsFallo) return desglose.Error!;
             resueltos.Add(new DocumentoResuelto(
                 factura,
                 saldoAnterior,
                 linea.ImpPagado,
-                parcialidades + 1,
-                ImpuestosDe(factura)));
+                sustituido?.Pagos[0].Documentos.Single(d => d.IdDocumento == linea.IdDocumento).NumParcialidad ?? parcialidades + 1,
+                desglose.Valor, linea.EquivalenciaDR ?? 1m, precision.Value));
         }
 
         return resueltos;
@@ -399,34 +456,7 @@ public sealed class ServicioDePagos(
         decimal SaldoAnterior,
         decimal ImpPagado,
         int NumParcialidad,
-        IReadOnlyList<ImpuestoDeFactura> Impuestos);
-
-    /// <summary>
-    /// Agrupa los impuestos de la factura como los necesita el reparto: por impuesto, factor,
-    /// tasa y sentido, sumando la base y el importe de todos sus conceptos.
-    /// </summary>
-    private static IReadOnlyList<ImpuestoDeFactura> ImpuestosDe(Comprobante factura)
-        => factura.Conceptos
-            .SelectMany(c => c.Impuestos)
-            .GroupBy(i => new { i.Impuesto, i.TipoFactor, i.TasaOCuota, i.EsRetencion })
-            .Select(g => new ImpuestoDeFactura(
-                g.Key.Impuesto,
-                g.Key.TipoFactor,
-                g.Key.TasaOCuota,
-                g.Sum(x => x.Base),
-                g.Any(x => x.Importe is not null) ? g.Sum(x => x.Importe ?? 0m) : null,
-                g.Key.EsRetencion))
-            .OrderBy(g => g.EsRetencion).ThenBy(g => g.Impuesto).ThenBy(g => g.TasaOCuota)
-            .ToArray();
-
-    /// <summary>
-    /// <c>ObjetoImpDR</c> es 02 en cuanto la factura traiga un solo impuesto desglosado, y 01
-    /// si no trae ninguno. Con 02 el desglose de <c>ImpuestosDR</c> pasa a ser obligatorio.
-    /// </summary>
-    private static string ObjetoDeImpuestoDe(Comprobante factura)
-        => factura.Conceptos.Any(c => c.Impuestos.Count > 0)
-            ? ObjetosDeImpuesto.SiObjeto
-            : ObjetosDeImpuesto.NoObjeto;
+        DesgloseDeFacturaParaPago Desglose, decimal EquivalenciaDR, int DecimalesMoneda);
 
     // ── Aplicar ─────────────────────────────────────────────────────────────────────────
 
@@ -473,13 +503,13 @@ public sealed class ServicioDePagos(
             NomBancoOrdExt = peticion.NomBancoOrdExt,
             CtaOrdenante = peticion.CtaOrdenante,
             RfcEmisorCtaBen = peticion.RfcEmisorCtaBen,
-            CtaBeneficiario = peticion.CtaBeneficiario
+            CtaBeneficiario = peticion.CtaBeneficiario,
+            TipoCadPago = peticion.TipoCadPago, CertPago = peticion.CertPago,
+            CadPago = peticion.CadPago, SelloPago = peticion.SelloPago
         };
 
         foreach (var resuelto in documentos)
         {
-            var objetoImp = ObjetoDeImpuestoDe(resuelto.Factura);
-
             var documento = new DocumentoPagado
             {
                 Id = Guid.NewGuid(),
@@ -489,34 +519,26 @@ public sealed class ServicioDePagos(
                 Serie = resuelto.Factura.Serie,
                 Folio = resuelto.Factura.Folio?.ToString(),
                 MonedaDR = resuelto.Factura.Moneda,
-                // Solo se soporta pagar en la misma moneda del documento: con monedas
-                // distintas la equivalencia la fija el emisor y no hay pantalla que la capture.
-                EquivalenciaDR = 1m,
+                EquivalenciaDR = resuelto.EquivalenciaDR,
+                DecimalesMonedaDR = resuelto.DecimalesMoneda,
                 NumParcialidad = resuelto.NumParcialidad,
                 ImpSaldoAnt = resuelto.SaldoAnterior,
                 ImpPagado = resuelto.ImpPagado,
                 ImpSaldoInsoluto = resuelto.SaldoAnterior - resuelto.ImpPagado,
-                ObjetoImpDR = objetoImp
+                ObjetoImpDR = resuelto.Desglose.ObjetoImpDR
             };
 
-            if (objetoImp == ObjetosDeImpuesto.SiObjeto)
+            documento.Impuestos.AddRange(resuelto.Desglose.Impuestos.Select(i => new ImpuestoDocumentoPagado
             {
-                var repartidos = CalculoDeImpuestosDePago.Repartir(
-                    resuelto.Impuestos, resuelto.Factura.Total, resuelto.ImpPagado, 6);
-
-                documento.Impuestos.AddRange(repartidos.Select(i => new ImpuestoDocumentoPagado
-                {
-                    Id = Guid.NewGuid(),
-                    DocumentoPagadoId = documento.Id,
-                    Impuesto = i.Impuesto,
-                    TipoFactor = i.TipoFactor,
-                    TasaOCuota = i.TasaOCuota,
-                    Base = i.Base,
-                    Importe = i.Importe,
-                    EsRetencion = i.EsRetencion
-                }));
-            }
-
+                Id = Guid.NewGuid(),
+                DocumentoPagadoId = documento.Id,
+                Impuesto = i.Impuesto,
+                TipoFactor = i.TipoFactor,
+                TasaOCuota = i.TasaOCuota,
+                Base = i.Base,
+                Importe = i.Importe,
+                EsRetencion = i.EsRetencion
+            }));
             pago.Documentos.Add(documento);
         }
 
@@ -527,9 +549,15 @@ public sealed class ServicioDePagos(
 
     private Task<Comprobante?> CargarAsync(Guid id, CancellationToken ct)
         => baseDeDatos.Comprobantes
+            .Include(c => c.Relacionados)
             .Include(c => c.Pagos).ThenInclude(p => p.Documentos).ThenInclude(d => d.Impuestos)
             .FirstOrDefaultAsync(
                 c => c.Id == id && c.TipoDeComprobante == TiposDeComprobante.Pago, ct);
+
+    private async Task<PagoDto> ConDecimalesAsync(PagoDto pago, CancellationToken ct)
+        => pago with { DecimalesPorMoneda = await baseDeDatos.SatMonedas.AsNoTracking().ToDictionaryAsync(x => x.Clave, x => x.Decimales, ct) };
+
+    private static string? Opcional(string? texto) => string.IsNullOrWhiteSpace(texto) ? null : texto;
 
     private static PagoDto ADto(Comprobante comprobante, Pago? pago)
         => new(
@@ -565,5 +593,9 @@ public sealed class ServicioDePagos(
                         d.ImpSaldoAnt,
                         d.ImpPagado,
                         d.ImpSaldoInsoluto,
-                        d.ObjetoImpDR))]);
+                        d.ObjetoImpDR, d.EquivalenciaDR, d.DecimalesMonedaDR))])
+        {
+            UuidSustituido = comprobante.Relacionados.FirstOrDefault(r => r.TipoRelacion == "04")?.UuidRelacionado,
+            TipoCadPago = pago?.TipoCadPago, CertPago = pago?.CertPago, CadPago = pago?.CadPago, SelloPago = pago?.SelloPago
+        };
 }

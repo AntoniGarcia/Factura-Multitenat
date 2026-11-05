@@ -85,6 +85,10 @@ public sealed class GeneradorDeXmlCartaPorte(GeneradorDeXmlCfdi generadorCfdi)
                 new XAttribute("ClaveUnidad", mercancia.ClaveUnidad),
                 Opcional("Unidad", mercancia.Unidad),
                 Opcional("Dimensiones", mercancia.Dimensiones),
+                Opcional("MaterialPeligroso", mercancia.MaterialPeligroso),
+                Opcional("CveMaterialPeligroso", mercancia.CveMaterialPeligroso),
+                Opcional("Embalaje", mercancia.Embalaje),
+                Opcional("DescripEmbalaje", mercancia.DescripEmbalaje),
                 new XAttribute("PesoEnKg", Decimal(RedondearPeso(mercancia.PesoEnKg), 3)))),
             new XElement(CartaPorte + "Autotransporte",
                 new XAttribute("PermSCT", traslado.VehiculoTipoPermiso!),
@@ -96,7 +100,11 @@ public sealed class GeneradorDeXmlCartaPorte(GeneradorDeXmlCfdi generadorCfdi)
                     new XAttribute("AnioModeloVM", traslado.VehiculoAnioModelo!.Value.ToString(CultureInfo.InvariantCulture))),
                 new XElement(CartaPorte + "Seguros",
                     new XAttribute("AseguraRespCivil", traslado.VehiculoAseguradora!),
-                    new XAttribute("PolizaRespCivil", traslado.VehiculoPoliza!))));
+                    new XAttribute("PolizaRespCivil", traslado.VehiculoPoliza!),
+                    Opcional("AseguraMedAmbiente", traslado.AseguraMedAmbiente), Opcional("PolizaMedAmbiente", traslado.PolizaMedAmbiente)),
+                traslado.Remolques.Count == 0 ? null : new XElement(CartaPorte + "Remolques",
+                    traslado.Remolques.OrderBy(x => x.Orden).Select(x => new XElement(CartaPorte + "Remolque",
+                        new XAttribute("SubTipoRem", x.SubTipoRem), new XAttribute("Placa", x.Placa))))));
 
     private static XElement FiguraTransporte(TrasladoCartaPorte traslado)
         => new(CartaPorte + "FiguraTransporte",
@@ -108,6 +116,19 @@ public sealed class GeneradorDeXmlCartaPorte(GeneradorDeXmlCfdi generadorCfdi)
 
     private static ErrorNegocio? ValidarDatos(TrasladoCartaPorte traslado)
     {
+        if (Facturacion.Server.Modules.Documentos.Traslados.ReglasDeRemolques.ValidarDatos(
+                traslado.Remolques.Select(x => new Facturacion.Shared.Transporte.RemolqueCartaPorteDto(x.SubTipoRem, x.Placa)).ToArray()) is { } errorRemolques)
+            return errorRemolques;
+        foreach (var m in traslado.Mercancias)
+        {
+            if (m.MaterialPeligroso is not (null or "Sí" or "No"))
+                return ErrorNegocio.Validacion("mercancia-peligrosidad-invalida", "Selecciona Sí o No en material peligroso.");
+            if (Facturacion.Server.Modules.Documentos.Traslados.ReglasDeMaterialPeligroso.ValidarFicha(
+                new Facturacion.Shared.Transporte.MercanciaCartaPorteDto(m.Orden, m.ClaveProdServ, m.Descripcion, m.Cantidad, m.ClaveUnidad, m.PesoEnKg,
+                    MaterialPeligroso: m.MaterialPeligroso, CveMaterialPeligroso: m.CveMaterialPeligroso, Embalaje: m.Embalaje, DescripEmbalaje: m.DescripEmbalaje)) is { } errorFicha) return errorFicha;
+        }
+        if (Facturacion.Server.Modules.Documentos.Traslados.ReglasDeMaterialPeligroso.ValidarSeguro(
+            traslado.Mercancias.Any(x => x.MaterialPeligroso == "Sí"), traslado.AseguraMedAmbiente, traslado.PolizaMedAmbiente) is { } errorSeguro) return errorSeguro;
         if (traslado.IdCcp is null || traslado.VehiculoAnioModelo is null || traslado.VehiculoPesoBruto is null ||
             traslado.Ubicaciones.Count != 2 || traslado.Mercancias.Count == 0 ||
             traslado.Ubicaciones.Any(x => string.IsNullOrWhiteSpace(x.RfcRemitenteDestinatario)) ||

@@ -34,7 +34,7 @@
                       Label="Número de exportador confiable (UE)" MaxLength="50" />
         <BuscadorCatalogo Catalogo="c_INCOTERM" Label="INCOTERM" Valor="@ClaveSeleccionada("c_INCOTERM", _datos.Incoterm)"
                           ValorCambiado="v => Cambiar(_datos with { Incoterm = v?.Clave })"
-                          MostrarOpciones="true" MuestraSelectorEnLista="false" />
+                          MostrarOpciones="true" MuestraSelectorEnLista="false" Requerido="true" />
     </div>
     <h3 class="comercio-subtitulo">Importes en dólares</h3>
     <div class="comercio-rejilla comercio-rejilla-dos">
@@ -130,7 +130,7 @@
     <div class="catalogo-opcional-contenido">
     <MudTextField T="string" Value="@_datos.CurpEmisor"
                   ValueChanged="v => Cambiar(_datos with { CurpEmisor = v })"
-                  Label="CURP (solo persona física)" MaxLength="18" Class="cifra-tabular" />
+                  Label="CURP del emisor persona física" MaxLength="18" Class="cifra-tabular" />
     <EditorDomicilioComercioExterior Valor="@_datos.DomicilioEmisor" EsEmisor="true"
                                     ValorCambiado="v => Cambiar(_datos with { DomicilioEmisor = v })" />
     </div>

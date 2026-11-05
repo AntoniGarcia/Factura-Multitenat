@@ -3,6 +3,7 @@ using Facturacion.Server.Data.Entidades.Documentos;
 using Facturacion.Server.Infra.Bitacora;
 using Facturacion.Server.Infra.Tenencia;
 using Facturacion.Server.Modules.Documentos.Pac;
+using Facturacion.Server.Modules.Documentos.Pagos;
 using Facturacion.Shared.Comun;
 using Facturacion.Shared.Contratos;
 using Facturacion.Shared.Documentos;
@@ -106,6 +107,9 @@ public sealed class ServicioDeCancelacion(
     private async Task<Resultado<(Comprobante, SolicitudCancelacion)>> ApartarAsync(
         Guid comprobanteId, PeticionDeCancelacion peticion, CancellationToken ct)
     {
+        await using var transaccion = await baseDeDatos.Database.BeginTransactionAsync(ct);
+        await BloqueoDePagos.TomarAsync(baseDeDatos, contexto.EmpresaActual
+            ?? throw new InvalidOperationException("Falta empresa activa."), ct);
         var comprobante = await baseDeDatos.Comprobantes
             .FirstOrDefaultAsync(c => c.Id == comprobanteId, ct);
 
@@ -130,9 +134,23 @@ public sealed class ServicioDeCancelacion(
                 "comprobante-no-cancelable",
                 $"El comprobante está en '{comprobante.Estatus}' y solo se puede cancelar uno timbrado.");
 
+        if (comprobante.TipoDeComprobante == "E" && peticion.Motivo is not ("02" or "03"))
+            return ErrorNegocio.Validacion("cancelacion-nota-no-admitida", "Esta modalidad admite cancelar la nota sin sustitución, con motivo 02 o 03.");
         var validado = await ValidarMotivoAsync(comprobante, peticion, ct);
 
         if (validado.EsFallo) return validado.Error!;
+        if (comprobante.TipoDeComprobante == "E" && await baseDeDatos.PagosDocumentos.AnyAsync(d =>
+            (d.Pago.Comprobante.Estatus == "timbrando" || d.Pago.Comprobante.Estatus == "timbrado" ||
+             d.Pago.Comprobante.Estatus == "en_cancelacion") &&
+            baseDeDatos.Comprobantes.Any(n => n.Id == comprobante.Id && n.Relacionados.Any(r => r.UuidRelacionado == d.IdDocumento)), ct))
+            return ErrorNegocio.Conflicto("nota-con-pagos-vigentes", "Cancela primero los pagos vigentes de la factura antes de cancelar su nota de crédito.");
+        if (comprobante.TipoDeComprobante == "I" && await baseDeDatos.Comprobantes.AnyAsync(c =>
+            c.TipoDeComprobante == "E" && (c.Estatus == "timbrando" || c.Estatus == "timbrado" || c.Estatus == "en_cancelacion") &&
+            c.Relacionados.Any(r => r.UuidRelacionado == comprobante.Uuid), ct))
+            return ErrorNegocio.Conflicto("factura-con-egresos", "Cancela primero las notas de crédito vigentes de esta factura.");
+        if (await SustitucionDePago.ValidarCancelacionAsync(baseDeDatos, comprobante,
+            peticion.Motivo, peticion.UuidSustituye, ct) is { } errorPago)
+            return errorPago;
 
         var solicitud = new SolicitudCancelacion
         {
@@ -144,8 +162,6 @@ public sealed class ServicioDeCancelacion(
             SolicitadaUtc = DateTime.UtcNow,
             SolicitadaPorUsuarioId = contexto.UsuarioActual ?? Guid.Empty
         };
-
-        await using var transaccion = await baseDeDatos.Database.BeginTransactionAsync(ct);
 
         baseDeDatos.SolicitudesCancelacion.Add(solicitud);
 

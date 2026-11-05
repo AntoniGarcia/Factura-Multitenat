@@ -18,6 +18,7 @@ public sealed class ConceptoConfiguracion : IEntityTypeConfiguration<Concepto>
         constructor.Property(c => c.NoIdentificacion).HasMaxLength(100);
         constructor.Property(c => c.Descripcion).HasMaxLength(1000);
         constructor.Property(c => c.ObjetoImp).HasMaxLength(2);
+        constructor.Property(c => c.DatosFiscalesJson).HasMaxLength(16000);
 
         // Cantidad también a seis decimales: se factura por kilos y por horas, no solo por
         // piezas enteras.

@@ -75,6 +75,25 @@
                 </section>
 
                 <section class="seccion-formulario">
+                    <h2>Remolques</h2>
+                    @foreach (var remolque in _remolques)
+                    {
+                        <div class="rejilla-formulario" @key="remolque">
+                            <BuscadorCatalogo Catalogo="c_SubTipoRem" Label="Subtipo de remolque" Valor="remolque.Subtipo"
+                                              ValorCambiado="v => remolque.Subtipo = v" MostrarOpciones="true" MuestraSelectorEnLista="false" Requerido="true" Deshabilitado="@(!EsEditable)" />
+                            <MudTextField T="string" Label="Placa del remolque" @bind-Value="remolque.Placa" MaxLength="10" Immediate="true" Required="true" Disabled="@(!EsEditable)" />
+                            @if (EsEditable)
+                            {
+                                <MudButton Color="Color.Error" OnClick="@(() => _remolques.Remove(remolque))">Quitar remolque</MudButton>
+                            }
+                        </div>
+                    }
+                    @if (EsEditable && _remolques.Count < 2)
+                    {
+                        <MudButton Color="Color.Primary" Variant="Variant.Outlined" OnClick="@(() => _remolques.Add(new()))">Agregar remolque</MudButton>
+                    }
+                </section>
+                <section class="seccion-formulario">
                     <h2>Salida y llegada</h2>
                     <div class="carta-porte-fechas">
                     <div class="carta-porte-fecha-grupo">
@@ -144,7 +163,7 @@
                             </div>
                             <div class="rejilla-formulario carta-porte-rejilla-dos">
                                 <BuscadorCatalogo Catalogo="c_ClaveProdServCP" Label="Bien transportado SAT" Valor="@renglon.Producto"
-                                                  ValorCambiado="v => renglon.Producto = v" Deshabilitado="@(!EsEditable)" Requerido="true" />
+                                                  ValorCambiado="v => CambiarProducto(renglon, v)" Deshabilitado="@(!EsEditable)" Requerido="true" />
                                 <MudTextField T="string" Label="Descripción" @bind-Value="renglon.Descripcion" Immediate="true" Disabled="@(!EsEditable)" Required="true" />
                             </div>
                             <div class="rejilla-formulario">
@@ -158,8 +177,30 @@
                                               HelperText="Largo/alto/ancho, ej. 30/40/30cm." />
                                 <MudNumericField T="decimal?" Label="Peso unitario (kg, opcional)" Value="renglon.PesoUnitarioKg" ValueChanged="valor => CambiarPesoUnitario(renglon, valor)" Immediate="true" Min="0.000001m" Format="N6" Disabled="@(!EsEditable)" />
                                 <MudNumericField T="decimal" Label="Peso total (kg)" Value="renglon.PesoEnKg" ValueChanged="valor => CambiarPesoTotal(renglon, valor)" Immediate="true" Min="0.001m" Format="N3" Disabled="@(!EsEditable)" Required="true" />
+                                <MudSelect T="string" Label="Material peligroso" Value="renglon.MaterialPeligroso" ValueChanged="v => CambiarPeligrosidad(renglon, v)" Clearable="true" Disabled="@(!EsEditable)">
+                                    <MudSelectItem T="string" Value="@("No")">No</MudSelectItem>
+                                    <MudSelectItem T="string" Value="@("Sí")">Sí</MudSelectItem>
+                                </MudSelect>
                             </div>
+                            @if (renglon.MaterialPeligroso == "Sí")
+                            {
+                                <div class="rejilla-formulario">
+                                    <BuscadorCatalogo Catalogo="c_MaterialPeligroso" Label="Clave de material peligroso" Valor="renglon.Material"
+                                                      ValorCambiado="v => renglon.Material = v" Requerido="true" Deshabilitado="@(!EsEditable)" MuestraSelectorEnLista="false" />
+                                    <BuscadorCatalogo Catalogo="c_TipoEmbalaje" Label="Embalaje" Valor="renglon.Embalaje"
+                                                      ValorCambiado="v => renglon.Embalaje = v" MostrarOpciones="true" Requerido="true" Deshabilitado="@(!EsEditable)" MuestraSelectorEnLista="false" />
+                                    <MudTextField T="string" Label="Descripción del embalaje (opcional)" @bind-Value="renglon.DescripEmbalaje" Immediate="true" MaxLength="100" Disabled="@(!EsEditable)" />
+                                </div>
+                            }
                         </article>
+                    }
+                    @if (HayMaterialPeligroso)
+                    {
+                        <h3>Seguro ambiental</h3>
+                        <div class="rejilla-formulario">
+                            <MudTextField T="string" Label="Aseguradora ambiental" @bind-Value="_aseguraMedAmbiente" Immediate="true" Required="true" MaxLength="50" Disabled="@(!EsEditable)" />
+                            <MudTextField T="string" Label="Póliza ambiental" @bind-Value="_polizaMedAmbiente" Immediate="true" Required="true" MaxLength="30" Disabled="@(!EsEditable)" />
+                        </div>
                     }
                     <dl class="carta-porte-resumen">
                         <div><dt>Peso bruto total</dt><dd class="cifra-tabular">@(_mercancias.Sum(x => x.PesoEnKg).ToString("N3")) kg</dd></div>
@@ -239,6 +280,10 @@
     [Parameter] public Guid? Id { get; set; }
 
     private readonly List<RenglonMercancia> _mercancias = [new()];
+    private readonly List<RenglonRemolque> _remolques = [];
+    private string? _aseguraMedAmbiente;
+    private string? _polizaMedAmbiente;
+    private bool HayMaterialPeligroso => _mercancias.Any(x => x.MaterialPeligroso == "Sí");
     private List<VehiculoDto> _vehiculos = [];
     private List<FiguraTransporteDto> _figuras = [];
     private DetalleProblema? _error;
@@ -320,6 +365,8 @@
         _destino = traslado.Ubicaciones.SingleOrDefault(x => x.Tipo == "Destino") ?? Vacio("Destino", 2);
         _clienteDestinoId = traslado.ClienteDestinoId;
         _observaciones = traslado.Observaciones;
+        _aseguraMedAmbiente = traslado.AseguraMedAmbiente;
+        _polizaMedAmbiente = traslado.PolizaMedAmbiente;
         _relacionados.Clear();
         _relacionados.AddRange(traslado.Relacionados ?? []);
         if (_clienteDestino?.Id != _clienteDestinoId)
@@ -330,6 +377,11 @@
                     cliente.Nombre, cliente.RegimenFiscal, cliente.DomicilioFiscalCp, cliente.CorreoPrincipal, cliente.Activo);
         }
         _mercancias.Clear();
+        _remolques.Clear();
+        _remolques.AddRange(traslado.Remolques.Select(x => new RenglonRemolque
+        {
+            Subtipo = new ClaveSatDto("c_SubTipoRem", x.SubTipoRem, x.SubTipoRem, true), Placa = x.Placa
+        }));
         _mercancias.AddRange(traslado.Mercancias.OrderBy(x => x.Orden).Select(x => new RenglonMercancia
         {
             Producto = new ClaveSatDto("c_ClaveProdServCP", x.ClaveProdServ, x.ClaveProdServ, true),
@@ -339,7 +391,11 @@
             PesoEnKg = x.PesoEnKg,
             PesoUnitarioKg = x.PesoUnitarioKg,
             UnidadPropia = x.Unidad ?? string.Empty,
-            Dimensiones = x.Dimensiones ?? string.Empty
+            Dimensiones = x.Dimensiones ?? string.Empty,
+            MaterialPeligroso = x.MaterialPeligroso,
+            Material = x.CveMaterialPeligroso is null ? null : new ClaveSatDto("c_MaterialPeligroso", x.CveMaterialPeligroso, x.CveMaterialPeligroso, true),
+            Embalaje = x.Embalaje is null ? null : new ClaveSatDto("c_TipoEmbalaje", x.Embalaje, x.Embalaje, true),
+            DescripEmbalaje = x.DescripEmbalaje
         }));
         if (_mercancias.Count == 0) _mercancias.Add(new());
     }
@@ -467,7 +523,10 @@
                 _distanciaKm, [_origen, _destino],
                 [.. _mercancias.Select((x, indice) => new MercanciaCartaPorteDto(indice + 1, x.Producto?.Clave ?? string.Empty,
                     x.Descripcion, x.Cantidad, x.Unidad?.Clave ?? string.Empty, x.PesoEnKg, x.UnidadPropia, x.Dimensiones,
-                    x.PesoUnitarioKg))], _clienteDestinoId, _relacionados, _observaciones);
+                    x.PesoUnitarioKg, x.MaterialPeligroso, x.Material?.Clave, x.Embalaje?.Clave,
+                    string.IsNullOrWhiteSpace(x.DescripEmbalaje) ? null : x.DescripEmbalaje.Trim()))], _clienteDestinoId, _relacionados, _observaciones,
+                [.. _remolques.Select(x => new RemolqueCartaPorteDto(x.Subtipo?.Clave ?? "", x.Placa))],
+                HayMaterialPeligroso ? _aseguraMedAmbiente : null, HayMaterialPeligroso ? _polizaMedAmbiente : null);
 
             var resultado = EsNuevo
                 ? await Traslados.CrearAsync(peticion)
@@ -585,8 +644,31 @@
     private static UbicacionCartaPorteDto Vacio(string tipo, int orden) => new(tipo, orden, null, string.Empty, string.Empty, null, string.Empty, string.Empty, string.Empty);
     private static DetalleProblema ProblemaLocal(string detalle) => new("urn:facturacion:error:carta-porte", "Falta algo en la captura", 400, detalle, null, string.Empty, null);
 
+    private static void CambiarProducto(RenglonMercancia renglon, ClaveSatDto? producto)
+    {
+        renglon.Producto = producto;
+        CambiarPeligrosidad(renglon, null);
+    }
+
+    private static void CambiarPeligrosidad(RenglonMercancia renglon, string? valor)
+    {
+        renglon.MaterialPeligroso = valor;
+        if (valor == "Sí") return;
+        renglon.Material = null; renglon.Embalaje = null; renglon.DescripEmbalaje = null;
+    }
+
+    private sealed class RenglonRemolque
+    {
+        public ClaveSatDto? Subtipo { get; set; }
+        public string Placa { get; set; } = "";
+    }
+
     private sealed class RenglonMercancia
     {
+        public ClaveSatDto? Material { get; set; }
+        public ClaveSatDto? Embalaje { get; set; }
+        public string? DescripEmbalaje { get; set; }
+        public string? MaterialPeligroso { get; set; }
         public ClaveSatDto? Producto { get; set; }
         public string Descripcion { get; set; } = string.Empty;
         public decimal Cantidad { get; set; } = 1m;

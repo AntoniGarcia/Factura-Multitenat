@@ -77,7 +77,10 @@ public sealed record ConceptoDto(
     string ObjetoImp,
     IReadOnlyList<ImpuestoDeConceptoDto> Impuestos,
     IReadOnlyList<string>? Retenciones = null,
-    bool AplicaIsh = false);
+    bool AplicaIsh = false)
+{
+    public DatosFiscalesDeConceptoDto? DatosFiscales { get; init; }
+}
 
 /// <summary>
 /// Tasas de Configuración, como fracción, para capturar una factura básica: las de retención
@@ -165,7 +168,7 @@ public sealed record RespuestaDeTimbradoDto(
 /// con borradores, pero no debe ofrecer acciones que contacten al PAC.
 /// </summary>
 /// <param name="Simulado">El PAC es el de desarrollo: sus timbres no tienen validez fiscal.</param>
-public sealed record EstadoDeIntegracionFiscalDto(bool TimbradoDisponible, bool Simulado = false);
+public sealed record EstadoDeIntegracionFiscalDto(bool TimbradoDisponible, bool Simulado = false, bool RevisionDocumentos = false);
 
 /// <summary>Resumen del documento; no muestra el folio antes del timbrado.</summary>
 public sealed record ComprobanteEnListaDto(

@@ -19,7 +19,7 @@ public sealed class ResumenDocumentos(AppDbContext baseDeDatos, HusoDeEmpresa hu
             .AsNoTracking()
             .Where(c => c.FechaEmisionUtc >= inicioUtc && c.FechaEmisionUtc <= finUtc)
             .GroupBy(c => c.Estatus)
-            .Select(g => new { Estatus = g.Key, Cuenta = g.Count(), Importe = g.Sum(c => c.Total) })
+            .Select(g => new { Estatus = g.Key, Cuenta = g.Count(), Importe = g.Sum(c => c.TipoDeComprobante == "E" ? -c.Total : c.Total) })
             .ToListAsync(ct);
 
         var conteo = porEstatus.ToDictionary(
@@ -61,7 +61,7 @@ public sealed class ResumenDocumentos(AppDbContext baseDeDatos, HusoDeEmpresa hu
                 g.Key.Year,
                 g.Key.Month,
                 Cuenta = g.Count(),
-                Importe = g.Sum(c => c.Total)
+                Importe = g.Sum(c => c.TipoDeComprobante == "E" ? -c.Total : c.Total)
             })
             .ToListAsync(ct);
 

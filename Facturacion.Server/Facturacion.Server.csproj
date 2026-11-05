@@ -2,6 +2,7 @@
 
   <PropertyGroup>
     <TargetFramework>net10.0</TargetFramework>
+    <RuntimeFrameworkVersion>10.0.14</RuntimeFrameworkVersion>
     <!-- Lo exige NPOI al compilar: es la promesa de no ejercer patentes de Microsoft sobre
          OOXML (Open Specification Promise), no una licencia de uso del paquete en sí. -->
     <AcceptNPOIOSMFLicense>true</AcceptNPOIOSMFLicense>
@@ -49,6 +50,7 @@
     <Content Remove="Infra/Instalacion/Recursos/**" />
     <EmbeddedResource Include="Infra/Instalacion/Recursos/*" />
     <Content Include="../CatalogosSAT/*.xls;../CatalogosSAT/*.xsd;../CatalogosSAT/*.xslt" Link="CatalogosSAT/%(Filename)%(Extension)" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
+    <Content Include="../CatalogosSAT/xslt/**/*.xslt" Link="CatalogosSAT/xslt/%(RecursiveDir)%(Filename)%(Extension)" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
   </ItemGroup>
 
 <!--
