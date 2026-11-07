@@ -68,7 +68,7 @@ else
         <MudTabPanel Text="Detalle y conceptos">
             <section class="emision-seccion">
             <h2 class="seccion-titulo">General</h2>
-            <div class="rejilla-campos">
+            <div class="catalogo-rejilla catalogo-rejilla-tres">
                 <MudTextField T="string" Value="@NombreDeVariante" Label="Tipo de documento" ReadOnly="true" />
 
                 <MudSelect T="Guid?" Value="@(_serie?.Id)" ValueChanged="AlCambiarSerie" Label="Serie">
@@ -94,10 +94,6 @@ else
                 <CampoMoneda Valor="@(_tipoCambio ?? 0)" ValorCambiado="async v => { _tipoCambio = v; await ActualizarVistaPreviaAsync(); }"
                               Label="Tipo de cambio" Deshabilitado="@(_moneda == "MXN")"
                               Requerido="@(_moneda != "MXN")" />
-
-                @* Solo informa: cada concepto lleva el IVA de su producto, que puede ser otro. *@
-                <MudTextField T="string" Value="@IvaPorDefecto" Label="IVA trasladado" ReadOnly="true" Class="cifra-tabular"
-                              HelperText="Tasa de Configuración. Cada concepto usa la de su producto." />
             </div>
             </section>
 
@@ -226,8 +222,7 @@ else
                                 @* Una sola tasa por factura: el SAT lleva un solo renglón de ISH. *@
                                 <MudNumericField T="decimal?" Value="@_ishPct" ValueChanged="async v => { _ishPct = v; await ActualizarVistaPreviaAsync(); }"
                                                  Label="Tasa de ISH %" Min="0.01m" Max="100m" Step="0.5m" Format="N2"
-                                                 ReadOnly="@(!EsEditable)" Class="cifra-tabular"
-                                                 HelperText="Una para toda la factura. Se precarga desde Configuración." />
+                                                 ReadOnly="@(!EsEditable)" Class="cifra-tabular" />
                             }
 
                             @if (renglon.ObjetoImp == "02" && renglon.Impuestos.Count == 0)
@@ -304,14 +299,21 @@ else
             }
         </MudTabPanel>
 
-        @if (EsPublicoEnGeneral)
+        @if (EsFacturaBasica)
         {
         <MudTabPanel Text="Información global">
+            @if (!EsPublicoEnGeneral)
+            {
+                <p class="seccion-ayuda">Selecciona un cliente con RFC XAXX010101000 para capturar estos datos.</p>
+            }
+            else
+            {
                 <div class="rejilla-campos">
 <BuscadorCatalogo Catalogo="c_Periodicidad" Opciones="@Catalogos.Obtener("c_Periodicidad")" @bind-Clave="_globalPeriodicidad" Label="Periodicidad" Requerido="true" PuedeLimpiar="false" />
 <BuscadorCatalogo Catalogo="c_Meses" Opciones="@Catalogos.Obtener("c_Meses")" @bind-Clave="_globalMeses" Label="Mes" Requerido="true" PuedeLimpiar="false" />
                     <MudNumericField T="int?" @bind-Value="_globalAnio" Label="Año" Required="true" />
                 </div>
+            }
         </MudTabPanel>
         }
         @if (EsFacturaNotarial)
@@ -489,7 +491,6 @@ else
     private string? _domicilioDelCliente;
     private DatosDeComercioExteriorDeFactura? _datosComercio;
 
-    private string IvaPorDefecto => $"{_tasasDeCaptura.Iva * 100m:0.##} %";
 
     /// <summary>
     /// El domicilio del catálogo en una línea, solo para consulta. El nacional guarda claves del
@@ -1028,9 +1029,9 @@ else
             _observaciones,
             _cliente?.Id,
             _usoCfdi,
-            EsPublicoEnGeneral ? _globalPeriodicidad : null,
-            EsPublicoEnGeneral ? _globalMeses : null,
-            EsPublicoEnGeneral ? _globalAnio : null,
+            EsFacturaBasica && EsPublicoEnGeneral ? _globalPeriodicidad : null,
+            EsFacturaBasica && EsPublicoEnGeneral ? _globalMeses : null,
+            EsFacturaBasica && EsPublicoEnGeneral ? _globalAnio : null,
             [.. _renglones.Where(r => !soloElegidos || r.ProductoId is not null).Select((r, i) => new ConceptoDto(
                 null, i + 1, r.ProductoId, r.ClaveProdServ!, r.ClaveUnidad!, r.UnidadTexto,
                 EsFacturaComercio ? r.NoIdentificacion : null,

@@ -618,7 +618,7 @@ public sealed class ServicioDeEmision(
         => await baseDeDatos.ConfiguracionesEmpresa.AsNoTracking()
             .Select(c => new TasasDeCapturaDto(
                 c.TasaRetencionIvaPorDefecto, c.TasaRetencionIsrPorDefecto, c.TasaRetencionIepsPorDefecto,
-                c.TasaIshPorDefecto, c.TasaIvaPorDefecto))
+                c.TasaIshPorDefecto))
             .FirstOrDefaultAsync(ct)
            ?? new TasasDeCapturaDto(0m, 0m, 0m, 0m);
 

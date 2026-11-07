@@ -89,8 +89,7 @@ public sealed record ConceptoDto(
 /// deciden qué casillas muestra cada concepto —cero es que no aplica— y la de ISH precarga la
 /// tasa de la factura. La de IVA solo se muestra: cada concepto lleva el IVA de su producto.
 /// </summary>
-public sealed record TasasDeCapturaDto(decimal RetencionIva, decimal RetencionIsr, decimal RetencionIeps, decimal Ish,
-    decimal Iva = 0m);
+public sealed record TasasDeCapturaDto(decimal RetencionIva, decimal RetencionIsr, decimal RetencionIeps, decimal Ish);
 
 public sealed record ImpuestoDeConceptoDto(
     string Impuesto,
