@@ -1,0 +1,41 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1460" height="850" viewBox="0 0 1460 850" role="img" aria-labelledby="title desc"><title id="title">Conexiones del sistema</title><desc id="desc">Un solo sitio publica la interfaz y la API. El navegador no accede directamente a SQL.</desc><rect width="100%" height="100%" fill="white"/><defs><marker id="arrow" markerWidth="10" markerHeight="10" refX="8" refY="4" orient="auto"><path d="M0,0 L8,4 L0,8" fill="none" stroke="#526579" stroke-width="1.4"/></marker></defs>
+<text x="40" y="62" font-family="Arial, sans-serif" font-size="32" font-weight="700" fill="#24364b">Conexiones del sistema</text>
+<text x="40" y="106" font-family="Arial, sans-serif" font-size="21" font-weight="400" fill="#24364b">Un solo sitio publica la interfaz y la API. El navegador no accede directamente a SQL.</text>
+<path d="M340,205 L430,205" fill="none" stroke="#526579" stroke-width="2" marker-end="url(#arrow)"/>
+<text x="350" y="202" font-family="Arial, sans-serif" font-size="18" font-weight="400" fill="#24364b">HTTPS</text>
+<path d="M730,205 L820,205" fill="none" stroke="#526579" stroke-width="2" marker-end="url(#arrow)"/>
+<text x="743" y="202" font-family="Arial, sans-serif" font-size="18" font-weight="400" fill="#24364b">API</text>
+<path d="M1030,270 L1030,345 L235,345 L235,450" fill="none" stroke="#526579" stroke-width="2" marker-end="url(#arrow)"/>
+<path d="M1095,270 L1095,375 L695,375 L695,450" fill="none" stroke="#526579" stroke-width="2" marker-end="url(#arrow)"/>
+<path d="M1160,270 L1160,450" fill="none" stroke="#526579" stroke-width="2" marker-end="url(#arrow)"/>
+<path d="M1370,205 L1420,205 L1420,725 L1370,725" fill="none" stroke="#526579" stroke-width="2" stroke-dasharray="8 6" marker-end="url(#arrow)"/>
+<rect x="40" y="140" width="300" height="130" rx="6" fill="#f7f8fa" stroke="#aab6c3"/>
+<text x="58" y="178" font-family="Arial, sans-serif" font-size="23" font-weight="700" fill="#24364b">Navegador</text>
+<text x="58" y="211" font-family="Arial, sans-serif" font-size="19" font-weight="400" fill="#24364b">Blazor WebAssembly / PWA</text>
+<text x="58" y="240" font-family="Arial, sans-serif" font-size="19" font-weight="400" fill="#24364b">Captura y consulta</text>
+<rect x="430" y="140" width="300" height="130" rx="6" fill="#f7f8fa" stroke="#aab6c3"/>
+<text x="448" y="178" font-family="Arial, sans-serif" font-size="23" font-weight="700" fill="#24364b">IIS</text>
+<text x="448" y="211" font-family="Arial, sans-serif" font-size="19" font-weight="400" fill="#24364b">HTTPS · hostname · certificado</text>
+<text x="448" y="240" font-family="Arial, sans-serif" font-size="19" font-weight="400" fill="#24364b">AspNetCoreModuleV2</text>
+<rect x="820" y="140" width="550" height="130" rx="6" fill="#f7f8fa" stroke="#aab6c3"/>
+<text x="838" y="178" font-family="Arial, sans-serif" font-size="23" font-weight="700" fill="#24364b">Backend ASP.NET Core</text>
+<text x="838" y="211" font-family="Arial, sans-serif" font-size="19" font-weight="400" fill="#24364b">Sesión · permisos · validaciones · cálculos</text>
+<text x="838" y="240" font-family="Arial, sans-serif" font-size="19" font-weight="400" fill="#24364b">API y archivos públicos del cliente</text>
+<rect x="40" y="450" width="390" height="130" rx="6" fill="#f7f8fa" stroke="#aab6c3"/>
+<text x="58" y="488" font-family="Arial, sans-serif" font-size="23" font-weight="700" fill="#24364b">SQL Server</text>
+<text x="58" y="521" font-family="Arial, sans-serif" font-size="19" font-weight="400" fill="#24364b">Datos y catálogos SAT</text>
+<text x="58" y="550" font-family="Arial, sans-serif" font-size="19" font-weight="400" fill="#24364b">Cuenta / empresa según entidad</text>
+<rect x="500" y="450" width="390" height="130" rx="6" fill="#f7f8fa" stroke="#aab6c3"/>
+<text x="518" y="488" font-family="Arial, sans-serif" font-size="23" font-weight="700" fill="#24364b">Almacén privado</text>
+<text x="518" y="521" font-family="Arial, sans-serif" font-size="19" font-weight="400" fill="#24364b">XML, certificados y llaves</text>
+<text x="518" y="550" font-family="Arial, sans-serif" font-size="19" font-weight="400" fill="#24364b">Fuera de wwwroot</text>
+<rect x="960" y="450" width="410" height="130" rx="6" fill="#f7f8fa" stroke="#aab6c3"/>
+<text x="978" y="488" font-family="Arial, sans-serif" font-size="23" font-weight="700" fill="#24364b">SMTP</text>
+<text x="978" y="521" font-family="Arial, sans-serif" font-size="19" font-weight="400" fill="#24364b">Empresa: comprobantes</text>
+<text x="978" y="550" font-family="Arial, sans-serif" font-size="19" font-weight="400" fill="#24364b">SaaS: registro y recuperación</text>
+<rect x="960" y="670" width="410" height="110" rx="6" fill="#f7f8fa" stroke="#aab6c3"/>
+<text x="978" y="708" font-family="Arial, sans-serif" font-size="23" font-weight="700" fill="#24364b">PAC real</text>
+<text x="978" y="741" font-family="Arial, sans-serif" font-size="19" font-weight="400" fill="#24364b">Integración pendiente de validar</text>
+<text x="978" y="770" font-family="Arial, sans-serif" font-size="19" font-weight="400" fill="#24364b">No interviene en borradores de revisión</text>
+<text x="40" y="830" font-family="Arial, sans-serif" font-size="18" font-weight="400" fill="#24364b">Flechas: solicitudes o conexiones iniciadas. Línea discontinua: servicio fiscal pendiente. FTP solo transfiere archivos.</text>
+</svg>

@@ -35,3 +35,21 @@ El proceso de la publicación Release se ejecutó en Staging contra una base tem
 El asistente también abrió con una carpeta privada vacía, sin conexión precargada ni clave de instalación. Esto comprueba el proceso publicado en el equipo local; la configuración particular del IIS del ingeniero debe verificarse al copiar los archivos.
 
 La compilación local terminó sin advertencias ni errores. Los seis nuevos correos de borrador fueron aceptados por SMTP; la confirmación del usuario registrada en la verificación anterior corresponde a la primera serie de seis correos.
+
+## Integración posterior del remoto
+
+Se integraron `adf8560` y `a18d134`. La nueva referencia opcional `MercanciasCartaPorte.ProductoId` permite identificar el producto del catálogo usado en la captura sin sustituir las copias de datos del documento. Se añadió al acumulado y a un script puntual; no se exige al ingeniero ejecutar ambos. La entrega nueva está en `outputs/Facturacion-Revision-IIS-20261105-Actualizado` y conserva el paquete previo.
+
+El acumulado actualizado se ejecutó dos veces desde el esquema original y se comparó con FacturacionDev: los objetos de aplicación coinciden. El analizador SQL Server 2014 revisó 141 bloques sin errores de sintaxis. El cambio puntual se aplicó también a FacturacionDev y Facturacion1.1. Los scripts de instalación desde cero se regeneraron desde todas las migraciones; no sustituyen el acumulado para la base original sin historial de EF.
+
+La versión integrada compiló sin advertencias ni errores. La regresión completó 318 pruebas aprobadas y dos omitidas. El publicado nuevo completó 275 comprobaciones, incluidas persistencia de ProductoId, rechazo de referencias inválidas, PDF/XML y Brotli. El modelo EF coincide con el snapshot. No se enviaron nuevos correos en esta repetición. El servidor local respondió HTTP 200 en el puerto 5184.
+
+## Variante Windows x64 con runtime incluido
+
+Se preparó `outputs/Facturacion-IIS-Compatible-Windows64-20261105.zip` para evitar depender del runtime compartido 10.0.14. Se publica con `PublicacionIisAutocontenida=true`; el cambio está condicionado al servidor y no modifica los paquetes ni el destino WebAssembly del cliente. La opción normal de publicación se conserva.
+
+El paquete incluye .NET y ASP.NET Core 10.0.14, `Facturacion.Server.exe`, `hostfxr.dll`, `hostpolicy.dll` y `coreclr.dll`. En IIS se conserva el archivo web.config del alojamiento y se ajustan solo processPath a `.\Facturacion.Server.exe`, arguments a vacío y hostingModel a `outofprocess`. Las variables, rutas, hostname y cnf existentes se conservan. Sigue siendo necesario AspNetCoreModuleV2 y un Windows x64 compatible con .NET 10; no es una solución para cualquier versión de Windows ni para ausencia del módulo de IIS.
+
+La publicación completó 276 comprobaciones contra una base temporal creada desde el esquema original y actualizada con el acumulado. Se verificó en el proceso nativo que coreclr.dll se cargó desde la carpeta publicada con DOTNET_ROOT apuntando a una ruta sin runtime. Se comprobaron seis PDF/XML, autorizaciones, referencia de producto en Carta Porte y Brotli. También abrió el asistente sin parámetros SQL y con carpeta privada temporal. No se enviaron nuevos correos ni se modificó el IIS del ingeniero.
+
+El ZIP se verificó íntegro y sin configuración privada. El acumulado SQL es idéntico al del paquete actualizado anterior; esta variante no añade cambios de base. El proceso de publicación puede repetirse con `herramientas/entrega-iis/Publicar-Compatible.ps1 -Salida <carpeta> -NombreHost <hostname>`.

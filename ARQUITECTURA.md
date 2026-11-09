@@ -1,370 +1,129 @@
-# Arquitectura del proyecto
+# Arquitectura del sistema
 
-Guía de referencia del sistema: reglas de seguridad, dominio, diseño y estructura. Es la
-fuente única de las decisiones no negociables. Conviene leerla completa antes de tocar el
-código y mantenerla al día cuando una decisión de fondo cambie.
+Referencia técnica de entrega · 6 de noviembre de 2026.
 
----
+## 1. Propósito y alcance
 
-## 1. Qué es esto
+Una cuenta contrata el servicio y agrupa empresas emisoras. Cada empresa conserva sus documentos, folios y configuración. Clientes, productos y bolsa de timbres se comparten únicamente dentro de la misma cuenta.
 
-SaaS de facturación electrónica **CFDI 4.0** para México. Migración de un sistema de
-escritorio existente (GenCFDI V4.2).
+La entrega cubre revisión de documentos, cálculos, PDF/XML y correo. PAC real, CSD reales y pasarela requieren integración y validación posteriores. Carta Porte se limita al autotransporte nacional propio. Inventario, cotizaciones, addendas y complemento INE no forman parte de esta entrega.
 
-La especificación funcional del sistema viejo está en `docs/UI_Funcional.md`. Se usa
-como **inventario de campos y de reglas de negocio**, nunca como referencia visual:
-el diseño del sistema viejo se descarta por completo.
+## 2. Componentes
 
-Multiempresa: una **cuenta** contrata el servicio y puede tener varias **empresas
-emisoras** (por ejemplo una llantera y una cementera del mismo dueño). Cada empresa
-aísla por completo sus clientes, productos, series de folios y comprobantes.
+- **Facturacion.Client:** Blazor WebAssembly, PWA y MudBlazor. Captura, validación inmediata y presentación. Su código llega al navegador; no debe custodiar secretos ni decidir por sí solo los importes.
+- **Facturacion.Server:** ASP.NET Core 10. Sirve la API y los estáticos del cliente. Ejecuta autorización, validaciones, cálculos, persistencia, XML, PDF y correo.
+- **Facturacion.Shared:** DTO y contratos entre capas. Su modificación requiere acuerdo explícito y un commit dedicado sin otros cambios. Documentos consume los contratos de Plataforma; no debe resolver necesidades accediendo por dentro a sus implementaciones.
+- **SQL Server:** datos operativos, fiscales, catálogos, auditoría y control de concurrencia. EF Core configura consultas para compatibilidad 120.
+- **Almacenamiento privado:** archivos fiscales y certificados protegidos, fuera de `wwwroot`.
+- **Servicios externos:** SMTP del sistema, SMTP de cada empresa y adaptador para PAC. La pasarela aún no está integrada.
 
-Usuarios reales: contadores y capturistas en jornadas largas. Uso principal en
-escritorio; la interfaz debe ser responsiva porque en móvil se consulta, se reenvía
-y se emite una factura rápida.
+La publicación compatible incluye .NET 10.0.14 para Windows x64. Se utilizan EF Core, QuestPDF para PDF, NPOI para catálogos y Serilog para registros. Las menciones a servicios externos en planes históricos no acreditan que estén conectados.
 
-**Fecha límite del MVP: 5 de diciembre de 2026.**
-
----
+## 3. Comunicación y despliegue
 
-## 2. Mi mitad del proyecto
+![Componentes y conexiones](docs/diagramas/arquitectura.svg)
 
-**Desde el 17 de agosto de 2026 trabajo las dos mitades.** La mitad A —plataforma,
-identidad y catálogos— quedó terminada en la fase 9, y decidí absorber también la
-**mitad B** —emisión, motor de impuestos, timbrado, PAC, XML, PDF, correo, listado de
-documentos, cancelación y complemento de pagos—. Las dos están definidas en
-`REPARTO-EQUIPO.md` §3.
+1. El navegador obtiene la interfaz y llama a la API en el mismo origen.
+2. IIS entrega las solicitudes al proceso ASP.NET Core mediante AspNetCoreModuleV2.
+3. El servidor valida sesión, permiso y contexto de cuenta/empresa.
+4. Sus servicios consultan SQL o el almacenamiento privado; el navegador no recibe credenciales SQL.
+5. El servidor devuelve datos o transmite archivos autorizados. También conecta con SMTP.
 
-El plan de la mitad B está en `PROMPT-FASES-B.md`, y su sección «Si Luis absorbe esta
-mitad» da el orden mínimo. Ojo: ese orden y sus recortes están calculados para absorber
-el **15 de octubre** con siete semanas. La absorción se adelantó, así que hay cerca de
-quince semanas hasta el 5 de diciembre y esos recortes no están decididos todavía.
-
-Lo que **sigue** vigente de la frontera, aunque ya no separe a dos personas:
+En modalidad autocontenida, `web.config` inicia `Facturacion.Server.exe`. En modalidad dependiente del framework, inicia `dotnet` con `Facturacion.Server.dll`. El cliente está dentro de `wwwroot`; el backend queda en la raíz del sitio.
 
-- `Facturacion.Shared/Contratos/` **está congelada**. Cambiar una firma o un DTO de ahí
-  exige acuerdo explícito y un commit dedicado que no traiga ningún otro cambio
-  (`Contratos/LEEME.md`). Que ahora las dos mitades sean mías no es motivo para
-  aflojarla: es lo que mantiene el diseño desacoplado y lo que permitiría repartir otra
-  vez el trabajo.
-- La mitad B **consume** lo que produce la A, nunca al revés. Si algo de Documentos
-  necesita un cambio en Plataforma, es señal de que el contrato quedó corto: **dímelo**
-  en vez de resolverlo cruzando la frontera por dentro.
-- Nada de dobles de prueba de los contratos de la mitad A: ya tienen implementación
-  real. `VerificacionDeContratos` tumba el arranque si un doble llega a producción.
-
----
-
-## 3. Stack y estructura
-
-- .NET 10, C# 14
-- **Blazor WebAssembly configurado como PWA**
-- ASP.NET Core 10 Web API
-- SQL Server, EF Core 10
-- MudBlazor, siempre sobre variables CSS propias
-- Serilog + Sentry, con depuración obligatoria de datos sensibles
-
-Tres proyectos:
-
-```
-Facturacion.Client    Blazor WebAssembly (PWA)
-Facturacion.Server    ASP.NET Core Web API — además sirve los estáticos del Client
-Facturacion.Shared    biblioteca de clases: DTOs y contratos
-```
-
-La plantilla `blazorwasm --hosted` **ya no existe** desde .NET 8. La estructura se arma
-a mano:
-
-```bash
-dotnet new blazorwasm --pwa -o Facturacion.Client
-dotnet new webapi              -o Facturacion.Server
-dotnet new classlib            -o Facturacion.Shared
-```
-
-En el `Server`: paquete `Microsoft.AspNetCore.Components.WebAssembly.Server`,
-referencia de proyecto al `Client`, y en el pipeline `UseBlazorFrameworkFiles()`,
-`UseStaticFiles()` y `MapFallbackToFile("index.html")`. Un solo origen para todo, lo
-que además permite que la cookie de refresh sea `SameSite=Strict` sin fricción.
-
-**Verifica con `dotnet new list` antes de suponer qué plantillas hay.** Si algo no
-coincide con lo aquí descrito, dímelo en vez de inventar una alternativa.
-
-### Consecuencia central de WebAssembly
-
-El código del `Client` viaja al navegador y **es legible**. Ninguna validación fiscal
-seria, ningún precio y ningún secreto puede vivir solo ahí. La validación en el `Client`
-existe para dar retroalimentación rápida al capturista; la que cuenta es la del `Server`,
-y se ejecuta siempre, sin excepción.
-
----
-
-## 4. Seguridad — reglas no negociables
-
-**Identidad**
-
-- El access token JWT vive **solo en memoria**. Nunca `localStorage` ni `sessionStorage`.
-  Duración 15 minutos.
-- El refresh token va en cookie `HttpOnly`, `Secure`, `SameSite=Strict`, con **rotación
-  en cada uso**: el token usado se invalida y se emite uno nuevo. Si llega un refresh
-  token ya consumido, se invalida **toda la familia** de esa sesión y se registra el
-  evento — es la señal de que alguien robó la cookie.
-- El checkbox de "mantener sesión iniciada" se implementa **solo** con la duración de
-  esa cookie: 12 horas sin marcar, 30 días marcado. No se guarda nada más en el navegador.
-- Al arrancar la aplicación hay un *gate*: se intenta `/auth/refresh` contra la cookie
-  y no se renderiza nada hasta que resuelva. Sin esto, cada F5 muestra interfaz de
-  invitado por un instante.
-- Almacén de usuarios: **ASP.NET Core Identity** con `Guid` como clave, usado solo como
-  almacén y como motor de hash y de bloqueo por intentos. La emisión de JWT es propia;
-  no se usan los endpoints de Identity API.
-
-**Tenencia**
-
-- La **empresa activa es un claim del token**, no un parámetro. Cambiarla pide un token
-  nuevo a `/auth/cambiar-empresa`, que verifica que el usuario tenga acceso a esa empresa
-  dentro de su cuenta.
-- El `Client` **nunca** envía un identificador de empresa en ninguna otra petición.
-  Si ves un endpoint que recibe `empresaId` en la ruta, la query o el cuerpo, está mal
-  diseñado: dímelo.
-
-**Autorización**
-
-- Por **permiso**, nunca por rol. Los permisos son exactamente estos:
-  `timbrar`, `cancelar`, `administrar_usuarios`, `comprar_timbres`, `ver_reportes`,
-  `configurar_empresa`.
-- Cada permiso es una política de ASP.NET Core. Los endpoints se anotan con la política.
-- **Ocultar un botón no es proteger.** El `Server` rechaza igual la operación, siempre.
-
-**Las dos identidades del sistema**
-
-Todo lo anterior describe al **inquilino**: quien contrata el servicio y factura con él. Hay
-una segunda identidad, la del **operador del SaaS** —el proveedor— que administra los
-paquetes que se venden, acredita los pagos y consulta a las cuentas contratantes. Vive en el
-panel bajo `/operador`.
-
-- **Tabla propia** (`OperadoresPlataforma`), no un usuario con una bandera. Un usuario exige
-  cuenta contratante y el operador no pertenece a ninguna; con dos tablas, un operador no
-  puede aparecer como cliente ni un cliente ganar poderes de operador.
-- **Claim propio** (`opr`), no un rol: el esquema sigue sin tablas de roles. Su token lleva
-  exactamente operador, familia y jti; **nunca** empresa, cuenta, usuario ni permisos.
-- **Las dos identidades no coexisten.** Lo garantizan tres barreras independientes:
-  audiencia distinta en el JWT (un token de inquilino ni siquiera autentica contra el panel:
-  da 401, no 403), esquema de autenticación pinado en la política, y aserción negativa de
-  claims en ambos sentidos.
-- **Cookie de refresh propia**, con nombre y ruta distintos (`refresh_op` en
-  `/api/operador/auth`), para que ninguno de los dos circuitos pueda consumir la del otro.
-- **Alta solo por consola** (`--crear-operador`): quien puede acreditar pagos crea dinero, así
-  que decidir que exista otro operador es del dueño del servidor, no de un formulario.
-- **Todo lo que hace queda en bitácora** con su `OperadorId`, junto a la empresa afectada
-  cuando la hay. La acreditación de un pago sin autor identificado no es aceptable.
-- **Privacidad del inquilino:** el panel solo consulta metadatos de negocio —cuentas,
-  empresas, usuarios, bolsas, compras, paquetes y membresías—. Ninguna consulta suya toca
-  comprobantes, clientes finales, productos, certificados ni series. No hay barrera técnica
-  que lo impida: es una decisión, y está escrita también en el propio módulo.
-- El identificador de **cuenta** sí viaja en el cuerpo al registrar una membresía. No
-  contradice la regla de tenencia de arriba: esa regla dice que el inquilino no manda la
-  empresa sobre la que actúa; el operador no tiene tenencia que deducir, su aislamiento es la
-  política del panel.
-
-**Datos y transporte**
-
-- Los precios de los paquetes de timbres **los devuelve el servidor**. El `Client` solo
-  manda el id del paquete. Un precio que viaja desde el navegador es un precio que el
-  usuario puede editar.
-- Archivos (logo, XML, PDF, CSD) fuera de `wwwroot`, servidos por endpoint autorizado
-  que valida la empresa del solicitante contra la del archivo.
-- Errores en **Problem Details (RFC 7807)** con `traceId`, visible en pantalla para
-  soporte. Nunca se filtra al cliente el detalle de una excepción.
-- Encabezado `Idempotency-Key` obligatorio en todo `POST` que cobre o timbre. El servidor
-  guarda la clave con su respuesta durante 24 horas y devuelve la misma respuesta ante
-  una repetición.
-- Cabeceras de seguridad en todas las respuestas: `Content-Security-Policy`,
-  `X-Content-Type-Options`, `Referrer-Policy`, `Permissions-Policy`, HSTS.
-  La CSP de una PWA con WebAssembly necesita `wasm-unsafe-eval`; no aflojes más que eso.
-
-**Secretos y certificados**
-
-- Los archivos `.cer` y `.key` del CSD y la contraseña de la llave privada se guardan
-  **cifrados**, con ASP.NET Core Data Protection y una clave maestra fuera del
-  repositorio. Nunca en claro, nunca en la base sin cifrar, nunca en un log.
-- El SMTP es del SaaS, no del cliente (ver §6). No se guardan contraseñas de correo
-  de terceros.
-
-**Service worker**
-
-- **Jamás** cachea respuestas de `/api/`. Solo el app shell.
-- Existe `/api/version`. Si la versión del servidor no coincide con la compilada en el
-  cliente, se muestra un aviso no descartable y se fuerza la recarga. Un catálogo del
-  SAT cacheado y viejo produce comprobantes mal emitidos: esto no es una comodidad, es
-  una salvaguarda.
-
----
-
-## 5. Dominio — reglas no negociables
-
-- **Aislamiento:** toda tabla con datos de empresa lleva `EmpresaId` y se filtra con
-  *query filter* global en EF Core, alimentado desde el claim. Nunca se filtra en el
-  componente ni en el controlador. Las tablas de Identity y los catálogos del SAT son
-  la excepción: no llevan `EmpresaId`.
-- **Inmutabilidad:** al timbrar se copian dentro del comprobante los datos fiscales del
-  emisor, del receptor y de cada concepto. Los reportes leen esas copias, no los
-  catálogos. Que un cliente cambie de domicilio no puede alterar una factura de hace
-  dos años.
-- **Nada se borra:** solo `Activo = false`. Única excepción: un borrador nunca timbrado.
-- **Folios:** se asignan con `UPDATE ... WITH (UPDLOCK)` dentro de un procedimiento
-  almacenado. Nunca `SELECT MAX(Folio)+1`. No se muestran antes de timbrar. Si el
-  timbrado falla después de tomar folio, el comprobante queda en `error` con ese folio
-  apartado; no se recicla.
-- **Nunca una llamada HTTP dentro de una transacción de base de datos.**
-- **Estatus del comprobante, solo estos:** `borrador`, `timbrando`, `timbrado`, `error`,
-  `cancelado`, `en_cancelacion`.
-- **Índices únicos con filtro:** el RFC de cliente es único **por empresa**, no en toda
-  la base, y se excluyen los genéricos `XAXX010101000` y `XEXX010101000`, que pueden
-  repetirse.
-- **Dinero con `decimal(18,6)`.** Cálculo con 6 decimales, presentación con 2.
-  Nunca `double`, nunca `float`.
-- **Fechas en UTC** en la base; se convierten al mostrar según el huso del lugar de
-  expedición de la empresa.
-- **Bitácora:** toda operación que cambie datos fiscales o de facturación deja registro
-  con usuario, empresa, momento y valores anterior y nuevo.
-
----
-
-## 6. Decisiones de alcance ya cerradas
-
-> **Alcance original del MVP.** Posteriormente se pidió implementar también Carta Porte,
-> Comercio Exterior, Notaría y Constructoras antes de la entrega. Esta sección conserva
-> la decisión inicial como contexto; el progreso y los pendientes vigentes están en
-> [REPORTE_ESTADO_SISTEMA.md](REPORTE_ESTADO_SISTEMA.md). Las reglas técnicas y de
-> seguridad de esta guía siguen siendo obligatorias.
-
-**Dentro del MVP:** multiempresa, catálogos del SAT, clientes, productos, emisión de
-factura estándar, timbrado, cancelación con motivos 01–04, PDF con QR y cadena original,
-envío por correo, complemento de pagos, bolsa de timbres y membresías.
-
-**Fuera del MVP, fase 2:** Carta Porte y sus catálogos (§10, §11, §26 del documento
-funcional), Comercio Exterior (§16–§19), Notaría (§20–§25), Constructoras (§15),
-Cotizaciones, Addendas, complemento INE, inventario.
-
-Sí se modela desde ahora el campo de licencias por empresa (`LicNotarios`, `LicObras`,
-`LicComercio`, `LicINE`) para que la fase 2 sea agregar módulos y no rehacer el esquema.
-
-**Correo:** todo sale de un remitente propio del SaaS con dominio verificado (SPF, DKIM,
-DMARC), con `Reply-To` apuntando al correo de la empresa emisora. **No** se guarda la
-configuración SMTP del cliente. El sistema viejo la pedía (§3 del documento funcional);
-en un SaaS multiempresa eso significa custodiar contraseñas de correo reutilizables de
-decenas de empresas, y no vale el riesgo. SMTP propio por empresa queda como fase 2
-opcional, con cifrado por empresa.
-
-**Validación de RFC:** formato del anexo 20 más dígito verificador, calculado en el
-servidor. La consulta al servicio de validación del SAT queda para fase 2.
-
-**Pruebas:** hay pruebas automatizadas obligatorias en tres puntos, y solo en tres:
-validación de RFC y dígito verificador, reserva concurrente de folios, y aritmética de
-la bolsa de timbres. El resto se prueba a mano. No se invierten horas en cobertura
-decorativa.
-
----
-
-## 7. Catálogos del SAT
-
-`c_ClaveProdServ` tiene decenas de miles de filas y `c_CodigoPostal` cientos de miles.
-En WebAssembly **no viajan al cliente**. Se resuelven con autocompletado contra el
-servidor: mínimo 3 caracteres, *debounce* de 300 ms, tope de 50 resultados, índice de
-texto completo en SQL Server.
-
-Solo los catálogos chicos y estables se precargan y se cachean en el `Client`:
-`c_UsoCFDI`, `c_RegimenFiscal`, `c_MetodoPago`, `c_FormaPago`, `c_Moneda`,
-`c_ObjetoImp`, `c_TipoRelacion`, `c_Periodicidad`, `c_Meses`, `c_Exportacion`,
-`c_TipoDeComprobante`, `c_Impuesto`, `c_TipoFactor`.
-
-Los catálogos se versionan: cada carga registra la versión publicada por el SAT y su
-fecha. El `Client` valida la versión contra el servidor al arrancar.
-
-El sistema viejo obliga a elegir claves desde un modal de búsqueda (§31 del documento
-funcional). En el rediseño eso se convierte en un **autocompletado en línea** que muestra
-`clave — descripción`, con el modal disponible como alternativa para quien prefiere
-teclado y rejilla. La regla de fondo se conserva: **una clave de catálogo nunca se
-escribe a mano libre.**
-
-### Reglas de CFDI 4.0 que rompen timbrados y hay que validar en el alta de cliente
-
-Estas son la causa más común de rechazo del PAC y viven en mi mitad:
-
-- `Nombre` del receptor debe coincidir **exactamente** con la Constancia de Situación
-  Fiscal: en mayúsculas, sin acentos y **sin el régimen de capital** (sin "S.A. de C.V.",
-  "S. de R.L.", etc.). Normaliza al guardar y avisa al usuario de lo que se quitó.
-- `DomicilioFiscalReceptor` (código postal) es **obligatorio** y debe ser el de la
-  constancia, no el de entrega.
-- `RegimenFiscalReceptor` es **obligatorio**.
-- `UsoCFDI` debe ser compatible con el régimen fiscal del receptor y con su tipo de
-  persona. El catálogo `c_UsoCFDI` trae esa matriz de compatibilidad: cárgala y valídala,
-  no la ignores.
-- Para el RFC genérico `XAXX010101000` el nombre debe ser exactamente
-  `PUBLICO EN GENERAL`, el régimen `616` y el uso `S01`.
-
----
-
-## 8. Sistema de diseño
-
-Herramienta de trabajo densa en datos. Sin ilustraciones, sin degradados, sin sombras
-salvo en menús flotantes. La pantalla se optimiza para ver muchos renglones, no para
-verse bonita en una captura.
-
-Todos los colores se definen como **variables CSS semánticas**. Ningún componente
-menciona un color literal, nunca. Tres temas: claro, oscuro ergonómico (grises y azules
-profundos, jamás negro puro) y cálido/sepia.
-
-Tema claro: fondo `#F7F8FA`, superficie `#FFFFFF`, borde `#E3E6EB`, texto `#1A1D23`
-y `#5A6270`, acento azul tinta `#1B3A6B`. Estados: timbrada `#1E7A45`, borrador
-`#6B7280`, cancelada `#B42318`, advertencia `#B54708`.
-
-Tipografía: **Inter** para interfaz (pesos 400 y 500); **IBM Plex Mono** con cifras
-tabulares para RFC, UUID, folios e importes — sin cifras tabulares las columnas de
-dinero no alinean y el contador no puede leerlas de un vistazo.
-
-Radio de esquinas 6px en todo. Filas de tabla 40px, controles 36px.
-
-Textos en **español de México**, en *sentence case* (no Title Case, no MAYÚSCULAS).
-
-Un solo `MainLayout`. Las páginas aportan **solo** el contenido del área principal —
-nunca su propio encabezado, su propia barra ni su propio esqueleto. El selector de
-empresa activa vive en la barra superior y en ningún otro lugar. En móvil el menú lateral
-se convierte en barra inferior y las tablas en tarjetas apiladas.
-
-Accesibilidad mínima obligatoria: todo se puede operar con teclado, el foco es visible,
-las tablas tienen encabezados asociados, y el contraste cumple AA en los tres temas.
-Un capturista que factura ocho horas usa teclado, no ratón.
-
----
-
-## 9. Rendimiento de WebAssembly
-
-La primera carga de una PWA con WASM y MudBlazor es de varios MB. Es aceptable para
-alguien que abre la aplicación una vez al día, pero es una decisión consciente, no un
-accidente. Se mitiga así:
-
-- `PublishTrimmed=true` y compresión Brotli en el `Server`. **Verifica que los archivos
-  `.br` se estén sirviendo de verdad**: es el error más común del despliegue, y si no
-  se sirven, la descarga se triplica.
-- Carga diferida de ensamblados (`BlazorWebAssemblyLazyLoad`) para las áreas pesadas.
-- `Virtualize` en toda tabla que pueda pasar de 100 renglones.
-- Nunca traer un catálogo completo al cliente.
-
----
-
-## 10. Cómo quiero trabajar contigo
-
-- **Por fases, con parada y revisión entre cada una.** Al terminar una fase te detienes,
-  me dices qué construiste y qué quedó pendiente, y esperas. No empiezas la siguiente
-  sin que te lo pida.
-- **No generes código de fases futuras.** Ni "de una vez", ni "para dejarlo listo".
-- **Si algo de lo que te pido tiene un problema, dímelo antes de construirlo.**
-  Prefiero una objeción de tres líneas que una corrección de tres horas.
-- Nada de `TODO` ni de métodos que devuelven datos falsos en código que se sube. Si algo
-  no se puede terminar, se queda fuera y me lo dices.
-- Comentarios en español, solo donde una decisión no sea obvia. Nada de comentarios que
-  repiten lo que dice la línea de abajo.
-- Antes de crear un componente, revisa `Client/Componentes/Comunes/`. Si algo parecido
-  ya existe, se extiende; no se duplica.
-- Al terminar cada fase, `dotnet build` debe pasar sin advertencias nuevas y la
-  aplicación debe correr. Una fase que no compila no está terminada.
+FTP solo transfiere archivos. Sitio, grupo de aplicaciones, DNS, puerto y HTTPS pertenecen a la infraestructura IIS.
+
+## 4. Seguridad
+
+### Sesión y autorización
+
+Identity almacena usuarios y verifica contraseñas. La aplicación emite JWT propios y autoriza por permisos funcionales. El JWT del cliente vive en memoria. Los valores predeterminados son 15 minutos de acceso y cookie de renovación de 12 horas o 30 días al conservar la sesión.
+
+Los tokens de renovación se guardan mediante hash y se rotan. Reutilizar uno consumido permite invalidar su familia. El arranque intenta recuperar la sesión antes de mostrar la interfaz. El operador tiene un acceso separado del cliente. La renovación utiliza una cookie HttpOnly, Secure y SameSite=Strict; el token de acceso no se guarda en localStorage ni sessionStorage.
+
+Hay 66 permisos asignables a usuarios internos, agrupados por documentos, emisión, catálogos, tienda y empresa/configuración. El titular administra empresas y usuarios y recibe sus facultades al construir la sesión. Los operadores utilizan un conjunto propio de permisos. Ocultar una opción no sustituye la validación del endpoint.
+
+### Aislamiento
+
+Cuenta y empresa activa proceden de los claims. Cambiar de empresa exige autorización y un token nuevo. EF aplica filtros globales a entidades de cuenta o empresa y el sellado controla esas claves al escribir. Tablas globales y consultas administrativas necesitan controles explícitos en sus servicios; no todas las tablas llevan `EmpresaId`.
+
+Son controles de la aplicación, no Row-Level Security de SQL. Un usuario con acceso directo a SQL tiene los permisos que le conceda el administrador.
+
+Existen excepciones controladas al envío de identificadores: acceso de usuarios a empresas propias, filtro de empresa de alta en catálogos y administración del operador. El servidor valida su alcance; no sustituyen la empresa activa de una petición ordinaria.
+
+### Secretos y archivos
+
+CSD y contraseñas SMTP se protegen con Data Protection y propósitos separados. Los CSD de empresas pasan por el almacén privado; los del proveedor tienen contenido cifrado en SQL. Las contraseñas no se devuelven al navegador ni deben aparecer en registros.
+
+La modalidad Staging permite guardar la cadena SQL sin cifrar cuando se habilita expresamente. Esta excepción de revisión no elimina el cifrado de CSD/SMTP y no es una recomendación para producción. La configuración privada y las llaves permanecen fuera de `wwwroot`.
+
+Los precios y cantidades acreditadas se verifican en el servidor; el precio visible en el navegador no decide el cobro. Las operaciones de cobro/timbrado utilizan Idempotency-Key y conservación de su resultado para repeticiones.
+
+El servidor configura cabeceras como Content-Security-Policy, X-Content-Type-Options, Referrer-Policy y Permissions-Policy; HSTS corresponde al contexto HTTPS no local configurado. La CSP contempla WebAssembly sin permitir ejecución arbitraria de scripts.
+
+Los errores públicos no revelan excepciones internas. El diagnóstico completo corresponde a registros del servidor, depurados de secretos. El identificador técnico de traza no necesita mostrarse en el formulario.
+
+El service worker guarda el app shell y excluye `/api/`. La comparación de versiones evita trabajar con un cliente anterior después de actualizar.
+
+## 5. Dominio y propiedad de los datos
+
+![Propiedad de cuenta y empresa](docs/diagramas/propiedad-de-datos.svg)
+
+- **Cuenta:** titular, usuarios, límites, clientes, productos, compras, movimientos y saldo compartido.
+- **Empresa:** emisor, comprobantes, conceptos, series, transporte, certificados, monedas y SMTP.
+- **Plataforma:** operadores, configuración del sistema, paquetes generales, datos fiscales del proveedor y catálogos SAT.
+
+`EmpresaAltaId` en clientes y productos identifica su procedencia; su pertenencia y filtro son por `CuentaId`.
+
+La emisión conserva copias fiscales del emisor, receptor y conceptos. Cambiar un catálogo no debe reescribir documentos históricos. Los importes usan `decimal`, generalmente `decimal(18,6)`; `EquivalenciaDR` usa `decimal(28,10)`. Los eventos se guardan en UTC; una fecha civil conserva el significado de su campo.
+
+La reserva de folios usa procedimientos y bloqueos de SQL, nunca `MAX(Folio)+1`. Un folio reservado para un intento fallido no se recicla. La bolsa controla reservas, confirmaciones y devoluciones. Una llamada HTTP al PAC no mantiene abierta una transacción SQL. La emisión usa idempotencia para evitar duplicados al repetir solicitudes.
+
+Los estados son `borrador`, `timbrando`, `timbrado`, `error`, `cancelado` y `en_cancelacion`. Solo se eliminan documentos que sean borradores nunca timbrados. Los registros de catálogo sin uso se pueden eliminar bajo validación; los usados se desactivan. La bitácora registra cambios de la aplicación, no ediciones manuales hechas directamente en SQL.
+
+El [diccionario de datos](docs/Base-de-datos.md) detalla tablas, columnas y claves físicas.
+
+## 6. Documentos y salidas
+
+La factura estándar comparte cabecera y conceptos con sus variantes. Notaría, Constructoras y Comercio Exterior agregan sus datos específicos. Carta Porte conserva ubicaciones, transporte y mercancías; pagos relaciona abonos con documentos previos.
+
+El servidor recalcula importes y genera las salidas desde datos guardados. La vista previa puede presentar cambios del formulario antes de guardar: no implica que estén persistidos.
+
+La factura de compra de timbres utiliza los datos, CSD y serie del proveedor, no los de la compradora. Sus datos de emisión se conservan por compra.
+
+El XML final de un comprobante se referencia mediante una ruta privada. Los intentos de timbrado pueden guardar el XML enviado en SQL; las facturas del proveedor tienen sus propios campos. No existe una tabla única que guarde todos los PDF y XML.
+
+En revisión, un borrador puede producir archivos sin PAC ni CSD reales. Certificados o firmas sintéticos solo prueban el flujo técnico. Validar XSD no acredita aceptación fiscal.
+
+Los comprobantes salen exclusivamente por el SMTP de la empresa. El SMTP del SaaS atiende registro, recuperación e invitaciones. Si falta o falla el de la empresa, no se sustituye por el del sistema. Se validan sus destinos en el servidor, se permiten puertos 465/587 y se rechazan direcciones locales o privadas. Aceptación SMTP y recepción en bandeja son resultados distintos.
+
+## 7. Catálogos SAT
+
+La carga inicial usa archivos incluidos en la publicación y registra su versión. Requiere esquema actualizado, archivos accesibles y permisos SQL. No crea tablas faltantes.
+
+El operador consulta y actualiza catálogos. Una actualización futura requiere obtener la fuente oficial y cargarla mediante el flujo disponible; no se descargan automáticamente todas las nuevas publicaciones de Internet.
+
+Los catálogos grandes se buscan en el servidor con resultados limitados. Los pequeños se pueden cargar para selección. El servidor valida las claves al guardar. El cambio de versión permite invalidar selecciones cacheadas del cliente.
+
+## 8. Interfaz
+
+Componentes comunes, variables CSS y temas claro, oscuro y cálido organizan formularios y tablas. Se priorizan captura por teclado y búsquedas por clave/descripción. La validación del navegador complementa la del servidor. Esta revisión no constituye certificación formal de accesibilidad ni de todos los navegadores.
+
+## 9. Operación y mantenimiento
+
+Una base entregada por script de SSMS puede tener el mismo esquema y un historial EF vacío. No se deben ejecutar todas las migraciones sobre ella suponiendo que está vacía.
+
+La actualización conserva configuración privada, archivos y llaves. Las llaves protegidas por Windows pueden depender del equipo y la identidad que las crearon. Copiar `cnf` a otra máquina no garantiza descifrado; un traslado requiere una prueba de recuperación.
+
+`AllowedHosts` permite nombres dentro de la aplicación; no crea DNS, abre puertos ni emite certificados. IIS 500.31 señala carga del runtime. Un fallo de catálogos dentro de la aplicación exige revisar archivos, esquema, permisos y registros.
+
+## 10. Referencias de implementación
+
+- Aislamiento: `Facturacion.Server/Data/FiltroDeEmpresa.cs` y contexto de tenencia.
+- SQL: `Facturacion.Server/Data/OpcionesDeAppDbContext.cs`.
+- Arranque: `Facturacion.Server/Infra/Instalacion/`.
+- Archivos y correo: `Facturacion.Server/Infra/Almacen/` y `Infra/Correo/`.
+- Emisión: `Facturacion.Server/Modules/Documentos/`.
+- Permisos: `Facturacion.Shared/Comun/Permiso.cs`.
+
+Continuar con [Instalación y actualización](docs/Instalacion-y-actualizacion.md), [Funcionamiento](docs/Funcionamiento.md) y [Pruebas y pendientes](docs/Pruebas-y-pendientes.md).
