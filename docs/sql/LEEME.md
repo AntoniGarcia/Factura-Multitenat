@@ -1,7 +1,10 @@
 # Instalación de la base de datos
 
+Los archivos `.sql` se conservan en local y se entregan por separado; no se incluyen
+en Git. Las migraciones de C# y el generador sí forman parte del repositorio.
+
 `Facturacion.Instalacion.sql` contiene las migraciones desde la primera hasta
-`20261104225217_20261104_A_ProductoEnMercanciaCartaPorte`. Incluye tablas, índices,
+`20261105131603_20261105_B_ServiciosParcialesConstruccion`. Incluye tablas, índices,
 procedimientos y los datos iniciales definidos por las migraciones. No exporta
 usuarios, empresas, documentos, certificados ni contraseñas del entorno local.
 
@@ -36,3 +39,7 @@ El generador utiliza EF Core y adapta los procedimientos al SQL dinámico que
 requiere el script condicional. No conecta ni aplica cambios a la base de datos.
 La generación y revisión estática no sustituyen la prueba de instalación en el
 SQL Server del alojamiento, que todavía no se ha confirmado.
+
+Para actualizar la base original entregada con el primer ZIP, usar `Facturacion.Actualizar-Completo-Sql2014.sql`. Este incluye también `20261104225217_20261104_A_ProductoEnMercanciaCartaPorte`, incorporada después aunque tenga una fecha anterior en su identificador. No usar el instalador inicial sobre esa base sin historial de EF completo.
+
+La revisión del 6 de noviembre admite también la exportación original sin índices adicionales. Recupera los índices omitidos dentro de la primera transacción y después aplica la actualización. Conserva los índices existentes compatibles y rechaza definiciones incompatibles o datos duplicados que impidan crear una clave única. No recrea la base ni cambia su nombre.
