@@ -283,11 +283,61 @@ public sealed class ServicioDeUsuarios(
         return Resultado.Exito();
     }
 
+    public async Task<Resultado> ActualizarAsync(Guid usuarioId, PeticionActualizarUsuario peticion, CancellationToken ct)
+    {
+        if (peticion.Permisos is null || peticion.Empresas is null)
+            return ErrorNegocio.Validacion("datos-invalidos", "Indica los permisos y las empresas del usuario.");
+        var nombre = (peticion.Nombre ?? string.Empty).Trim();
+        var correo = (peticion.Correo ?? string.Empty).Trim().ToLowerInvariant();
+        if (ValidarDatosBasicos(correo, nombre, peticion.Permisos) is { } error) return error;
+        if (nombre.Length > 254 || correo.Length > 254 || peticion.ContrasenaNueva?.Length > 128)
+            return ErrorNegocio.Validacion("datos-invalidos", "Revisa la longitud del nombre, correo o contraseña.");
+
+        // Identity guarda en varios pasos; la edición completa se confirma o revierte junta.
+        await using var transaccion = await baseDeDatos.Database.BeginTransactionAsync(ct);
+        var permisos = await ActualizarPermisosDentroDeTransaccionAsync(usuarioId,
+            new(peticion.Permisos, peticion.Empresas), ct);
+        if (permisos.EsFallo) return permisos.Error!;
+
+        var usuario = (await UsuarioDeLaCuentaAsync(usuarioId, ct))!;
+        if (usuario.Nombre != nombre)
+        {
+            var anterior = usuario.Nombre;
+            usuario.Nombre = nombre;
+            var cambio = await usuarios.UpdateAsync(usuario);
+            if (!cambio.Succeeded)
+                return ErrorNegocio.Validacion("usuario-invalido", "No se pudieron guardar los datos del usuario.");
+            bitacora.Registrar(EntidadesDeBitacora.UsuarioEmpresa, usuarioId.ToString(), AccionesDeBitacora.PerfilActualizado,
+                antes: new { Nombre = anterior }, despues: new { Nombre = nombre }, usuarioId: usuarioId);
+        }
+
+        var cambioCorreo = await CambiarCorreoAsync(usuarioId, correo, ct);
+        if (cambioCorreo.EsFallo) return cambioCorreo.Error!;
+        if (!string.IsNullOrEmpty(peticion.ContrasenaNueva))
+        {
+            var contrasena = await CambiarContrasenaAsync(usuarioId, peticion.ContrasenaNueva, ct);
+            if (contrasena.EsFallo) return contrasena.Error!;
+        }
+        await baseDeDatos.SaveChangesAsync(ct);
+        await transaccion.CommitAsync(ct);
+        return Resultado.Exito();
+    }
+
     /// <summary>
     /// Fija las empresas a las que entra el usuario y sus permisos, los mismos en todas. Una
     /// empresa desmarcada conserva el renglón inactivo: volver a marcarla no crea otro.
     /// </summary>
     public async Task<Resultado> ActualizarPermisosAsync(
+        Guid usuarioId, PeticionActualizarPermisos peticion, CancellationToken ct)
+    {
+        await using var transaccion = await baseDeDatos.Database.BeginTransactionAsync(ct);
+        var resultado = await ActualizarPermisosDentroDeTransaccionAsync(usuarioId, peticion, ct);
+        if (resultado.EsFallo) return resultado;
+        await transaccion.CommitAsync(ct);
+        return resultado;
+    }
+
+    private async Task<Resultado> ActualizarPermisosDentroDeTransaccionAsync(
         Guid usuarioId, PeticionActualizarPermisos peticion, CancellationToken ct)
     {
         if (Permisos.ErrorDeAsignacion(peticion.Permisos) is { } invalido)
@@ -296,8 +346,6 @@ public sealed class ServicioDeUsuarios(
         if (await ErrorSiEsTitularAsync(usuarioId, ct) is { } titular) return titular;
 
         // Ganar la primera empresa activa hace que el usuario ocupe lugar: cuenta contra el límite.
-        await using var transaccion = await baseDeDatos.Database.BeginTransactionAsync(ct);
-
         var cuenta = await BloquearCuentaAsync(ct);
         if (cuenta is null)
             return ErrorNegocio.NoEncontrado("empresa-no-encontrada", "La empresa activa ya no existe.");
@@ -350,8 +398,6 @@ public sealed class ServicioDeUsuarios(
                 usuarioId: usuarioId);
 
         await baseDeDatos.SaveChangesAsync(ct);
-        await transaccion.CommitAsync(ct);
-
         return Resultado.Exito();
     }
 

@@ -97,16 +97,8 @@ else
                         {
                         <div class="acciones-renglon">
                             <MudButton Size="Size.Small" Disabled="@_dialogoAbierto"
-                                       OnClick="@(() => EditarPermisos(usuario))">Permisos</MudButton>
-                            <MudButton Size="Size.Small" Disabled="@_dialogoAbierto"
-                                       OnClick="@(() => EditarCorreo(usuario))">Correo</MudButton>
-                            @if (usuario.CreadoPorAdministrador && !usuario.EsUsuarioActual)
-                            {
-                                <MudButton Size="Size.Small" Disabled="@_dialogoAbierto"
-                                           OnClick="@(() => CambiarContrasena(usuario))">
-                                    Contraseña
-                                </MudButton>
-                            }
+                                       StartIcon="@Icons.Material.Filled.Edit"
+                                       OnClick="@(() => EditarUsuario(usuario))">Editar</MudButton>
                             @if (!usuario.EsUsuarioActual)
                             {
                                 <MudButton Size="Size.Small" Disabled="@_dialogoAbierto" OnClick="@(() => CambiarActivo(usuario))">
@@ -170,7 +162,7 @@ else
     }
 
     // Con decenas de casillas la lista completa no cabe en un renglón: se resume por sección
-    // («Emitir 12 · Catálogos 4»). El detalle está en Editar permisos.
+    // («Emitir 12 · Catálogos 4»). El detalle está en Editar usuario.
     private static string Etiquetas(IReadOnlyList<string> permisos)
     {
         var partes = Permisos.Secciones
@@ -188,76 +180,27 @@ else
         return nombres.Count == 0 ? "—" : string.Join(" · ", nombres);
     }
 
-    private async Task EditarPermisos(UsuarioDeLaCuentaDto usuario)
+    private async Task EditarUsuario(UsuarioDeLaCuentaDto usuario)
     {
         if (_dialogoAbierto || _datos is null) return;
         _dialogoAbierto = true;
+        _aviso = null;
         try
         {
-            var parametros = new DialogParameters<EditarPermisosDialogo>
+            var parametros = new DialogParameters<EditarUsuarioDialogo>
             {
-                { x => x.UsuarioId, usuario.UsuarioId },
-                { x => x.NombreUsuario, usuario.Nombre },
-                { x => x.PermisosActuales, usuario.Permisos },
-                { x => x.Empresas, _datos.Empresas },
-                { x => x.EmpresasActuales, usuario.Empresas }
+                { x => x.Usuario, usuario },
+                { x => x.Empresas, _datos.Empresas }
             };
-
-            var opciones = new DialogOptions { MaxWidth = MaxWidth.Medium, FullWidth = true };
-            var referencia = await Dialogos.ShowAsync<EditarPermisosDialogo>("Permisos y empresas", parametros, opciones);
-            var resultado = await referencia.Result;
-
-            if (resultado is { Canceled: false }) await CargarAsync();
-        }
-        finally
-        {
-            _dialogoAbierto = false;
-        }
-    }
-
-    private async Task EditarCorreo(UsuarioDeLaCuentaDto usuario)
-    {
-        if (_dialogoAbierto) return;
-        _dialogoAbierto = true;
-        try
-        {
-            var parametros = new DialogParameters<EditarCorreoDialogo>
+            var opciones = new DialogOptions { MaxWidth = MaxWidth.Medium, FullWidth = true, BackdropClick = false };
+            var referencia = await Dialogos.ShowAsync<EditarUsuarioDialogo>("Editar usuario", parametros, opciones);
+            if (await referencia.Result is { Canceled: false })
             {
-                { x => x.UsuarioId, usuario.UsuarioId },
-                { x => x.NombreUsuario, usuario.Nombre },
-                { x => x.CorreoActual, usuario.Correo }
-            };
-
-            var referencia = await Dialogos.ShowAsync<EditarCorreoDialogo>("Cambiar correo", parametros);
-            var resultado = await referencia.Result;
-
-            if (resultado is { Canceled: false }) await CargarAsync();
+                _aviso = "Usuario actualizado.";
+                await CargarAsync();
+            }
         }
-        finally
-        {
-            _dialogoAbierto = false;
-        }
-    }
-
-    private async Task CambiarContrasena(UsuarioDeLaCuentaDto usuario)
-    {
-        if (_dialogoAbierto) return;
-        _dialogoAbierto = true;
-        try
-        {
-            var parametros = new DialogParameters<CambiarContrasenaDialogo>
-            {
-                { x => x.UsuarioId, usuario.UsuarioId },
-                { x => x.NombreUsuario, usuario.Nombre }
-            };
-
-            var referencia = await Dialogos.ShowAsync<CambiarContrasenaDialogo>("Cambiar contraseña", parametros);
-            await referencia.Result;
-        }
-        finally
-        {
-            _dialogoAbierto = false;
-        }
+        finally { _dialogoAbierto = false; }
     }
 
     private async Task CambiarActivo(UsuarioDeLaCuentaDto usuario)

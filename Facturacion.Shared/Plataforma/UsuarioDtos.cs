@@ -64,6 +64,10 @@ public sealed record RespuestaCrearUsuario(string Mensaje);
 /// <summary>Cambio del correo de otro usuario, hecho por un administrador.</summary>
 public sealed record PeticionCambiarCorreoUsuario(string Correo);
 
+public sealed record PeticionActualizarUsuario(
+    string Nombre, string Correo, string? ContrasenaNueva,
+    IReadOnlyList<string> Permisos, IReadOnlyList<Guid> Empresas);
+
 /// <summary>
 /// El administrador le pone una contraseña nueva a un usuario que él dio de alta. No pide la
 /// anterior: el sentido de esto es precisamente que el usuario la olvidó, o que dejó de

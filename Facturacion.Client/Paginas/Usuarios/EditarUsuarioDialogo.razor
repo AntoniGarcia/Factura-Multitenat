@@ -1,0 +1,94 @@
+@using Facturacion.Client.Componentes.Comunes
+@using Facturacion.Client.Servicios.Plataforma
+@using Facturacion.Shared.Comun
+@using Facturacion.Shared.Plataforma
+@inject ServicioDeUsuarios Usuarios
+@implements IDisposable
+
+<MudDialog>
+    <DialogContent>
+        <PanelErrores Problema="_error" />
+        <MudTabs>
+            <MudTabPanel Text="Datos del usuario">
+                <MudTextField @bind-Value="_nombre" Label="Nombre" Immediate="true" MaxLength="254" Disabled="@_guardando" />
+                <MudTextField @bind-Value="_correo" Label="Correo" Immediate="true" InputType="InputType.Email" MaxLength="254" Disabled="@_guardando" />
+                <p class="seccion-ayuda">Con este correo inicia sesión. Avísale al usuario si lo cambias.</p>
+                @if (PuedeCambiarContrasena)
+                {
+                    <MudTextField @bind-Value="_contrasena" Label="Contraseña nueva (opcional)" Immediate="true"
+                                  InputType="@(_verContrasena ? InputType.Text : InputType.Password)"
+                                  Adornment="Adornment.End" AdornmentIcon="@(_verContrasena ? Icons.Material.Filled.VisibilityOff : Icons.Material.Filled.Visibility)"
+                                  OnAdornmentClick="@(() => _verContrasena = !_verContrasena)" MaxLength="128" Disabled="@_guardando" />
+                    <MudTextField @bind-Value="_confirmacion" Label="Confirmar contraseña nueva" Immediate="true"
+                                  InputType="InputType.Password" MaxLength="128" Disabled="@_guardando"
+                                  Error="@(_confirmacion.Length > 0 && _contrasena != _confirmacion)" ErrorText="Las contraseñas no coinciden." />
+                    <p class="seccion-ayuda">Deja la contraseña vacía para conservarla. Si la cambias, se cerrarán sus sesiones y deberá entrar con la nueva.</p>
+                }
+            </MudTabPanel>
+            <MudTabPanel Text="Permisos y empresas">
+                <p class="seccion-ayuda">Los permisos son los mismos en todas las empresas a las que entra.</p>
+                <SelectorDePermisos @bind-Value="_permisos" Empresas="Empresas" @bind-EmpresasElegidas="_empresas"
+                                    Deshabilitado="@_guardando" />
+            </MudTabPanel>
+        </MudTabs>
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="Cancelar" Disabled="@_guardando">Cancelar</MudButton>
+        <MudButton Color="Color.Primary" Variant="Variant.Filled" OnClick="Guardar"
+                   Disabled="@(_guardando || string.IsNullOrWhiteSpace(_nombre) || string.IsNullOrWhiteSpace(_correo) || _contrasena != _confirmacion)">
+            @(_guardando ? "Guardando…" : "Guardar")
+        </MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter]
+    private IMudDialogInstance Dialogo { get; set; } = default!;
+
+    [Parameter, EditorRequired]
+    public UsuarioDeLaCuentaDto Usuario { get; set; } = default!;
+
+    [Parameter, EditorRequired]
+    public IReadOnlyList<EmpresaParaAccesoDto> Empresas { get; set; } = [];
+
+    private string _nombre = string.Empty;
+    private string _correo = string.Empty;
+    private string _contrasena = string.Empty;
+    private string _confirmacion = string.Empty;
+    private bool _verContrasena;
+    private bool PuedeCambiarContrasena => Usuario.CreadoPorAdministrador && !Usuario.EsUsuarioActual;
+    private List<string> _permisos = [];
+    private List<Guid> _empresas = [];
+    private DetalleProblema? _error;
+    private bool _guardando;
+
+    protected override void OnInitialized()
+    {
+        _nombre = Usuario.Nombre;
+        _correo = Usuario.Correo;
+        _permisos = [.. Usuario.Permisos];
+        _empresas = Empresas.Count == 1 ? [Empresas[0].Id] : [.. Usuario.Empresas];
+    }
+
+    private async Task Guardar()
+    {
+        if (_guardando || _contrasena != _confirmacion) return;
+        _guardando = true;
+        try
+        {
+            _error = await Usuarios.ActualizarAsync(Usuario.UsuarioId,
+                new(_nombre, _correo, PuedeCambiarContrasena && _contrasena.Length > 0 ? _contrasena : null, _permisos, _empresas));
+            if (_error is null) Dialogo.Close(DialogResult.Ok(true));
+        }
+        catch (HttpRequestException)
+        {
+            _error = new("about:blank", "No se pudo confirmar el guardado", 503,
+                "Actualiza la lista para comprobar los datos antes de volver a intentarlo.", null, string.Empty, null);
+        }
+        finally { _guardando = false; }
+    }
+
+    private void Cancelar() => Dialogo.Cancel();
+
+    public void Dispose() { _contrasena = string.Empty; _confirmacion = string.Empty; }
+}

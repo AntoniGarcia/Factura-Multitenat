@@ -24,6 +24,7 @@ public static class UsuariosEndpoints
 
         grupo.MapGet("/", Listar);
         grupo.MapPost("/", Crear);
+        grupo.MapPut("/{usuarioId:guid}", Actualizar);
         grupo.MapPut("/{usuarioId:guid}/correo", CambiarCorreo);
         grupo.MapPut("/{usuarioId:guid}/contrasena", CambiarContrasena);
         grupo.MapPut("/{usuarioId:guid}/permisos", ActualizarPermisos);
@@ -57,6 +58,14 @@ public static class UsuariosEndpoints
         HttpContext contexto, CancellationToken ct)
     {
         var resultado = await usuarios.CambiarCorreoAsync(usuarioId, peticion.Correo, ct);
+        return resultado.EsFallo ? resultado.Error!.AResultado(contexto) : Results.NoContent();
+    }
+
+    private static async Task<IResult> Actualizar(
+        Guid usuarioId, PeticionActualizarUsuario peticion, ServicioDeUsuarios usuarios,
+        HttpContext contexto, CancellationToken ct)
+    {
+        var resultado = await usuarios.ActualizarAsync(usuarioId, peticion, ct);
         return resultado.EsFallo ? resultado.Error!.AResultado(contexto) : Results.NoContent();
     }
 
