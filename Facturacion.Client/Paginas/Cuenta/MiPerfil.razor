@@ -4,8 +4,11 @@
 @using Facturacion.Client.Layout
 @using Facturacion.Client.Servicios.Plataforma
 @using Facturacion.Shared.Comun
+@using System.Net.Http.Json
 @inject ServicioDePerfil Perfil
 @inject ServicioDeTema Tema
+@inject IHttpClientFactory Clientes
+@inject NavigationManager Navegacion
 
 <PageTitle>Mi perfil</PageTitle>
 <TituloDePagina Texto="Mi perfil" />
@@ -16,6 +19,15 @@
 }
 else
 {
+    @if (_actualizacionDisponible)
+    {
+        <section class="panel">
+            <h2 class="seccion-titulo">Actualización de la base</h2>
+            <MudButton OnClick="AbrirActualizacion" Variant="Variant.Filled" Color="Color.Primary">
+                Actualizar base de datos
+            </MudButton>
+        </section>
+    }
     <h2 class="seccion-titulo">Datos</h2>
 
     <PanelErrores Problema="_errorNombre" />
@@ -79,6 +91,8 @@ else
     private DetalleProblema? _errorNombre;
     private DetalleProblema? _errorContrasena;
     private bool _puedeCambiarContrasena = true;
+    private bool _actualizacionDisponible;
+    private void AbrirActualizacion() => Navegacion.NavigateTo("/api/mantenimiento-base/interfaz", forceLoad: true);
 
     protected override async Task OnInitializedAsync()
     {
@@ -92,6 +106,12 @@ else
         }
 
         _cargando = false;
+        try
+        {
+            _actualizacionDisponible = await Clientes.CreateClient(ClientesHttp.Api)
+                .GetFromJsonAsync<bool>("api/mantenimiento-base/disponible");
+        }
+        catch (Exception e) when (e is HttpRequestException or System.Text.Json.JsonException or OperationCanceledException) { }
     }
 
     private async Task GuardarNombre()

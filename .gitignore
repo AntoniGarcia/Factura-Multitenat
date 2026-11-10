@@ -492,6 +492,7 @@ appsettings.Development.json
 cnf/
 appsettings.Instalacion.json
 appsettings.ArranqueRevision.json
+appsettings.Mantenimiento.json
 clave-instalacion.txt
 llavero-instalacion/
 llavero-aplicacion/

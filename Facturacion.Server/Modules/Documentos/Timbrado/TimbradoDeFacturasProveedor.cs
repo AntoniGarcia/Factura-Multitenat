@@ -120,6 +120,8 @@ public sealed class ConciliacionDeFacturasProveedor(
             try
             {
                 using var ambito = ambitos.CreateScope();
+                using var usoBase = ambito.ServiceProvider.GetRequiredService<Facturacion.Server.Infra.ActualizacionBase.PausaDeBase>().Tomar();
+                if (usoBase is null) continue;
                 await ambito.ServiceProvider.GetRequiredService<TimbradoDeFacturasProveedor>().ConciliarAsync(stoppingToken);
             }
             catch (Exception ex) when (ex is not OperationCanceledException)

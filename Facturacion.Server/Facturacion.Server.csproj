@@ -55,6 +55,8 @@
     <None Remove="cnf/**" />
     <Content Remove="Infra/Instalacion/Recursos/**" />
     <EmbeddedResource Include="Infra/Instalacion/Recursos/*" />
+    <Content Remove="Infra/ActualizacionBase/Recursos/**;Infra/ActualizacionBase/ScriptsPermitidos.json" />
+    <EmbeddedResource Include="Infra/ActualizacionBase/Recursos/*;Infra/ActualizacionBase/ScriptsPermitidos.json" />
     <Content Include="../CatalogosSAT/*.xls;../CatalogosSAT/*.xsd;../CatalogosSAT/*.xslt" Link="CatalogosSAT/%(Filename)%(Extension)" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
     <Content Include="../CatalogosSAT/xslt/**/*.xslt" Link="CatalogosSAT/xslt/%(RecursiveDir)%(Filename)%(Extension)" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
   </ItemGroup>

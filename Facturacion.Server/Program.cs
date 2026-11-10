@@ -1,4 +1,5 @@
 using Facturacion.Server.Infra;
+using Facturacion.Server.Infra.ActualizacionBase;
 using Facturacion.Server.Infra.Almacen;
 using Facturacion.Server.Infra.Integracion;
 using Facturacion.Server.Infra.Instalacion;
@@ -53,6 +54,7 @@ while (true)
     constructor.Services.AddPlataforma(constructor.Configuration);
     constructor.Services.AddOperador();
     constructor.Services.AddDocumentos(constructor.Configuration, constructor.Environment);
+    constructor.AgregarActualizacionBase();
 
     var aplicacion = constructor.Build();
 
@@ -107,6 +109,7 @@ while (true)
     aplicacion.UsePreparacionDeCatalogos();
 
     aplicacion.MapInfraestructura();
+    aplicacion.MapActualizacionBase();
     aplicacion.MapPlataforma();
     aplicacion.MapOperador();
     aplicacion.MapDocumentos();

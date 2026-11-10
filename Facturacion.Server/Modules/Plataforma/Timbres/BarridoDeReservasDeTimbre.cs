@@ -66,6 +66,8 @@ public sealed class BarridoDeReservasDeTimbre(
     private async Task Barrer(CancellationToken ct)
     {
         using var ambito = fabricaDeAmbitos.CreateScope();
+        using var usoBase = ambito.ServiceProvider.GetRequiredService<Facturacion.Server.Infra.ActualizacionBase.PausaDeBase>().Tomar();
+        if (usoBase is null) return;
         var baseDeDatos = ambito.ServiceProvider.GetRequiredService<AppDbContext>();
         var bitacora = ambito.ServiceProvider.GetRequiredService<IServicioDeBitacora>();
 

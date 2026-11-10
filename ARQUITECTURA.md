@@ -113,6 +113,21 @@ Componentes comunes, variables CSS y temas claro, oscuro y cálido organizan for
 
 Una base entregada por script de SSMS puede tener el mismo esquema y un historial EF vacío. No se deben ejecutar todas las migraciones sobre ella suponiendo que está vacía.
 
+La revisión incluye un módulo temporal en `Infra/ActualizacionBase`, enlazado desde
+el perfil del usuario expresamente autorizado. Su acceso se configura fuera de Git,
+con correo y vencimiento, y se desactiva en Production. Para recuperar una base
+antigua comprueba las credenciales contra columnas estables de Identity mediante
+SQL parametrizado, sin cargar entidades que dependan del esquema nuevo. Emite una
+sesión propia de diez minutos, guardada solo en memoria, que no sirve como JWT de
+cliente ni de operador. Cada ejecución vuelve a confirmar la contraseña.
+
+Solo ejecuta SQL con una huella registrada en la publicación y usa la conexión ya
+configurada. Pausa las operaciones y tareas internas, detiene la carga inicial SAT
+y guarda el avance en `cnf`. Compara el esquema resultante con el modelo actual;
+la ausencia de historial EF no implica por sí misma un error. Requiere respaldo
+previo, permisos SQL de esquema y una única instancia de la aplicación. No agrega
+tablas ni aplica migraciones automáticamente.
+
 La actualización conserva configuración privada, archivos y llaves. Las llaves protegidas por Windows pueden depender del equipo y la identidad que las crearon. Copiar `cnf` a otra máquina no garantiza descifrado; un traslado requiere una prueba de recuperación.
 
 `AllowedHosts` permite nombres dentro de la aplicación; no crea DNS, abre puertos ni emite certificados. IIS 500.31 señala carga del runtime. Un fallo de catálogos dentro de la aplicación exige revisar archivos, esquema, permisos y registros.

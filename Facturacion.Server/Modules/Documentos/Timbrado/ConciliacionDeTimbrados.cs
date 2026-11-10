@@ -73,6 +73,8 @@ public sealed class ConciliacionDeTimbrados(
         var limite = DateTime.UtcNow - Plazo;
 
         using var ambito = fabricaDeAmbitos.CreateScope();
+        using var usoBase = ambito.ServiceProvider.GetRequiredService<Facturacion.Server.Infra.ActualizacionBase.PausaDeBase>().Tomar();
+        if (usoBase is null) return;
         var baseDeDatos = ambito.ServiceProvider.GetRequiredService<AppDbContext>();
 
         // IgnoreQueryFilters justificado: esto corre sin petición y sin empresa activa, así

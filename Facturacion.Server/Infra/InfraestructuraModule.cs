@@ -90,6 +90,8 @@ public static class InfraestructuraModule
         aplicacion.UseSerilogRequestLogging();
 
         aplicacion.UseRouting();
+        aplicacion.Use(async (contexto, siguiente) =>
+            await contexto.RequestServices.GetRequiredService<ActualizacionBase.PausaDeBase>().AtenderAsync(contexto, siguiente));
 
         // Antes del enlace de modelo: para cuando corre el filtro de idempotencia, el cuerpo
         // ya se leyó y no se puede rebobinar si nadie lo pidió antes. Ver

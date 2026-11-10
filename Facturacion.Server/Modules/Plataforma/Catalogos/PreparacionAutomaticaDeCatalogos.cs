@@ -49,6 +49,62 @@ public sealed class PreparacionAutomaticaDeCatalogos(
     {
         try
         {
+            do
+            {
+                CancellationTokenSource? carga;
+                lock (_control)
+                {
+                    carga = _pausada ? null : CancellationTokenSource.CreateLinkedTokenSource(ct);
+                    _carga = carga;
+                    if (carga is not null) _fin = new(TaskCreationOptions.RunContinuationsAsynchronously);
+                }
+                if (carga is not null)
+                {
+                    try { await PrepararAsync(carga.Token); }
+                    finally
+                    {
+                        lock (_control) { _carga = null; _fin.TrySetResult(); }
+                        carga.Dispose();
+                    }
+                }
+            }
+            while (await _revision.WaitAsync(Timeout.InfiniteTimeSpan, ct));
+        }
+        catch (OperationCanceledException) when (ct.IsCancellationRequested) { }
+    }
+
+    private readonly SemaphoreSlim _revision = new(0, 1);
+    private readonly object _control = new();
+    private CancellationTokenSource? _carga;
+    private TaskCompletionSource _fin = Finalizada();
+    private bool _pausada;
+    private static TaskCompletionSource Finalizada()
+    {
+        var fin = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        fin.SetResult(); return fin;
+    }
+
+    public async Task PausarAsync(CancellationToken ct)
+    {
+        Task fin;
+        lock (_control) { _pausada = true; _carga?.Cancel(); fin = _fin.Task; }
+        await fin.WaitAsync(TimeSpan.FromMinutes(1), ct);
+    }
+
+    public void SolicitarRevision()
+    {
+        lock (_control)
+        {
+            _pausada = false;
+            estado.Actualizar(new(false, "comprobando", "", 0, Inventario.Length));
+            if (_revision.CurrentCount == 0) _revision.Release();
+        }
+    }
+
+    private async Task PrepararAsync(CancellationToken ct)
+    {
+        try
+        {
             await using var ambito = ambitos.CreateAsyncScope();
             var db = ambito.ServiceProvider.GetRequiredService<AppDbContext>();
             db.Database.SetCommandTimeout(TimeSpan.FromMinutes(10));
@@ -158,7 +214,8 @@ public static class PreparacionDeCatalogosModule
     public static IServiceCollection AgregarPreparacionDeCatalogos(this IServiceCollection servicios)
     {
         servicios.AddSingleton<EstadoDeCargaDeCatalogos>();
-        servicios.AddHostedService<PreparacionAutomaticaDeCatalogos>();
+        servicios.AddSingleton<PreparacionAutomaticaDeCatalogos>();
+        servicios.AddHostedService(sp => sp.GetRequiredService<PreparacionAutomaticaDeCatalogos>());
         return servicios;
     }
 
@@ -167,6 +224,13 @@ public static class PreparacionDeCatalogosModule
         app.Use(async (contexto, siguiente) =>
         {
             var ruta = contexto.Request.Path.Value;
+            if (Infra.ActualizacionBase.PausaDeBase.EsAccesoDeMantenimiento(contexto.Request.Path)
+                || contexto.Request.Path.StartsWithSegments("/mantenimiento-base")
+                || contexto.Request.Path.StartsWithSegments("/operador")
+                || contexto.Request.Path.StartsWithSegments("/api/operador/auth")
+                || contexto.Request.Method == "GET" && !contexto.Request.Path.StartsWithSegments("/api")
+                    && !contexto.Request.Path.StartsWithSegments("/instalacion") && Path.HasExtension(ruta))
+            { await siguiente(contexto); return; }
             if (contexto.Request.Method == "GET" && ruta is "/instalacion/catalogos.js" or "/instalacion/catalogos.css")
             {
                 contexto.Response.Headers.CacheControl = "no-store";

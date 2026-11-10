@@ -1,0 +1,41 @@
+<!doctype html>
+<html lang="es-MX">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="robots" content="noindex, nofollow">
+    <title>Actualizar base de datos</title>
+    <link rel="stylesheet" href="/mantenimiento-base/modulo.css">
+    <script src="/mantenimiento-base/modulo.js" defer></script>
+</head>
+<body><main>
+    <header><h1>Actualizar base de datos</h1><a href="/perfil">Volver al perfil</a></header>
+    <p>Acceso temporal de revisión. La actualización aplica a todas las cuentas.</p>
+    <p id="mensaje" role="status" aria-live="polite"></p>
+    <form id="acceso">
+        <h2>Confirmar acceso</h2>
+        <label>Correo<input name="correo" type="email" required maxlength="254" autocomplete="username"></label>
+        <label>Contraseña de tu cuenta<input name="contrasena" type="password" required maxlength="128" autocomplete="current-password"></label>
+        <button type="submit">Entrar</button>
+    </form>
+    <section id="actualizacion" hidden>
+        <h2>Base de destino</h2>
+        <p id="destino"></p>
+        <p id="permisos"></p>
+        <ul id="requisitos-faltantes"></ul>
+        <button id="comprobar-requisitos" type="button">Volver a comprobar requisitos</button>
+        <form id="revision">
+            <label>Script de actualización<input name="archivo" type="file" accept=".sql" required></label>
+            <button type="submit" disabled aria-describedby="motivo-revision">Revisar script</button>
+            <p id="motivo-revision" role="status" aria-live="polite"></p>
+        </form>
+        <p id="archivo-revisado"></p>
+        <form id="ejecucion" hidden>
+            <label class="casilla"><input name="respaldo" type="checkbox" required> Tengo un respaldo reciente de esta base.</label>
+            <label>Confirma tu contraseña<input name="contrasena" type="password" required maxlength="128" autocomplete="current-password"></label>
+            <button type="submit">Ejecutar actualización</button>
+        </form>
+        <section aria-label="Última actualización"><h2>Resultado</h2><p id="resultado"></p></section>
+    </section>
+</main></body>
+</html>

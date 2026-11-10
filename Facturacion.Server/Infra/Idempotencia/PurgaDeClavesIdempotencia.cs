@@ -44,6 +44,8 @@ public sealed class PurgaDeClavesIdempotencia(
     private async Task Purgar(CancellationToken ct)
     {
         using var ambito = fabricaDeAmbitos.CreateScope();
+        using var usoBase = ambito.ServiceProvider.GetRequiredService<Facturacion.Server.Infra.ActualizacionBase.PausaDeBase>().Tomar();
+        if (usoBase is null) return;
         var baseDeDatos = ambito.ServiceProvider.GetRequiredService<AppDbContext>();
 
         // IgnoreQueryFilters justificado: la purga corre fuera de una petición, así que no

@@ -6,7 +6,17 @@
     for (;;) {
         try {
             const respuesta = await fetch("/api/instalacion/catalogos", { cache: "no-store", credentials: "omit", signal: AbortSignal.timeout(10000) });
-            if (!respuesta.ok) throw new Error();
+            if (!respuesta.ok) {
+                const problema = await respuesta.json().catch(() => null);
+                if (respuesta.status === 503 && problema?.type === "urn:facturacion:error:base-en-mantenimiento") {
+                    estado.textContent = "La base está en mantenimiento.";
+                    estado.setAttribute("role", "alert");
+                    progreso.hidden = true;
+                    detalle.textContent = "Abre «Actualización de la base» para consultar el resultado del script. La carga de catálogos está pausada durante el mantenimiento.";
+                    return;
+                }
+                throw new Error();
+            }
             const datos = await respuesta.json();
             progreso.max = datos.total;
             progreso.value = datos.completados;

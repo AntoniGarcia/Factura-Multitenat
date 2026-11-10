@@ -1,5 +1,90 @@
 # Instalación y actualización
 
+## Actualización temporal desde el perfil
+
+En revisión puede habilitarse un acceso temporal para una sola cuenta de usuario.
+El botón aparece en **Mi perfil → Actualizar base de datos**. La entrada directa es
+`/mantenimiento-base`; permite usar las credenciales del mismo usuario cuando el
+esquema anterior impide abrir las pantallas habituales o preparar los catálogos SAT.
+El botón utiliza `/api/mantenimiento-base/interfaz` para evitar que un service worker
+anterior sustituya el módulo por una copia del cliente guardada en caché. Esa misma
+ruta sirve de entrada directa cuando el navegador todavía conserva la PWA anterior.
+No utiliza la contraseña del operador ni concede permisos de operador al cliente.
+
+La autorización se configura en `cnf/appsettings.Mantenimiento.json` (o en el
+directorio privado configurado para la instalación). Este archivo se conserva
+fuera de Git y no reemplaza la conexión ni las llaves existentes:
+
+```json
+{
+  "MantenimientoBase": {
+    "Habilitado": true,
+    "Correo": "usuario-autorizado@example.invalid",
+    "HastaUtc": "2026-11-16T23:59:59Z"
+  }
+}
+```
+
+El usuario y su cuenta deben estar activos, su correo confirmado y su contraseña
+debe ser válida. La sesión de mantenimiento dura diez minutos y queda solo en
+memoria del navegador. El acceso se desactiva al vencer la fecha, al eliminar el
+archivo o al poner `Habilitado` en `false` y reiniciar la aplicación. En Production
+queda deshabilitado aunque exista el archivo.
+
+Procedimiento:
+
+1. Respaldar la base desde SQL Server y conservar el respaldo fuera del sitio web.
+2. Publicar la aplicación que incorpora el módulo y el registro del script aprobado.
+3. Conservar `cnf` y agregar únicamente el archivo privado de autorización temporal.
+4. Entrar al módulo, comprobar el servidor y la base que muestra y cargar el SQL.
+5. Pulsar **Revisar script**, confirmar el respaldo y escribir de nuevo la contraseña.
+6. Ejecutar fuera del horario de captura. Esperar **completada**, la preparación SAT
+   y comprobar los documentos antes de permitir el uso habitual.
+
+El módulo admite el acumulado que recupera los índices omitidos en el primer
+esquema. No crea una base ni pide otra conexión: usa la que ya tiene el servidor.
+El usuario SQL necesita permisos para modificar el esquema, ver su definición,
+crear tablas/procedimientos y catálogos FULLTEXT; SQL Server debe tener instalado
+el componente de búsqueda de texto completo. Los permisos de lectura/escritura
+de datos por sí solos no bastan. El administrador SQL debe conceder los permisos
+necesarios antes del primer uso. `cnf` necesita permiso de modificar para la
+identidad del grupo de aplicaciones; la carpeta principal del sitio no lo necesita.
+
+Se acepta únicamente el archivo cuyo SHA-256 esté registrado en la aplicación;
+cambiar sus saltos de línea o contenido también cambia su huella. Para próximas
+entregas, revisar y probar el SQL, registrarlo y volver a publicar:
+
+```powershell
+.\herramientas\entrega-iis\Registrar-ScriptDeActualizacion.ps1 `
+  -Archivo '.\docs\sql\Facturacion.Actualizar-Completo-Sql2014.sql' `
+  -Nombre 'Actualización de la base'
+```
+
+El registro `Facturacion.Server/Infra/ActualizacionBase/ScriptsPermitidos.json`
+contiene solo nombres y huellas, no instrucciones SQL. Los SQL siguen siendo
+archivos locales que se entregan por separado. Se admiten separadores `GO`, sin
+repeticiones; el archivo debe usar la base actual, sin `USE` ni comandos SQLCMD.
+
+Durante la ejecución se bloquean las API de trabajo y se espera a que terminen
+las peticiones y tareas internas abiertas. El modo de revisión requiere **un solo
+proceso de IIS y una sola instancia** contra esa base; no cubre escrituras hechas
+desde otras aplicaciones o SSMS. No reiniciar ni reemplazar archivos durante la
+operación. IIS no debe reciclarse ni finalizar por inactividad durante ese tiempo.
+
+Los scripts administran sus transacciones: algunos cambios FULLTEXT no admiten
+una transacción exterior. Ante un error puede haber bloques ya confirmados. El
+módulo detiene el resto, mantiene la pausa y registra el resultado en
+`cnf/actualizaciones-base/estado.json` e `historial.jsonl`, con usuario, base, huella
+y fechas. Si el proceso se interrumpe, no vuelve a ejecutar el SQL automáticamente.
+Revisar/restaurar el respaldo o volver a cargar el acumulado probado según el fallo.
+Un resultado correcto compara las columnas, claves e índices requeridos por el
+modelo actual; no supone que una base creada en SSMS tenga todo el historial de EF.
+No ejecutar `dotnet ef database update` automáticamente sobre ella.
+
+Los archivos cargados quedan privados en `cnf/actualizaciones-base`. No se registran
+contraseñas ni el contenido del SQL en los mensajes del módulo. El respaldo no se
+genera desde la aplicación: debe estar disponible antes de autorizar la ejecución.
+
 Manual técnico · 6 de noviembre de 2026 · [Índice](../README.md)
 
 ## 1. Requisitos y responsabilidades
