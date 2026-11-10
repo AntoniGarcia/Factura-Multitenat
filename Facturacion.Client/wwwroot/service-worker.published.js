@@ -15,7 +15,7 @@ const cacheName = `${cacheNamePrefix}${self.assetsManifest.version}`;
 // El app shell: lo necesario para que la interfaz pinte sin red. Los catálogos del SAT, las
 // listas de clientes y todo lo demás vienen siempre de /api/, nunca de aquí.
 const offlineAssetsInclude = [/\.dll$/, /\.pdb$/, /\.wasm/, /\.html/, /\.js$/, /\.json$/, /\.css$/, /\.woff2?$/, /\.png$/, /\.jpe?g$/, /\.gif$/, /\.ico$/, /\.blat$/, /\.dat$/, /\.webmanifest$/];
-const offlineAssetsExclude = [/^service-worker\.js$/];
+const offlineAssetsExclude = [/^service-worker\.js$/, /^vendor\/pdfjs-/, /^visor-pdf\.js$/];
 
 const base = '/';
 const baseUrl = new URL(base, self.origin);
@@ -29,7 +29,11 @@ async function onInstall(event) {
         .filter(asset => !offlineAssetsExclude.some(pattern => pattern.test(asset.url)))
         .map(asset => new Request(asset.url, { integrity: asset.hash, cache: 'no-cache' }));
 
-    await caches.open(cacheName).then(cache => cache.addAll(assetsRequests));
+    const cache = await caches.open(cacheName);
+    // Evita que la instalación abra todas las descargas a la vez en conexiones móviles.
+    for (let i = 0; i < assetsRequests.length; i += 4) {
+        await cache.addAll(assetsRequests.slice(i, i + 4));
+    }
 }
 
 async function onActivate(event) {
@@ -45,7 +49,7 @@ async function onFetch(event) {
     // Exclusión explícita, antes que cualquier otra cosa: ninguna petición a /api/ pasa
     // jamás por la caché, ni para leer ni para servir una respuesta ya guardada. Va directo
     // a la red, siempre.
-    if (esPeticionDeApi(event.request)) {
+    if (esPeticionDeApi(event.request) || new URL(event.request.url).pathname.startsWith('/mantenimiento-base')) {
         return fetch(event.request);
     }
 

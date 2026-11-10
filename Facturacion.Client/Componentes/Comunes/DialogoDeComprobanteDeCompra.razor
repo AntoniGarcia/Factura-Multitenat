@@ -1,19 +1,29 @@
 @implements IAsyncDisposable
 @inject ServicioDeDescargas Descargas
+@inject IJSRuntime JS
 
 <MudDialog Class="dialogo-comprobante-compra">
     <DialogContent>
-        <div class="vista-previa-comprobante" aria-busy="@(_url is null)">
-            @if (_url is null)
+        @if (_paginas > 1)
+        {
+            <div class="vista-previa-paginacion" aria-label="Páginas del PDF">
+                <MudButton Disabled="@(_cargando || _pagina == 1)" OnClick="@(() => CambiarPagina(-1))">Anterior</MudButton>
+                <span role="status">Página @_pagina de @_paginas</span>
+                <MudButton Disabled="@(_cargando || _pagina == _paginas)" OnClick="@(() => CambiarPagina(1))">Siguiente</MudButton>
+            </div>
+        }
+        <div class="vista-previa-comprobante" aria-busy="@_cargando">
+            <canvas @ref="_canvas" role="img" aria-label="@TituloVistaPrevia" hidden="@(_cargando || _error is not null)"></canvas>
+            @if (_cargando)
             {
                 <div class="vista-previa-cargando">
                     <MudProgressCircular Indeterminate="true" Color="Color.Primary" />
                     <span>Preparando vista previa…</span>
                 </div>
             }
-            else
+            else if (_error is not null)
             {
-                <iframe src="@_url" title="@TituloVistaPrevia"></iframe>
+                <p role="alert">@_error</p>
             }
         </div>
 
@@ -44,14 +54,42 @@
     public string AvisoFiscal { get; set; } =
         "Documento interno sin validez fiscal.";
 
-    private string? _url;
+    private ElementReference _canvas;
+    private IJSObjectReference? _visor;
+    private bool _cargando = true;
+    private bool _cerrado;
+    private string? _error;
+    private int _pagina = 1;
+    private int _paginas;
 
     protected override async Task OnAfterRenderAsync(bool primeraRenderizacion)
     {
         if (!primeraRenderizacion) return;
 
-        _url = await Descargas.CrearVistaPreviaAsync(Archivo);
-        StateHasChanged();
+        try
+        {
+            _visor = await JS.InvokeAsync<IJSObjectReference>("import", "./visor-pdf.js");
+            if (_cerrado) return;
+            using var flujo = new MemoryStream(Archivo.Contenido, writable: false);
+            using var referencia = new DotNetStreamReference(flujo);
+            _paginas = await _visor.InvokeAsync<int>("cargar", _canvas, referencia);
+        }
+        catch (JSException) { _error = "No se pudo mostrar la vista previa. Puedes descargar el PDF para consultarlo."; }
+        finally { _cargando = false; if (!_cerrado) StateHasChanged(); }
+    }
+
+    private async Task CambiarPagina(int cambio)
+    {
+        if (_visor is null || _cargando) return;
+        _cargando = true;
+        try
+        {
+            var siguiente = _pagina + cambio;
+            await _visor.InvokeVoidAsync("mostrarPagina", _canvas, siguiente);
+            _pagina = siguiente;
+        }
+        catch (JSException) { _error = "No se pudo mostrar esta página. Puedes descargar el PDF para consultarlo."; }
+        finally { _cargando = false; }
     }
 
     private async Task Descargar() => await Descargas.GuardarAsync(Archivo);
@@ -60,7 +98,11 @@
 
     public async ValueTask DisposeAsync()
     {
-        if (_url is not null)
-            await Descargas.LiberarVistaPreviaAsync(_url);
+        _cerrado = true;
+        if (_visor is not null)
+        {
+            await _visor.InvokeVoidAsync("liberar", _canvas);
+            await _visor.DisposeAsync();
+        }
     }
 }

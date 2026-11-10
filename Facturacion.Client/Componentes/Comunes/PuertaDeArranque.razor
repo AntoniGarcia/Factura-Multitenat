@@ -5,6 +5,7 @@
 @inject ServicioDeTema Tema
 @inject ServicioDeCatalogos Catalogos
 @inject NavigationManager Navegacion
+@inject IJSRuntime JS
 
 @* Recupera la sesión y el tema antes de mostrar la interfaz. *@
 
@@ -24,6 +25,14 @@ else
     public RenderFragment ChildContent { get; set; } = default!;
 
     private bool _listo;
+    private bool _pwaRegistrada;
+
+    protected override async Task OnAfterRenderAsync(bool primeraRenderizacion)
+    {
+        if (!_listo || _pwaRegistrada) return;
+        _pwaRegistrada = true;
+        await JS.InvokeVoidAsync("registrarPwa");
+    }
 
     protected override async Task OnInitializedAsync()
     {

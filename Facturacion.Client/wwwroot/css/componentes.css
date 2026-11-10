@@ -516,6 +516,9 @@
     border-top: 1px solid var(--borde);
 }
 
+.documento-acciones-fila { display: flex; align-items: center; gap: 0.5rem; }
+.documento-abrir { color: var(--acento); padding: 0.5rem; }
+
 .tabla-fila-seleccionada > .mud-table-cell {
     background: var(--acento-suave);
 }
@@ -537,6 +540,7 @@
     }
 
     .vista-documento {
+        order: -1;
         position: static;
         max-height: none;
     }
@@ -1570,24 +1574,26 @@
     text-align: center;
 }
 
-/* El PDF se mantiene dentro del flujo autenticado: el iframe recibe una URL Blob creada
-   en memoria y se destruye al cerrar el diálogo. */
+/* Se dibuja una página a la vez para limitar la memoria en teléfonos. */
 .vista-previa-comprobante {
     width: min(100%, 62rem);
     height: min(72vh, 48rem);
     min-height: 30rem;
-    overflow: hidden;
+    overflow: auto;
     background: var(--fondo);
     border: 1px solid var(--borde);
     border-radius: var(--radio);
 }
 
-.vista-previa-comprobante iframe {
-    width: 100%;
-    height: 100%;
+.vista-previa-comprobante canvas {
+    display: block;
+    max-width: 100%;
+    height: auto;
+    margin: auto;
     background: var(--superficie);
-    border: 0;
 }
+
+.vista-previa-paginacion { display: flex; align-items: center; justify-content: center; flex-wrap: wrap; gap: 0.5rem; margin-bottom: 0.5rem; }
 
 .vista-previa-cargando {
     display: flex;

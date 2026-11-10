@@ -341,9 +341,8 @@
             "Nuevo comprobante",
             new DialogOptions { MaxWidth = MaxWidth.Small, FullWidth = true });
 
-    private void AbrirDocumento(ComprobanteEnListaDto d)
-    => Navegacion.NavigateTo(d.TipoDeComprobante == "P" ? $"/pagos/{d.Id}" :
-        d.TipoDeComprobante == "E" ? $"/notas-credito/{d.Id}" : $"/facturas/{d.Id}");
+    private static string RutaDocumento(ComprobanteEnListaDto d)
+        => $"/{(d.TipoDeComprobante switch { "P" => "pagos", "E" => "notas-credito", "T" => "traslados-carta-porte", _ => "facturas" })}/{d.Id}";
 
     protected override void OnInitialized() => _columnas =
     [
@@ -354,11 +353,16 @@
         new("Receptor", d => @<text>@d.ReceptorNombre</text>, ClaveOrden: "receptor"),
         new("Total", d => @<span class="cifra-tabular">@d.Total.ToString("N2")</span>, ClaveOrden: "total", Tabular: true),
         new("Estatus", d => @<IndicadorEstado Estatus="d.Estatus" />),
-        new("", d => @<button type="button" class="accion-vista-documento"
+        new("Acciones", d => @<div class="documento-acciones-fila">
+                          <a href="@RutaDocumento(d)" class="documento-abrir" @onclick:stopPropagation="true">
+                              Abrir
+                          </a>
+                          <button type="button" class="accion-vista-documento"
                               @onclick="@(() => Previsualizar(d))" @onclick:stopPropagation="true"
                               aria-label="Vista previa de @Folio(d)" title="Vista previa">
                           <MudIcon Icon="@Icons.Material.Filled.Visibility" Size="Size.Small" />
-                      </button>)
+                          </button>
+                      </div>)
     ];
 
     protected override async Task OnInitializedAsync()
