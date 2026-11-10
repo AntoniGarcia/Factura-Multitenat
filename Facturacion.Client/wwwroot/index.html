@@ -28,6 +28,8 @@
             <circle r="40%" cx="50%" cy="50%" />
         </svg>
         <div class="loading-progress-text"></div>
+        <p id="estado-arranque" class="estado-arranque" role="status"></p>
+        <button id="reintentar-arranque" class="reintentar-arranque" type="button" hidden>Volver a intentar</button>
     </div>
 
     <div id="blazor-error-ui">
@@ -35,11 +37,12 @@
         <a href="." class="reload">Recargar</a>
         <span class="dismiss">🗙</span>
     </div>
-    <script src="_framework/blazor.webassembly#[.{fingerprint}].js"></script>
+    <script src="_framework/blazor.webassembly#[.{fingerprint}].js" autostart="false"></script>
     <script src="_content/MudBlazor/MudBlazor.min.js"></script>
     <script src="tema.js"></script>
     <script src="instalacion.js"></script>
     <script src="registrar-sw.js"></script>
+    <script src="arranque.js"></script>
 </body>
 
 </html>

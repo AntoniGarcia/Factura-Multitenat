@@ -194,6 +194,10 @@ button:disabled {
     inset: calc(20vh + 3.25rem) 0 auto 0.2rem;
 }
 
+.estado-arranque { max-width: 30rem; margin: 1rem auto; padding: 0 1rem; color: var(--texto-suave); text-align: center; }
+.reintentar-arranque { display: block; margin: 1rem auto; min-height: 36px; padding: 0.5rem 1rem; border: 1px solid var(--borde); border-radius: var(--radio); background: var(--acento); color: var(--superficie); cursor: pointer; }
+.reintentar-arranque[hidden] { display: none; }
+
 .loading-progress-text:after {
     content: var(--blazor-load-percentage-text, "Cargando");
 }
