@@ -110,11 +110,12 @@
         @if (Editable)
         {
             <div class="acciones-formulario">
-                <MudButton OnClick="Guardar" Variant="Variant.Filled" Color="Color.Primary" Disabled="_trabajando">Guardar borrador</MudButton>
-                <MudButton OnClick="VistaPrevia" Variant="Variant.Outlined" Color="Color.Primary" Disabled="_trabajando">Vista previa PDF</MudButton>
+                <MudButton OnClick="Guardar" Variant="Variant.Outlined" Disabled="_trabajando">Guardar borrador</MudButton>
+                <MudButton OnClick="VistaPrevia" Variant="Variant.Outlined" StartIcon="@Icons.Material.Filled.PictureAsPdf" Disabled="_trabajando">Vista previa PDF</MudButton>
                 <SiTienePermiso Permiso="@Permisos.FacturaTimbrar">
-                    <MudButton OnClick="Timbrar" Variant="Variant.Outlined" Color="Color.Primary" Disabled="@(_trabajando || !_puedeTimbrar)">Timbrar</MudButton>
+                    <MudButton OnClick="Timbrar" Variant="Variant.Filled" Color="Color.Primary" Disabled="@(_trabajando || !_puedeTimbrar)">Timbrar</MudButton>
                 </SiTienePermiso>
+                <MudButton Variant="Variant.Text" OnClick="@(() => Navegacion.NavigateTo("/documentos"))">Volver a documentos</MudButton>
             </div>
         }
         else

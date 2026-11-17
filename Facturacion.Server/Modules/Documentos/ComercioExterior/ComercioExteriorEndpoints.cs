@@ -14,6 +14,16 @@ public static class ComercioExteriorEndpoints
         grupo.MapPut("/{comprobanteId:guid}", Guardar);
         grupo.MapGet("/{comprobanteId:guid}/xml-borrador", XmlBorrador);
         grupo.MapPost("/{comprobanteId:guid}/validar-xml", ValidarXml);
+
+        rutas.MapGet("/api/comercio-exterior/fracciones/{fraccion}/unidad-aduana", UnidadDeFraccion)
+            .WithTags("Comercio exterior").RequireAuthorization(Permisos.Politicas.ComercioExterior);
+    }
+
+    private static async Task<IResult> UnidadDeFraccion(string fraccion, ServicioDeComercioExterior servicio,
+        HttpContext contexto, CancellationToken ct)
+    {
+        var resultado = await servicio.UnidadDeFraccionAsync(fraccion, ct);
+        return resultado.EsFallo ? resultado.Error!.AResultado(contexto) : Results.Ok(resultado.Valor);
     }
 
     private static async Task<IResult> Obtener(Guid comprobanteId, ServicioDeComercioExterior servicio,

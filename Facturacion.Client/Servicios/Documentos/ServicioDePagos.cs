@@ -52,6 +52,17 @@ public sealed class ServicioDePagos(IHttpClientFactory fabrica)
         return await LeerAsync<DocumentoPorPagarDto>(respuesta, ct);
     }
 
+    /// <summary>Facturas PPD con saldo del cliente para el buscador; vacío si la consulta falla.</summary>
+    public async Task<IReadOnlyList<FacturaPendienteDto>> BuscarPendientesAsync(
+        Guid? clienteId, string? texto, CancellationToken ct = default)
+    {
+        var ruta = $"api/pagos/pendientes?texto={Uri.EscapeDataString(texto ?? "")}" +
+            (clienteId is { } id ? $"&clienteId={id}" : "");
+        using var respuesta = await Cliente.GetAsync(ruta, ct);
+        if (!respuesta.IsSuccessStatusCode) return [];
+        return await respuesta.Content.ReadFromJsonAsync<IReadOnlyList<FacturaPendienteDto>>(ct) ?? [];
+    }
+
     private static async Task<(T? Exito, DetalleProblema? Error)> LeerAsync<T>(
         HttpResponseMessage respuesta, CancellationToken ct)
         => respuesta.IsSuccessStatusCode

@@ -7,6 +7,7 @@ using Facturacion.Server.Modules.Documentos.Emision;
 using Facturacion.Server.Modules.Documentos.Salidas;
 using Facturacion.Shared.ComercioExterior;
 using Facturacion.Shared.Comun;
+using Facturacion.Shared.Contratos;
 using Facturacion.Shared.Documentos;
 using Microsoft.EntityFrameworkCore;
 
@@ -33,6 +34,26 @@ public sealed class ServicioDeComercioExterior(
         var resultado = await xmlCfdi.GenerarAsync(comprobante, ct);
         return resultado.EsFallo ? resultado.Error! :
             "El CFDI con Comercio Exterior 2.0 cumple el esquema SAT. No se envió al PAC ni se consumió un timbre.";
+    }
+
+    /// <summary>
+    /// La unidad aduanera debe ser la UMT de la fracción (lo exige el validador fiscal), así que
+    /// se ofrece ya resuelta al elegir la fracción.
+    /// </summary>
+    public async Task<Resultado<ClaveSatDto>> UnidadDeFraccionAsync(string fraccion, CancellationToken ct)
+    {
+        if (await ValidarLicenciaAsync(ct) is { } licencia) return licencia;
+        var umt = await db.SatFraccionesArancelarias.AsNoTracking()
+            .Where(x => x.Clave == fraccion && x.Vigente)
+            .Select(x => x.UnidadMedida)
+            .FirstOrDefaultAsync(ct);
+        var unidad = string.IsNullOrWhiteSpace(umt) ? null : await db.SatUnidadesAduana.AsNoTracking()
+            .Where(x => x.Clave == umt && x.Vigente)
+            .Select(x => new ClaveSatDto("c_UnidadAduana", x.Clave, x.Descripcion, x.Vigente))
+            .FirstOrDefaultAsync(ct);
+        return unidad is null
+            ? ErrorNegocio.NoEncontrado("fraccion-sin-unidad", "La fracción no tiene una unidad aduanera vigente en el catálogo del SAT.")
+            : unidad;
     }
 
     public async Task<Resultado<ArchivoXmlDeComercio>> ObtenerXmlBorradorAsync(Guid comprobanteId, CancellationToken ct)

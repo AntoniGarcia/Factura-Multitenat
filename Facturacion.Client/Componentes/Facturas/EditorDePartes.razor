@@ -7,6 +7,15 @@
     </MudSelect>
 </div>
 
+@if (RequiereApellidoYCurpSiIndividual)
+{
+    <p class="seccion-ayuda">
+        @(EsCopropiedad
+            ? "En copropiedad, cada vendedor puede ser persona física o moral. Apellidos y CURP son opcionales; una persona moral (RFC de 12 caracteres) no lleva CURP."
+            : "Con un solo vendedor, el SAT pide que sea persona física: RFC de 13 caracteres, apellido paterno y CURP.")
+    </p>
+}
+
 @for (var i = 0; i < Partes.Count; i++)
 {
     var indice = i;
@@ -21,13 +30,13 @@
         }
         </div>
         <div class="notaria-rejilla">
-            <MudTextField @bind-Value="parte.Nombre" Label="Nombre o razón social" MaxLength="254" Required="true" Disabled="@(!Editable)" />
-            <MudTextField @bind-Value="parte.ApellidoPaterno" Label="Apellido paterno" MaxLength="200" Required="@(!EsCopropiedad && RequiereApellidoYCurpSiIndividual)" Disabled="@(!Editable)" />
+            <MudTextField @bind-Value="parte.Nombre" Label="@(SoloPersonaFisica ? "Nombre" : "Nombre o razón social")" MaxLength="254" Required="true" Disabled="@(!Editable)" />
+            <MudTextField @bind-Value="parte.ApellidoPaterno" Label="Apellido paterno" MaxLength="200" Required="@SoloPersonaFisica" Disabled="@(!Editable)" />
             <MudTextField @bind-Value="parte.ApellidoMaterno" Label="Apellido materno" MaxLength="200" Disabled="@(!Editable)" />
         </div>
         <div class="notaria-rejilla">
             <MudTextField @bind-Value="parte.Rfc" Label="RFC" MaxLength="13" Required="true" Class="cifra-tabular" Disabled="@(!Editable)" />
-            <MudTextField @bind-Value="parte.Curp" Label="CURP" MaxLength="18" Required="@(!EsCopropiedad && RequiereApellidoYCurpSiIndividual)" Class="cifra-tabular" Disabled="@(!Editable)" />
+            <MudTextField @bind-Value="parte.Curp" Label="CURP" MaxLength="18" Required="@SoloPersonaFisica" Class="cifra-tabular" Disabled="@(!Editable)" />
             @if (EsCopropiedad)
             {
                 <MudNumericField T="decimal?" @bind-Value="parte.Porcentaje" Label="Porcentaje" Min="0m" Max="100m" Format="N2" Required="true" Disabled="@(!Editable)" />
@@ -49,6 +58,8 @@
     [Parameter, EditorRequired] public List<PartesNotarialesDeFactura.ParteEditable> Partes { get; set; } = default!;
     [Parameter] public bool Editable { get; set; }
     [Parameter] public bool RequiereApellidoYCurpSiIndividual { get; set; }
+
+    private bool SoloPersonaFisica => !EsCopropiedad && RequiereApellidoYCurpSiIndividual;
 
     private async Task CambiarModalidad(bool valor)
     {

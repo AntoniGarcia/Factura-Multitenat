@@ -3,6 +3,7 @@ using System.Net.Http.Json;
 using Facturacion.Client.Servicios.Plataforma;
 using Facturacion.Shared.ComercioExterior;
 using Facturacion.Shared.Comun;
+using Facturacion.Shared.Contratos;
 
 namespace Facturacion.Client.Servicios.Documentos;
 
@@ -45,6 +46,14 @@ public sealed class ServicioDeComercioExterior(IHttpClientFactory fabrica)
         return respuesta.IsSuccessStatusCode
             ? (await respuesta.Content.ReadFromJsonAsync<string>(ct), null)
             : (null, await respuesta.Content.ReadFromJsonAsync<DetalleProblema>(ct));
+    }
+
+    /// <summary>Unidad aduanera (UMT) de la fracción; nula si el catálogo no la trae.</summary>
+    public async Task<ClaveSatDto?> UnidadDeFraccionAsync(string fraccion, CancellationToken ct = default)
+    {
+        using var respuesta = await Cliente.GetAsync(
+            $"api/comercio-exterior/fracciones/{Uri.EscapeDataString(fraccion)}/unidad-aduana", ct);
+        return respuesta.IsSuccessStatusCode ? await respuesta.Content.ReadFromJsonAsync<ClaveSatDto>(ct) : null;
     }
 
     private static async Task<(DatosComercioExteriorDto? Datos, DetalleProblema? Error)> LeerAsync(

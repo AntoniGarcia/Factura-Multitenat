@@ -32,15 +32,16 @@
         <MudTextField T="string" Value="@_datos.NumeroExportadorConfiable"
                       ValueChanged="v => Cambiar(_datos with { NumeroExportadorConfiable = v })"
                       Label="Número de exportador confiable (UE)" MaxLength="50" />
-        <BuscadorCatalogo Catalogo="c_INCOTERM" Label="INCOTERM" Valor="@ClaveSeleccionada("c_INCOTERM", _datos.Incoterm)"
-                          ValorCambiado="v => Cambiar(_datos with { Incoterm = v?.Clave })"
+        <BuscadorCatalogo Catalogo="c_INCOTERM" Label="INCOTERM" Clave="@_datos.Incoterm"
+                          ClaveChanged="v => Cambiar(_datos with { Incoterm = Nulo(v) })"
                           MostrarOpciones="true" MuestraSelectorEnLista="false" Requerido="true" />
     </div>
     <h3 class="comercio-subtitulo">Importes en dólares</h3>
     <div class="comercio-rejilla comercio-rejilla-dos">
         <MudNumericField T="decimal?" Value="@_datos.TipoCambioUsd"
-                         ValueChanged="v => Cambiar(_datos with { TipoCambioUsd = v })"
+                         ValueChanged="CambiarTipoCambioUsd"
                          Label="Tipo de cambio USD" Format="N6" Min="0" />
+        @* Se precarga con la suma de los valores en dólares de las mercancías. *@
         <CampoMoneda Valor="@(_datos.TotalUsd ?? 0)" ValorCambiado="v => Cambiar(_datos with { TotalUsd = v })"
                      Label="Total USD" />
     </div>
@@ -75,11 +76,12 @@
                 <div class="comercio-rejilla comercio-rejilla-dos">
                     <BuscadorCatalogo Catalogo="c_FraccionArancelaria" Label="Fracción arancelaria"
                                       Valor="@ClaveSeleccionada("c_FraccionArancelaria", mercancia.FraccionArancelaria)"
-                                      ValorCambiado="v => CambiarMercancia(mercancia, mercancia with { FraccionArancelaria = v?.Clave })"
+                                      ValorCambiado="v => ElegirFraccionAsync(mercancia, v)"
                                       MuestraSelectorEnLista="false" />
+                    @* Con la clave, el buscador muestra la descripción de las opciones ya cargadas. *@
                     <BuscadorCatalogo Catalogo="c_UnidadAduana" Label="Unidad aduanera"
-                                      Valor="@ClaveSeleccionada("c_UnidadAduana", mercancia.UnidadAduana)"
-                                      ValorCambiado="v => CambiarMercancia(mercancia, mercancia with { UnidadAduana = v?.Clave })"
+                                      Clave="@mercancia.UnidadAduana"
+                                      ClaveChanged="v => CambiarMercancia(mercancia, mercancia with { UnidadAduana = Nulo(v) })"
                                       MostrarOpciones="true" MuestraSelectorEnLista="false" />
                 </div>
                 <div class="comercio-rejilla">
@@ -171,6 +173,8 @@
     [Parameter] public EventCallback AlGuardar { get; set; }
     [Parameter] public string? ResidenciaFiscalSugerida { get; set; }
     [Parameter] public string? NumeroRegistroTributarioSugerido { get; set; }
+    [Parameter] public string? MonedaFactura { get; set; }
+    [Parameter] public decimal? TipoCambioFactura { get; set; }
 
     /// <summary>
     /// Falso cuando la pestaña se cierra: MudTabs desecha el componente, pero la referencia que
@@ -203,6 +207,7 @@
             if (!_tieneDatosGuardados && _datos.ResidenciaFiscal is null &&
                 _ultimaResidenciaSugerida != ResidenciaFiscalSugerida)
                 AplicarDatosSugeridos();
+            AplicarTipoCambioDeFactura();
             return;
         }
         _idCargado = ComprobanteId;
@@ -211,6 +216,43 @@
         _tieneDatosGuardados = datos is not null;
         if (datos is not null) _datos = datos;
         else AplicarDatosSugeridos();
+        AplicarTipoCambioDeFactura();
+    }
+
+    /// <summary>
+    /// En una factura en dólares el servidor exige que el tipo de cambio USD sea el de la factura;
+    /// se copia para no capturarlo dos veces. En otra moneda lo captura el usuario.
+    /// </summary>
+    private void AplicarTipoCambioDeFactura()
+    {
+        if (MonedaFactura == "USD" && TipoCambioFactura is > 0 && _datos.TipoCambioUsd != TipoCambioFactura)
+            CambiarTipoCambioUsd(TipoCambioFactura);
+    }
+
+    private void CambiarTipoCambioUsd(decimal? valor)
+    {
+        _datos = _datos with { TipoCambioUsd = valor };
+        // Las mercancías que se agregaron sin tipo de cambio reciben ahora su valor en dólares.
+        if (_datos.Mercancias is { Count: > 0 } mercancias)
+            _datos = _datos with { Mercancias = mercancias.Select(m => m.ValorDolares is null
+                ? m with { ValorDolares = ValorEnDolares(m.OrdenConcepto) } : m).ToArray() };
+        RecalcularTotalUsd();
+    }
+
+    /// <summary>Misma conversión que valida el servidor: importe por cambio de la factura entre cambio USD.</summary>
+    private decimal? ValorEnDolares(int ordenConcepto)
+    {
+        if (_datos.TipoCambioUsd is not > 0 || ObtenerConceptos().FirstOrDefault(c => c.Orden == ordenConcepto) is not { } concepto)
+            return null;
+        var cambio = MonedaFactura switch { "USD" => _datos.TipoCambioUsd, "MXN" => 1m, _ => TipoCambioFactura };
+        if (cambio is not > 0) return null;
+        return Math.Round(concepto.Importe * cambio.Value / _datos.TipoCambioUsd.Value, 2, MidpointRounding.AwayFromZero);
+    }
+
+    private void RecalcularTotalUsd()
+    {
+        if (_datos.Mercancias is not { Count: > 0 } mercancias || mercancias.Any(m => m.ValorDolares is null)) return;
+        _datos = _datos with { TotalUsd = Math.Round(mercancias.Sum(m => m.ValorDolares!.Value), 2, MidpointRounding.AwayFromZero) };
     }
 
     private void AplicarDatosSugeridos()
@@ -226,23 +268,45 @@
 
     private void Cambiar(DatosComercioExteriorDto datos) => _datos = datos;
 
+    private static string? Nulo(string? clave) => string.IsNullOrWhiteSpace(clave) ? null : clave;
+
     private static ClaveSatDto? ClaveSeleccionada(string catalogo, string? clave)
         => string.IsNullOrWhiteSpace(clave) ? null : new ClaveSatDto(catalogo, clave, clave, true);
 
     private void AgregarMercancia(ConceptoDto concepto)
     {
         var nueva = new MercanciaComercioExteriorDto(concepto.Orden, concepto.ClaveProdServ,
-            concepto.Descripcion, null, null, null, null, null, null, null, null, null);
+            concepto.Descripcion, null, null, null, null, null, null, null, null, null)
+        {
+            ValorDolares = ValorEnDolares(concepto.Orden)
+        };
         _datos = _datos with { Mercancias = (_datos.Mercancias ?? []).Append(nueva).ToArray() };
+        RecalcularTotalUsd();
+    }
+
+    private async Task ElegirFraccionAsync(MercanciaComercioExteriorDto mercancia, ClaveSatDto? fraccion)
+    {
+        var unidad = fraccion is null ? null : await Comercio.UnidadDeFraccionAsync(fraccion.Clave);
+        CambiarMercancia(mercancia, mercancia with
+        {
+            FraccionArancelaria = fraccion?.Clave,
+            UnidadAduana = unidad?.Clave ?? mercancia.UnidadAduana
+        });
     }
 
     private void CambiarMercancia(MercanciaComercioExteriorDto anterior, MercanciaComercioExteriorDto nueva)
-        => _datos = _datos with { Mercancias = (_datos.Mercancias ?? [])
+    {
+        _datos = _datos with { Mercancias = (_datos.Mercancias ?? [])
             .Select(x => ReferenceEquals(x, anterior) ? nueva : x).ToArray() };
+        RecalcularTotalUsd();
+    }
 
     private void QuitarMercancia(MercanciaComercioExteriorDto mercancia)
-        => _datos = _datos with { Mercancias = (_datos.Mercancias ?? [])
+    {
+        _datos = _datos with { Mercancias = (_datos.Mercancias ?? [])
             .Where(x => !ReferenceEquals(x, mercancia)).ToArray() };
+        RecalcularTotalUsd();
+    }
 
     private void AlCambiarResidencia(ClaveSatDto? pais)
     {

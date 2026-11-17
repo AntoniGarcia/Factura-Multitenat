@@ -1,7 +1,9 @@
 @using Facturacion.Shared.ComercioExterior
 @using Facturacion.Shared.Contratos
 @using Facturacion.Client.Servicios.Plataforma
+@using Facturacion.Shared.Transporte
 @inject ServicioDeTransporte Transporte
+@inject IBusquedaDeCatalogo Busqueda
 
 <div class="rejilla-campos">
     <MudTextField T="string" Value="@Valor.Calle" ValueChanged="v => Cambiar(Valor with { Calle = v })" Label="Calle" MaxLength="150" />
@@ -28,7 +30,17 @@
     <BuscadorCatalogo Catalogo="c_Pais" Label="País" Valor="@PaisSeleccionado"
                       ValorCambiado="p => Cambiar(Valor with { Pais = p?.Clave })"
                       MuestraSelectorEnLista="false" Deshabilitado="@(EsEmisor || BloquearPais)" />
-    <MudTextField T="string" Value="@Valor.CodigoPostal" ValueChanged="v => Cambiar(Valor with { CodigoPostal = v })" Label="Código postal" MaxLength="30" />
+    @if (EsEmisor)
+    {
+        @* El domicilio del emisor es mexicano: el código postal sale de c_CodigoPostal y llena estado y municipio. *@
+        <BuscadorCatalogo @key="Valor.CodigoPostal" Catalogo="c_CodigoPostal" Label="Código postal" Valor="@CodigoPostalSeleccionado"
+                          ValorCambiado="AlElegirCodigoPostalAsync" BusquedaPersonalizada="BuscarCodigosPostalesAsync"
+                          MostrarSoloClave="true" MuestraSelectorEnLista="false" />
+    }
+    else
+    {
+        <MudTextField T="string" Value="@Valor.CodigoPostal" ValueChanged="v => Cambiar(Valor with { CodigoPostal = v })" Label="Código postal" MaxLength="30" />
+    }
 </div>
 
 @code {
@@ -43,6 +55,31 @@
         ? null : new ClaveSatDto("c_Estado", Valor.Estado, Valor.Estado, true);
     private ClaveSatDto? MunicipioSeleccionado => string.IsNullOrWhiteSpace(Valor.Municipio)
         ? null : new ClaveSatDto("c_Municipio", Valor.Municipio, Valor.Municipio, true);
+
+    private ClaveSatDto? CodigoPostalSeleccionado => string.IsNullOrWhiteSpace(Valor.CodigoPostal)
+        ? null : new ClaveSatDto("c_CodigoPostal", Valor.CodigoPostal, Valor.CodigoPostal, true);
+
+    private async Task<IReadOnlyList<ClaveSatDto>> BuscarCodigosPostalesAsync(string texto, CancellationToken ct)
+    {
+        if (!string.IsNullOrWhiteSpace(Valor.Estado) && !string.IsNullOrWhiteSpace(Valor.Municipio))
+            return await Transporte.CodigosPostalesAsync(Valor.Estado, Valor.Municipio, texto, ct) ?? [];
+        return texto.Trim().Length < 3 ? [] : await Busqueda.BuscarAsync("c_CodigoPostal", texto, ct);
+    }
+
+    private async Task AlElegirCodigoPostalAsync(ClaveSatDto? codigoPostal)
+    {
+        if (codigoPostal is null)
+        {
+            await Cambiar(Valor with { CodigoPostal = null });
+            return;
+        }
+        DomicilioPorCodigoPostalDto? domicilio = null;
+        try { domicilio = await Transporte.ResolverDomicilioPorCodigoPostalAsync(codigoPostal.Clave); }
+        catch (HttpRequestException) { }
+        await Cambiar(domicilio is null
+            ? Valor with { CodigoPostal = codigoPostal.Clave }
+            : Valor with { CodigoPostal = codigoPostal.Clave, Estado = domicilio.Estado, Municipio = domicilio.Municipio ?? Valor.Municipio });
+    }
 
     private Task Cambiar(DomicilioComercioExteriorDto domicilio)
         => ValorCambiado.InvokeAsync(domicilio);

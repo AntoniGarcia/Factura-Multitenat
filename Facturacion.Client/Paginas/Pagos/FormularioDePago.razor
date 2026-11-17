@@ -73,7 +73,7 @@ else
                     <MudTimePicker Label="Hora del pago" @bind-Time="_horaPagoLocal"
                                    Disabled="@(!EsEditable)" Required="true" AmPm="false" />
 
-                    <BuscadorCatalogo Catalogo="c_FormaPago" Label="Forma de pago" Clave="_formaDePago" ClaveChanged="CambiarFormaDePago"
+                    <BuscadorCatalogo Catalogo="c_FormaPago" Label="Forma de pago" Clave="@_formaDePago" ClaveChanged="CambiarFormaDePago"
                                      Opciones="@Catalogos.Obtener("c_FormaPago").Where(x => x.Clave != "99").ToArray()"
                                      Deshabilitado="@(!EsEditable)" Requerido="true" PuedeLimpiar="false" />
 
@@ -94,7 +94,7 @@ else
                                      HelperText="@(_moneda == "MXN" ? "No aplica en pesos." : "Obligatorio fuera de MXN.")"
                                      Format="F6" Class="cifra-tabular" />
 
-                    <MudNumericField T="decimal" Label="Importe del pago" @bind-Value="_monto"
+                    <MudNumericField T="decimal" Label="Importe del pago" Value="_monto" ValueChanged="CambiarMonto"
                                      Immediate="true"
                                      Disabled="@(!EsEditable)" Format="@($"F{DecimalesPago}")" Class="cifra-tabular"
                                      HelperText="Debe coincidir con los abonos convertidos a esta moneda." />
@@ -119,32 +119,33 @@ else
             <section class="seccion-formulario">
                 <h2 class="seccion-titulo">Facturas que se pagan</h2>
                 <p class="seccion-ayuda">
-                    Busca facturas timbradas PPD. El saldo y la parcialidad se calculan automáticamente.
+                    Busca facturas timbradas PPD con saldo. El abono se propone con el saldo completo y se ajusta en la tabla.
                 </p>
 
                 @if (EsEditable)
                 {
                     <div class="rejilla-consulta-pago">
-                        <MudTextField T="string" Label="Serie" @bind-Value="_serieBusqueda" Class="cifra-tabular" Immediate="true" />
+                        <MudAutocomplete @key="_versionBuscador" T="FacturaPendienteDto" Label="Serie"
+                                         ValueChanged="ElegirPendiente" TextChanged="@((string t) => _serieBusqueda = t ?? string.Empty)"
+                                         SearchFunc="BuscarPendientes" ToStringFunc="@(p => p?.Serie ?? string.Empty)"
+                                         MinCharacters="0" OpenOnFocus="true" DebounceInterval="300"
+                                         CoerceText="false" CoerceValue="false" Strict="false" ResetValueOnEmptyText="true"
+                                         Placeholder="Escribe la serie o elige una factura" Class="cifra-tabular">
+                            <ItemTemplate Context="pendiente">
+                                <span class="cifra-tabular">@pendiente.Serie-@pendiente.Folio</span>
+                                <span class="buscador-catalogo-descripcion">
+                                    saldo <span class="cifra-tabular">@pendiente.SaldoPendiente.ToString($"N{pendiente.DecimalesMoneda}")</span> @pendiente.Moneda
+                                </span>
+                            </ItemTemplate>
+                            <NoItemsTemplate>
+                                <span class="seccion-ayuda">@(_clienteId is null ? "No hay facturas PPD con saldo." : "Este cliente no tiene facturas PPD con saldo.")</span>
+                            </NoItemsTemplate>
+                        </MudAutocomplete>
                         <MudNumericField T="int" Label="Folio" @bind-Value="_folioBusqueda" Class="cifra-tabular" Immediate="true" />
-                        <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="Consultar">
-                            Consultar
+                        <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="AgregarFactura" Disabled="@_trabajando">
+                            Agregar factura
                         </MudButton>
                     </div>
-
-                    @if (_encontrado is { } encontrado)
-                    {
-                        <div class="resultado-consulta-pago">
-                            <span>
-                                <strong class="cifra-tabular">@encontrado.Serie-@encontrado.Folio</strong>
-                                — saldo <strong class="cifra-tabular">@encontrado.SaldoPendiente.ToString("N2")</strong>
-                                @encontrado.Moneda, parcialidad @encontrado.NumParcialidad
-                            </span>
-                            <MudNumericField T="decimal" Label="@($"Abono en {encontrado.Moneda}")" @bind-Value="_importeAPagar"
-                                             Format="@($"F{encontrado.DecimalesMoneda}")" Class="cifra-tabular" Immediate="true" />
-                            <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="Agregar">Agregar factura</MudButton>
-                        </div>
-                    }
                 }
 
                 @if (_renglones.Count == 0)
@@ -173,7 +174,7 @@ else
                                     <MudTd DataLabel="Equivalencia">
                                         @if (EsEditable && renglon.Moneda != _moneda)
                                         {
-                                            <MudNumericField T="decimal?" Value="renglon.EquivalenciaDR" ValueChanged="@(v => CambiarEquivalencia(renglon, v))"
+                                            <MudNumericField T="decimal?" Value="renglon.EquivalenciaDR" ValueChanged="@((decimal? v) => CambiarEquivalencia(renglon, v))"
                                                 Label="@($"{renglon.Moneda} por 1 {_moneda}")" Immediate="true" Format="0.##########" Min="0.0000000001m" Required="true" />
                                         }
                                         else { <span class="cifra-tabular">@renglon.EquivalenciaDR</span> }
@@ -184,7 +185,7 @@ else
                                         @if (EsEditable)
                                         {
                                             <MudNumericField T="decimal" Value="renglon.ImpPagado"
-                                                ValueChanged="@(v => CambiarImporte(renglon, v))" Immediate="true"
+                                                ValueChanged="@((decimal v) => CambiarImporte(renglon, v))" Immediate="true"
                                                 Label="@($"Abono {renglon.Serie}-{renglon.Folio}")" Format="@($"F{renglon.DecimalesMoneda}")"
                                                 Min="0" Max="renglon.SaldoAnterior" Class="cifra-tabular" />
                                         }
@@ -198,7 +199,7 @@ else
                                         @if (EsEditable)
                                         {
                                             <MudButton Size="Size.Small" Color="Color.Error"
-                                                       OnClick="@(() => _renglones.Remove(renglon))">
+                                                       OnClick="@(() => Quitar(renglon))">
                                                 Quitar
                                             </MudButton>
                                         }
@@ -282,13 +283,13 @@ else
     @if (EsEditable)
     {
         <div class="tarjeta-formulario-acciones">
-            <MudButton OnClick="@(() => Navegacion.NavigateTo("/documentos"))">Cancelar</MudButton>
-            <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="Guardar" Disabled="@_trabajando">Guardar borrador</MudButton>
-            <MudButton Variant="Variant.Outlined" OnClick="VistaPrevia" Disabled="@_trabajando">Vista previa PDF</MudButton>
-            <MudButton Variant="Variant.Outlined" Color="Color.Primary" OnClick="Timbrar"
+            <MudButton Variant="Variant.Outlined" OnClick="Guardar" Disabled="@_trabajando">Guardar borrador</MudButton>
+            <MudButton Variant="Variant.Outlined" StartIcon="@Icons.Material.Filled.PictureAsPdf" OnClick="VistaPrevia" Disabled="@_trabajando">Vista previa PDF</MudButton>
+            <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="Timbrar"
                        Disabled="@(_trabajando || !PuedeTimbrar)">
                 Timbrar pago
             </MudButton>
+            <MudButton Variant="Variant.Text" OnClick="@(() => Navegacion.NavigateTo("/documentos"))">Volver a documentos</MudButton>
         </div>
     }
 }
@@ -313,7 +314,7 @@ else
     private DateTime _fechaPagoUtc = DateTime.UtcNow;
     private DateTime? _fechaPagoLocal;
     private TimeSpan? _horaPagoLocal;
-    private string _formaDePago = "03";
+    private string _formaDePago = string.Empty;
     private string _moneda = "MXN";
     private IReadOnlyList<ClaveSatDto> _monedasDeCaptura = [];
     private decimal? _tipoCambio;
@@ -333,14 +334,24 @@ else
 
     private string _serieBusqueda = string.Empty;
     private int _folioBusqueda;
-    private DocumentoPorPagarDto? _encontrado;
-    private decimal _importeAPagar;
+    private int _versionBuscador;
 
     private readonly List<Renglon> _renglones = [];
 
-    private sealed record Renglon(
-        Guid IdDocumento, string? Serie, string? Folio, string Moneda,
-        int NumParcialidad, decimal SaldoAnterior, decimal ImpPagado, decimal? EquivalenciaDR = 1m, int DecimalesMoneda = 2);
+    // Clase y no record: el abono se edita en su lugar. Reemplazar el renglón por una copia
+    // hacía que la tabla redibujara la fila y el campo perdiera el foco a media captura.
+    private sealed class Renglon
+    {
+        public required Guid IdDocumento { get; init; }
+        public string? Serie { get; init; }
+        public string? Folio { get; init; }
+        public required string Moneda { get; init; }
+        public int NumParcialidad { get; init; }
+        public decimal SaldoAnterior { get; init; }
+        public decimal ImpPagado { get; set; }
+        public decimal? EquivalenciaDR { get; set; } = 1m;
+        public int DecimalesMoneda { get; init; } = 2;
+    }
 
     private Guid? _borradorSinGuardar;
     private IDisposable? _registroDeSalida;
@@ -416,7 +427,7 @@ else
         _fechaPagoUtc = pago.FechaPagoUtc;
         _fechaPagoLocal = pago.FechaPagoLocal?.Date;
         _horaPagoLocal = pago.FechaPagoLocal?.TimeOfDay;
-        _formaDePago = pago.FormaDePagoP ?? "03";
+        _formaDePago = pago.FormaDePagoP ?? string.Empty;
         _moneda = pago.MonedaP;
         _tipoCambio = pago.TipoCambioP;
         _monto = pago.Monto;
@@ -433,8 +444,12 @@ else
         _selloPago = pago.SelloPago;
 
         _renglones.Clear();
-        _renglones.AddRange(pago.Documentos.Select(d => new Renglon(
-            d.IdDocumento, d.Serie, d.Folio, d.MonedaDR, d.NumParcialidad, d.ImpSaldoAnt, d.ImpPagado, d.EquivalenciaDR, d.DecimalesMonedaDR)));
+        _renglones.AddRange(pago.Documentos.Select(d => new Renglon
+        {
+            IdDocumento = d.IdDocumento, Serie = d.Serie, Folio = d.Folio, Moneda = d.MonedaDR,
+            NumParcialidad = d.NumParcialidad, SaldoAnterior = d.ImpSaldoAnt, ImpPagado = d.ImpPagado,
+            EquivalenciaDR = d.EquivalenciaDR, DecimalesMoneda = d.DecimalesMonedaDR
+        }));
     }
 
     private void AlElegirCliente(ClienteEnListaDto? cliente)
@@ -442,7 +457,6 @@ else
         if (_clienteId != cliente?.Id)
         {
             _renglones.Clear();
-            _encontrado = null;
             _monto = 0;
             _aviso = "Al cambiar de cliente se retiran las facturas del pago.";
         }
@@ -470,7 +484,6 @@ else
             if (_clienteId is { } clienteId && await Clientes.ObtenerAsync(clienteId) is { } cliente)
                 _cliente = new ClienteEnListaDto(cliente.Id, cliente.ClaveInterna, cliente.Rfc, cliente.Nombre,
                     cliente.RegimenFiscal, cliente.DomicilioFiscalCp, cliente.CorreoPrincipal, cliente.Activo);
-            _encontrado = null;
             _aviso = "Revisa los datos. Después de emitir el sustituto, cancela el anterior con motivo 01.";
         }
         finally { _trabajando = false; }
@@ -480,8 +493,9 @@ else
     {
         if (moneda == _moneda) return;
         _moneda = moneda; _tipoCambio = null;
-        for (var i = 0; i < _renglones.Count; i++)
-            _renglones[i] = _renglones[i] with { EquivalenciaDR = _renglones[i].Moneda == moneda ? 1m : null };
+        foreach (var renglon in _renglones)
+            renglon.EquivalenciaDR = renglon.Moneda == moneda ? 1m : null;
+        SincronizarMonto();
     }
 
     private void CambiarFormaDePago(string forma)
@@ -498,66 +512,125 @@ else
 
     private void CambiarEquivalencia(Renglon renglon, decimal? valor)
     {
-        var indice = _renglones.IndexOf(renglon);
-        if (indice >= 0) _renglones[indice] = renglon with { EquivalenciaDR = valor };
+        renglon.EquivalenciaDR = valor;
+        SincronizarMonto();
     }
 
     private void CambiarImporte(Renglon renglon, decimal importe)
     {
-        var indice = _renglones.IndexOf(renglon);
-        if (indice >= 0) _renglones[indice] = renglon with { ImpPagado = importe };
+        renglon.ImpPagado = importe;
+        SincronizarMonto();
     }
 
-    private async Task Consultar()
+    private void Quitar(Renglon renglon)
+    {
+        _renglones.Remove(renglon);
+        SincronizarMonto();
+    }
+
+    /// <summary>Los abonos mandan sobre el importe: el importe del pago es su suma en la moneda del pago.</summary>
+    private void SincronizarMonto()
+    {
+        if (_renglones.Count == 0 || _renglones.Any(r => r.EquivalenciaDR is not > 0)) return;
+        _monto = Math.Round(Repartido, DecimalesPago, MidpointRounding.AwayFromZero);
+    }
+
+    /// <summary>
+    /// Al cambiar el importe del pago, el último renglón absorbe la diferencia, sin bajar de
+    /// cero ni pasar de su saldo. Con un solo renglón, su abono es el importe.
+    /// </summary>
+    private void CambiarMonto(decimal monto)
+    {
+        _monto = monto;
+        if (_renglones.Count == 0 || _renglones[^1] is not { EquivalenciaDR: > 0 } ultimo) return;
+        var otros = _renglones.Take(_renglones.Count - 1)
+            .Sum(r => r.EquivalenciaDR is > 0 ? r.ImpPagado / r.EquivalenciaDR.Value : 0);
+        var abono = Math.Round((monto - otros) * ultimo.EquivalenciaDR!.Value, ultimo.DecimalesMoneda, MidpointRounding.AwayFromZero);
+        ultimo.ImpPagado = Math.Clamp(abono, 0, ultimo.SaldoAnterior);
+    }
+
+    private async Task<IEnumerable<FacturaPendienteDto>> BuscarPendientes(string texto, CancellationToken ct)
+        => await Pagos.BuscarPendientesAsync(_clienteId, texto, ct);
+
+    private void ElegirPendiente(FacturaPendienteDto? pendiente)
+    {
+        if (pendiente is null) return;
+        _serieBusqueda = pendiente.Serie ?? string.Empty;
+        _folioBusqueda = pendiente.Folio;
+    }
+
+    private async Task AgregarFactura()
     {
         _error = null;
         _aviso = null;
-        _encontrado = null;
 
-        if (string.IsNullOrWhiteSpace(_serieBusqueda) || _folioBusqueda <= 0)
+        var serie = _serieBusqueda.Trim();
+        var folio = _folioBusqueda;
+        // Quien escribe «A-125» en la serie y deja el folio vacío quiso decir las dos cosas.
+        if (folio <= 0 && serie.LastIndexOf('-') is > 0 and var guion && int.TryParse(serie[(guion + 1)..], out var escrito))
         {
-            _aviso = "Escribe la serie y el folio de la factura que se está pagando.";
+            folio = escrito;
+            serie = serie[..guion];
+        }
+
+        if (serie.Length == 0 || folio <= 0)
+        {
+            _aviso = "Escribe o elige la serie y el folio de la factura que se está pagando.";
             return;
         }
 
-        var (encontrado, error) = await Pagos.ConsultarSaldoAsync(_serieBusqueda.Trim(), _folioBusqueda);
+        _trabajando = true;
+        try
+        {
+            var (encontrado, error) = await Pagos.ConsultarSaldoAsync(serie, folio);
+            _error = error;
+            if (encontrado is null) return;
 
-        _error = error;
-        _encontrado = encontrado;
+            if (_renglones.Any(r => r.IdDocumento == encontrado.IdDocumento))
+            {
+                _aviso = "Esa factura ya está en la lista.";
+                return;
+            }
 
-        // Se propone saldar la factura completa, que es lo más común; el usuario lo baja si
-        // el abono es parcial.
-        if (encontrado is not null) _importeAPagar = encontrado.SaldoPendiente;
+            _renglones.Add(new Renglon
+            {
+                IdDocumento = encontrado.IdDocumento, Serie = encontrado.Serie, Folio = encontrado.Folio,
+                Moneda = encontrado.Moneda, NumParcialidad = encontrado.NumParcialidad,
+                SaldoAnterior = encontrado.SaldoPendiente, ImpPagado = encontrado.SaldoPendiente,
+                EquivalenciaDR = encontrado.Moneda == _moneda ? 1m : null, DecimalesMoneda = encontrado.DecimalesMoneda
+            });
+            SincronizarMonto();
+
+            _serieBusqueda = string.Empty;
+            _folioBusqueda = 0;
+            _versionBuscador++;
+        }
+        finally { _trabajando = false; }
     }
 
-    private void Agregar()
+    /// <summary>Lo que el servidor exige para timbrar. Antes de timbrar bloquea; al guardar solo avisa.</summary>
+    private List<string> Faltantes()
     {
-        if (_encontrado is not { } encontrado) return;
-
-        if (_renglones.Any(r => r.IdDocumento == encontrado.IdDocumento))
-        {
-            _aviso = "Esa factura ya está en la lista.";
-            return;
-        }
-
-        if (_importeAPagar <= 0 || _importeAPagar > encontrado.SaldoPendiente)
-        {
-            _aviso = $"El importe tiene que estar entre 0 y {encontrado.SaldoPendiente:N2}.";
-            return;
-        }
-
-        _renglones.Add(new Renglon(
-            encontrado.IdDocumento, encontrado.Serie, encontrado.Folio, encontrado.Moneda,
-            encontrado.NumParcialidad, encontrado.SaldoPendiente, _importeAPagar, encontrado.Moneda == _moneda ? 1m : null, encontrado.DecimalesMoneda));
-
-        // Cuando es el primer renglón, el importe del pago casi siempre es ese: se propone
-        // para ahorrar teclear, y queda editable.
-        if (_renglones.Count == 1 && _monto == 0 && encontrado.Moneda == _moneda) _monto = _importeAPagar;
-
-        _encontrado = null;
-        _importeAPagar = 0;
-        _aviso = null;
+        var faltan = new List<string>();
+        if (_clienteId is null) faltan.Add("el cliente");
+        if (string.IsNullOrEmpty(_formaDePago)) faltan.Add("la forma de pago");
+        if (_fechaPagoLocal is null || _horaPagoLocal is null) faltan.Add("la fecha y hora del pago");
+        if (_moneda != "MXN" && _tipoCambio is null) faltan.Add("el tipo de cambio");
+        if (_renglones.Count == 0) faltan.Add("al menos una factura");
+        else if (_renglones.Any(r => r.ImpPagado <= 0)) faltan.Add("el abono de cada factura");
+        if (_renglones.Any(r => r.EquivalenciaDR is not > 0)) faltan.Add("la equivalencia de cada factura en otra moneda");
+        if (_monto <= 0) faltan.Add("el importe del pago");
+        else if (_renglones.Count > 0 && !CuadraElPago) faltan.Add("que el importe coincida con los abonos");
+        return faltan;
     }
+
+    private string? Advertencia()
+        => string.IsNullOrWhiteSpace(_numOperacion)
+            ? "No capturaste el número de operación; revisa si el banco lo dio."
+            : null;
+
+    private static string Lista(List<string> elementos)
+        => elementos.Count == 1 ? elementos[0] : string.Join(", ", elementos[..^1]) + " y " + elementos[^1];
 
     private async Task<bool> GuardarInternoAsync()
     {
@@ -653,7 +726,12 @@ else
 
         try
         {
-            if (await GuardarInternoAsync()) _aviso = "Borrador guardado.";
+            var faltantes = Faltantes();
+            var advertencia = Advertencia();
+            if (!await GuardarInternoAsync()) return;
+            _aviso = "Borrador guardado." +
+                (faltantes.Count > 0 ? $" Para timbrar falta {Lista(faltantes)}." : "") +
+                (advertencia is null ? "" : $" {advertencia}");
         }
         finally
         {
@@ -682,8 +760,14 @@ else
     {
         if (!PuedeTimbrar) return;
 
-        _trabajando = true;
         _aviso = null;
+        if (Faltantes() is { Count: > 0 } faltantes)
+        {
+            _aviso = $"No se puede timbrar: falta {Lista(faltantes)}.";
+            return;
+        }
+
+        _trabajando = true;
 
         try
         {

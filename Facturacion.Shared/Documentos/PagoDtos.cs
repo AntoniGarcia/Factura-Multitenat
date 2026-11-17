@@ -75,6 +75,18 @@ public sealed record DocumentoPorPagarDto(
     int DecimalesMoneda = 2);
 
 /// <summary>
+/// Sugerencia del buscador de facturas del pago. El saldo es orientativo: al agregarla se
+/// consulta otra vez con <see cref="DocumentoPorPagarDto"/>.
+/// </summary>
+public sealed record FacturaPendienteDto(
+    string? Serie,
+    int Folio,
+    string Moneda,
+    decimal SaldoPendiente,
+    DateTime FechaEmisionUtc,
+    int DecimalesMoneda = 2);
+
+/// <summary>
 /// Guarda el borrador de pago completo: cabecera, banco y rejilla de documentos, de una sola
 /// vez. Mismo criterio que <see cref="PeticionGuardarBorrador"/>.
 /// </summary>

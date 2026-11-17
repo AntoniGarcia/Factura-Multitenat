@@ -475,3 +475,17 @@ certificados», §6 «Correo» y la entrada del 5 de octubre «SMTP propio por e
   va oculta.
 - La migración `20261103_A` borró de `CorreosDeEmpresa` las columnas `Habilitado`,
   `NombreRemitenteSistema` y `ResponderA`.
+
+**13 de noviembre de 2026 — El traceId no se muestra en pantalla** (modifica §4 «Datos y
+transporte»).
+
+- Los errores siguen respondiendo en Problem Details (RFC 7807) con `traceId`, pero la
+  pantalla ya no lo muestra ni ofrece copiarlo, y el mensaje no pide reportarlo a soporte.
+  Para el usuario es una cadena aleatoria sin significado.
+- El servidor lo sigue generando y lo escribe junto al error en el registro de Serilog, que
+  es donde sirve para localizar el detalle técnico. El detalle de una excepción sigue sin
+  viajar al cliente.
+- Los errores de validación y de reglas de negocio ya explican en pantalla qué corregir; el
+  `traceId` solo importa en los errores inesperados.
+- Hoy el registro solo se escribe en la consola, que en IIS no se conserva. Guardarlo en un
+  archivo dentro de la carpeta privada queda pendiente y por decidir.

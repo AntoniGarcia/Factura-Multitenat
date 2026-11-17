@@ -138,6 +138,57 @@ public sealed class ServicioDePagos(
     }
 
     /// <summary>
+    /// Sugerencias del buscador de facturas del pago: PPD timbradas del cliente que todavía
+    /// deben algo. Solo orienta; al agregar la factura se vuelve a consultar con todas las reglas.
+    /// </summary>
+    public async Task<IReadOnlyList<FacturaPendienteDto>> BuscarPendientesAsync(
+        Guid? clienteId, string? texto, CancellationToken ct)
+    {
+        var filtro = texto?.Trim().ToUpperInvariant() ?? string.Empty;
+        var consulta = baseDeDatos.Comprobantes.AsNoTracking().Where(c =>
+            c.TipoDeComprobante == TiposDeComprobante.Ingreso && c.Estatus == "timbrado" &&
+            c.MetodoPago == MetodoDiferido && c.Uuid != null && c.Folio != null);
+        if (clienteId is { } cliente) consulta = consulta.Where(c => c.ClienteId == cliente);
+        if (filtro.Length > 0)
+            consulta = consulta.Where(c => (c.Serie ?? "").StartsWith(filtro) ||
+                ((c.Serie ?? "") + "-" + c.Folio.ToString()).StartsWith(filtro) ||
+                c.Folio.ToString()!.StartsWith(filtro));
+
+        var candidatas = await consulta
+            .OrderByDescending(c => c.FechaEmisionUtc)
+            .Select(c => new { Uuid = c.Uuid!.Value, c.Serie, Folio = c.Folio!.Value, c.Moneda, c.Total, c.FechaEmisionUtc })
+            .Take(40)
+            .ToListAsync(ct);
+        if (candidatas.Count == 0) return [];
+
+        var uuids = candidatas.Select(c => c.Uuid).ToList();
+        var abonos = await baseDeDatos.PagosDocumentos.AsNoTracking()
+            .Where(d => uuids.Contains(d.IdDocumento) &&
+                (d.Pago.Comprobante.Estatus == "timbrando" || d.Pago.Comprobante.Estatus == "timbrado" ||
+                 d.Pago.Comprobante.Estatus == "en_cancelacion"))
+            .GroupBy(d => d.IdDocumento)
+            .Select(g => new { g.Key, Suma = g.Sum(x => x.ImpPagado) })
+            .ToDictionaryAsync(x => x.Key, x => x.Suma, ct);
+        var monedas = candidatas.Select(c => c.Moneda).Distinct().ToList();
+        var decimales = await baseDeDatos.SatMonedas.AsNoTracking()
+            .Where(x => monedas.Contains(x.Clave))
+            .ToDictionaryAsync(x => x.Clave, x => x.Decimales, ct);
+
+        var pendientes = new List<FacturaPendienteDto>();
+        foreach (var factura in candidatas)
+        {
+            var egresos = await Egresos.SaldoDeNotasCredito.ObtenerAsync(baseDeDatos, factura.Uuid, ct);
+            if (egresos.EsFallo) continue;
+            var saldo = factura.Total - abonos.GetValueOrDefault(factura.Uuid) - egresos.Valor;
+            if (saldo <= 0) continue;
+            pendientes.Add(new FacturaPendienteDto(factura.Serie, factura.Folio, factura.Moneda, saldo,
+                factura.FechaEmisionUtc, decimales.GetValueOrDefault(factura.Moneda, 2)));
+            if (pendientes.Count == 20) break;
+        }
+        return pendientes;
+    }
+
+    /// <summary>
     /// Los pagos en proceso apartan saldo; una cancelación pendiente todavía lo consume.
     /// Las parcialidades canceladas no se reutilizan, aunque su importe ya no consuma saldo.
     /// </summary>

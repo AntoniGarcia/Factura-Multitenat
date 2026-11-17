@@ -96,7 +96,7 @@ public sealed class GeneradorDeXmlNotaria(GeneradorDeXmlCfdi generadorCfdi)
         var grupo = partes.Where(x => x.Rol == rol).ToArray();
         return grupo.Length > 0 && (copropiedad || grupo.Length == 1) &&
                grupo.All(x => !string.IsNullOrWhiteSpace(x.Nombre) && !string.IsNullOrWhiteSpace(x.Rfc) &&
-                   (rol != "enajenante" || x.Rfc.Length == 13) &&
+                   (rol != "enajenante" || copropiedad || x.Rfc.Length == 13) &&
                    (copropiedad ? x.Porcentaje is >= 0 and <= 100 : x.Porcentaje is null)) &&
                (!copropiedad || grupo.Sum(x => x.Porcentaje ?? 0m) == 100m) &&
                (copropiedad || rol != "enajenante" ||

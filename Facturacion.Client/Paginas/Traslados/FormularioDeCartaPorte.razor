@@ -308,24 +308,24 @@
         </MudTabs>
 
         <div class="tarjeta-formulario-acciones">
-            <MudButton OnClick="@(() => Navegacion.NavigateTo("/documentos"))">Volver</MudButton>
             @if (EsEditable)
             {
+                <MudButton Variant="Variant.Outlined" Disabled="_guardando" OnClick="GuardarAsync">
+                    @(_guardando ? "Guardando…" : "Guardar borrador")
+                </MudButton>
                 @if (!EsNuevo)
                 {
-                    <MudButton Variant="Variant.Outlined" Disabled="@(_validandoXml || _guardando)" OnClick="VistaPreviaAsync">Vista previa PDF</MudButton>
+                    <MudButton Variant="Variant.Outlined" StartIcon="@Icons.Material.Filled.PictureAsPdf" Disabled="@(_validandoXml || _guardando)" OnClick="VistaPreviaAsync">Vista previa PDF</MudButton>
                     <MudButton Variant="Variant.Outlined" Disabled="@(_validandoXml || _guardando)" OnClick="DescargarXmlAsync">Descargar XML</MudButton>
                     <MudButton Variant="Variant.Outlined" Disabled="@(_validandoXml || _guardando)" OnClick="ValidarXmlAsync">
                         @(_validandoXml ? "Validando XML…" : "Validar XML guardado")
                     </MudButton>
-                    <MudButton Variant="Variant.Outlined" Color="Color.Primary" Disabled="@(_validandoXml || _guardando || _timbrando || !PuedeTimbrar)" OnClick="TimbrarAsync">
+                    <MudButton Variant="Variant.Filled" Color="Color.Primary" Disabled="@(_validandoXml || _guardando || _timbrando || !PuedeTimbrar)" OnClick="TimbrarAsync">
                         @(_timbrando ? "Timbrando…" : "Timbrar Carta Porte")
                     </MudButton>
                 }
-                <MudButton Variant="Variant.Filled" Color="Color.Primary" Disabled="_guardando" OnClick="GuardarAsync">
-                    @(_guardando ? "Guardando…" : "Guardar borrador")
-                </MudButton>
             }
+            <MudButton Variant="Variant.Text" OnClick="@(() => Navegacion.NavigateTo("/documentos"))">Volver a documentos</MudButton>
         </div>
     }
 </TarjetaFormulario>

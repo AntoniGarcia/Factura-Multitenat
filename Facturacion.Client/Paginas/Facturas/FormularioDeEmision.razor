@@ -158,6 +158,7 @@ else
                                         <div><dt>Producto</dt><dd title="@renglon.ProductoNombre">@(renglon.ProductoNombre ?? "—")</dd></div>
                                         <div><dt>ID interno</dt><dd class="cifra-tabular">@(renglon.ProductoIdInterno ?? "—")</dd></div>
                                         <div><dt>Unidad</dt><dd><span class="cifra-tabular">@renglon.ClaveUnidad</span> — @renglon.UnidadTexto</dd></div>
+                                        <div><dt>IVA</dt><dd class="cifra-tabular">@IvaDelConcepto(renglon)</dd></div>
                                     </dl>
                                 </div>
 
@@ -200,7 +201,7 @@ else
                             {
                                 <MudTextField @bind-Value="renglon.NoIdentificacion"
                                               Label="Identificador de mercancía" MaxLength="100"
-                                              HelperText="Debe coincidir con el NoIdentificacion del CFDI. Se precarga con el ID interno del producto." />
+                                              HelperText="Se precarga con el ID interno del producto." />
                             }
 
                             <MudNumericField T="decimal" Value="@renglon.ValorUnitario" ValueChanged="async v => { renglon.ValorUnitario = v; await ActualizarVistaPreviaAsync(); }"
@@ -339,6 +340,7 @@ else
                                                    ObtenerConceptos="@(() => _comprobante.Conceptos)"
                                                    ResidenciaFiscalSugerida="@_clienteDetalle?.ResidenciaFiscal"
                                                    NumeroRegistroTributarioSugerido="@_clienteDetalle?.NumRegIdTrib"
+                                                   MonedaFactura="@_moneda" TipoCambioFactura="@_tipoCambio"
                                                    AlGuardar="@(() => _comercioGuardado = true)" />
             </MudTabPanel>
         }
@@ -779,7 +781,10 @@ else
         renglon.Descripcion = DescripcionDeConcepto(producto);
         if (EsFacturaComercio && producto.IdInterno is { } idInterno) renglon.NoIdentificacion = idInterno;
         renglon.ObjetoImp = producto.ObjetoImp;
-        renglon.ValorUnitario = producto.ValorUnitario;
+        // El precio del catálogo está en pesos; en otra moneda se convierte con el tipo de cambio capturado.
+        renglon.ValorUnitario = _moneda != "MXN" && _tipoCambio is > 0
+            ? Math.Round(producto.ValorUnitario / _tipoCambio.Value, 6, MidpointRounding.AwayFromZero)
+            : producto.ValorUnitario;
         renglon.Impuestos = [.. producto.Impuestos.Select(i =>
             new ImpuestoDeConceptoDto(i.Impuesto, i.TipoFactor, i.TasaOCuota, i.EsRetencion))];
         renglon.TasasDeRetencionDelProducto = TasasDeRetencion(renglon.Impuestos);
@@ -816,6 +821,19 @@ else
             : TasaDeConfiguracion(clave);
         var nombre = clave switch { "001" => "ISR", "003" => "IEPS", _ => "IVA" };
         return $"Retener {nombre} {tasa * 100:0.####} %";
+    }
+
+    private static string IvaDelConcepto(RenglonConcepto renglon)
+    {
+        if (renglon.ObjetoImp is "01") return "No objeto";
+        var iva = renglon.Impuestos.FirstOrDefault(i => i.Impuesto == "002" && !i.EsRetencion);
+        return iva switch
+        {
+            null => "Sin IVA",
+            { TipoFactor: "Exento" } => "Exento",
+            { TasaOCuota: { } tasa } => $"{tasa * 100m:0.##} %",
+            _ => "Sin IVA"
+        };
     }
 
     private static Dictionary<string, decimal> TasasDeRetencion(IEnumerable<ImpuestoDeConceptoDto> impuestos)

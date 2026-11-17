@@ -399,24 +399,45 @@ public sealed class ServicioDeNotaria(
                 $"{etiqueta}-notarial-invalido",
                 $"Captura {(enCopropiedad ? "uno o más" : "una sola")} persona(s) {etiqueta}(as) sin RFC repetido.");
 
-        foreach (var parte in partes)
+        // El XSD distingue: DatosUnEnajenante exige apellido paterno y CURP, así que un vendedor
+        // único es persona física; en copropiedad (DatosEnajenanteCopSC) los dos son opcionales y
+        // el RFC puede ser de persona moral.
+        var codigo = $"{etiqueta}-notarial-invalido";
+        foreach (var parte in partes.OrderBy(x => x.Orden))
         {
             var esIndividual = !enCopropiedad;
-            if (parte.Orden < 1 || !EnRango(parte.Nombre, 254) ||
-                !PatronRfc.IsMatch(Normalizar(parte.Rfc)) ||
-                (etiqueta == "vendedor" && Normalizar(parte.Rfc).Length != 13) ||
-                !EnRangoOpcional(parte.ApellidoPaterno, 200) || !EnRangoOpcional(parte.ApellidoMaterno, 200) ||
-                !EnRangoOpcional(parte.Curp, 18) ||
-                (esIndividual && apellidoPaternoObligatorioSiIndividual && !EnRango(parte.ApellidoPaterno, 200)) ||
-                (esIndividual && curpObligatoriaSiIndividual && !PatronCurp.IsMatch(Normalizar(parte.Curp))) ||
-                (!string.IsNullOrWhiteSpace(parte.Curp) && !PatronCurp.IsMatch(Normalizar(parte.Curp))) ||
-                (enCopropiedad && (parte.Porcentaje is < 0 or > 100 ||
-                                    decimal.Round(parte.Porcentaje ?? -1m, 2) != parte.Porcentaje)) ||
-                (!enCopropiedad && parte.Porcentaje is not null))
-                return ErrorNegocio.Validacion(
-                    $"{etiqueta}-notarial-invalido",
-                    $"Revisa nombre, RFC, CURP y porcentaje de cada {etiqueta}." +
-                    (etiqueta == "vendedor" ? " Los vendedores deben ser personas físicas." : string.Empty));
+            var quien = esIndividual ? $"del {etiqueta}" : $"del {etiqueta} {parte.Orden}";
+            var rfc = Normalizar(parte.Rfc);
+            var curp = Normalizar(parte.Curp);
+
+            if (parte.Orden < 1)
+                return ErrorNegocio.Validacion(codigo, $"Revisa el orden de los {etiqueta}es.");
+            if (!EnRango(parte.Nombre, 254))
+                return ErrorNegocio.Validacion(codigo, $"Captura el nombre {quien}, de hasta 254 caracteres.");
+            if (!EnRangoOpcional(parte.ApellidoPaterno, 200) || !EnRangoOpcional(parte.ApellidoMaterno, 200))
+                return ErrorNegocio.Validacion(codigo, $"Los apellidos {quien} admiten hasta 200 caracteres.");
+            if (!PatronRfc.IsMatch(rfc))
+                return ErrorNegocio.Validacion(codigo, $"Revisa el RFC {quien}: no tiene un formato válido.");
+            if (esIndividual && curpObligatoriaSiIndividual && rfc.Length != 13)
+                return ErrorNegocio.Validacion(codigo,
+                    $"Revisa el RFC {quien}: cuando hay un solo {etiqueta}, el SAT pide que sea persona física, con RFC de 13 caracteres.");
+            if (esIndividual && apellidoPaternoObligatorioSiIndividual && !EnRango(parte.ApellidoPaterno, 200))
+                return ErrorNegocio.Validacion(codigo,
+                    $"Captura el apellido paterno {quien}: cuando hay un solo {etiqueta} es obligatorio.");
+            if (esIndividual && curpObligatoriaSiIndividual && !PatronCurp.IsMatch(curp))
+                return ErrorNegocio.Validacion(codigo,
+                    $"Captura una CURP válida {quien}: cuando hay un solo {etiqueta} es obligatoria.");
+            if (curp.Length > 0 && !PatronCurp.IsMatch(curp))
+                return ErrorNegocio.Validacion(codigo, $"Revisa la CURP {quien}: no tiene un formato válido.");
+            if (curp.Length > 0 && rfc.Length == 12)
+                return ErrorNegocio.Validacion(codigo,
+                    $"Revisa el RFC {quien}: es de persona moral y una persona moral no lleva CURP.");
+            if (enCopropiedad && (parte.Porcentaje is null or < 0 or > 100 ||
+                                  decimal.Round(parte.Porcentaje.Value, 2) != parte.Porcentaje))
+                return ErrorNegocio.Validacion(codigo,
+                    $"Captura el porcentaje {quien}, de 0 a 100 con hasta dos decimales.");
+            if (!enCopropiedad && parte.Porcentaje is not null)
+                return ErrorNegocio.Validacion(codigo, "El porcentaje solo se captura en copropiedad.");
         }
 
         if (enCopropiedad && decimal.Round(partes.Sum(x => x.Porcentaje ?? 0m), 2) != 100m)

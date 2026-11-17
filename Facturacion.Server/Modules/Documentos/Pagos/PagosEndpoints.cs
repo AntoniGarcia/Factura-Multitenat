@@ -19,6 +19,7 @@ public static class PagosEndpoints
         grupo.MapGet("/{id:guid}", Obtener);
         grupo.MapPut("/{id:guid}", Guardar);
         grupo.MapGet("/por-pagar", ConsultarSaldo);
+        grupo.MapGet("/pendientes", BuscarPendientes);
         grupo.MapGet("/sustitucion/{uuid:guid}", ObtenerParaSustituir);
         grupo.MapDelete("/{id:guid}", EliminarBorrador).RequireAuthorization(Permisos.PagoEliminar);
     }
@@ -71,6 +72,10 @@ public static class PagosEndpoints
             ? resultado.Error!.AResultado(http)
             : Results.Ok(resultado.Valor);
     }
+
+    private static async Task<IResult> BuscarPendientes(
+        Guid? clienteId, string? texto, ServicioDePagos pagos, CancellationToken ct)
+        => Results.Ok(await pagos.BuscarPendientesAsync(clienteId, texto, ct));
 
     private static async Task<IResult> EliminarBorrador(
         Guid id, ServicioDePagos pagos, HttpContext http, CancellationToken ct)
