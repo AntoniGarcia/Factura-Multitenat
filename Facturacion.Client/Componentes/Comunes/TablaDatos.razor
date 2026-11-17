@@ -9,10 +9,11 @@
           Breakpoint="Breakpoint.Sm"
           Dense="true"
           Hover="true"
+          SortLabel="Ordenar por"
           Loading="_cargando"
           OnRowClick="OnRowClickMud"
           RowClassFunc="ClaseDeFila"
-          Class="@(AlHacerClic.HasDelegate ? "tabla-filas-previsualizables" : null)"
+          Class="@($"{(AlHacerClic.HasDelegate ? "tabla-filas-previsualizables" : null)} {(TarjetaMovil is not null ? "tabla-datos-con-tarjetas" : null)}")"
           Height="@Height"
           FixedHeader="@AlturaFija"
           FixedFooter="@AlturaFija"
@@ -33,9 +34,13 @@
         }
     </HeaderContent>
     <RowTemplate>
+        @if (TarjetaMovil is not null)
+        {
+            <MudTd Class="tabla-datos-tarjeta">@TarjetaMovil(context)</MudTd>
+        }
         @foreach (var columna in Columnas)
         {
-            <MudTd DataLabel="@columna.Encabezado" Class="@(columna.Tabular ? "cifra-tabular" : null)">
+            <MudTd DataLabel="@columna.Encabezado" Class="@($"{(columna.Tabular ? "cifra-tabular" : null)} {(TarjetaMovil is not null ? "tabla-datos-celda-escritorio" : null)}")">
                 @columna.Contenido(context)
             </MudTd>
         }
@@ -73,6 +78,9 @@
 @code {
     [Parameter, EditorRequired]
     public IReadOnlyList<ColumnaDeTabla<T>> Columnas { get; set; } = [];
+
+    [Parameter]
+    public RenderFragment<T>? TarjetaMovil { get; set; }
 
     [Parameter, EditorRequired]
     public Func<PeticionDePagina, CancellationToken, Task<ResultadoDePagina<T>>> CargarPagina { get; set; } = default!;

@@ -71,6 +71,31 @@ html {
     border-left: 1px solid var(--borde);
 }
 
+.selector-empresa,
+.selector-empresa .mud-menu-activator,
+.selector-empresa .mud-button-root {
+    min-width: 0;
+    max-width: 100%;
+}
+
+.selector-empresa .mud-button-label {
+    position: relative;
+    min-width: 0;
+    padding-right: 1.5rem;
+    overflow: hidden;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+    display: block;
+}
+
+.selector-empresa .mud-button-icon-end {
+    position: absolute;
+    top: 0;
+    right: 0;
+    display: inline-flex;
+    margin: 0;
+}
+
 .barra-superior-etiqueta {
     color: var(--texto-suave);
     font-size: var(--etiqueta-tam);
@@ -521,6 +546,7 @@ html {
         gap: 0.5rem;
     }
 
+    .cascaron-cliente .barra-superior-marca,
     .barra-superior-marca {
         display: none;
     }

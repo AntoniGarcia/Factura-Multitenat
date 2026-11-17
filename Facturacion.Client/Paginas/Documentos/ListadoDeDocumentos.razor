@@ -35,7 +35,7 @@
 </SiTienePermiso>
 
 <section class="documentos-filtros" aria-label="Filtros de documentos">
-<div class="filtros-documentos">
+<div class="documentos-busqueda">
     <MudTextField T="string"
                   Label="Buscar"
                   Value="_texto"
@@ -44,6 +44,15 @@
                   Immediate="true"
                   Clearable="true"
                   Placeholder="RFC, nombre, folio, UUID o descripción…" />
+
+    <button type="button" class="documentos-alternar-filtros"
+            aria-expanded="@_filtrosAbiertos" aria-controls="filtros-documentos-adicionales"
+            @onclick="@(() => _filtrosAbiertos = !_filtrosAbiertos)">
+        <MudIcon Icon="@Icons.Material.Filled.FilterList" Size="Size.Small" />
+        Filtros@(CantidadFiltros > 0 ? $" ({CantidadFiltros})" : null)
+    </button>
+</div>
+<div id="filtros-documentos-adicionales" class="filtros-documentos documentos-filtros-adicionales @(_filtrosAbiertos ? "filtros-abiertos" : null)">
 
     <MudSelect T="EstatusComprobante?"
                Label="Estatus"
@@ -89,6 +98,7 @@
     <CampoFecha Label="Hasta" ValorUtc="_hastaUtc" ValorUtcCambiado="AlCambiarHasta" />
 
 </div>
+<p class="documentos-rango-activo">@_desdeUtc?.ToLocalTime().ToString("dd/MM/yyyy") – @_hastaUtc?.ToLocalTime().ToString("dd/MM/yyyy")</p>
 </section>
 
 <div class="documentos-area @(_seleccionado is null ? null : "documentos-area-con-vista")">
@@ -100,7 +110,27 @@
                     AlHacerClic="Previsualizar"
                     EsSeleccionado="EsSeleccionado"
                     TextoEntidad="documentos"
-                    TextoSinDatos="No hay documentos que coincidan." />
+                    TextoSinDatos="No hay documentos que coincidan.">
+            <TarjetaMovil Context="documento">
+                <div class="documento-tarjeta-cabecera">
+                    <strong class="cifra-tabular">@(documento.Folio is null ? "Sin folio" : Folio(documento))</strong>
+                    <IndicadorEstado Estatus="documento.Estatus" />
+                </div>
+                <strong class="documento-tarjeta-receptor">@documento.ReceptorNombre</strong>
+                <span class="documento-tarjeta-rfc cifra-tabular">@documento.ReceptorRfc</span>
+                <div class="documento-tarjeta-datos">
+                    <span>@documento.FechaEmisionUtc.ToLocalTime().ToString("dd/MM/yyyy")</span>
+                    <strong class="cifra-tabular">@documento.Total.ToString("N2")</strong>
+                </div>
+                <div class="documento-tarjeta-acciones" @onclick:stopPropagation="true">
+                    <a href="@RutaDocumento(documento)" class="documento-abrir">Abrir documento</a>
+                    <button type="button" class="documento-tarjeta-vista" @onclick="@(() => Previsualizar(documento))"
+                            aria-label="@($"Vista previa de {Folio(documento)}")">
+                        <MudIcon Icon="@Icons.Material.Filled.Visibility" Size="Size.Small" /> Vista previa
+                    </button>
+                </div>
+            </TarjetaMovil>
+        </TablaDatos>
     </section>
 
     @if (_seleccionado is { } seleccionado)
@@ -323,6 +353,9 @@
     private ClienteEnListaDto? _cliente;
     private string? _tipoComprobante;
     private Periodo _periodo = Periodo.EsteAnio;
+    private bool _filtrosAbiertos;
+    private int CantidadFiltros => (_estatus is not null ? 1 : 0) + (_tipoComprobante is not null ? 1 : 0)
+        + (_cliente is not null ? 1 : 0) + (_periodo != Periodo.EsteAnio ? 1 : 0);
 
     // Periodo inicial: desde el inicio del año en curso hasta hoy.
     private DateTime? _desdeUtc = InicioDelAnio();

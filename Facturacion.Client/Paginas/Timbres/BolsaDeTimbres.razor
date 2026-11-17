@@ -7,7 +7,9 @@
 @inject ServicioDeArchivosDeFacturaCompra ArchivosFactura
 
 <PageTitle>Timbres</PageTitle>
-<TituloDePagina Texto="Timbres /Membresía" />
+<TituloDePagina Texto="Timbres y membresía" />
+
+<p class="seccion-ayuda">Consulta el saldo de tu cuenta y elige el paquete que necesitas para seguir facturando.</p>
 
 <PanelErrores Problema="_error" />
 
@@ -32,50 +34,33 @@
     </div>
 }
 
-<h2 class="seccion-titulo">Saldo</h2>
-
-<div class="tarjetas-saldo">
-    <div class="tarjeta-saldo">
-        <span class="tarjeta-saldo-cifra cifra-tabular">@_saldo.Disponibles</span>
-        <span class="tarjeta-saldo-etiqueta">disponibles</span>
+<section class="timbres-resumen" aria-label="Saldo y membresía" aria-busy="@_cargando">
+    <div class="tarjeta-saldo tarjeta-saldo-disponible">
+        <span class="tarjeta-saldo-etiqueta">Timbres disponibles</span>
+        <span class="tarjeta-saldo-cifra cifra-tabular">@(_cargando ? "—" : _saldo.Disponibles.ToString("N0"))</span>
+        <span class="tarjeta-saldo-detalle">Compartidos entre las empresas de tu cuenta</span>
     </div>
 
     <div class="tarjeta-saldo">
-        <span class="tarjeta-saldo-cifra cifra-tabular">@_saldo.Reservados</span>
-        <span class="tarjeta-saldo-etiqueta">apartados</span>
+        <span class="tarjeta-saldo-etiqueta">Timbres apartados</span>
+        <span class="tarjeta-saldo-cifra cifra-tabular">@(_cargando ? "—" : _saldo.Reservados.ToString("N0"))</span>
+        <span class="tarjeta-saldo-detalle">En comprobantes que se están emitiendo</span>
     </div>
-</div>
 
-<p class="seccion-ayuda">
-    Los apartados son timbres de comprobantes que se están emitiendo en este momento. Si un
-    timbrado no llega a completarse, su timbre vuelve al saldo disponible solo.
-</p>
+    @if (_membresia is not null)
+    {
+        <div class="tarjeta-saldo tarjeta-membresia">
+            <span class="tarjeta-saldo-etiqueta">Membresía de la cuenta</span>
+            <span class="indicador-estado indicador-estado-@EstiloDeMembresia">@TextoDeMembresia</span>
+            <dl class="membresia-fechas">
+                <div><dt>Desde</dt><dd>@_membresia.InicioUtc.ToLocalTime().ToString("dd/MM/yyyy")</dd></div>
+                <div><dt>Hasta</dt><dd>@_membresia.FinUtc.ToLocalTime().ToString("dd/MM/yyyy")</dd></div>
+            </dl>
+        </div>
+    }
+</section>
 
-@if (_membresia is not null)
-{
-    <h2 class="seccion-titulo">Membresía</h2>
-
-    <MudSimpleTable Dense="true">
-        <tbody>
-            <tr>
-                <th scope="row">Estado</th>
-                <td>
-                    <span class="indicador-estado indicador-estado-@EstiloDeMembresia">
-                        @TextoDeMembresia
-                    </span>
-                </td>
-            </tr>
-            <tr>
-                <th scope="row">Vigente desde</th>
-                <td class="cifra-tabular">@_membresia.InicioUtc.ToLocalTime().ToString("yyyy-MM-dd")</td>
-            </tr>
-            <tr>
-                <th scope="row">Vigente hasta</th>
-                <td class="cifra-tabular">@_membresia.FinUtc.ToLocalTime().ToString("yyyy-MM-dd")</td>
-            </tr>
-        </tbody>
-    </MudSimpleTable>
-}
+<p class="seccion-ayuda">Si un timbrado no se completa, su timbre vuelve al saldo disponible.</p>
 
 <h2 class="seccion-titulo">Comprar timbres</h2>
 
@@ -83,33 +68,51 @@
     La compra queda registrada y los timbres entran en cuanto se confirma el pago.
 </p>
 
-<div class="rejilla-paquetes">
+@if (_cargando)
+{
+    <p class="seccion-ayuda" role="status">Cargando paquetes…</p>
+}
+else if (_paquetes.Count == 0)
+{
+    <p class="seccion-ayuda" role="status">No hay paquetes disponibles por el momento.</p>
+}
+
+<div class="rejilla-paquetes" aria-label="Paquetes de timbres">
     @foreach (var paquete in _paquetes)
     {
-        <div class="tarjeta-paquete">
-            <h3>@paquete.Nombre</h3>
+        <article @key="paquete.Id" class="tarjeta-paquete @(paquete.Id == _mejorPrecioId ? "tarjeta-paquete-destacado" : null)"
+                 aria-labelledby="@($"paquete-{paquete.Id}")">
+            <header class="paquete-encabezado">
+                <h3 id="@($"paquete-{paquete.Id}")">@paquete.Nombre</h3>
+                @if (paquete.EsPersonalizado)
+                {
+                    <span class="indicador-estado indicador-estado-advertencia">Exclusivo para tu cuenta</span>
+                }
+                @if (paquete.Id == _mejorPrecioId)
+                {
+                    <span class="paquete-distintivo">Menor precio por timbre</span>
+                }
+            </header>
 
-            @if (paquete.EsPersonalizado)
-            {
-                <span class="indicador-estado indicador-estado-advertencia">Exclusivo para tu cuenta</span>
-            }
+            <p class="paquete-cantidad"><strong class="cifra-tabular">@paquete.CantidadTimbres.ToString("N0")</strong> timbres</p>
 
-            <p class="paquete-total cifra-tabular">@paquete.PrecioTotal.ToString("C2")</p>
+            <div class="paquete-precio">
+                <p class="paquete-total cifra-tabular">@paquete.PrecioTotal.ToString("C2") <span>MXN</span></p>
+                <span class="paquete-impuestos">Precio total · IVA incluido</span>
+            </div>
 
-            <p class="paquete-vigencia">IVA incluido</p>
+            <dl class="paquete-detalles">
+                <div><dt>Por timbre</dt><dd class="cifra-tabular">@paquete.PrecioPorTimbre.ToString("C2")</dd></div>
+                <div><dt>Vigencia</dt><dd>@paquete.VigenciaMeses @(paquete.VigenciaMeses == 1 ? "mes" : "meses")</dd></div>
+            </dl>
 
-            <p class="paquete-unitario cifra-tabular">
-                @paquete.PrecioPorTimbre.ToString("C2") por timbre
-            </p>
-
-            <p class="paquete-vigencia">Vigencia de @paquete.VigenciaMeses meses</p>
-
-            <MudButton Variant="Variant.Filled" FullWidth="true"
+            <MudButton Variant="Variant.Filled" Color="Color.Primary" FullWidth="true"
                        Disabled="@(_comprando is not null)"
+                       aria-label="@($"Comprar {paquete.Nombre}, {paquete.CantidadTimbres:N0} timbres por {paquete.PrecioTotal:C2} MXN")"
                        OnClick="@(() => Comprar(paquete))">
-                @(_comprando == paquete.Id ? "Comprando…" : "Comprar")
+                @(_comprando == paquete.Id ? "Registrando compra…" : "Comprar paquete")
             </MudButton>
-        </div>
+        </article>
     }
 </div>
 
@@ -205,6 +208,8 @@ else
     private Guid? _comprando;
     private Guid? _descargando;
     private Guid? _previsualizando;
+    private Guid? _mejorPrecioId;
+    private bool _cargando = true;
 
     /// <summary>Mismo margen que aplica el servidor para decidir si conviene avisar.</summary>
     private const int DiasDeAviso = 30;
@@ -218,10 +223,19 @@ else
 
     private async Task CargarAsync()
     {
-        _saldo = await Timbres.SaldoAsync();
-        _paquetes = await Timbres.PaquetesAsync();
-        _compras = await Timbres.ComprasAsync();
-        _membresia = await Timbres.MembresiaAsync();
+        _cargando = true;
+        try
+        {
+            _saldo = await Timbres.SaldoAsync();
+            _paquetes = await Timbres.PaquetesAsync();
+            _compras = await Timbres.ComprasAsync();
+            _membresia = await Timbres.MembresiaAsync();
+            // El distintivo compara los precios recibidos, sin recalcular lo que se cobra.
+            _mejorPrecioId = _paquetes.Select(p => p.PrecioPorTimbre).Distinct().Count() > 1
+                ? _paquetes.OrderBy(p => p.PrecioPorTimbre).ThenBy(p => p.PrecioTotal).First().Id
+                : null;
+        }
+        finally { _cargando = false; }
     }
 
     private async Task Comprar(PaqueteDto paquete)

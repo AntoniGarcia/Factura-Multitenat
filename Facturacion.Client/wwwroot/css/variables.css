@@ -14,6 +14,7 @@
     --texto-suave: #5A6270;
     --texto-inverso: #FFFFFF;
     --acento: #1B3A6B;
+    --acento-texto: var(--acento);
     --acento-rgb: 27, 58, 107;
     --acento-suave: #E8EDF5;
     --opcion-seleccionada-fondo: #DFEAF8;
@@ -117,6 +118,7 @@
     --texto-suave: #93A0B2;
     --texto-inverso: #FFFFFF;
     --acento: #376FBE;
+    --acento-texto: #8FB9F3;
     --acento-rgb: 55, 111, 190;
     --acento-suave: #1F3550;
     --opcion-seleccionada-fondo: #C8DBF4;
