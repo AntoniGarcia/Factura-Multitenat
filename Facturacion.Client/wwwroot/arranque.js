@@ -43,13 +43,7 @@
         }
     }
 
-    document.getElementById('reintentar-arranque')?.addEventListener('click', () => window.location.reload());
-    Blazor.start({
-        loadBootResource(tipo, nombre, uri, integridad) {
-            if (tipo === 'dotnetjs') return null;
-            return programar(() => descargar(uri, integridad));
-        }
-    }).catch(() => {
+    function mostrarFallo() {
         const aviso = document.getElementById('estado-arranque');
         if (aviso) {
             aviso.textContent = 'No se pudo completar la descarga de la aplicación. Comprueba tu conexión y vuelve a intentarlo.';
@@ -57,5 +51,19 @@
         }
         const boton = document.getElementById('reintentar-arranque');
         if (boton) boton.hidden = false;
-    });
+    }
+
+    document.getElementById('reintentar-arranque')?.addEventListener('click', () => window.location.reload());
+    // Si falla el script inicial, todavía no existe Blazor para devolver una promesa.
+    if (!window.Blazor?.start) {
+        mostrarFallo();
+        return;
+    }
+    window.Blazor.start({
+        applicationCulture: 'es-MX',
+        loadBootResource(tipo, nombre, uri, integridad) {
+            if (tipo === 'dotnetjs') return null;
+            return programar(() => descargar(uri, integridad));
+        }
+    }).catch(mostrarFallo);
 })();
