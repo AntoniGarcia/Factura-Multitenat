@@ -23,7 +23,10 @@
             }
             else if (_error is not null)
             {
-                <p role="alert">@_error</p>
+                <div class="vista-previa-cargando" role="alert">
+                    <span>@_error</span>
+                    <MudButton Variant="Variant.Outlined" Color="Color.Primary" OnClick="ReintentarAsync">Volver a intentar</MudButton>
+                </div>
             }
         </div>
 
@@ -56,6 +59,7 @@
 
     private ElementReference _canvas;
     private IJSObjectReference? _visor;
+    private DotNetObjectReference<DialogoDeComprobanteDeCompra>? _notificaciones;
     private bool _cargando = true;
     private bool _cerrado;
     private string? _error;
@@ -65,14 +69,27 @@
     protected override async Task OnAfterRenderAsync(bool primeraRenderizacion)
     {
         if (!primeraRenderizacion) return;
+        await CargarVistaAsync();
+    }
+
+    private Task ReintentarAsync() => _cargando || _cerrado ? Task.CompletedTask : CargarVistaAsync();
+
+    private async Task CargarVistaAsync()
+    {
+        _cargando = true;
+        _error = null;
+        _pagina = 1;
+        _paginas = 0;
 
         try
         {
-            _visor = await JS.InvokeAsync<IJSObjectReference>("import", "./visor-pdf.js");
+            _visor ??= await JS.InvokeAsync<IJSObjectReference>("import", "./visor-pdf.js");
             if (_cerrado) return;
+            await _visor.InvokeVoidAsync("liberar", _canvas);
             using var flujo = new MemoryStream(Archivo.Contenido, writable: false);
             using var referencia = new DotNetStreamReference(flujo);
-            _paginas = await _visor.InvokeAsync<int>("cargar", _canvas, referencia);
+            _notificaciones ??= DotNetObjectReference.Create(this);
+            _paginas = await _visor.InvokeAsync<int>("cargar", _canvas, referencia, _notificaciones);
         }
         catch (JSException) { _error = "No se pudo mostrar la vista previa. Puedes descargar el PDF para consultarlo."; }
         finally { _cargando = false; if (!_cerrado) StateHasChanged(); }
@@ -81,6 +98,7 @@
     private async Task CambiarPagina(int cambio)
     {
         if (_visor is null || _cargando) return;
+        _error = null;
         _cargando = true;
         try
         {
@@ -94,6 +112,14 @@
 
     private async Task Descargar() => await Descargas.GuardarAsync(Archivo);
 
+    [JSInvokable]
+    public Task AlFallarRedibujadoAsync()
+    {
+        if (_cerrado) return Task.CompletedTask;
+        _error = "No se pudo actualizar la vista previa. Vuelve a intentarlo o descarga el PDF para consultarlo.";
+        return InvokeAsync(StateHasChanged);
+    }
+
     private void Cerrar() => Dialogo.Close();
 
     public async ValueTask DisposeAsync()
@@ -104,5 +130,6 @@
             await _visor.InvokeVoidAsync("liberar", _canvas);
             await _visor.DisposeAsync();
         }
+        _notificaciones?.Dispose();
     }
 }

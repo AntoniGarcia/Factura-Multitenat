@@ -1,6 +1,6 @@
 const documentos = new WeakMap();
 
-export async function cargar(canvas, flujo) {
+export async function cargar(canvas, flujo, notificaciones) {
     const estado = { cerrado: false, pagina: 1, tarea: null, pdf: null, render: null, cola: Promise.resolve() };
     documentos.set(canvas, estado);
     try {
@@ -16,7 +16,11 @@ export async function cargar(canvas, flujo) {
         await mostrarPagina(canvas, 1);
         estado.observador = new ResizeObserver(() => {
             clearTimeout(estado.temporizador);
-            estado.temporizador = setTimeout(() => mostrarPagina(canvas, estado.pagina).catch(() => {}), 150);
+            estado.temporizador = setTimeout(() => mostrarPagina(canvas, estado.pagina).catch(() => {
+                if (!estado.cerrado && notificaciones) {
+                    notificaciones.invokeMethodAsync('AlFallarRedibujadoAsync').catch(() => {});
+                }
+            }), 150);
         });
         estado.observador.observe(canvas.parentElement);
         return estado.pdf.numPages;
