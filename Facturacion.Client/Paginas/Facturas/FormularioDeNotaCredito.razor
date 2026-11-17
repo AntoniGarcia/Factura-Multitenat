@@ -11,10 +11,12 @@
 @inject ServicioDeSesion Sesion
 @inject NavigationManager Navegacion
 @inject IDialogService Dialogos
+@inject IServicioDeConfirmacion Confirmacion
 @implements IDisposable
 
 <PageTitle>Nota de crédito</PageTitle>
 <TituloDePagina Texto="Nota de crédito" />
+<NavigationLock ConfirmExternalNavigation="@TieneCambiosSinGuardar" />
 <TarjetaFormulario Ancha="true" RutaVolver="/documentos">
     <PanelErrores Problema="_error" />
     @if (_aviso is not null) { <p role="status">@_aviso</p> }
@@ -141,6 +143,15 @@
     private readonly Dictionary<int, string?> _descripciones = [];
     private IDisposable? _salida;
     private bool Editable => _nota?.PuedeEditar == true;
+    private string? _capturaGuardada;
+    private bool TieneCambiosSinGuardar => !_cargando && Editable && _capturaGuardada is not null
+        && _capturaGuardada != CapturaActual();
+
+    private string CapturaActual() => System.Text.Json.JsonSerializer.Serialize(new
+    {
+        _serieId, _formaPago, _relacion, Observaciones = _observaciones ?? string.Empty,
+        Bases = _bases.OrderBy(x => x.Key), Descripciones = _descripciones.OrderBy(x => x.Key)
+    });
 
     protected override async Task OnParametersSetAsync()
     {
@@ -172,6 +183,7 @@
             _descripciones[origen.Orden] = concepto?.Descripcion ?? origen.Descripcion;
         }
         _sinGuardar = nota.Comprobante.Estatus == "borrador" && nota.Comprobante.Conceptos.Count == 0 ? nota.Comprobante.Id : null;
+        _capturaGuardada = CapturaActual();
     }
     private async Task Buscar()
     {
@@ -245,6 +257,13 @@
     }
     private async ValueTask AlSalir(LocationChangingContext cambio)
     {
+        if (TieneCambiosSinGuardar && !await Confirmacion.ConfirmarAsync("Cambios sin guardar",
+                "Los cambios de esta nota de crédito no se han guardado. ¿Quieres salir y descartarlos?", "Salir sin guardar"))
+        {
+            cambio.PreventNavigation();
+            return;
+        }
+        if (cambio.CancellationToken.IsCancellationRequested) return;
         if (_sinGuardar is not { } id) return; _sinGuardar = null;
         try { await Emision.EliminarBorradorAsync(id); } catch (HttpRequestException) { }
     }

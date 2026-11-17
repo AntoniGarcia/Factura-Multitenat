@@ -23,6 +23,7 @@
 
 <PageTitle>@(EsNuevo ? "Nueva Carta Porte" : "Carta Porte")</PageTitle>
 <TituloDePagina Texto="@(EsNuevo ? "Nueva Carta Porte" : "Carta Porte")" />
+<AvisoCambiosSinGuardar HayCambios="TieneCambiosSinGuardar" />
 
 <TarjetaFormulario Ancha="true" RutaVolver="/documentos" Class="carta-porte-formulario">
     <PanelErrores Problema="_error" />
@@ -363,6 +364,27 @@
     private string? _observaciones;
     private bool _precargaOrigenIntentada;
     private string? _avisoOrigen;
+    private string? _capturaGuardada;
+
+    private bool TieneCambiosSinGuardar() => !_cargando && EsEditable && _capturaGuardada is not null
+        && _capturaGuardada != CapturaActual();
+
+    private string CapturaActual() => System.Text.Json.JsonSerializer.Serialize(new
+    {
+        _vehiculoId, _figuraId, _clienteDestinoId, _distanciaKm,
+        _fechaSalida, _horaSalida, _fechaLlegada, _horaLlegada,
+        _origen, _destino, Observaciones = _observaciones ?? string.Empty,
+        Aseguradora = _aseguraMedAmbiente ?? string.Empty, Poliza = _polizaMedAmbiente ?? string.Empty,
+        Mercancias = _mercancias.Select(x => new
+        {
+            Producto = x.Producto?.Clave, Unidad = x.Unidad?.Clave, Material = x.Material?.Clave,
+            Embalaje = x.Embalaje?.Clave, x.Descripcion, x.Cantidad, x.PesoEnKg, x.PesoUnitarioKg,
+            x.UnidadPropia, x.Dimensiones, x.MaterialPeligroso,
+            DescripEmbalaje = x.DescripEmbalaje ?? string.Empty, x.ProductoId
+        }),
+        Remolques = _remolques.Select(x => new { Subtipo = x.Subtipo?.Clave, x.Placa }),
+        Relacionados = _relacionados
+    });
 
     private bool EsNuevo => Id is null;
     private bool EsEditable => _estatus is "borrador" or "error";
@@ -404,6 +426,7 @@
             }
         }
 
+        _capturaGuardada = CapturaActual();
         _cargando = false;
     }
 
@@ -457,6 +480,7 @@
             ProductoNombre = x.ProductoNombre
         }));
         if (_mercancias.Count == 0) _mercancias.Add(new());
+        _capturaGuardada = CapturaActual();
     }
 
     private void AgregarMercancia() => _mercancias.Add(new RenglonMercancia());

@@ -11,6 +11,7 @@
 *@
 
 <PanelErrores Problema="_error" />
+<AvisoCambiosSinGuardar HayCambios="TieneCambiosSinGuardar" />
 
 @if (_cargando)
 {
@@ -190,6 +191,22 @@ else
 
     private DetalleProblema? _error;
     private bool _cargando = true;
+    private string? _capturaGuardada;
+
+    private bool TieneCambiosSinGuardar() => !_cargando && _capturaGuardada is not null
+        && _capturaGuardada != CapturaActual();
+
+    private string CapturaActual() => System.Text.Json.JsonSerializer.Serialize(new
+    {
+        _rfc, _nombre, _regimenFiscal, _domicilioFiscalCp, _activo,
+        ResidenciaFiscal = _residenciaFiscal ?? string.Empty, RegistroTributario = _numRegIdTrib ?? string.Empty,
+        UsoCfdi = _usoCfdi ?? string.Empty, MetodoPago = _metodoPago ?? string.Empty, FormaPago = _formaPago ?? string.Empty,
+        Correo = _correo ?? string.Empty, Telefono = _telefono ?? string.Empty, Calle = _calle ?? string.Empty,
+        NumeroExterior = _numeroExterior ?? string.Empty, NumeroInterior = _numeroInterior ?? string.Empty,
+        Colonia = _colonia ?? string.Empty, Localidad = _localidad ?? string.Empty, Referencia = _referencia ?? string.Empty,
+        Municipio = _municipio ?? string.Empty, Estado = _estado ?? string.Empty, Pais = _pais ?? string.Empty,
+        CodigoPostal = _codigoPostal ?? string.Empty
+    });
 
     private string _rfc = string.Empty;
     private string _nombre = string.Empty;
@@ -260,6 +277,7 @@ else
 
         AplicarReglasDeGenerico();
         ActualizarVistaPrevia();
+        _capturaGuardada = CapturaActual();
         _cargando = false;
         await OcupadoCambiado.InvokeAsync(false);
     }
@@ -323,6 +341,10 @@ else
         await OcupadoCambiado.InvokeAsync(false);
         _error = error;
 
-        if (error is null && exito is not null) await AlGuardar.InvokeAsync();
+        if (error is null && exito is not null)
+        {
+            _capturaGuardada = CapturaActual();
+            await AlGuardar.InvokeAsync();
+        }
     }
 }
