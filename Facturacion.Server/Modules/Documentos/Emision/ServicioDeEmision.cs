@@ -241,6 +241,9 @@ public sealed class ServicioDeEmision(
                 return ErrorNegocio.Validacion("global-nombre",
                     $"La factura global va a nombre de PUBLICO EN GENERAL y esta dice «{nombreReceptor}». " +
                     "Cambia el nombre o quita la información global.");
+
+            if (ReglaDeInformacionGlobal.Validar(receptor.Valor.Rfc, nombreReceptor, peticion.GlobalPeriodicidad) is { } sinGlobal)
+                return sinGlobal;
         }
 
         var conceptosResueltos = await ResolverConceptosAsync(peticion.Conceptos, comprobante.Variante, ct);
@@ -559,10 +562,11 @@ public sealed class ServicioDeEmision(
                     "producto-no-encontrado",
                     $"El producto del renglón {i + 1} no existe o está dado de baja.");
 
-            if (linea.ValorUnitario < 0 || linea.ValorUnitario > 999999999999.999999m ||
+            // CFDI40166: en ingreso y egreso el valor unitario es mayor que cero.
+            if (linea.ValorUnitario <= 0 || linea.ValorUnitario > 999999999999.999999m ||
                 decimal.Round(linea.ValorUnitario, 6) != linea.ValorUnitario)
                 return ErrorNegocio.Validacion("precio-unitario-invalido",
-                    $"El precio unitario del renglón {i + 1} debe ser positivo o cero, con hasta 12 enteros y 6 decimales.");
+                    $"El precio unitario del renglón {i + 1} debe ser mayor que cero, con hasta 12 enteros y 6 decimales.");
 
             if (linea.NoIdentificacion is { Length: > 100 } ||
                 linea.NoIdentificacion?.Contains('|') == true)

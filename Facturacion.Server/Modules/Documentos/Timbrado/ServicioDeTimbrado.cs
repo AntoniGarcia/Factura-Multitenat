@@ -4,6 +4,7 @@ using Facturacion.Server.Infra.Bitacora;
 using Facturacion.Server.Infra.Tenencia;
 using Facturacion.Server.Modules.Documentos.Pagos;
 using Facturacion.Server.Modules.Documentos.Egresos;
+using Facturacion.Server.Modules.Documentos.Emision;
 using Facturacion.Server.Modules.Documentos.Pac;
 using Facturacion.Server.Modules.Documentos.Obras;
 using Facturacion.Server.Modules.Documentos.Salidas;
@@ -167,6 +168,16 @@ public sealed class ServicioDeTimbrado(
             if (ReglasDeObjetoImpuesto.Validar(concepto.ObjetoImp,
                     concepto.Impuestos.Select(i => (i.Impuesto, i.EsRetencion))) is { } errorObjeto)
                 return ErrorNegocio.Validacion("objeto-impuesto-invalido", $"Renglón {concepto.Orden}: {errorObjeto}");
+
+        // Repite las reglas de guardado para los borradores que se guardaron antes de que existieran.
+        if (comprobante.TipoDeComprobante is TiposDeComprobante.Ingreso or TiposDeComprobante.Egreso &&
+            comprobante.Conceptos.OrderBy(c => c.Orden).FirstOrDefault(c => c.ValorUnitario <= 0) is { } sinPrecio)
+            return ErrorNegocio.Validacion("precio-unitario-invalido",
+                $"El precio unitario del renglón {sinPrecio.Orden} debe ser mayor que cero. Corrígelo y guarda el borrador.");
+
+        if (comprobante.TipoDeComprobante == TiposDeComprobante.Ingreso &&
+            ReglaDeInformacionGlobal.Validar(comprobante.ReceptorRfc, comprobante.ReceptorNombre, comprobante.GlobalPeriodicidad) is { } sinGlobal)
+            return sinGlobal;
 
         var obra = await baseDeDatos.DatosObra.AsNoTracking()
             .FirstOrDefaultAsync(x => x.ComprobanteId == comprobanteId, ct);

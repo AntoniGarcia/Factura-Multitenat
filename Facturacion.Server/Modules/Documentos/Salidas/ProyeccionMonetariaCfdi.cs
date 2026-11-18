@@ -9,8 +9,9 @@ internal sealed record ImpuestoMonetarioCfdi(ImpuestoConcepto Impuesto, decimal 
 internal sealed record ConceptoMonetarioCfdi(
     Concepto Concepto, decimal Importe, decimal Descuento, ImpuestoMonetarioCfdi[] Impuestos);
 
+/// <param name="Importe">Nulo en el grupo exento: el SAT lo resume solo con base, impuesto y factor.</param>
 internal sealed record TrasladoMonetarioCfdi(
-    string Impuesto, string TipoFactor, decimal? TasaOCuota, decimal Base, decimal Importe);
+    string Impuesto, string TipoFactor, decimal? TasaOCuota, decimal Base, decimal? Importe);
 
 internal sealed record RetencionMonetariaCfdi(string Impuesto, decimal Importe);
 
@@ -59,14 +60,14 @@ internal sealed record ProyeccionMonetariaCfdi(
 
         var impuestos = conceptos.SelectMany(x => x.Impuestos).ToArray();
         var traslados = impuestos
-            .Where(x => !x.Impuesto.EsRetencion && x.Importe is not null)
+            .Where(x => !x.Impuesto.EsRetencion)
             .GroupBy(x => (x.Impuesto.Impuesto, x.Impuesto.TipoFactor, x.Impuesto.TasaOCuota))
             .Select(grupo => new TrasladoMonetarioCfdi(
                 grupo.Key.Impuesto,
                 grupo.Key.TipoFactor,
                 grupo.Key.TasaOCuota,
                 grupo.Sum(x => x.Base),
-                grupo.Sum(x => x.Importe!.Value)))
+                grupo.Any(x => x.Importe is not null) ? grupo.Sum(x => x.Importe ?? 0m) : null))
             .OrderBy(x => x.Impuesto).ThenBy(x => x.TasaOCuota)
             .ToArray();
         var retenciones = impuestos
@@ -79,7 +80,7 @@ internal sealed record ProyeccionMonetariaCfdi(
 
         var subtotal = conceptos.Sum(x => x.Importe);
         var descuento = conceptos.Sum(x => x.Descuento);
-        var totalTrasladados = traslados.Sum(x => x.Importe);
+        var totalTrasladados = traslados.Sum(x => x.Importe ?? 0m);
         var totalRetenidos = retenciones.Sum(x => x.Importe);
 
         var locales = new List<ImpuestoLocalCfdi>();

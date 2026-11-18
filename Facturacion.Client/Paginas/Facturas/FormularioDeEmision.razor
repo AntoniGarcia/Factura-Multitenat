@@ -577,6 +577,8 @@ else
             var nombre = NombreFiscal.Normalizar(_receptorNombre);
             if (_globalPeriodicidad is not null && nombre.Normalizado != "PUBLICO EN GENERAL")
                 return "Con información global debe ser PUBLICO EN GENERAL.";
+            if (_globalPeriodicidad is null && nombre.Normalizado == "PUBLICO EN GENERAL")
+                return "A este nombre va la información global; si es venta suelta, escribe el nombre del comprador.";
             return nombre.Normalizado != nombre.Original && nombre.Normalizado.Length > 0
                 ? $"En el CFDI irá «{nombre.Normalizado}»."
                 : "Solo para esta factura; el cliente no cambia.";

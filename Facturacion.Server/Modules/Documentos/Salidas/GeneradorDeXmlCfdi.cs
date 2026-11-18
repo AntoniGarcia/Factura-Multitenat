@@ -203,7 +203,9 @@ public sealed class GeneradorDeXmlCfdi
         {
             var impuestos = new XElement(Cfdi + "Impuestos",
                 retenciones.Length > 0 ? new XAttribute("TotalImpuestosRetenidos", Moneda(totalRetenidos, d)) : null,
-                traslados.Length > 0 ? new XAttribute("TotalImpuestosTrasladados", Moneda(totalTrasladados, d)) : null);
+                // CFDI40212: el total existe si algún traslado no es exento; con puros exentos se omite.
+                traslados.Any(t => t.Importe is not null)
+                    ? new XAttribute("TotalImpuestosTrasladados", Moneda(totalTrasladados, d)) : null);
 
             if (retenciones.Length > 0)
             {
@@ -221,7 +223,7 @@ public sealed class GeneradorDeXmlCfdi
                         new XAttribute("Impuesto", t.Impuesto),
                         new XAttribute("TipoFactor", t.TipoFactor),
                         t.TasaOCuota is { } tt ? new XAttribute("TasaOCuota", Moneda(tt, DecimalesDeTasa)) : null,
-                        new XAttribute("Importe", Moneda(t.Importe, d))))));
+                        t.Importe is { } it ? new XAttribute("Importe", Moneda(it, d)) : null))));
             }
 
             raiz.Add(impuestos);
