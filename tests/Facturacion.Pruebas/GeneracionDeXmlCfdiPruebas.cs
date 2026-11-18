@@ -199,13 +199,22 @@ public sealed class GeneracionDeXmlCfdiPruebas
         Assert.Null(traslado.Attribute("Importe"));
     }
 
-    /// <summary>Un comprobante solo de exentos no lleva nodo Impuestos: no hay nada que totalizar.</summary>
+    /// <summary>CFDI40213: los exentos resumen su base, impuesto y factor, sin tasa ni importe.</summary>
     [Fact]
-    public void Solo_exentos_no_produce_nodo_de_impuestos_del_comprobante()
+    public void Solo_exentos_resume_la_base_sin_tasa_importe_ni_total_de_traslados()
     {
         var raiz = Generar(Comprobante(Concepto(1, 100m, 0, Exento(100m))));
 
-        Assert.Null(raiz.Element(Cfdi + "Impuestos"));
+        var impuestos = raiz.Element(Cfdi + "Impuestos");
+        Assert.NotNull(impuestos);
+        Assert.Null(impuestos.Attribute("TotalImpuestosTrasladados"));
+
+        var traslado = Assert.Single(impuestos.Element(Cfdi + "Traslados")!.Elements(Cfdi + "Traslado"));
+        Assert.Equal(100m, Attr(traslado, "Base"));
+        Assert.Equal("002", traslado.Attribute("Impuesto")!.Value);
+        Assert.Equal("Exento", traslado.Attribute("TipoFactor")!.Value);
+        Assert.Null(traslado.Attribute("TasaOCuota"));
+        Assert.Null(traslado.Attribute("Importe"));
         Assert.Equal(100m, Attr(raiz, "Total"));
     }
 
