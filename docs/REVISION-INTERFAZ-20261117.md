@@ -28,3 +28,19 @@ WebKit con un perfil de iPhone permite comprobar el motor y el tamaño de pantal
 ## Entrega
 
 La generación del ZIP y la publicación en IIS quedan aplazadas por indicación de Luis, hasta integrar los cambios pendientes de su compañero. No se debe presentar esta revisión de código como una actualización ya instalada en el servidor.
+
+## Compras y facturas del operador — 18 de noviembre
+
+El módulo antes llamado «Pagos pendientes» ahora se presenta como «Compras y facturas» y conserva el filtro inicial de pagos pendientes. «Confirmar pago» mantiene la acreditación manual existente y explica que el saldo se entrega a la cuenta. La confirmación permanece bloqueada mientras está abierto el diálogo para evitar solicitudes simultáneas desde esa pantalla.
+
+Después de acreditar se ofrecen «Ver compras pagadas» y, con el permiso de preparar facturas, «Abrir factura de esta compra». La columna Factura distingue entre por preparar, pendiente de timbrar, en proceso, timbrada y requiere revisión. Las acciones permiten revisar una factura antes de solicitar su timbrado; abrirla no vuelve a acreditar la compra. En móvil los botones se distribuyen en varias líneas y las celdas crecen para contenerlos.
+
+El timbrado de facturas de compras continúa limitado por el servidor a Development con el PAC simulado. El diálogo muestra esa limitación antes de operar. Esta revisión no habilita timbrado real de compras ni integra una pasarela.
+
+Para la futura pasarela se recomienda sustituir la confirmación manual por la confirmación del pago validada en el servidor, manteniendo una sola acreditación por compra. La facturación debe conservar un seguimiento independiente: un reintento de factura no debe repetir la entrega de timbres.
+
+Se verificaron los perfiles de consulta, acreditación y facturación en Edge y WebKit: cancelar no solicita un abono, el error conserva la compra pendiente, abrir una factura no repite la acreditación ni solicita timbrado y cada perfil conserva sus acciones permitidas. Las tarjetas móviles se comprobaron a 320 y 390 píxeles, sin recortes horizontales ni botones fuera de su celda. Las respuestas de compras y sesiones utilizadas en esta comprobación fueron simuladas; no se acreditó ni timbró ninguna compra real.
+
+Al integrar `afd6853`, la suite detectó una prueba que esperaba omitir todo el resumen de impuestos para conceptos exentos. Se actualizó únicamente esa expectativa: la [guía de llenado del SAT, páginas 24–25](https://wwwmatnp.sat.gob.mx/cs/Satellite?blobcol=urldata&blobkey=id&blobtable=MungoBlobs&blobwhere=1705376468921&ssbinary=true) describe el resumen con base, impuesto y factor para ese caso. La prueba comprueba además que se omitan tasa, importe y total de traslados, y que se conserve el total del comprobante. No se modificó el generador de XML.
+
+La solución integrada compiló con cero errores y cero advertencias. La ejecución final de la suite existente terminó con 319 pruebas aprobadas, 13 omitidas y ninguna fallida, de 332 descubiertas. La entrega de esta revisión sigue siendo de código; el ZIP y la publicación en IIS permanecen aplazados.

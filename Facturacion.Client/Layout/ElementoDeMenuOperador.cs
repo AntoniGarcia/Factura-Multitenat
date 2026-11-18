@@ -37,7 +37,7 @@ public static class MenuDeOperador
     public static IReadOnlyList<ElementoDeMenuOperador> Elementos { get; } =
     [
         new("/operador", "Resumen", "dashboard", null, Grupos.Operacion, true),
-        new("/operador/compras", "Pagos pendientes", "pending_actions", PoliticasDelPanel.VerCompras, Grupos.Operacion, true),
+        new("/operador/compras", "Compras y facturas", "pending_actions", PoliticasDelPanel.VerCompras, Grupos.Operacion, true),
         new("/operador/cuentas", "Cuentas", "apartment", PoliticasDelPanel.VerClientes, Grupos.Clientes, true),
         new("/operador/usuarios", "Usuarios", "people", PoliticasDelPanel.VerUsuarios, Grupos.Clientes, false),
         new("/operador/paquetes", "Paquetes", "sell", PoliticasDelPanel.VerPaquetes, Grupos.Comercial, true),

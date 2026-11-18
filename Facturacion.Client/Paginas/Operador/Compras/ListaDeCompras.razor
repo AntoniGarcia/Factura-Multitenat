@@ -11,18 +11,33 @@
 @inject IDialogService Dialogos
 @inject ServicioDeSesionDeOperador Sesion
 
-<PageTitle>Compras de timbres</PageTitle>
-<TituloDePagina Texto="Compras de timbres" />
+<PageTitle>Compras y facturas</PageTitle>
+<TituloDePagina Texto="Compras y facturas" />
+<p class="seccion-ayuda">Confirma los pagos recibidos para abonar timbres a la cuenta. En las compras pagadas puedes preparar y revisar su factura.</p>
 
 <PanelErrores Problema="_error" />
 
 @if (_aviso is not null)
 {
-    <div class="aviso-documentos" role="status">@_aviso</div>
+    <div class="aviso-documentos" role="status">
+        <div>@_aviso</div>
+        @if (_compraAcreditada is { } compra)
+        {
+            <div class="acciones-formulario compras-siguientes">
+                @if (Sesion.TienePermiso(PoliticasDelPanel.FacturarCompras))
+                {
+                    <MudButton Variant="Variant.Outlined" Color="Color.Primary" Disabled="_trabajando"
+                               OnClick="@(() => AbrirFactura(compra))">Abrir factura de esta compra</MudButton>
+                }
+                <MudButton Variant="Variant.Text" Color="Color.Primary" Disabled="_trabajando"
+                           OnClick="VerComprasPagadas">Ver compras pagadas</MudButton>
+            </div>
+        }
+    </div>
 }
 
 <div class="filtros-documentos">
-    <MudSelect T="string" Value="_estado" ValueChanged="AlCambiarEstado" Label="Estado" Dense="true">
+    <MudSelect T="string" Value="_estado" ValueChanged="AlCambiarEstado" Label="Estado del pago" Dense="true">
         <MudSelectItem T="string" Value="@Estados.Pendiente">Pendientes de pago</MudSelectItem>
         <MudSelectItem T="string" Value="@Estados.Pagada">Pagadas</MudSelectItem>
         <MudSelectItem T="string" Value="@Estados.Cancelada">Descartadas</MudSelectItem>
@@ -34,13 +49,15 @@
                   Adornment="Adornment.Start" AdornmentIcon="@Icons.Material.Filled.Search" />
 </div>
 
-<TablaDatos T="CompraDeOperadorDto"
-            @ref="_tabla"
-            Columnas="_columnas"
-            CargarPagina="CargarAsync"
-            AlHacerClic="Previsualizar"
-            TextoEntidad="compras"
-            TextoSinDatos="No hay compras que coincidan." />
+<div class="compras-operador">
+    <TablaDatos T="CompraDeOperadorDto"
+                @ref="_tabla"
+                Columnas="_columnas"
+                CargarPagina="CargarAsync"
+                AlHacerClic="Previsualizar"
+                TextoEntidad="compras"
+                TextoSinDatos="No hay compras que coincidan." />
+</div>
 
 @code {
     /// <summary>
@@ -58,6 +75,7 @@
     private TablaDatos<CompraDeOperadorDto>? _tabla;
     private DetalleProblema? _error;
     private string? _aviso;
+    private CompraDeOperadorDto? _compraAcreditada;
     private bool _trabajando;
     private Guid? _previsualizando;
 
@@ -78,16 +96,16 @@
         new("Paquete", c => @<span>@c.NombrePaquete</span>),
         new("Timbres", c => @<span class="cifra-tabular">@c.CantidadTimbres.ToString("N0")</span>, Tabular: true),
         new("Total", c => @<span class="cifra-tabular">@c.PrecioTotal.ToString("C2")</span>, Tabular: true),
-        new("Estado", c => @<span class="indicador-estado indicador-estado-@EstiloDe(c.Estado)">@TextoDe(c.Estado)</span>),
-        new("Factura", c => @<span class="texto-secundario">@(c.EstadoFactura switch { "borrador" => "Borrador", "timbrando" => "En proceso", "timbrado" => "Emitida", "error" => "Revisar", _ => "—" })</span>),
-        new("", c => @<div class="acciones-renglon">
+        new("Pago", c => @<span class="indicador-estado indicador-estado-@EstiloDe(c.Estado)">@TextoDe(c.Estado)</span>),
+        new("Factura", c => @<span class="texto-secundario">@EstadoDeFactura(c)</span>),
+        new("Acciones", c => @<div class="acciones-renglon compras-acciones" @onclick:stopPropagation="true">
                           @if (c.Estado == Estados.Pendiente)
                           {
                               @if (Sesion.TienePermiso(PoliticasDelPanel.SoloAcreditarCompras))
                               {
                               <MudButton Size="Size.Small" Variant="Variant.Filled" Color="Color.Primary"
                                          Disabled="@_trabajando" OnClick="@(() => Acreditar(c))">
-                                  Acreditar
+                                  Confirmar pago
                               </MudButton>
                               }
                               @if (Sesion.TienePermiso(PoliticasDelPanel.DescartarCompras))
@@ -100,24 +118,22 @@
                           }
                           else if (c.Estado == Estados.Pagada)
                           {
-                              <span @onclick:stopPropagation="true">
-                                  <MudButton Size="Size.Small" Variant="Variant.Text"
-                                             Disabled="@(_trabajando || _previsualizando is not null)"
-                                             OnClick="@(() => Previsualizar(c))">
-                                      Comprobante
+                              <MudButton Size="Size.Small" Variant="Variant.Text"
+                                         Disabled="@(_trabajando || _previsualizando is not null)"
+                                         OnClick="@(() => Previsualizar(c))">
+                                  Comprobante
+                              </MudButton>
+                              <MudButton Size="Size.Small" Variant="Variant.Text"
+                                         Disabled="@_trabajando" OnClick="@(() => Descargar(c))">
+                                  Descargar PDF
+                              </MudButton>
+                              @if (c.EstadoFactura is not null || Sesion.TienePermiso(PoliticasDelPanel.FacturarCompras))
+                              {
+                                  <MudButton Size="Size.Small" Variant="Variant.Outlined" Color="Color.Primary"
+                                             Disabled="@_trabajando" OnClick="@(() => AbrirFactura(c))">
+                                      @AccionDeFactura(c)
                                   </MudButton>
-                                  <MudButton Size="Size.Small" Variant="Variant.Text"
-                                             Disabled="@_trabajando" OnClick="@(() => Descargar(c))">
-                                      Descargar PDF
-                                  </MudButton>
-                                  @if (c.EstadoFactura is not null || Sesion.TienePermiso(PoliticasDelPanel.FacturarCompras))
-                                  {
-                                      <MudButton Size="Size.Small" Variant="Variant.Outlined" Color="Color.Primary"
-                                                 Disabled="@_trabajando" OnClick="@(() => AbrirFactura(c))">
-                                          @(c.EstadoFactura is null ? "Preparar factura" : "Ver factura")
-                                      </MudButton>
-                                  }
-                              </span>
+                              }
                           }
                           else if (c.MotivoCancelacion is { } motivo)
                           {
@@ -148,6 +164,12 @@
 
     private Task RecargarAsync() => _tabla?.RecargarAsync() ?? Task.CompletedTask;
 
+    private async Task VerComprasPagadas()
+    {
+        _texto = string.Empty;
+        await AlCambiarEstado(Estados.Pagada);
+    }
+
     private async Task AbrirFactura(CompraDeOperadorDto compra)
     {
         if (_trabajando) return;
@@ -159,7 +181,11 @@
                 new DialogOptions { MaxWidth = MaxWidth.Medium, FullWidth = true, CloseButton = true });
             var resultado = await referencia.Result;
             if (resultado is { Canceled: false, Data: true })
-            { _aviso = "Factura actualizada."; await RecargarAsync(); }
+            {
+                _compraAcreditada = null;
+                _aviso = "Factura actualizada. Los timbres de la compra ya están acreditados.";
+                await RecargarAsync();
+            }
         }
         finally { _trabajando = false; }
     }
@@ -171,27 +197,33 @@
     private async Task Acreditar(CompraDeOperadorDto compra)
     {
         if (_trabajando) return;
-
-        var confirmado = await Confirmacion.ConfirmarAsync(
-            "Acreditar el pago",
-            $"Se van a abonar {compra.CantidadTimbres:N0} timbres a «{compra.EmpresaNombre}» " +
-            $"({compra.EmpresaRfc}) por {compra.PrecioTotal:C2}. Hazlo solo si el pago ya llegó.",
-            "Acreditar");
-
-        if (!confirmado) return;
-
         _trabajando = true;
-        _error = null;
-        _aviso = null;
+        try
+        {
+            var confirmado = await Confirmacion.ConfirmarAsync(
+                "Confirmar pago y acreditar timbres",
+                $"Se van a abonar {compra.CantidadTimbres:N0} timbres a la cuenta «{compra.CuentaNombre}». " +
+                $"Compra de {compra.EmpresaNombre} ({compra.EmpresaRfc}) por {compra.PrecioTotal:C2}. " +
+                "Confirma solo si el pago ya llegó. La factura se prepara después de acreditar los timbres.",
+                "Confirmar pago");
 
-        _error = await Compras.AcreditarAsync(compra.Id);
+            if (!confirmado) return;
 
-        _trabajando = false;
+            _error = null;
+            _aviso = null;
+            _compraAcreditada = null;
 
-        if (_error is null)
-            _aviso = $"Pago acreditado: {compra.CantidadTimbres:N0} timbres para {compra.EmpresaNombre}.";
+            _error = await Compras.AcreditarAsync(compra.Id);
 
-        await RecargarAsync();
+            if (_error is null)
+            {
+                _compraAcreditada = compra;
+                _aviso = $"Pago confirmado: {compra.CantidadTimbres:N0} timbres acreditados a la cuenta {compra.CuentaNombre}.";
+            }
+
+            await RecargarAsync();
+        }
+        finally { _trabajando = false; }
     }
 
     private async Task Rechazar(CompraDeOperadorDto compra)
@@ -213,6 +245,7 @@
         _trabajando = true;
         _error = null;
         _aviso = null;
+        _compraAcreditada = null;
 
         _error = await Compras.RechazarAsync(compra.Id, motivo);
 
@@ -230,6 +263,7 @@
         _trabajando = true;
         _error = null;
         _aviso = null;
+        _compraAcreditada = null;
 
         try
         {
@@ -248,6 +282,7 @@
         _previsualizando = compra.Id;
         _error = null;
         _aviso = null;
+        _compraAcreditada = null;
 
         try
         {
@@ -287,4 +322,27 @@
     };
 
     private static string Recortar(string texto) => texto.Length <= 40 ? texto : texto[..40] + "…";
+
+    private static string EstadoDeFactura(CompraDeOperadorDto compra) => compra.Estado switch
+    {
+        Estados.Pendiente => "Espera el pago",
+        Estados.Cancelada => "No aplica",
+        _ => compra.EstadoFactura switch
+        {
+            "borrador" => "Pendiente de timbrar",
+            "timbrando" => "En proceso",
+            "timbrado" => "Timbrada",
+            "error" => "Requiere revisión",
+            _ => "Por preparar"
+        }
+    };
+
+    private string AccionDeFactura(CompraDeOperadorDto compra) => compra.EstadoFactura switch
+    {
+        null => "Preparar factura",
+        "borrador" or "error" when Sesion.TienePermiso(PoliticasDelPanel.TimbrarCompras) => "Revisar y timbrar",
+        "borrador" or "error" => "Revisar factura",
+        "timbrando" => "Ver seguimiento",
+        _ => "Ver factura"
+    };
 }

@@ -1726,6 +1726,24 @@
     white-space: nowrap;
 }
 
+.compras-siguientes {
+    flex-wrap: wrap;
+    margin: 0.75rem 0 0;
+}
+
+.compras-acciones {
+    flex-wrap: wrap;
+    justify-content: flex-end;
+    min-width: 0;
+}
+
+@media (max-width: 599.98px) {
+    .compras-operador .mud-table-cell {
+        height: auto;
+        min-height: var(--alto-fila-tabla);
+    }
+}
+
 /* Fila de tabla que navega al hacer clic: el cursor lo anuncia y el enlace dentro de la
    primera celda mantiene la operación con teclado. */
 .fila-navegable {

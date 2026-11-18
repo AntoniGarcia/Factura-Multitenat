@@ -21,6 +21,8 @@
         }
         else if (_factura is { } f)
         {
+            <p class="seccion-ayuda">Los timbres de esta compra ya están acreditados. Preparar o reintentar la factura no vuelve a abonar saldo.</p>
+            <p class="aviso-documentos">El timbrado de compras está disponible solo como simulación local. No emite un CFDI válido ante el SAT.</p>
             <MudForm @ref="_formulario">
                 <div class="formulario-catalogo-secciones">
                     <section class="formulario-catalogo-seccion formulario-catalogo-seccion-ancha factura-compra-proveedor" aria-labelledby="factura-compra-emisor">
