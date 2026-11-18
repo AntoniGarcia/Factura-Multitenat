@@ -273,6 +273,10 @@
 }
 
 .documentos-filtros {
+    display: grid;
+    grid-template-columns: minmax(14rem, 1fr) minmax(0, 4fr);
+    align-items: start;
+    gap: 0.75rem;
     margin-bottom: 1rem;
     padding: 0.75rem;
     background: var(--superficie);
@@ -281,7 +285,193 @@
 }
 
 .documentos-filtros .filtros-documentos {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(10rem, 1fr));
     margin-bottom: 0;
+}
+
+.documentos-filtros .filtros-documentos > * {
+    min-width: 0;
+    max-width: none;
+}
+
+.documentos-busqueda {
+    display: flex;
+    align-items: flex-end;
+    gap: 0.5rem;
+    min-width: 0;
+}
+
+.documentos-busqueda > .mud-input-control {
+    flex: 1;
+    min-width: 0;
+}
+
+.documentos-alternar-filtros,
+.documentos-rango-activo {
+    display: none;
+}
+
+.tabla-datos-tarjeta {
+    display: none;
+}
+
+@media (max-width: 959.98px) {
+    .tabla-datos-con-tarjetas .tabla-datos-celda-escritorio {
+        display: none;
+    }
+
+    .tabla-datos-con-tarjetas .tabla-datos-tarjeta {
+        display: block;
+        height: auto;
+        padding: 0.875rem;
+        text-align: left;
+    }
+
+    .tabla-datos-con-tarjetas .tabla-datos-tarjeta::before {
+        display: none;
+    }
+
+    .documento-tarjeta-cabecera,
+    .documento-tarjeta-datos,
+    .documento-tarjeta-acciones {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        flex-wrap: wrap;
+        gap: 0.5rem;
+    }
+
+    .documento-tarjeta-receptor {
+        display: block;
+        margin-top: 0.625rem;
+        overflow-wrap: anywhere;
+    }
+
+    .documento-tarjeta-rfc,
+    .documento-tarjeta-datos > span {
+        color: var(--texto-suave);
+        font-size: 0.8125rem;
+    }
+
+    .documento-tarjeta-datos {
+        margin: 0.625rem 0;
+    }
+
+    .documento-tarjeta-acciones {
+        border-top: 1px solid var(--borde);
+        padding-top: 0.5rem;
+        font-size: 0.8125rem;
+    }
+
+    .documento-tarjeta-acciones a,
+    .documento-tarjeta-vista {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.375rem;
+        min-height: var(--alto-control);
+    }
+
+    .documento-tarjeta-vista {
+        border: 0;
+        padding: 0 0.25rem;
+        background: none;
+        color: var(--acento-texto);
+    }
+
+    .usuarios-tabla .mud-table-smalldevicesortselect {
+        display: none;
+    }
+
+    .usuarios-tabla .mud-table-body .mud-table-row {
+        display: grid;
+        height: auto;
+        grid-template-columns: minmax(0, 1fr) auto;
+        padding: 0.75rem;
+        margin-bottom: 0.75rem;
+        border: 1px solid var(--borde);
+        border-radius: var(--radio);
+        gap: 0.5rem;
+    }
+
+    .usuarios-tabla .mud-table-body .mud-table-cell {
+        height: auto;
+        min-width: 0;
+        padding: 0;
+        border: 0;
+        text-align: left;
+        justify-content: flex-start;
+        gap: 0.375rem;
+        overflow-wrap: anywhere;
+    }
+
+    .usuarios-tabla :is(.usuario-correo, .usuario-permisos, .usuario-empresas, .usuario-acciones) {
+        grid-column: 1 / -1;
+    }
+
+    .usuarios-tabla .usuario-nombre {
+        font-weight: var(--peso-etiqueta);
+    }
+
+    .usuarios-tabla .usuario-estado {
+        grid-column: 2;
+        grid-row: 1;
+        align-self: start;
+    }
+
+    .usuarios-tabla :is(.usuario-nombre, .usuario-correo, .usuario-estado, .usuario-acciones)::before {
+        display: none;
+    }
+
+    .usuarios-tabla :is(.usuario-correo, .usuario-permisos, .usuario-empresas) {
+        flex-wrap: wrap;
+        color: var(--texto-suave);
+        font-size: 0.8125rem;
+    }
+
+    .usuarios-tabla .usuario-acciones .acciones-renglon {
+        width: 100%;
+        margin-top: 0.25rem;
+    }
+
+    .usuarios-tabla .usuario-acciones:empty {
+        display: none;
+    }
+}
+
+@media (max-width: 768px) {
+    .documentos-filtros {
+        grid-template-columns: minmax(0, 1fr);
+        gap: 0.375rem;
+    }
+
+    .documentos-alternar-filtros {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        gap: 0.25rem;
+        flex-shrink: 0;
+        padding: 0 0.5rem;
+        background: var(--superficie);
+        color: var(--acento-texto);
+    }
+
+    .documentos-filtros .documentos-filtros-adicionales {
+        display: none;
+    }
+
+    .documentos-filtros .documentos-filtros-adicionales.filtros-abiertos {
+        display: grid;
+        padding-top: 0.5rem;
+    }
+
+    .documentos-rango-activo {
+        display: block;
+        margin: 0.375rem 0 0;
+        color: var(--texto-suave);
+        font-size: 0.75rem;
+        font-variant-numeric: tabular-nums;
+    }
 }
 
 .documentos-area {
@@ -517,7 +707,7 @@
 }
 
 .documento-acciones-fila { display: flex; align-items: center; gap: 0.5rem; }
-.documento-abrir { color: var(--acento); padding: 0.5rem; }
+.documento-abrir { color: var(--acento-texto); padding: 0.5rem; }
 
 .tabla-fila-seleccionada > .mud-table-cell {
     background: var(--acento-suave);
@@ -1591,6 +1781,16 @@
     height: auto;
     margin: auto;
     background: var(--superficie);
+}
+
+.vista-previa-comprobante canvas[hidden] {
+    display: none;
+}
+
+.vista-previa-cargando > span {
+    max-width: 30rem;
+    padding: 0 1rem;
+    text-align: center;
 }
 
 .vista-previa-paginacion { display: flex; align-items: center; justify-content: center; flex-wrap: wrap; gap: 0.5rem; margin-bottom: 0.5rem; }

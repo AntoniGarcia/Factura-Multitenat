@@ -29,7 +29,7 @@
     --mud-palette-primary: var(--acento);
     --mud-palette-primary-rgb: var(--acento-rgb);
     --mud-palette-primary-text: var(--texto-inverso);
-    --mud-palette-primary-hover: rgba(var(--acento-rgb), 0.9);
+    --mud-palette-primary-hover: var(--acento-suave);
     --mud-palette-primary-darken: var(--acento);
     --mud-palette-primary-lighten: var(--acento-suave);
 
@@ -63,21 +63,21 @@
     --mud-palette-error-rgb: var(--estado-error-rgb);
     --mud-palette-error-text: var(--texto-inverso);
     --mud-palette-error-darken: var(--estado-error);
-    --mud-palette-error-hover: rgba(var(--estado-error-rgb), 0.9);
+    --mud-palette-error-hover: rgba(var(--estado-error-rgb), 0.08);
     --mud-palette-error-lighten: rgba(var(--estado-error-rgb), 0.15);
 
     --mud-palette-warning: var(--estado-advertencia);
     --mud-palette-warning-rgb: var(--estado-advertencia-rgb);
     --mud-palette-warning-text: var(--texto-inverso);
     --mud-palette-warning-darken: var(--estado-advertencia);
-    --mud-palette-warning-hover: rgba(var(--estado-advertencia-rgb), 0.9);
+    --mud-palette-warning-hover: rgba(var(--estado-advertencia-rgb), 0.08);
     --mud-palette-warning-lighten: rgba(var(--estado-advertencia-rgb), 0.15);
 
     --mud-palette-success: var(--estado-timbrada);
     --mud-palette-success-rgb: var(--estado-timbrada-rgb);
     --mud-palette-success-text: var(--texto-inverso);
     --mud-palette-success-darken: var(--estado-timbrada);
-    --mud-palette-success-hover: rgba(var(--estado-timbrada-rgb), 0.9);
+    --mud-palette-success-hover: rgba(var(--estado-timbrada-rgb), 0.08);
     --mud-palette-success-lighten: rgba(var(--estado-timbrada-rgb), 0.15);
 
     /* MudBlazor no tiene un cuarto color de estado para "info" que corresponda a un
@@ -87,7 +87,7 @@
     --mud-palette-info-rgb: var(--estado-borrador-rgb);
     --mud-palette-info-text: var(--texto-inverso);
     --mud-palette-info-darken: var(--estado-borrador);
-    --mud-palette-info-hover: rgba(var(--estado-borrador-rgb), 0.9);
+    --mud-palette-info-hover: rgba(var(--estado-borrador-rgb), 0.08);
     --mud-palette-info-lighten: rgba(var(--estado-borrador-rgb), 0.15);
 
     --mud-default-borderradius: var(--radio);
@@ -103,6 +103,22 @@
 .mud-input-control .mud-input,
 .mud-button-root {
     min-height: var(--alto-control);
+}
+
+.mud-tab {
+    text-transform: none;
+    font-weight: var(--peso-etiqueta);
+}
+
+.mud-tab:focus-visible {
+    outline: 2px solid var(--acento);
+    outline-offset: -2px;
+}
+
+.mud-tab.mud-tab-active,
+.mud-button-text-primary,
+.mud-button-outlined-primary {
+    color: var(--acento-texto);
 }
 
 /* Selección legible en desplegables y autocompletados de ambos paneles. */

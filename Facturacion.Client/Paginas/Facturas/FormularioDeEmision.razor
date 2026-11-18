@@ -24,6 +24,7 @@
 
 <PageTitle>@(EsNuevo ? "Nueva factura" : "Factura")</PageTitle>
 <TituloDePagina Texto="@TituloDeLaPantalla" />
+<NavigationLock ConfirmExternalNavigation="@TieneCambiosSinGuardar" />
 
 <TarjetaFormulario Ancha="true" RutaVolver="/documentos">
 <PanelErrores Problema="_error" />
@@ -734,6 +735,7 @@ else
             _vistaPrevia = DesdeComprobante(comprobante);
         }
 
+        _capturaGuardada = CapturaActual();
         _cargando = false;
     }
 
@@ -1011,6 +1013,7 @@ else
         _vistaPrevia = DesdeComprobante(exito!);
         _errorVistaPrevia = null;
         _borradorSinGuardar = null;
+        _capturaGuardada = CapturaActual();
         return true;
     }
 
@@ -1033,6 +1036,7 @@ else
         _comprobante = actualizado;
         CopiarAmortizacion(actualizado);
         _vistaPrevia = DesdeComprobante(actualizado);
+        _capturaGuardada = CapturaActual();
     }
 
     private PeticionGuardarBorrador CapturarFactura(bool soloElegidos = false) => new(
@@ -1215,6 +1219,28 @@ else
 
     // Id del borrador que se creó al abrir la pantalla y todavía no se guardó nunca.
     private Guid? _borradorSinGuardar;
+    private string? _capturaGuardada;
+
+    private bool TieneCambiosSinGuardar => !_cargando && EsEditable && _capturaGuardada is not null
+        && _capturaGuardada != CapturaActual();
+
+    // Se comparan los valores capturados, sin calcular importes que todavía pueden
+    // ser inválidos mientras se edita. Este estado no sale del navegador.
+    private string CapturaActual() => System.Text.Json.JsonSerializer.Serialize(new
+    {
+        Serie = _serie?.Id, Cliente = _cliente?.Id, _moneda, _tipoCambio,
+        FormaPago = _formaPago ?? string.Empty, MetodoPago = _metodoPago ?? string.Empty,
+        UsoCfdi = _usoCfdi ?? string.Empty, ReceptorNombre = _receptorNombre ?? string.Empty,
+        Observaciones = _observaciones ?? string.Empty, CondicionesDePago = _condicionesDePago ?? string.Empty,
+        _globalPeriodicidad, _globalMeses, _globalAnio, _ishPct,
+        Renglones = _renglones.Select(r => new
+        {
+            r.ProductoId, r.ClaveProdServ, r.ClaveUnidad, r.UnidadTexto, r.NoIdentificacion,
+            r.Descripcion, r.Cantidad, r.ValorUnitario, r.Descuento, r.ObjetoImp,
+            r.Impuestos, r.Retenciones, r.AplicaIsh, r.DatosFiscales
+        }),
+        Relacionados = _relacionados
+    });
     private IDisposable? _registroDeSalida;
 
     protected override void OnAfterRender(bool firstRender)
@@ -1226,6 +1252,13 @@ else
 
     private async ValueTask AlSalirAsync(LocationChangingContext contexto)
     {
+        if (TieneCambiosSinGuardar && !await Confirmacion.ConfirmarAsync(
+                "Cambios sin guardar", "Los cambios de esta factura no se han guardado. ¿Quieres salir y descartarlos?", "Salir sin guardar"))
+        {
+            contexto.PreventNavigation();
+            return;
+        }
+        if (contexto.CancellationToken.IsCancellationRequested) return;
         if (_borradorSinGuardar is not { } id) return;
 
         _borradorSinGuardar = null; // evita un segundo intento si el handler se dispara otra vez

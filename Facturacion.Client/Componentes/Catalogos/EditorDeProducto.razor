@@ -10,6 +10,7 @@
 *@
 
 <PanelErrores Problema="_error" />
+<AvisoCambiosSinGuardar HayCambios="TieneCambiosSinGuardar" />
 
 @if (_cargando)
 {
@@ -220,6 +221,18 @@ else
 
     private DetalleProblema? _error;
     private bool _cargando = true;
+    private string? _capturaGuardada;
+
+    private bool TieneCambiosSinGuardar() => !_cargando && _capturaGuardada is not null
+        && _capturaGuardada != CapturaActual();
+
+    private string CapturaActual() => System.Text.Json.JsonSerializer.Serialize(new
+    {
+        _descripcion, IdInterno = _idInterno ?? string.Empty, Detalle = _detalle ?? string.Empty,
+        _unidadTexto, _valorUnitario, _pesoKg, _objetoImp, _activo,
+        ProductoServicio = _claveProdServSel?.Clave, Unidad = _claveUnidadSel?.Clave,
+        Impuestos = _impuestos, _nuevoImpuesto, _nuevoFactor, _nuevaTasa, _nuevoEsRetencion
+    });
     private ConfiguracionEmpresaDto? _configuracionEmpresa;
 
     private string _descripcion = string.Empty;
@@ -292,6 +305,7 @@ else
             }
         }
 
+        _capturaGuardada = CapturaActual();
         _cargando = false;
         await OcupadoCambiado.InvokeAsync(false);
     }
@@ -412,6 +426,10 @@ else
         await OcupadoCambiado.InvokeAsync(false);
         _error = error;
 
-        if (error is null && exito is not null) await AlGuardar.InvokeAsync();
+        if (error is null && exito is not null)
+        {
+            _capturaGuardada = CapturaActual();
+            await AlGuardar.InvokeAsync();
+        }
     }
 }

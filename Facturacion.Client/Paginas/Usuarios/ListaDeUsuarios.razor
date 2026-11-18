@@ -47,76 +47,70 @@ else
 
     <h2 class="seccion-titulo">Usuarios de tu cuenta</h2>
 
-    <MudSimpleTable Dense="true" Hover="true">
-        <thead>
-            <tr>
-                <th>Nombre</th>
-                <th>Correo</th>
-                <th>Permisos</th>
-                @if (_datos.Empresas.Count > 1)
-                {
-                    <th>Empresas</th>
-                }
-                <th>Estado</th>
-                <th></th>
-            </tr>
-        </thead>
-        <tbody>
-            @foreach (var usuario in _datos.Usuarios)
+    <MudTable T="UsuarioDeLaCuentaDto" Items="_datos.Usuarios" Dense="true" Hover="true" Breakpoint="Breakpoint.Sm" RowsPerPage="12" Class="usuarios-tabla">
+        <HeaderContent>
+            <MudTh>Nombre</MudTh>
+            <MudTh>Correo</MudTh>
+            <MudTh>Permisos</MudTh>
+            @if (_datos.Empresas.Count > 1)
             {
-                <tr>
-                    <td>@usuario.Nombre @(usuario.EsUsuarioActual ? "(tú)" : "")</td>
-                    <td>
-                        @usuario.Correo
-                        @* Se marca de quién administra la contraseña: en una empresa con tres
-                           accesos, saber cuál de ellos depende del administrador cambia a quién
-                           se le pide ayuda cuando alguien no puede entrar. *@
-                        @if (usuario.EsTitular)
+                <MudTh>Empresas</MudTh>
+            }
+            <MudTh>Estado</MudTh>
+            <MudTh>Acciones</MudTh>
+        </HeaderContent>
+        <RowTemplate Context="usuario">
+            <MudTd DataLabel="Nombre" Class="usuario-nombre">@usuario.Nombre @(usuario.EsUsuarioActual ? "(tú)" : "")</MudTd>
+            <MudTd DataLabel="Correo" Class="usuario-correo">
+                @usuario.Correo
+                @if (usuario.EsTitular)
+                {
+                    <span class="indicador-estado indicador-estado-timbrada">Titular</span>
+                }
+                else if (usuario.CreadoPorAdministrador)
+                {
+                    <span class="indicador-estado indicador-estado-borrador">Alta interna</span>
+                }
+            </MudTd>
+            <MudTd DataLabel="Permisos" Class="usuario-permisos">@(usuario.EsTitular ? "Todos" : Etiquetas(usuario.Permisos))</MudTd>
+            @if (_datos.Empresas.Count > 1)
+            {
+                <MudTd DataLabel="Empresas" Class="usuario-empresas">@(usuario.EsTitular ? "Todas" : NombresDeEmpresas(usuario.Empresas))</MudTd>
+            }
+            <MudTd DataLabel="Estado" Class="usuario-estado">
+                <span class="indicador-estado indicador-estado-@(usuario.Activo ? "timbrada" : "borrador")">
+                    @(usuario.Activo ? "Activo" : "Inactivo")
+                </span>
+            </MudTd>
+            <MudTd DataLabel="Acciones" Class="usuario-acciones">
+                @* El servidor también rechaza cualquier modificación al titular. *@
+                @if (!usuario.EsTitular)
+                {
+                    <div class="acciones-renglon">
+                        <MudButton Size="Size.Small" Color="Color.Primary" Variant="Variant.Outlined" Disabled="@_dialogoAbierto"
+                                   StartIcon="@Icons.Material.Filled.Edit" OnClick="@(() => EditarUsuario(usuario))">Editar</MudButton>
+                        @if (!usuario.EsUsuarioActual)
                         {
-                            <span class="indicador-estado indicador-estado-timbrada">Titular</span>
-                        }
-                        else if (usuario.CreadoPorAdministrador)
-                        {
-                            <span class="indicador-estado indicador-estado-borrador">Alta interna</span>
-                        }
-                    </td>
-                    <td>@(usuario.EsTitular ? "Todos" : Etiquetas(usuario.Permisos))</td>
-                    @if (_datos.Empresas.Count > 1)
-                    {
-                        <td>@(usuario.EsTitular ? "Todas" : NombresDeEmpresas(usuario.Empresas))</td>
-                    }
-                    <td>
-                        <span class="indicador-estado indicador-estado-@(usuario.Activo ? "timbrada" : "borrador")">
-                            @(usuario.Activo ? "Activo" : "Inactivo")
-                        </span>
-                    </td>
-                    <td>
-@* Al titular nadie lo modifica: sin acciones en su renglón. El
-                           servidor lo rechaza igual. *@
-                        @if (!usuario.EsTitular)
-                        {
-                        <div class="acciones-renglon">
-                            <MudButton Size="Size.Small" Disabled="@_dialogoAbierto"
-                                       StartIcon="@Icons.Material.Filled.Edit"
-                                       OnClick="@(() => EditarUsuario(usuario))">Editar</MudButton>
-                            @if (!usuario.EsUsuarioActual)
-                            {
-                                <MudButton Size="Size.Small" Disabled="@_dialogoAbierto" OnClick="@(() => CambiarActivo(usuario))">
+                            <MudMenu Label="Más acciones" Size="Size.Small" Disabled="@_dialogoAbierto"
+                                     title="@($"Más acciones de {usuario.Nombre}")">
+                                <MudMenuItem OnClick="@(() => CambiarActivo(usuario))">
                                     @(usuario.Activo ? "Desactivar" : "Reactivar")
-                                </MudButton>
+                                </MudMenuItem>
                                 @if (usuario.CreadoPorAdministrador)
                                 {
-                                    <MudButton Size="Size.Small" Color="Color.Error" Disabled="@_dialogoAbierto"
-                                               OnClick="@(() => EliminarAsync(usuario))">Eliminar</MudButton>
+                                    <MudMenuItem OnClick="@(() => EliminarAsync(usuario))">Eliminar</MudMenuItem>
                                 }
-                            }
-                        </div>
+                            </MudMenu>
                         }
-                    </td>
-                </tr>
-            }
-        </tbody>
-    </MudSimpleTable>
+                    </div>
+                }
+            </MudTd>
+        </RowTemplate>
+        <PagerContent>
+            <MudTablePager PageSizeOptions="@([12, 24, 48])" RowsPerPageString="Usuarios por página"
+                           InfoFormat="{first_item}–{last_item} de {all_items}" />
+        </PagerContent>
+    </MudTable>
 
 }
 

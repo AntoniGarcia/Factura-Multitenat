@@ -10,19 +10,16 @@ using Microsoft.AspNetCore.Components.Web;
 using Microsoft.AspNetCore.Components.WebAssembly.Hosting;
 using MudBlazor.Services;
 
-// Cultura fija, no la del navegador. En WebAssembly, CurrentCulture sale de la
-// configuración de idioma del equipo: un navegador en español de España formateaba los
-// precios de los timbres en euros. Con la fecha pasa lo mismo y se nota menos: en inglés
-// 03/10 es 10 de marzo y aquí 3 de octubre, y una factura mal fechada no salta a la vista.
-// Un sistema de CFDI mexicano no puede dejar que el idioma del navegador decida eso.
-//
-// Funciona porque Directory.Build.props tiene InvariantGlobalization en false: con la
-// globalización invariante, "C" no tendría de dónde sacar el símbolo y saldría un ¤.
+var builder = WebAssemblyHostBuilder.CreateDefault(args);
+
+// El host inicializa la cultura del navegador: la de México se aplica después y
+// arranque.js selecciona sus datos de globalización antes de descargar el runtime.
 var mexico = new CultureInfo("es-MX");
 CultureInfo.DefaultThreadCurrentCulture = mexico;
 CultureInfo.DefaultThreadCurrentUICulture = mexico;
+CultureInfo.CurrentCulture = mexico;
+CultureInfo.CurrentUICulture = mexico;
 
-var builder = WebAssemblyHostBuilder.CreateDefault(args);
 builder.RootComponents.Add<App>("#app");
 builder.RootComponents.Add<HeadOutlet>("head::after");
 
