@@ -4,7 +4,7 @@ Los archivos `.sql` se conservan en local y se entregan por separado; no se incl
 en Git. Las migraciones de C# y el generador sí forman parte del repositorio.
 
 `Facturacion.Instalacion.sql` contiene las migraciones desde la primera hasta
-`20261105131603_20261105_B_ServiciosParcialesConstruccion`. Incluye tablas, índices,
+`20261119171629_20261119_A_PaquetesEliminados`. Incluye tablas, índices,
 procedimientos y los datos iniciales definidos por las migraciones. No exporta
 usuarios, empresas, documentos, certificados ni contraseñas del entorno local.
 

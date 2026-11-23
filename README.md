@@ -1,6 +1,6 @@
 # Sistema de facturación CFDI 4.0
 
-Documentación de entrega para revisión · 6 de noviembre de 2026.
+Documentación de entrega para revisión · Área de Sistemas · 19 de noviembre de 2026.
 
 Aplicación web para administrar cuentas con varias empresas, sus usuarios, documentos y compras de timbres. El servidor ASP.NET Core sirve tanto la API como el cliente Blazor WebAssembly; se publica un solo sitio.
 
@@ -8,17 +8,12 @@ La entrega permite revisar creación, guardado, modificación, cálculo, PDF, XM
 
 El timbrado con PAC real, el uso de CSD reales y el cobro mediante pasarela quedan para la integración del responsable de la empresa. Los archivos del modo de revisión no acreditan una emisión fiscal ni tienen un UUID certificado por un PAC.
 
-## Manuales
+## Documentación de entrega
 
-- [Arquitectura](ARQUITECTURA.md): componentes, seguridad, aislamiento y comunicación.
-- [Base de datos](docs/Base-de-datos.md): propiedad de los datos, relaciones y diccionario de tablas y columnas.
-- [Instalación y actualización](docs/Instalacion-y-actualizacion.md): publicación, IIS, permisos, asistente, SQL y respaldos.
-- [Funcionamiento](docs/Funcionamiento.md): operación de cuentas, empresas, documentos, correo y panel del operador.
-- [Pruebas y pendientes](docs/Pruebas-y-pendientes.md): evidencia disponible y límites de la entrega.
+- [Manual de entrega](docs/Manual-de-entrega.md) reúne operación, arquitectura, IIS, mantenimiento, pruebas e integración futura.
+- [Base de datos](docs/Base-de-datos.md) describe la propiedad de los datos, las relaciones y las columnas.
 
-Estos seis documentos forman la guía principal. Los informes fechados anteriores se conservan durante la consolidación como antecedentes; cuando contradigan estos manuales, no deben interpretarse como instrucciones actuales.
-
-Para incorporar a una persona al desarrollo, consultar la [guía técnica de aprendizaje y mantenimiento](docs/Guia-tecnica-para-continuar-el-proyecto.md), disponible también en [Word](docs/Guia-tecnica-para-continuar-el-proyecto.docx). Explica el código desde sus conceptos básicos hasta los flujos completos de facturación.
+La [guía técnica de aprendizaje](docs/Guia-tecnica-para-continuar-el-proyecto.md) y los informes de fases quedan como referencias del repositorio.
 
 ## Estructura
 
@@ -51,4 +46,4 @@ El acceso por nombre requiere resolución DNS o local, binding de IIS y certific
 
 Las consultas SQL están configuradas para compatibilidad 120. El script acumulado se comprobó con sintaxis de SQL Server 2014 y con compatibilidad 120 en un motor posterior; no se ha probado en un motor SQL Server 2014 nativo. El asistente configura una base existente: no sustituye la ejecución de su esquema.
 
-Antes de sustituir la publicación, respaldar la base y la configuración privada, conservar sus llaves y aplicar el script que corresponda al esquema de partida. Consultar [Instalación y actualización](docs/Instalacion-y-actualizacion.md).
+Antes de sustituir la publicación, respaldar la base y la configuración privada, conservar sus llaves y aplicar el script que corresponda al esquema de partida. Consultar el [procedimiento de instalación y actualización](docs/Manual-de-entrega.md#iis).

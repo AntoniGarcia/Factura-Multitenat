@@ -203,7 +203,7 @@ La carga de catálogos usa los archivos SAT del paquete y la base configurada. S
 
 En la modalidad de revisión junto al servidor:
 
-- `cnf/appsettings.Instalacion.json`: parámetros persistidos de conexión. La versión 2 puede contener la cadena sin cifrar cuando se habilita expresamente en Staging.
+- `cnf/appsettings.Instalacion.json`: cadena de conexión cifrada. En Staging, el primer arranque actualizado convierte el formato anterior de versión 2 antes de cargarlo.
 - `cnf/appsettings.ArranqueRevision.json`: configuración de arranque protegida, incluidas referencias y secretos generados por la aplicación.
 - `cnf/llavero-instalacion`: llaves de protección de la configuración de instalación.
 - `cnf/llavero-aplicacion`: llaves de protección de datos de la aplicación.
@@ -211,7 +211,7 @@ En la modalidad de revisión junto al servidor:
 
 Son ubicaciones predeterminadas; una instalación existente puede indicar otra ruta. Revisar su configuración antes de mover archivos. Los parámetros del SMTP del SaaS se administran desde el operador y los del SMTP de cada empresa desde su configuración; sus secretos se protegen. No están todos en web.config.
 
-`web.config` define cómo IIS inicia la aplicación y sus variables de entorno. `appsettings*.json` define opciones generales. Quitar el cifrado de la conexión de revisión no elimina Data Protection del resto del sistema.
+`web.config` define cómo IIS inicia la aplicación y sus variables de entorno. `appsettings*.json` define opciones generales. Conserva el llavero de instalación y la identidad de Windows del grupo IIS para volver a leer la conexión cifrada.
 
 ## 8. Configurar correo y revisión
 
@@ -222,7 +222,7 @@ Configurar por separado:
 
 El servidor valida el destino SMTP y rechaza direcciones privadas/locales. Si falla el de la empresa no se utiliza el del operador. Una conexión correcta no garantiza recepción; enviar una muestra autorizada y confirmar sus adjuntos.
 
-El web.config de la entrega establece ASPNETCORE_ENVIRONMENT=Staging, Instalacion__ArranqueAutomatico=true, Instalacion__ConexionSinCifrarRevision=true, Instalacion__JuntoAlServidorRevision=true, Pac__Modo=Deshabilitado y RevisionDocumentos__Habilitada=true. La revisión sin PAC depende de Staging y de esas opciones de documentos de revisión. No trasladar esas opciones a producción como sustituto de una integración fiscal.
+El web.config de la entrega establece ASPNETCORE_ENVIRONMENT=Staging, Instalacion__ArranqueAutomatico=true, Instalacion__JuntoAlServidorRevision=true, Pac__Modo=Deshabilitado y RevisionDocumentos__Habilitada=true. La revisión sin PAC depende de Staging y de esas opciones de documentos de revisión. No trasladar esas opciones a producción como sustituto de una integración fiscal.
 
 ## 9. Sustituir una versión existente
 

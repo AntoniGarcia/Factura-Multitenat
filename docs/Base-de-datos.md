@@ -1,12 +1,12 @@
 # Base de datos
 
-Diccionario y modelo de datos · 6 de noviembre de 2026 · [Índice](../README.md)
+Diccionario y modelo de datos · 19 de noviembre de 2026 · [Manual de entrega](Manual-de-entrega.md)
 
 ## 1. Alcance
 
 La aplicación utiliza **una base SQL**, no una por empresa ni una para el operador y otra para clientes. Cuenta y empresa delimitan la pertenencia de los datos.
 
-El inventario principal contiene **93 tablas y 950 columnas**: 91 tablas del modelo de aplicación/Identity, una de historial EF y la tabla opcional `sysdiagrams` de SSMS. La base de prueba actualizada tiene 92 tablas y 945 columnas porque no contiene `sysdiagrams`. Esa diferencia no elimina funcionalidad.
+El inventario levantado el 6 de noviembre registró **93 tablas y 950 columnas**: 91 tablas del modelo de aplicación/Identity, una de historial EF y la tabla opcional `sysdiagrams` de SSMS. En el corte del 19 de noviembre se incorpora `Paquetes.Eliminado` al diccionario, según la migración posterior. El recuento de noviembre 6 corresponde al esquema observado en esa fecha.
 
 La comparación de metadatos del 6 de noviembre encontró iguales las 54 relaciones, 24 valores predeterminados, dos restricciones CHECK, tres índices de texto completo y 66 permisos de aplicación. Las diferencias de índices y módulos corresponden a diagramas de SSMS. El historial EF también difiere debido al origen por script.
 
@@ -80,7 +80,7 @@ Un pago guarda cabecera, documentos relacionados, saldos/parcialidad e impuestos
 - `DatosComercioExterior.Contenido` guarda JSON tipado, validado por el servidor. Su validación de negocio no depende de funciones JSON de versiones posteriores a SQL 2014.
 - Conexión y llaves de arranque están en la configuración privada del servidor, no en una tabla de parámetros SQL.
 
-Respaldar solo SQL no recupera archivos y secretos. Ver [Instalación y actualización](Instalacion-y-actualizacion.md).
+El respaldo debe cubrir SQL, archivos privados y llaveros. Consultar el [procedimiento de instalación y actualización](Manual-de-entrega.md#iis).
 
 ## 4. Tipos y concurrencia
 
@@ -90,7 +90,7 @@ Los procedimientos operativos son ReservarFolio, ReservarTimbre, ConfirmarTimbre
 
 ## 5. Diccionario de tablas
 
-Cada entrada explica su finalidad y despliega columnas, índices y FK. NULL significa ausencia permitida por SQL; el servicio puede exigir un campo según la operación. Los índices incluyen sus filtros físicos. Las reglas adicionales se consultan en los servicios y el [manual de funcionamiento](Funcionamiento.md).
+Cada entrada explica su finalidad y despliega columnas, índices y FK. NULL significa ausencia permitida por SQL. El servicio puede exigir un campo según la operación. Los índices incluyen sus filtros físicos. Las reglas adicionales se consultan en los servicios y en la [guía de operación](Manual-de-entrega.md#operacion).
 
 
 - [Cuenta y usuarios](#grupo-cuenta-y-usuarios)
@@ -1809,16 +1809,17 @@ Depende del traslado y admite una colección; SatSubTipoRemolque aporta las clav
 
 Ofertas de timbres: cantidad, precio, vigencia, claves SAT, orden y estado.
 
-CuentaId nulo identifica paquetes generales; con cuenta identifica ofertas exclusivas. La compra toma el precio del servidor, no acepta un precio arbitrario enviado por el navegador.
+`CuentaId` nulo identifica paquetes generales y con valor identifica ofertas exclusivas. La compra toma el precio del servidor. `Eliminado` retira la oferta del catálogo y permite conservar sus referencias históricas. La migración del 19 de noviembre lo agrega con valor inicial falso.
 
 <details>
-<summary>Columnas y estructura de Paquetes (11 columnas)</summary>
+<summary>Columnas y estructura de Paquetes (12 columnas)</summary>
 
 - `Activo`: `bit`; NOT NULL.
 - `CantidadTimbres`: `int`; NOT NULL.
 - `ClaveProdServ`: `nvarchar(8)`; NULL.
 - `ClaveUnidad`: `nvarchar(3)`; NULL.
 - `CuentaId`: `uniqueidentifier`; NULL.
+- `Eliminado`: `bit`; NOT NULL, predeterminado en falso.
 - `Id`: `uniqueidentifier`; NOT NULL.
 - `Nombre`: `nvarchar(100)`; NOT NULL.
 - `Orden`: `int`; NOT NULL.

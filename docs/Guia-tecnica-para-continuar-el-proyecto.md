@@ -285,7 +285,7 @@ DatosComercioExterior.Contenido usa JSON para representar datos anidados del com
 
 La conexión del asistente y sus llaves están en configuración privada del servidor. En la modalidad junto al sitio se utiliza cnf/appsettings.Instalacion.json y cnf/appsettings.ArranqueRevision.json, junto con llaveros y cnf/datos. Una ruta configurada externamente o una instalación antigua pueden cambiar la ubicación efectiva. Revisar RutasDeInstalacion antes de mover archivos.
 
-El secreto de SQL puede quedar legible en la modalidad Staging explícita de revisión. SMTP y CSD siguen protegidos con Data Protection. Contraseñas de inicio de sesión se verifican por hash; no se descifran. Cifrar un secreto operativo y hashear una contraseña resuelven problemas distintos.
+La cadena SQL guardada por el asistente se cifra con Data Protection. DPAPI protege el llavero de instalación bajo la identidad de Windows que ejecuta el sitio. SMTP y CSD también se protegen con Data Protection. El sistema verifica las contraseñas de inicio de sesión con un hash.
 
 Respaldar solamente SQL no recupera XML privados y llaves. Copiar cnf sin considerar DPAPI, identidad y equipo tampoco garantiza restauración. Deben recuperarse juntos base, archivos y material criptográfico compatible, y probar el arranque con la identidad de destino.
 
@@ -478,7 +478,7 @@ Con autenticación Windows a SQL, el servidor recibe la identidad del proceso qu
 
 AllowedHosts limita los nombres aceptados por la aplicación. DNS resuelve nombre a IP; binding decide qué sitio atiende ese nombre/puerto; el certificado acredita el nombre HTTPS. Son configuraciones distintas. Si localhost funciona y el hostname no, revisar esas piezas antes de modificar la conexión SQL.
 
-La modalidad Staging actual no pide clave de instalación y permite conexión legible cuando se habilita expresamente. ArranqueDeRevision genera configuración protegida para llaves y opciones. Estas decisiones de revisión no equivalen a una política de producción. No eliminar llaveros para corregir un problema de permisos: podrían proteger datos existentes.
+La modalidad Staging actual utiliza el asistente sin clave de instalación. ArranqueDeRevision genera configuración protegida para llaves y opciones. En Staging se convierte el formato anterior de la cadena SQL antes de cargarla. Conserva los llaveros al actualizar porque protegen los datos existentes.
 
 ## 24 Cómo realizar cambios sin romper otros módulos
 

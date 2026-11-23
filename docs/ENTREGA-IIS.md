@@ -1,10 +1,10 @@
 # Entrega para revisión en Windows / IIS
 
-La alternativa vigente sin instalador está en
+La entrega anterior sin instalador está en
 `entregas/Facturacion-IIS-Cnf-20261024-v2.zip`. Contiene directamente la
 publicación, sin scripts SQL, CMD ni PowerShell. Sus pasos están en
 [la guía de entrega sin instalador](../herramientas/entrega-archivos/LEEME.md).
-Guarda la conexión legible, los temporales y las llaves internas en `cnf/`;
+Las plantillas actuales guardan la conexión cifrada, los temporales y las llaves internas en `cnf/`;
 requiere Modificar de la identidad IIS solo en `cnf/`, lectura y ejecución en
 la carpeta principal y ajustar `AllowedHosts`. El perfil del grupo debe estar
 cargado para la protección de las llaves de Windows. No distribuir un `cnf/`
@@ -34,9 +34,8 @@ El administrador debe ajustar AllowedHosts, HTTPS y la ruta privada absoluta fue
 del sitio antes de arrancar. No se utiliza INICIAR.cmd ni se necesitan SDK o Visual Studio.
 
 El asistente prueba y guarda la conexión SQL y permite crear al primer operador.
-La siguiente entrega de revisión activa `Instalacion__ConexionSinCifrarRevision=true`:
-la conexión se guarda legible fuera del sitio, solo en Staging. No modifica ni convierte
-conexiones guardadas anteriormente y no elimina el cifrado del resto de secretos.
+La aplicación cifra la cadena SQL guardada por el asistente. Al arrancar en Staging,
+convierte el archivo de conexión anterior de versión 2 antes de abrir esa base.
 Desde el 22 de octubre se eliminó la clave de instalación del formulario, servidor
 y archivos nuevos. En Staging se admite configurar por hostname; fuera de Staging
 solo se admite el acceso local. Completar la instalación antes de compartir el sitio.

@@ -13,15 +13,11 @@ Si se utiliza otro nombre de grupo o una ruta manual, cambia esa ubicación.
 
 ## Conexión SQL
 
-`appsettings.Instalacion.json` guarda la cadena completa, junto con la
-versión del formato y la fecha de guardado. En esta revisión se activa
-`Instalacion__ConexionSinCifrarRevision=true`, por lo que la conexión se guarda
-legible en el campo `Conexion` (formato versión 2). Dentro de la cadena van servidor,
-base, método de autenticación y las opciones del certificado. Si se usa acceso
-SQL, también van el usuario y la contraseña en texto legible. Cualquier persona
-con acceso al archivo puede leerlos. Por eso debe quedar fuera del sitio público
-y con permisos solo para el responsable y la identidad de la aplicación.
-Con autenticación Windows no se guardan credenciales SQL.
+`appsettings.Instalacion.json` guarda la cadena completa cifrada en
+`ConexionProtegida`, junto con la versión y la fecha de guardado. Incluye el servidor,
+la base, el método de autenticación y, cuando se usa acceso SQL, el usuario y la contraseña.
+La carpeta debe quedar fuera de `wwwroot` y con permisos solo para el responsable y
+la identidad de la aplicación.
 
 No se escriben esos parámetros en el `appsettings.json` público de la publicación.
 Al arrancar, el servidor lee la cadena y la carga en memoria como
@@ -43,10 +39,12 @@ La protección usa Data Protection y DPAPI de Windows. Por eso deben conservarse
 la carpeta privada, el equipo y la identidad del grupo IIS. Copiar solo los JSON
 a otro servidor no garantiza poder descifrarlos.
 
-La excepción de conexión legible no elimina el cifrado de la configuración de
-arranque, correo o certificados. Fuera de Staging se rechaza activar esa opción.
-Las conexiones cifradas anteriores siguen siendo compatibles; no se convierten
-ni se reemplazan automáticamente. La conexión guardada no se cambia desde el asistente.
+Al arrancar en Staging, la aplicación convierte el formato anterior, versión 2,
+en un archivo cifrado en la misma ubicación antes de usar la cadena. Si esa versión
+anterior está en la raíz del sitio y la raíz es de solo lectura, detén el sitio y
+muévela a `cnf` antes del primer arranque actualizado. El grupo IIS necesita permiso
+Modificar en `cnf` y su perfil de Windows cargado. Una conexión cifrada anterior
+conserva su archivo y llavero.
 
 La clave de instalación del asistente se eliminó. No hay que confundirla con las
 llaves de cifrado: estas sí son necesarias. Al arrancar la versión actual se

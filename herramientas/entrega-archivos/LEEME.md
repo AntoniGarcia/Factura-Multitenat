@@ -23,7 +23,8 @@ En Staging, las conexiones nuevas confían automáticamente en el certificado SQ
 y mantienen TLS. En otros entornos se valida el certificado; no se cambia desde
 el navegador. Las conexiones guardadas anteriormente conservan su configuración.
 
-La conexión queda legible en `cnf/appsettings.Instalacion.json`.
+La conexión queda cifrada en `cnf/appsettings.Instalacion.json`. Conserva ese archivo y el
+llavero de instalación con la misma identidad del grupo IIS.
 El archivo temporal también se crea en `cnf/`; no requiere modificar la carpeta
 principal. La conexión se vuelve a leer desde allí al reiniciar.
 Si contiene contraseña SQL, cualquier persona con acceso al archivo puede leerla.
