@@ -679,8 +679,8 @@
             {
                 { x => x.Archivo, archivo },
                 { x => x.TituloVistaPrevia, "Vista previa de Carta Porte" },
-                { x => x.AvisoFiscal, "Borrador sin validez fiscal. No contiene UUID, folio, timbre ni certificación del SAT." }
-            }, new DialogOptions { MaxWidth = MaxWidth.ExtraLarge, FullWidth = true, CloseOnEscapeKey = true });
+                { x => x.EsBorrador, true }
+            }, new DialogOptions { MaxWidth = MaxWidth.ExtraLarge, FullWidth = true });
     }
 
     private async Task DescargarXmlAsync()

@@ -1101,15 +1101,14 @@ else
             var parametros = new DialogParameters<DialogoDeComprobanteDeCompra>
             {
                 { x => x.Archivo, archivo! },
-                { x => x.TituloVistaPrevia, "Vista previa del borrador" },
-                { x => x.AvisoFiscal,
-                    "Borrador sin validez fiscal. No contiene UUID, sellos, código QR fiscal ni certificación del SAT." }
+                { x => x.TituloVistaPrevia, "Vista previa de la factura" },
+                { x => x.EsBorrador, true }
             };
 
             await Dialogos.ShowAsync<DialogoDeComprobanteDeCompra>(
                 "Vista previa de factura",
                 parametros,
-                new DialogOptions { MaxWidth = MaxWidth.ExtraLarge, FullWidth = true, CloseOnEscapeKey = true });
+                new DialogOptions { MaxWidth = MaxWidth.ExtraLarge, FullWidth = true });
         }
         finally
         {

@@ -38,7 +38,7 @@ namespace Facturacion.Server.Migrations
 
             // AGENTS.md §11, 29 de octubre de 2026: solo el peso es fijo. Las empresas que ya
             // tienen comprobantes o pagos en otra moneda —borradores incluidos— la conservan,
-            // para que esos documentos se puedan seguir editando.
+            // para que esos documentos se puedan seguir editando. 
             migrationBuilder.Sql("""
                 INSERT INTO MonedasDeEmpresa (EmpresaId, Moneda, Activa, ModificadaUtc)
                 SELECT u.EmpresaId, u.Moneda, 1, SYSUTCDATETIME()

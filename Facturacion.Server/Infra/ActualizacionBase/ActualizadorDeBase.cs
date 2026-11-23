@@ -10,7 +10,6 @@ using Microsoft.Data.SqlClient;
 using Microsoft.EntityFrameworkCore;
 
 namespace Facturacion.Server.Infra.ActualizacionBase;
-
 public sealed record ScriptDeBasePermitido(string Nombre, string Sha256);
 
 public sealed class ActualizadorDeBase : BackgroundService

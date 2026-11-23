@@ -35,7 +35,7 @@ public static class InfraestructuraModule
         });
 
         // Las dos interfaces comparten el contexto de empresa de la misma petición.
-        servicios.AddScoped<IContextoEmpresaInterno, ContextoEmpresaHttp>();
+        servicios.AddScoped<IContextoEmpresaInterno,ContextoEmpresaHttp>();
         servicios.AddScoped<IContextoEmpresa>(sp => sp.GetRequiredService<IContextoEmpresaInterno>());
 
         // La otra identidad del sistema: el operador del SaaS. Va aparte del contexto de
@@ -114,6 +114,7 @@ public static class InfraestructuraModule
         // el endpoints.json publicado— y sigue sirviéndose como archivo físico, vía
         // MapFallbackToFile en Program.cs. Por qué eso hace falta arreglar aparte:
         // el Target CorregirMarcadoresDeIndexHtml en Facturacion.Server.csproj.
+        
         aplicacion.MapStaticAssets();
 
         // La consulta el Client al arrancar: si la versión del servidor no coincide con la

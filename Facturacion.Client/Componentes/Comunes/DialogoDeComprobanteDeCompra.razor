@@ -30,7 +30,11 @@
             }
         </div>
 
-        @if (!string.IsNullOrWhiteSpace(AvisoFiscal))
+        @if (EsBorrador)
+        {
+            <p class="seccion-ayuda comprobante-aviso-fiscal">Borrador sin timbrar. No tiene validez fiscal.</p>
+        }
+        else if (!string.IsNullOrWhiteSpace(AvisoFiscal))
         {
             <p class="seccion-ayuda comprobante-aviso-fiscal">@AvisoFiscal</p>
         }
@@ -52,6 +56,9 @@
 
     [Parameter]
     public string TituloVistaPrevia { get; set; } = "Vista previa del comprobante de compra";
+
+    [Parameter]
+    public bool EsBorrador { get; set; }
 
     [Parameter]
     public string AvisoFiscal { get; set; } =

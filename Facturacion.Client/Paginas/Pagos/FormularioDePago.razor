@@ -730,9 +730,9 @@ else
                 new DialogParameters<DialogoDeComprobanteDeCompra>
                 {
                     { x => x.Archivo, archivo },
-                    { x => x.TituloVistaPrevia, "Complemento de pagos - borrador" },
-                    { x => x.AvisoFiscal, "Borrador sin validez fiscal. No contiene certificación del SAT ni consume timbres." }
-                }, new DialogOptions { MaxWidth = MaxWidth.ExtraLarge, FullWidth = true, CloseOnEscapeKey = true });
+                    { x => x.TituloVistaPrevia, "Complemento de pagos" },
+                    { x => x.EsBorrador, true }
+                }, new DialogOptions { MaxWidth = MaxWidth.ExtraLarge, FullWidth = true });
         }
         finally { _trabajando = false; }
     }

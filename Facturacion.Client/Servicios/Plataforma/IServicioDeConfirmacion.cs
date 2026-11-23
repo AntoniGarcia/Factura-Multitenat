@@ -38,9 +38,7 @@ public sealed class ServicioDeConfirmacion(IDialogService dialogos) : IServicioD
                 { x => x.EsPeligrosa, esPeligrosa }
             };
 
-            var opciones = new DialogOptions { CloseOnEscapeKey = true };
-
-            var referencia = await dialogos.ShowAsync<ConfirmacionAccion>(titulo, parametros, opciones);
+            var referencia = await dialogos.ShowAsync<ConfirmacionAccion>(titulo, parametros);
             var resultado = await referencia.Result;
 
             return resultado is { Canceled: false };

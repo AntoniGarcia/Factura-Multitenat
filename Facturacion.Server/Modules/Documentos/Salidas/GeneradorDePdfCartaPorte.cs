@@ -26,7 +26,8 @@ public sealed class GeneradorDePdfCartaPorte
             pagina.Content().PaddingTop(4).Column(c =>
             {
                 c.Item().Element(e => GeneradorDePdfCfdi.Receptor(e, comprobante, datos));
-                c.Item().PaddingVertical(6).Text($"Carta Porte 3.1 · IdCCP: {traslado.IdCcp ?? "Pendiente"}").Bold();
+                c.Item().PaddingVertical(6).Text(string.IsNullOrWhiteSpace(traslado.IdCcp)
+                    ? "Carta Porte 3.1" : $"Carta Porte 3.1 · IdCCP: {traslado.IdCcp}").Bold();
                 c.Item().Element(e => EstiloDeComprobante.Seccion(e, "Datos del traslado"));
                 c.Item().Text($"Salida: {Fecha(traslado.FechaSalidaUtc, zona)}   ·   Llegada: {Fecha(traslado.FechaLlegadaUtc, zona)}   ·   Distancia: {traslado.DistanciaRecorridaKm:N2} km");
                 c.Item().PaddingTop(8).Element(e => EstiloDeComprobante.Seccion(e, "Origen y destino"));
@@ -76,19 +77,14 @@ public sealed class GeneradorDePdfCartaPorte
                     c.Item().Text(comprobante.Observaciones);
                 }
             });
-            pagina.Footer().PaddingTop(6).BorderTop(0.5f).PaddingTop(4).Element(c => Pie(c, comprobante, esBorrador));
+            if (!esBorrador)
+                pagina.Footer().PaddingTop(6).BorderTop(0.5f).PaddingTop(4).Element(c => Pie(c, comprobante));
         })).GeneratePdf();
 
     private static string Fecha(DateTime utc, TimeZoneInfo zona) => TimeZoneInfo.ConvertTimeFromUtc(DateTime.SpecifyKind(utc, DateTimeKind.Utc), zona).ToString("dd/MM/yyyy HH:mm", CultureInfo.InvariantCulture);
 
-    private static void Pie(IContainer contenedor, Comprobante comprobante, bool esBorrador)
+    private static void Pie(IContainer contenedor, Comprobante comprobante)
     {
-        if (esBorrador)
-        {
-            contenedor.AlignCenter().Text("Vista de revisión. No contiene UUID, folio, timbre ni certificación del SAT.").FontSize(7);
-            return;
-        }
-
         var qr = Qr(comprobante);
         contenedor.Row(fila =>
         {

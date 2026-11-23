@@ -231,8 +231,13 @@
             if (!await GuardarInterno()) return;
             var (archivo, error) = await Emision.ObtenerVistaPreviaPdfAsync(_nota!.Comprobante.Id); _error = error;
             if (archivo is not null) await Dialogos.ShowAsync<DialogoDeComprobanteDeCompra>("Nota de crédito",
-                new DialogParameters<DialogoDeComprobanteDeCompra> { { x => x.Archivo, archivo }, { x => x.TituloVistaPrevia, "Nota de crédito" } },
-                new DialogOptions { MaxWidth = MaxWidth.ExtraLarge, FullWidth = true, CloseOnEscapeKey = true });
+                new DialogParameters<DialogoDeComprobanteDeCompra>
+                {
+                    { x => x.Archivo, archivo },
+                    { x => x.TituloVistaPrevia, "Nota de crédito" },
+                    { x => x.EsBorrador, true }
+                },
+                new DialogOptions { MaxWidth = MaxWidth.ExtraLarge, FullWidth = true });
         }
         finally { _trabajando = false; }
     }

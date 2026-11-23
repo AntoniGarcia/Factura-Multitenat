@@ -248,7 +248,7 @@
     // recargar al cerrarlo.
     private Task AbrirNotariaAsync()
         => Dialogos.ShowAsync<DialogoDeNotaria>("Configuración de Notaría",
-            new DialogOptions { MaxWidth = MaxWidth.Small, FullWidth = true, CloseOnEscapeKey = true });
+            new DialogOptions { MaxWidth = MaxWidth.Small, FullWidth = true });
 
     private async Task Guardar()
     {

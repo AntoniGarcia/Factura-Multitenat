@@ -474,7 +474,7 @@
             var referencia = await Dialogos.ShowAsync<DialogoDeEnvioDeCorreo>(
                 "Enviar por correo",
                 parametros,
-                new DialogOptions { MaxWidth = MaxWidth.Medium, FullWidth = true, CloseOnEscapeKey = true });
+                new DialogOptions { MaxWidth = MaxWidth.Medium, FullWidth = true });
 
             if (await referencia.Result is { Canceled: false, Data: EnvioDeCorreoDto envio })
                 _aviso = $"Correo enviado a {string.Join(", ", envio.Destinatarios)}.";
@@ -487,14 +487,15 @@
 
     private async Task VerPdfFiscalAsync()
     {
-        if (_detalleSeleccionado is null || _preparandoPdf) return;
+        if (_detalleSeleccionado is not { } detalle || _preparandoPdf) return;
+        var esBorrador = EsBorradorDeRevision(detalle);
 
         _preparandoPdf = true;
         _error = null;
 
         try
         {
-            var (archivo, error) = await Emision.ObtenerPdfFiscalAsync(_detalleSeleccionado.Id);
+            var (archivo, error) = await Emision.ObtenerPdfFiscalAsync(detalle.Id);
             _error = error;
 
             if (archivo is null) return;
@@ -502,16 +503,15 @@
             var parametros = new DialogParameters<DialogoDeComprobanteDeCompra>
             {
                 { x => x.Archivo, archivo },
-                { x => x.TituloVistaPrevia, EsBorradorDeRevision(_detalleSeleccionado) ? "Vista previa del borrador" : "Representación impresa del CFDI" },
-                { x => x.AvisoFiscal,
-                    EsBorradorDeRevision(_detalleSeleccionado) ? "Documento de revisión. Sin timbrar." :
-                    "Representación impresa del CFDI. Incluye los datos fiscales del comprobante timbrado." }
+                { x => x.TituloVistaPrevia, "Vista previa del PDF" },
+                { x => x.EsBorrador, esBorrador },
+                { x => x.AvisoFiscal, "" }
             };
 
             await Dialogos.ShowAsync<DialogoDeComprobanteDeCompra>(
-                "PDF del CFDI",
+                "Vista previa del PDF",
                 parametros,
-                new DialogOptions { MaxWidth = MaxWidth.ExtraLarge, FullWidth = true, CloseOnEscapeKey = true });
+                new DialogOptions { MaxWidth = MaxWidth.ExtraLarge, FullWidth = true });
         }
         finally
         {
@@ -521,14 +521,14 @@
 
     private async Task VerEstimacionAsync()
     {
-        if (_detalleSeleccionado is null || _preparandoEstimacion) return;
+        if (_detalleSeleccionado is not { } detalle || _preparandoEstimacion) return;
 
         _preparandoEstimacion = true;
         _error = null;
 
         try
         {
-            var (archivo, error) = await Obras.ObtenerEstimacionPdfAsync(_detalleSeleccionado.Id);
+            var (archivo, error) = await Obras.ObtenerEstimacionPdfAsync(detalle.Id);
             _error = error;
 
             if (archivo is null) return;
@@ -537,13 +537,14 @@
             {
                 { x => x.Archivo, archivo },
                 { x => x.TituloVistaPrevia, "Estimación de obra" },
+                { x => x.EsBorrador, detalle.Estatus is "borrador" or "error" },
                 { x => x.AvisoFiscal, "Documento de control del contrato; no sustituye al CFDI." }
             };
 
             await Dialogos.ShowAsync<DialogoDeComprobanteDeCompra>(
                 "PDF de estimación",
                 parametros,
-                new DialogOptions { MaxWidth = MaxWidth.ExtraLarge, FullWidth = true, CloseOnEscapeKey = true });
+                new DialogOptions { MaxWidth = MaxWidth.ExtraLarge, FullWidth = true });
         }
         finally
         {
@@ -749,7 +750,7 @@
             };
 
             var referencia = await Dialogos.ShowAsync<DialogoDeCancelacion>(
-                "Cancelar comprobante", parametros, new DialogOptions { CloseOnEscapeKey = true });
+                "Cancelar comprobante", parametros);
 
             var resultado = await referencia.Result;
 

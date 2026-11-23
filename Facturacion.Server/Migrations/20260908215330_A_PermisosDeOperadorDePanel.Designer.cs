@@ -13,6 +13,7 @@ namespace Facturacion.Server.Migrations
 {
     [DbContext(typeof(AppDbContext))]
     [Migration("20260908215330_A_PermisosDeOperadorDePanel")]
+    
     partial class A_PermisosDeOperadorDePanel
     {
         /// <inheritdoc />
@@ -30,6 +31,7 @@ namespace Facturacion.Server.Migrations
                     b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uniqueidentifier");
+
 
                     b.Property<string>("CadenaOriginalSat")
                         .HasColumnType("nvarchar(max)");

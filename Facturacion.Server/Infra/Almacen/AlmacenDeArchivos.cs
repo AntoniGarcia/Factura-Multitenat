@@ -23,7 +23,7 @@ public interface IAlmacenDeArchivos
     /// pertenece a esa empresa y categoría —lo segundo lo detecta el propio descifrado.
     /// </summary>
     Task<byte[]> LeerAsync(Guid empresaId, string categoria, string rutaRelativa, CancellationToken ct);
-}
+}   
 
 public sealed class AlmacenDeArchivos(
     IDataProtectionProvider protecciones,

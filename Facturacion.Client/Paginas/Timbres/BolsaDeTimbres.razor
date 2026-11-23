@@ -313,7 +313,7 @@ else
             await Dialogos.ShowAsync<DialogoDeComprobanteDeCompra>("Factura de la compra",
                 new DialogParameters<DialogoDeComprobanteDeCompra>
                 { { x => x.Archivo, archivo }, { x => x.TituloVistaPrevia, "Vista previa de la factura" }, { x => x.AvisoFiscal, "" } },
-                new DialogOptions { MaxWidth = MaxWidth.ExtraLarge, FullWidth = true, CloseOnEscapeKey = true });
+                new DialogOptions { MaxWidth = MaxWidth.ExtraLarge, FullWidth = true });
         }
         finally { _previsualizando = null; }
     }
@@ -340,7 +340,7 @@ else
             await Dialogos.ShowAsync<DialogoDeComprobanteDeCompra>(
                 "Comprobante de compra",
                 parametros,
-                new DialogOptions { MaxWidth = MaxWidth.ExtraLarge, FullWidth = true, CloseOnEscapeKey = true });
+                new DialogOptions { MaxWidth = MaxWidth.ExtraLarge, FullWidth = true });
         }
         finally
         {

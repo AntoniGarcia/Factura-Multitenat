@@ -32,8 +32,8 @@ public sealed class GeneradorDePdfEstimacionObra
                         TiposDeObra.Privada => "Obra privada",
                         _ => "Tipo de obra sin clasificar"
                     }).FontSize(9);
-                    encabezado.Item().PaddingTop(3).Text(Estado(factura))
-                        .Bold().FontSize(9);
+                    if (Estado(factura) is { } estado)
+                        encabezado.Item().PaddingTop(3).Text(estado).Bold().FontSize(9);
                     encabezado.Item().PaddingTop(7).LineHorizontal(1);
                 });
 
@@ -121,11 +121,11 @@ public sealed class GeneradorDePdfEstimacionObra
             });
         }).GeneratePdf();
 
-    private static string Estado(Comprobante factura) => factura.Estatus switch
+    private static string? Estado(Comprobante factura) => factura.Estatus switch
     {
         "timbrado" or "en_cancelacion" => $"Factura {factura.Serie}{factura.Folio} · UUID {factura.Uuid}",
         "cancelado" => $"Factura {factura.Serie}{factura.Folio} · CANCELADA",
-        _ => "BORRADOR"
+        _ => null
     };
 
     private static void Cabecera(TableCellDescriptor celda, string texto)
