@@ -4,6 +4,7 @@ using Facturacion.Server.Infra.Almacen;
 using Facturacion.Server.Infra.Integracion;
 using Facturacion.Server.Infra.Instalacion;
 using Facturacion.Server.Infra.Registro;
+using Facturacion.Server.Infra.Seguridad;
 using Facturacion.Server.Modules.Documentos;
 using Facturacion.Server.Modules.Operador;
 using Facturacion.Server.Modules.Operador.Auth;
@@ -25,7 +26,7 @@ while (true)
     if (constructor.Environment.IsStaging()) constructor.WebHost.UseStaticWebAssets();
 
     constructor.AgregarRegistro();
-
+    
     await ArranqueDeRevision.PrepararAlArrancarAsync(constructor, CancellationToken.None);
     var instalacion = InstalacionModule.Preparar(constructor);
     if (constructor.Configuration.GetValue<bool>("Instalacion:PrepararRevision"))
@@ -53,6 +54,7 @@ while (true)
     constructor.Services.AddInfraestructura(constructor.Configuration, constructor.Environment);
     constructor.Services.AddPlataforma(constructor.Configuration);
     constructor.Services.AddOperador();
+    constructor.Services.AgregarLimitesDeRecuperacion();
     constructor.Services.AddDocumentos(constructor.Configuration, constructor.Environment);
     constructor.AgregarActualizacionBase();
 
@@ -106,6 +108,7 @@ while (true)
     aplicacion.VerificarContratos();
 
     aplicacion.UsePipelineDeInfraestructura();
+    aplicacion.UseRateLimiter();
     aplicacion.UsePreparacionDeCatalogos();
 
     aplicacion.MapInfraestructura();

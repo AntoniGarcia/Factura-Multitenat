@@ -1,5 +1,6 @@
 using System.Security.Claims;
 using Facturacion.Server.Infra.Errores;
+using Facturacion.Server.Infra.Seguridad;
 using Facturacion.Shared.Comun;
 using Facturacion.Shared.Operador;
 
@@ -20,6 +21,10 @@ public static class OperadorAuthEndpoints
         var grupo = rutas.MapGroup("/api/operador/auth").WithTags("Operador · Autenticación");
 
         grupo.MapPost("/iniciar-sesion", IniciarSesion).AllowAnonymous();
+        grupo.MapPost("/recuperar-contrasena", SolicitarRecuperacion).AllowAnonymous()
+            .RequireRateLimiting(RecuperacionDeContrasena.SolicitudDeOperador);
+        grupo.MapPost("/restablecer-contrasena", RestablecerContrasena).AllowAnonymous()
+            .RequireRateLimiting(RecuperacionDeContrasena.ConfirmacionDeOperador);
         grupo.MapPost("/refresh", Refrescar).AllowAnonymous();
         grupo.MapPost("/cerrar-sesion", CerrarSesion).AllowAnonymous();
         grupo.MapGet("/sesion", ObtenerSesion).RequireAuthorization(PoliticasDeOperador.Operador);
@@ -85,6 +90,20 @@ public static class OperadorAuthEndpoints
     private static bool TryOperador(HttpContext contexto, out Guid operadorId)
         => Guid.TryParse(contexto.User.FindFirstValue(ClavesDeClaim.Operador), out operadorId);
 
+    private static Task<IResult> SolicitarRecuperacion(
+        PeticionRecuperarContrasenaOperador peticion, ColaDeRecuperacionDeOperador cola, HttpContext contexto, CancellationToken ct)
+        => RecuperacionDeContrasena.SolicitarAsync(peticion.Correo, cola, contexto, ct);
+
+    private static async Task<IResult> RestablecerContrasena(
+        PeticionRestablecerContrasenaOperador peticion, ServicioDeRecuperacionDeOperador recuperacion,
+        HttpContext contexto, CancellationToken ct)
+    {
+        var resultado = await recuperacion.RestablecerAsync(peticion, ct);
+        if (resultado.EsFallo) return resultado.Error!.AResultado(contexto);
+
+        CookieDeRefreshOperador.Limpiar(contexto.Response);
+        return Results.NoContent();
+    }
     private static async Task<IResult> IniciarSesion(
         PeticionInicioSesionOperador peticion,
         ServicioDeAutenticacionDeOperador autenticacion,

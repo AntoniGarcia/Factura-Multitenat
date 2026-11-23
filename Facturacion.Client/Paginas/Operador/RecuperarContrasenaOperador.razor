@@ -1,0 +1,12 @@
+@page "/operador/recuperar-contrasena"
+@layout LayoutDeAcceso
+@using Facturacion.Client.Componentes.Comunes
+@using Facturacion.Client.Servicios.Operador
+@inject ServicioDeSesionDeOperador Sesion
+
+<PageTitle>Recuperar contraseña del operador</PageTitle>
+
+<FormularioDeRecuperacion RutaDeInicio="/operador/iniciar-sesion"
+                         Instrucciones="Ingresa tu correo para recibir un codigo de recuperacion."
+                         SolicitarRecuperacion="Sesion.SolicitarRecuperacionAsync"
+                         RestablecerContrasena="Sesion.RestablecerContrasenaAsync" />

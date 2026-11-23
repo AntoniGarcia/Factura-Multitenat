@@ -1,0 +1,131 @@
+@using Facturacion.Shared.Comun
+
+<section class="tarjeta-acceso">
+    <h1>Recuperar contraseña</h1>
+    @if (_completado)
+    {
+        <p class="acceso-nota" role="status">Tu contraseña se actualizó. Ya puedes iniciar sesión.</p>
+    }
+    else
+    {
+        @if (!_codigoSolicitado)
+        {
+            <p class="acceso-nota">@Instrucciones</p>
+            <EditForm Model="_datos" OnValidSubmit="SolicitarCodigo" FormName="solicitar-recuperacion">
+                <div class="campo">
+                    <label for="correo">Correo</label>
+                    <InputText id="correo" @bind-Value="_datos.Correo" type="email" autocomplete="username"
+                               required maxlength="254" disabled="@_enviando" />
+                </div>
+                <button type="submit" disabled="@_enviando">@(_enviando ? "Solicitando…" : "Enviar código")</button>
+            </EditForm>
+        }
+        else
+        {
+            <p class="acceso-nota" role="status">Busca el código en tu correo. Si tarda en llegar, revisa la carpeta de correo no deseado.</p>
+            <EditForm Model="_datos" OnValidSubmit="Restablecer" FormName="confirmar-recuperacion">
+                <div class="campo">
+                    <label for="correo-confirmado">Correo</label>
+                    <InputText id="correo-confirmado" @bind-Value="_datos.Correo" type="email" autocomplete="username" readonly />
+                </div>
+                <div class="campo">
+                    <label for="codigo">Código del correo</label>
+                    <InputText id="codigo" @bind-Value="_datos.Codigo" autocomplete="one-time-code" autocapitalize="characters"
+                               spellcheck="false" required minlength="12" maxlength="12" disabled="@_enviando" />
+                </div>
+                <div class="campo">
+                    <label for="contrasena-nueva">Nueva contraseña (12 a 128 caracteres)</label>
+                    <InputText id="contrasena-nueva" @bind-Value="_datos.Contrasena" type="password" autocomplete="new-password"
+                               required minlength="12" maxlength="128" disabled="@_enviando"
+                               aria-describedby="@(PistaContrasena is null ? null : "pista-contrasena")" />
+                    @if (PistaContrasena is not null)
+                    {
+                        <p id="pista-contrasena" class="campo-ayuda">@PistaContrasena</p>
+                    }
+                </div>
+                <div class="campo">
+                    <label for="confirmacion">Confirma tu nueva contraseña</label>
+                    <InputText id="confirmacion" @bind-Value="_datos.Confirmacion" type="password" autocomplete="new-password"
+                               required minlength="12" maxlength="128" disabled="@_enviando" />
+                </div>
+                <button type="submit" disabled="@_enviando">@(_enviando ? "Guardando…" : "Guardar nueva contraseña")</button>
+            </EditForm>
+            <p>
+                <button type="button" class="boton-secundario" disabled="@_enviando" @onclick="CambiarCorreo">Cambiar correo o solicitar otro código</button>
+            </p>
+        }
+
+        <PanelErrores Problema="_problema" />
+        @if (_error is not null)
+        {
+            <p class="texto-error" role="alert">@_error</p>
+        }
+    }
+    <div class="acciones-acceso">
+        <a class="acceso-alterno-enlace" href="@RutaDeInicio">Volver a iniciar sesión</a>
+    </div>
+</section>
+
+@code {
+    [Parameter, EditorRequired] public string RutaDeInicio { get; set; } = default!;
+    [Parameter, EditorRequired] public string Instrucciones { get; set; } = default!;
+    [Parameter] public string? PistaContrasena { get; set; }
+    [Parameter, EditorRequired] public Func<string, Task<DetalleProblema?>> SolicitarRecuperacion { get; set; } = default!;
+    [Parameter, EditorRequired] public Func<string, string, string, Task<DetalleProblema?>> RestablecerContrasena { get; set; } = default!;
+
+    private sealed class Datos
+    {
+        public string Correo { get; set; } = string.Empty;
+        public string Codigo { get; set; } = string.Empty;
+        public string Contrasena { get; set; } = string.Empty;
+        public string Confirmacion { get; set; } = string.Empty;
+    }
+
+    private readonly Datos _datos = new();
+    private bool _codigoSolicitado, _completado, _enviando;
+    private DetalleProblema? _problema;
+    private string? _error;
+
+    private Task SolicitarCodigo() => Enviar(async () =>
+    {
+        _datos.Correo = _datos.Correo.Trim();
+        _problema = await SolicitarRecuperacion(_datos.Correo);
+        if (_problema is null) _codigoSolicitado = true;
+    });
+
+    private Task Restablecer() => Enviar(async () =>
+    {
+        if (_datos.Contrasena != _datos.Confirmacion)
+        {
+            _error = "Las contraseñas no coinciden.";
+            return;
+        }
+
+        _problema = await RestablecerContrasena(_datos.Correo, _datos.Codigo, _datos.Contrasena);
+        if (_problema is not null) return;
+
+        LimpiarSecretos();
+        _completado = true;
+    });
+
+    private async Task Enviar(Func<Task> operacion)
+    {
+        if (_enviando) return;
+        _enviando = true;
+        _error = null;
+        _problema = null;
+        try { await operacion(); }
+        catch (HttpRequestException) { _error = "No se pudo comunicar con el servidor. Vuelve a intentarlo."; }
+        finally { _enviando = false; }
+    }
+
+    private void CambiarCorreo()
+    {
+        LimpiarSecretos();
+        _problema = null;
+        _error = null;
+        _codigoSolicitado = false;
+    }
+
+    private void LimpiarSecretos() => _datos.Codigo = _datos.Contrasena = _datos.Confirmacion = string.Empty;
+}

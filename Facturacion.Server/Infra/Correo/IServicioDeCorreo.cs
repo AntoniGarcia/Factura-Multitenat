@@ -22,7 +22,8 @@ public sealed record MensajeDeCorreo(
     string CuerpoHtml,
     string? ResponderA = null,
     IReadOnlyList<string>? CopiaOculta = null,
-    IReadOnlyList<AdjuntoDeCorreo>? Adjuntos = null);
+    IReadOnlyList<AdjuntoDeCorreo>? Adjuntos = null,
+    bool EsConfidencial = false);
 
 public interface IServicioDeCorreo
 {

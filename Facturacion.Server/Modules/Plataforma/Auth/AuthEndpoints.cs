@@ -1,4 +1,5 @@
 ﻿using Facturacion.Server.Infra.Errores;
+using Facturacion.Server.Infra.Seguridad;
 using Facturacion.Shared.Comun;
 using Facturacion.Shared.Plataforma;
 
@@ -16,12 +17,31 @@ public static class AuthEndpoints
         var grupo = rutas.MapGroup("/api/auth").WithTags("Autenticación");
 
         grupo.MapPost("/iniciar-sesion", IniciarSesion).AllowAnonymous();
+        grupo.MapPost("/recuperar-contrasena", SolicitarRecuperacion).AllowAnonymous()
+            .RequireRateLimiting(RecuperacionDeContrasena.SolicitudDeCliente);
+        grupo.MapPost("/restablecer-contrasena", RestablecerContrasena).AllowAnonymous()
+            .RequireRateLimiting(RecuperacionDeContrasena.ConfirmacionDeCliente);
         grupo.MapPost("/registro", Registrar).AllowAnonymous();
         grupo.MapPost("/registro/verificar", VerificarAlta).AllowAnonymous();
         grupo.MapPost("/refresh", Refrescar).AllowAnonymous();
         grupo.MapPost("/cerrar-sesion", CerrarSesion).AllowAnonymous();
         grupo.MapPost("/cambiar-empresa", CambiarEmpresa).RequireAuthorization();
         grupo.MapGet("/sesion", ObtenerSesion).RequireAuthorization();
+    }
+
+    private static Task<IResult> SolicitarRecuperacion(
+        PeticionRecuperarContrasena peticion, ColaDeRecuperacionDeCliente cola, HttpContext contexto, CancellationToken ct)
+        => RecuperacionDeContrasena.SolicitarAsync(peticion.Correo, cola, contexto, ct);
+
+    private static async Task<IResult> RestablecerContrasena(
+        PeticionRestablecerContrasena peticion, ServicioDeRecuperacionDeCliente recuperacion,
+        HttpContext contexto, CancellationToken ct)
+    {
+        var resultado = await recuperacion.RestablecerAsync(peticion, ct);
+        if (resultado.EsFallo) return resultado.Error!.AResultado(contexto);
+
+        CookieDeRefresh.Limpiar(contexto.Response);
+        return Results.NoContent();
     }
 
     private static async Task<IResult> Registrar(

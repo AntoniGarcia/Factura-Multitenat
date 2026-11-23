@@ -1,0 +1,13 @@
+@page "/recuperar-contrasena"
+@layout LayoutDeAcceso
+@using Facturacion.Client.Componentes.Comunes
+@using Facturacion.Client.Servicios.Plataforma
+@inject ServicioDeSesion Sesion
+
+<PageTitle>Recuperar contraseña</PageTitle>
+
+<FormularioDeRecuperacion RutaDeInicio="/iniciar-sesion"
+                         Instrucciones="Ingresa tu correo para recibir un codigo de recuperacion.O pídele al titular de la cuenta que la restablezca."
+                         PistaContrasena="Incluye una mayúscula, una minúscula y un número."
+                         SolicitarRecuperacion="Sesion.SolicitarRecuperacionAsync"
+                         RestablecerContrasena="Sesion.RestablecerContrasenaAsync" />

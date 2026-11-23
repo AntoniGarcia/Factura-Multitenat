@@ -240,5 +240,22 @@ public sealed class ServicioDeSesion(IHttpClientFactory fabrica)
             null);
     }
 
+    public async Task<DetalleProblema?> SolicitarRecuperacionAsync(string correo)
+    {
+        using var respuesta = await Cliente().PostAsJsonAsync("api/auth/recuperar-contrasena",
+            new PeticionRecuperarContrasena(correo));
+        return respuesta.IsSuccessStatusCode ? null : await LeerProblema(respuesta);
+    }
+
+    public async Task<DetalleProblema?> RestablecerContrasenaAsync(string correo, string codigo, string contrasena)
+    {
+        using var respuesta = await Cliente().PostAsJsonAsync("api/auth/restablecer-contrasena",
+            new PeticionRestablecerContrasena(correo, codigo, contrasena));
+        if (!respuesta.IsSuccessStatusCode) return await LeerProblema(respuesta);
+
+        Olvidar();
+        return null;
+    }
+
     private HttpClient Cliente() => fabrica.CreateClient(ClienteDesnudo);
 }

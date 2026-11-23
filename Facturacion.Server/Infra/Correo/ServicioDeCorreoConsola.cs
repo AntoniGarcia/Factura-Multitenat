@@ -12,6 +12,12 @@ public sealed class ServicioDeCorreoConsola(ILogger<ServicioDeCorreoConsola> reg
 {
     public Task EnviarAsync(MensajeDeCorreo mensaje, CancellationToken ct)
     {
+        if (mensaje.EsConfidencial)
+        {
+            registro.LogInformation("El correo confidencial requiere configurar el SMTP del sistema.");
+            return Task.CompletedTask;
+        }
+
         var copia = mensaje.CopiaOculta is { Count: > 0 }
             ? " | CCO: " + string.Join(", ", mensaje.CopiaOculta)
             : string.Empty;

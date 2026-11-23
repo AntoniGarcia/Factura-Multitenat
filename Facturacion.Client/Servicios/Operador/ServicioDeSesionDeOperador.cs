@@ -55,6 +55,23 @@ public sealed class ServicioDeSesionDeOperador(IHttpClientFactory fabrica)
         return null;
     }
 
+    public async Task<DetalleProblema?> SolicitarRecuperacionAsync(string correo)
+    {
+        using var respuesta = await Cliente().PostAsJsonAsync("api/operador/auth/recuperar-contrasena",
+            new PeticionRecuperarContrasenaOperador(correo));
+        return respuesta.IsSuccessStatusCode ? null : await LeerProblema(respuesta);
+    }
+
+    public async Task<DetalleProblema?> RestablecerContrasenaAsync(string correo, string codigo, string contrasena)
+    {
+        using var respuesta = await Cliente().PostAsJsonAsync("api/operador/auth/restablecer-contrasena",
+            new PeticionRestablecerContrasenaOperador(correo, codigo, contrasena));
+        if (!respuesta.IsSuccessStatusCode) return await LeerProblema(respuesta);
+
+        Olvidar();
+        return null;
+    }
+
     /// <summary>
     /// Intenta recuperar la sesión con la cookie. La usan la puerta de arranque y el manejador
     /// cuando el servidor responde 401.
