@@ -3296,6 +3296,9 @@ namespace Facturacion.Server.Migrations
                     b.Property<Guid?>("CuentaId")
                         .HasColumnType("uniqueidentifier");
 
+                    b.Property<bool>("Eliminado")
+                        .HasColumnType("bit");
+
                     b.Property<string>("Nombre")
                         .IsRequired()
                         .HasMaxLength(100)
@@ -3329,6 +3332,7 @@ namespace Facturacion.Server.Migrations
                             CantidadTimbres = 50,
                             ClaveProdServ = "81112106",
                             ClaveUnidad = "E48",
+                            Eliminado = false,
                             Nombre = "50 timbres",
                             Orden = 1,
                             PrecioPorTimbre = 3.50m,
@@ -3342,6 +3346,7 @@ namespace Facturacion.Server.Migrations
                             CantidadTimbres = 200,
                             ClaveProdServ = "81112106",
                             ClaveUnidad = "E48",
+                            Eliminado = false,
                             Nombre = "200 timbres",
                             Orden = 2,
                             PrecioPorTimbre = 2.50m,
@@ -3355,6 +3360,7 @@ namespace Facturacion.Server.Migrations
                             CantidadTimbres = 500,
                             ClaveProdServ = "81112106",
                             ClaveUnidad = "E48",
+                            Eliminado = false,
                             Nombre = "500 timbres",
                             Orden = 3,
                             PrecioPorTimbre = 2.00m,
@@ -3368,6 +3374,7 @@ namespace Facturacion.Server.Migrations
                             CantidadTimbres = 800,
                             ClaveProdServ = "81112106",
                             ClaveUnidad = "E48",
+                            Eliminado = false,
                             Nombre = "800 timbres",
                             Orden = 4,
                             PrecioPorTimbre = 1.90m,
@@ -3381,6 +3388,7 @@ namespace Facturacion.Server.Migrations
                             CantidadTimbres = 1000,
                             ClaveProdServ = "81112106",
                             ClaveUnidad = "E48",
+                            Eliminado = false,
                             Nombre = "1000 timbres",
                             Orden = 5,
                             PrecioPorTimbre = 1.80m,

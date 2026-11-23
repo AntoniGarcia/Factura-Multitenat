@@ -21,7 +21,7 @@ public sealed class ServicioDeCompras(
     public async Task<IReadOnlyList<PaqueteDto>> PaquetesAsync(CancellationToken ct)
         => await baseDeDatos.Paquetes
             .AsNoTracking()
-            .Where(p => p.Activo && (p.CuentaId == null || p.CuentaId == contexto.CuentaActual))
+            .Where(p => p.Activo && !p.Eliminado && (p.CuentaId == null || p.CuentaId == contexto.CuentaActual))
             .OrderBy(p => p.CuentaId == null ? 0 : 1)
             .ThenBy(p => p.Orden)
             .Select(p => new PaqueteDto(
@@ -41,6 +41,8 @@ public sealed class ServicioDeCompras(
 
     public async Task<Resultado<CompraDto>> ComprarAsync(PeticionDeCompra peticion, CancellationToken ct)
     {
+        // Conserva el paquete hasta guardar la compra, incluso frente a una eliminación concurrente.
+        await using var transaccion = await baseDeDatos.Database.BeginTransactionAsync(System.Data.IsolationLevel.RepeatableRead, ct);
         var paquete = await baseDeDatos.Paquetes
             .AsNoTracking()
             .FirstOrDefaultAsync(
@@ -51,7 +53,7 @@ public sealed class ServicioDeCompras(
         if (paquete is null)
             return ErrorNegocio.NoEncontrado("paquete-no-encontrado", "Ese paquete de timbres no existe.");
 
-        if (!paquete.Activo)
+        if (!paquete.Activo || paquete.Eliminado)
         {
             return ErrorNegocio.Regla(
                 "paquete-no-disponible",
@@ -100,6 +102,7 @@ public sealed class ServicioDeCompras(
             despues: new { compra.NombrePaquete, compra.CantidadTimbres, compra.PrecioTotal });
 
         await baseDeDatos.SaveChangesAsync(ct);
+        await transaccion.CommitAsync(ct);
 
         return ADto(compra);
     }

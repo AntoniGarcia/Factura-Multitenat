@@ -16,8 +16,7 @@ namespace Facturacion.Server.Modules.Operador.Paquetes;
 ///
 /// <para><b>Cambiar un precio no reescribe la historia</b></para>
 /// <c>CompraTimbres</c> copia nombre, cantidad y precios en el momento de comprar, así que
-/// subir una tarifa no altera lo que ya se cobró. Por lo mismo, un paquete se retira de la
-/// venta desactivándolo y nunca borrándolo.
+/// subir una tarifa no altera lo que ya se cobró.
 /// </summary>
 public sealed class ServicioDePaquetesDeOperador(
     AppDbContext baseDeDatos,
@@ -27,7 +26,7 @@ public sealed class ServicioDePaquetesDeOperador(
     public async Task<IReadOnlyList<PaqueteDeOperadorDto>> ListarAsync(CancellationToken ct)
         => await baseDeDatos.Paquetes
             .AsNoTracking()
-            .Where(p => p.CuentaId == null)
+            .Where(p => p.CuentaId == null && !p.Eliminado)
             .OrderBy(p => p.Orden)
             .Select(p => new PaqueteDeOperadorDto(
                 p.Id, p.Nombre, p.CantidadTimbres, p.PrecioPorTimbre, p.PrecioTotal,
@@ -41,7 +40,7 @@ public sealed class ServicioDePaquetesDeOperador(
     public async Task<PaqueteDeOperadorDto?> ObtenerAsync(Guid id, CancellationToken ct)
         => await baseDeDatos.Paquetes
             .AsNoTracking()
-            .Where(p => p.Id == id && p.CuentaId == null)
+            .Where(p => p.Id == id && p.CuentaId == null && !p.Eliminado)
             .Select(p => new PaqueteDeOperadorDto(
                 p.Id, p.Nombre, p.CantidadTimbres, p.PrecioPorTimbre, p.PrecioTotal,
                 p.VigenciaMeses, p.Activo, p.Orden,
@@ -94,7 +93,7 @@ public sealed class ServicioDePaquetesDeOperador(
         if (await clavesSat.ValidarAsync(peticion.ClaveProdServ, peticion.ClaveUnidad, ct) is { } errorSat) return errorSat;
 
         var paquete = await baseDeDatos.Paquetes
-            .SingleOrDefaultAsync(p => p.Id == id && p.CuentaId == null, ct);
+            .SingleOrDefaultAsync(p => p.Id == id && p.CuentaId == null && !p.Eliminado, ct);
 
         if (paquete is null)
             return ErrorNegocio.NoEncontrado("paquete-no-encontrado", "Ese paquete no existe.");
@@ -124,13 +123,13 @@ public sealed class ServicioDePaquetesDeOperador(
 
     /// <summary>
     /// Pone o quita el paquete de la venta. Desactivarlo lo saca del catálogo del inquilino
-    /// sin tocar ninguna compra pasada; es la única forma de retirarlo.
+    /// sin tocar ninguna compra pasada y permite reactivarlo después.
     /// </summary>
     public async Task<Resultado<PaqueteDeOperadorDto>> CambiarActivoAsync(
         Guid id, bool activo, CancellationToken ct)
     {
         var paquete = await baseDeDatos.Paquetes
-            .SingleOrDefaultAsync(p => p.Id == id && p.CuentaId == null, ct);
+            .SingleOrDefaultAsync(p => p.Id == id && p.CuentaId == null && !p.Eliminado, ct);
 
         if (paquete is null)
             return ErrorNegocio.NoEncontrado("paquete-no-encontrado", "Ese paquete no existe.");
@@ -151,11 +150,24 @@ public sealed class ServicioDePaquetesDeOperador(
         return await ReleerAsync(id, ct);
     }
 
-    /// <summary>
-    /// Relee el paquete después de guardarlo, para devolverlo con los campos calculados. Que
-    /// no esté sería una carrera con alguien retirándolo del catálogo; aun así se responde con
-    /// un error de negocio y no con una excepción.
-    /// </summary>
+    public async Task<Resultado> EliminarAsync(Guid id, Guid? cuentaId, CancellationToken ct)
+    {
+        await using var transaccion = await baseDeDatos.Database.BeginTransactionAsync(ct);
+        var paquete = await baseDeDatos.Paquetes
+            .FromSqlInterpolated($"SELECT * FROM dbo.Paquetes WITH (UPDLOCK, HOLDLOCK) WHERE Id = {id}")
+            .SingleOrDefaultAsync(p => p.CuentaId == cuentaId && !p.Eliminado, ct);
+        if (paquete is null)
+            return ErrorNegocio.NoEncontrado("paquete-no-encontrado", "Ese paquete de timbres no existe.");
+        var antes = Retrato(paquete);
+        paquete.Eliminado = true;
+        paquete.Activo = false;
+        bitacora.Registrar(EntidadesDeBitacora.Paquete, id.ToString(), AccionesDeBitacora.PaqueteEliminado,
+            antes: antes, despues: Retrato(paquete), cuentaId: cuentaId);
+        await baseDeDatos.SaveChangesAsync(ct);
+        await transaccion.CommitAsync(ct);
+        return Resultado.Exito();
+    }
+
     private async Task<Resultado<PaqueteDeOperadorDto>> ReleerAsync(Guid id, CancellationToken ct)
         => await ObtenerAsync(id, ct) is { } paquete
             ? paquete
@@ -198,6 +210,7 @@ public sealed class ServicioDePaquetesDeOperador(
         paquete.PrecioTotal,
         paquete.VigenciaMeses,
         paquete.Activo,
+        paquete.Eliminado,
         paquete.Orden
     };
 }

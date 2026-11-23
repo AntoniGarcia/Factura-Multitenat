@@ -40,6 +40,8 @@ public sealed class Paquete
 
     public bool Activo { get; set; } = true;
 
+    public bool Eliminado { get; set; }
+
     /// <summary>Posición en la que se muestra en la página de compra, de menor a mayor.</summary>
     public int Orden { get; set; }
 }

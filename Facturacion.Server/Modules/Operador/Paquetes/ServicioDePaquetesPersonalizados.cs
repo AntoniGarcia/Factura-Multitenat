@@ -17,7 +17,7 @@ public sealed class ServicioDePaquetesPersonalizados(
         Guid cuentaId, CancellationToken ct)
         => await baseDeDatos.Paquetes
             .AsNoTracking()
-            .Where(p => p.CuentaId == cuentaId)
+            .Where(p => p.CuentaId == cuentaId && !p.Eliminado)
             .OrderByDescending(p => p.Activo)
             .ThenBy(p => p.Orden)
             .Select(p => new PaquetePersonalizadoDto(
@@ -65,7 +65,7 @@ public sealed class ServicioDePaquetesPersonalizados(
         if (await clavesSat.ValidarAsync(peticion.ClaveProdServ, peticion.ClaveUnidad, ct) is { } errorSat) return errorSat;
 
         var paquete = await baseDeDatos.Paquetes.SingleOrDefaultAsync(
-            p => p.Id == paqueteId && p.CuentaId == cuentaId, ct);
+            p => p.Id == paqueteId && p.CuentaId == cuentaId && !p.Eliminado, ct);
         if (paquete is null)
             return ErrorNegocio.NoEncontrado("paquete-no-encontrado", "Ese paquete no pertenece a la cuenta.");
 
@@ -89,7 +89,7 @@ public sealed class ServicioDePaquetesPersonalizados(
         bool activo, CancellationToken ct)
     {
         var paquete = await baseDeDatos.Paquetes.SingleOrDefaultAsync(
-            p => p.Id == paqueteId && p.CuentaId == cuentaId, ct);
+            p => p.Id == paqueteId && p.CuentaId == cuentaId && !p.Eliminado, ct);
         if (paquete is null)
             return ErrorNegocio.NoEncontrado("paquete-no-encontrado", "Ese paquete no pertenece a la cuenta.");
 
