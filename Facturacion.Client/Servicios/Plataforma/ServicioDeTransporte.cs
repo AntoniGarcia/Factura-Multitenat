@@ -45,13 +45,13 @@ public sealed class ServicioDeTransporte(IHttpClientFactory fabrica)
     private async Task<DetalleProblema?> EliminarAsync(string ruta, CancellationToken ct)
     {
         using var respuesta = await Cliente.DeleteAsync(ruta, ct);
-        return respuesta.IsSuccessStatusCode ? null : await respuesta.Content.ReadFromJsonAsync<DetalleProblema>(ct);
+        return respuesta.IsSuccessStatusCode ? null : await respuesta.LeerProblemaAsync(ct);
     }
 
     private static string Filtro(bool? activos) => activos is null ? "" : $"?activos={activos.Value.ToString().ToLowerInvariant()}";
     private static async Task<(T? Exito, DetalleProblema? Error)> EnviarAsync<T>(Task<HttpResponseMessage> envio, CancellationToken ct)
     {
         using var respuesta = await envio;
-        return respuesta.IsSuccessStatusCode ? (await respuesta.Content.ReadFromJsonAsync<T>(ct), null) : (default, await respuesta.Content.ReadFromJsonAsync<DetalleProblema>(ct));
+        return respuesta.IsSuccessStatusCode ? (await respuesta.Content.ReadFromJsonAsync<T>(ct), null) : (default, await respuesta.LeerProblemaAsync(ct));
     }
 }

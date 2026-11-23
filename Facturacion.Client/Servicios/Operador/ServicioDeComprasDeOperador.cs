@@ -21,7 +21,7 @@ public sealed class ServicioDeComprasDeOperador(
         using var r = await Cliente.SendAsync(peticion);
         if (r.IsSuccessStatusCode) return null;
         if (r.Content.Headers.ContentType?.MediaType is "application/json" or "application/problem+json")
-            return await r.Content.ReadFromJsonAsync<DetalleProblema>();
+            return await r.LeerProblemaAsync();
         return new("timbrado-compra", "No se pudo solicitar el timbrado", (int)r.StatusCode,
             "Actualiza la factura y vuelve a intentarlo.", null, "", null);
     }
@@ -47,7 +47,7 @@ public sealed class ServicioDeComprasDeOperador(
     {
         if (r.IsSuccessStatusCode) return (await r.Content.ReadFromJsonAsync<FacturaDeCompraDto>(), null);
         if (r.Content.Headers.ContentType?.MediaType is "application/json" or "application/problem+json")
-            return (null, await r.Content.ReadFromJsonAsync<DetalleProblema>());
+            return (null, await r.LeerProblemaAsync());
         return (null, new DetalleProblema("factura-compra", "No se pudo abrir la factura", (int)r.StatusCode,
             "Revisa la conexión con el servidor.", null, "", null));
     }
@@ -79,7 +79,7 @@ public sealed class ServicioDeComprasDeOperador(
 
         return respuesta.IsSuccessStatusCode
             ? null
-            : await respuesta.Content.ReadFromJsonAsync<DetalleProblema>(ct);
+            : await respuesta.LeerProblemaAsync(ct);
     }
 
     public async Task<DetalleProblema?> RechazarAsync(
@@ -90,7 +90,7 @@ public sealed class ServicioDeComprasDeOperador(
 
         return respuesta.IsSuccessStatusCode
             ? null
-            : await respuesta.Content.ReadFromJsonAsync<DetalleProblema>(ct);
+            : await respuesta.LeerProblemaAsync(ct);
     }
 
     public async Task<DetalleProblema?> DescargarComprobanteAsync(
@@ -111,7 +111,7 @@ public sealed class ServicioDeComprasDeOperador(
             $"api/operador/compras/{compraId}/comprobante", ct);
 
         if (!respuesta.IsSuccessStatusCode)
-            return (null, await respuesta.Content.ReadFromJsonAsync<DetalleProblema>(ct));
+            return (null, await respuesta.LeerProblemaAsync(ct));
 
         var contenido = await respuesta.Content.ReadAsByteArrayAsync(ct);
         return (new ArchivoParaDescarga(

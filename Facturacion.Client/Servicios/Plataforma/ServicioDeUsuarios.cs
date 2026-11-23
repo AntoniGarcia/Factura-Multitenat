@@ -16,7 +16,7 @@ public sealed class ServicioDeUsuarios(IHttpClientFactory fabrica)
     {
         using var respuesta = await Cliente.PostAsJsonAsync(
             $"api/usuarios/{usuarioId}/eliminar", new PeticionEliminarConContrasena(contrasena), ct);
-        return respuesta.IsSuccessStatusCode ? null : await respuesta.Content.ReadFromJsonAsync<DetalleProblema>(ct);
+        return respuesta.IsSuccessStatusCode ? null : await respuesta.LeerProblemaAsync(ct);
     }
 
     public async Task<UsuariosDeLaCuentaDto> ListarAsync(CancellationToken ct = default)
@@ -36,14 +36,14 @@ public sealed class ServicioDeUsuarios(IHttpClientFactory fabrica)
         using var respuesta = await Cliente.PutAsJsonAsync(
             $"api/usuarios/{usuarioId}/correo", new PeticionCambiarCorreoUsuario(correo), ct);
 
-        return respuesta.IsSuccessStatusCode ? null : await respuesta.Content.ReadFromJsonAsync<DetalleProblema>(ct);
+        return respuesta.IsSuccessStatusCode ? null : await respuesta.LeerProblemaAsync(ct);
     }
 
     public async Task<DetalleProblema?> ActualizarAsync(
         Guid usuarioId, PeticionActualizarUsuario peticion, CancellationToken ct = default)
     {
         using var respuesta = await Cliente.PutAsJsonAsync($"api/usuarios/{usuarioId}", peticion, ct);
-        return respuesta.IsSuccessStatusCode ? null : await respuesta.Content.ReadFromJsonAsync<DetalleProblema>(ct);
+        return respuesta.IsSuccessStatusCode ? null : await respuesta.LeerProblemaAsync(ct);
     }
 
     public async Task<DetalleProblema?> CambiarContrasenaAsync(
@@ -52,7 +52,7 @@ public sealed class ServicioDeUsuarios(IHttpClientFactory fabrica)
         using var respuesta = await Cliente.PutAsJsonAsync(
             $"api/usuarios/{usuarioId}/contrasena", new PeticionCambiarContrasenaUsuario(contrasena), ct);
 
-        return respuesta.IsSuccessStatusCode ? null : await respuesta.Content.ReadFromJsonAsync<DetalleProblema>(ct);
+        return respuesta.IsSuccessStatusCode ? null : await respuesta.LeerProblemaAsync(ct);
     }
 
     public async Task<DetalleProblema?> ActualizarPermisosAsync(
@@ -61,7 +61,7 @@ public sealed class ServicioDeUsuarios(IHttpClientFactory fabrica)
         using var respuesta = await Cliente.PutAsJsonAsync(
             $"api/usuarios/{usuarioId}/permisos", new PeticionActualizarPermisos(permisos, empresas), ct);
 
-        return respuesta.IsSuccessStatusCode ? null : await respuesta.Content.ReadFromJsonAsync<DetalleProblema>(ct);
+        return respuesta.IsSuccessStatusCode ? null : await respuesta.LeerProblemaAsync(ct);
     }
 
     public async Task<(UsuarioDeLaCuentaDto? Exito, DetalleProblema? Error)> CambiarActivoAsync(
@@ -77,5 +77,5 @@ public sealed class ServicioDeUsuarios(IHttpClientFactory fabrica)
         HttpResponseMessage respuesta, CancellationToken ct)
         => respuesta.IsSuccessStatusCode
             ? (await respuesta.Content.ReadFromJsonAsync<T>(ct), null)
-            : (default, await respuesta.Content.ReadFromJsonAsync<DetalleProblema>(ct));
+            : (default, await respuesta.LeerProblemaAsync(ct));
 }

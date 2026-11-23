@@ -24,7 +24,7 @@ public sealed class ServicioDePagos(IHttpClientFactory fabrica)
 
         return respuesta.IsSuccessStatusCode
             ? null
-            : await respuesta.Content.ReadFromJsonAsync<DetalleProblema>(ct);
+            : await respuesta.LeerProblemaAsync(ct);
     }
 
     public async Task<PagoDto?> ObtenerAsync(Guid id, CancellationToken ct = default)
@@ -67,7 +67,7 @@ public sealed class ServicioDePagos(IHttpClientFactory fabrica)
         HttpResponseMessage respuesta, CancellationToken ct)
         => respuesta.IsSuccessStatusCode
             ? (await respuesta.Content.ReadFromJsonAsync<T>(ct), null)
-            : (default, await respuesta.Content.ReadFromJsonAsync<DetalleProblema>(ct));
+            : (default, await respuesta.LeerProblemaAsync(ct));
 
     public async Task<(PagoDto? Exito, DetalleProblema? Error)> ObtenerParaSustituirAsync(Guid uuid, CancellationToken ct = default)
     {

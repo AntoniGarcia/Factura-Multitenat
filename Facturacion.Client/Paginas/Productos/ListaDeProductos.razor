@@ -1,5 +1,5 @@
 @page "/productos"
-@attribute [Authorize]
+@attribute [Authorize(Policy = Permisos.Politicas.LeerClientesYProductos)]
 @inject ServicioDeProductos Productos
 @inject NavigationManager Navegacion
 @inject IServicioDeConfirmacion Confirmacion

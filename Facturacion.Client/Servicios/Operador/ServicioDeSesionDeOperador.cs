@@ -185,7 +185,7 @@ public sealed class ServicioDeSesionDeOperador(IHttpClientFactory fabrica)
     {
         try
         {
-            var problema = await respuesta.Content.ReadFromJsonAsync<DetalleProblema>();
+            var problema = await respuesta.LeerProblemaAsync();
             if (problema is not null) return problema;
         }
         catch (Exception excepcion) when (excepcion is HttpRequestException or System.Text.Json.JsonException)

@@ -30,5 +30,5 @@ public sealed class ServicioDeNotasCredito(IHttpClientFactory fabrica)
     }
     private static async Task<(T? Exito, DetalleProblema? Error)> LeerAsync<T>(HttpResponseMessage respuesta)
         => respuesta.IsSuccessStatusCode ? (await respuesta.Content.ReadFromJsonAsync<T>(), null)
-            : (default, await respuesta.Content.ReadFromJsonAsync<DetalleProblema>());
+            : (default, await respuesta.LeerProblemaAsync());
 }

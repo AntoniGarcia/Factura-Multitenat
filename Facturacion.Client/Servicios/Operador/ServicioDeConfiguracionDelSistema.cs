@@ -25,12 +25,12 @@ public sealed class ServicioDeConfiguracionDelSistema(IHttpClientFactory fabrica
 
         return respuesta.IsSuccessStatusCode
             ? null
-            : await respuesta.Content.ReadFromJsonAsync<DetalleProblema>(ct);
+            : await respuesta.LeerProblemaAsync(ct);
     }
 
     public async Task<DetalleProblema?> ProbarAsync(PeticionGuardarConfiguracionDelSistema peticion, CancellationToken ct = default)
     {
         using var respuesta = await Cliente.PostAsJsonAsync("api/operador/configuracion/smtp/probar", peticion, ct);
-        return respuesta.IsSuccessStatusCode ? null : await respuesta.Content.ReadFromJsonAsync<DetalleProblema>(ct);
+        return respuesta.IsSuccessStatusCode ? null : await respuesta.LeerProblemaAsync(ct);
     }
 }

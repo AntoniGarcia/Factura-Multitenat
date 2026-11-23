@@ -48,6 +48,6 @@ public sealed class ServicioDeListado(IHttpClientFactory fabrica)
 
         return respuesta.IsSuccessStatusCode
             ? (await respuesta.Content.ReadFromJsonAsync<PaginaDeComprobantes>(ct), null)
-            : (null, await respuesta.Content.ReadFromJsonAsync<DetalleProblema>(ct));
+            : (null, await respuesta.LeerProblemaAsync(ct));
     }
 }

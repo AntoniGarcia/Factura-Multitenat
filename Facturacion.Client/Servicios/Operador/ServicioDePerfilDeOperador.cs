@@ -42,12 +42,12 @@ public sealed class ServicioDePerfilDeOperador(IHttpClientFactory fabrica)
 
         return respuesta.IsSuccessStatusCode
             ? null
-            : await respuesta.Content.ReadFromJsonAsync<DetalleProblema>(ct);
+            : await respuesta.LeerProblemaAsync(ct);
     }
 
     private static async Task<(T? Exito, DetalleProblema? Error)> LeerAsync<T>(
         HttpResponseMessage respuesta, CancellationToken ct)
         => respuesta.IsSuccessStatusCode
             ? (await respuesta.Content.ReadFromJsonAsync<T>(ct), null)
-            : (default, await respuesta.Content.ReadFromJsonAsync<DetalleProblema>(ct));
+            : (default, await respuesta.LeerProblemaAsync(ct));
 }

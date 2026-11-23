@@ -22,7 +22,7 @@ public sealed class ServicioDeArchivosDeFacturaCompra(IHttpClientFactory fabrica
                 {
                     try
                     {
-                        if (await r.Content.ReadFromJsonAsync<DetalleProblema>(ct) is { } error) return (null, error);
+                        if (await r.LeerProblemaAsync(ct) is { } error) return (null, error);
                     }
                     catch (JsonException) { }
                 }

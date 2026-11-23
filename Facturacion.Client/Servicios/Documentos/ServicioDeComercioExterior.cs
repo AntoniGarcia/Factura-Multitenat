@@ -31,7 +31,7 @@ public sealed class ServicioDeComercioExterior(IHttpClientFactory fabrica)
     {
         using var respuesta = await Cliente.GetAsync($"api/comercio-exterior/comprobantes/{comprobanteId}/xml-borrador", ct);
         if (!respuesta.IsSuccessStatusCode)
-            return (null, await respuesta.Content.ReadFromJsonAsync<DetalleProblema>(ct));
+            return (null, await respuesta.LeerProblemaAsync(ct));
         var nombre = respuesta.Content.Headers.ContentDisposition?.FileNameStar ??
             respuesta.Content.Headers.ContentDisposition?.FileName?.Trim('"') ??
             $"borrador-complemento-comercio-exterior-{comprobanteId:N}.xml";
@@ -45,7 +45,7 @@ public sealed class ServicioDeComercioExterior(IHttpClientFactory fabrica)
         using var respuesta = await Cliente.PostAsync($"api/comercio-exterior/comprobantes/{comprobanteId}/validar-xml", null, ct);
         return respuesta.IsSuccessStatusCode
             ? (await respuesta.Content.ReadFromJsonAsync<string>(ct), null)
-            : (null, await respuesta.Content.ReadFromJsonAsync<DetalleProblema>(ct));
+            : (null, await respuesta.LeerProblemaAsync(ct));
     }
 
     /// <summary>Unidad aduanera (UMT) de la fracción; nula si el catálogo no la trae.</summary>
@@ -60,5 +60,5 @@ public sealed class ServicioDeComercioExterior(IHttpClientFactory fabrica)
         HttpResponseMessage respuesta, CancellationToken ct)
         => respuesta.IsSuccessStatusCode
             ? (await respuesta.Content.ReadFromJsonAsync<DatosComercioExteriorDto>(ct), null)
-            : (null, await respuesta.Content.ReadFromJsonAsync<DetalleProblema>(ct));
+            : (null, await respuesta.LeerProblemaAsync(ct));
 }

@@ -56,7 +56,7 @@ public sealed class ServicioDeProductos(IHttpClientFactory fabrica, ServicioDeDe
 
         return respuesta.IsSuccessStatusCode
             ? null
-            : await respuesta.Content.ReadFromJsonAsync<DetalleProblema>(ct);
+            : await respuesta.LeerProblemaAsync(ct);
     }
 
     /// <summary>Sube el CSV y devuelve la vista previa. No guarda nada todavía.</summary>
@@ -97,5 +97,5 @@ public sealed class ServicioDeProductos(IHttpClientFactory fabrica, ServicioDeDe
         HttpResponseMessage respuesta, CancellationToken ct)
         => respuesta.IsSuccessStatusCode
             ? (await respuesta.Content.ReadFromJsonAsync<T>(ct), null)
-            : (default, await respuesta.Content.ReadFromJsonAsync<DetalleProblema>(ct));
+            : (default, await respuesta.LeerProblemaAsync(ct));
 }

@@ -1,4 +1,4 @@
-﻿using System.Net.Http.Json;
+using System.Net.Http.Json;
 using Facturacion.Shared.Comun;
 using Facturacion.Shared.Plataforma;
 
@@ -222,7 +222,7 @@ public sealed class ServicioDeSesion(IHttpClientFactory fabrica)
     {
         try
         {
-            var problema = await respuesta.Content.ReadFromJsonAsync<DetalleProblema>();
+            var problema = await respuesta.LeerProblemaAsync();
             if (problema is not null) return problema;
         }
         catch (Exception excepcion) when (excepcion is HttpRequestException or System.Text.Json.JsonException)

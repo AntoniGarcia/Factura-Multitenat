@@ -15,7 +15,7 @@ public sealed class ServicioDePerfil(IHttpClientFactory fabrica)
     public async Task<DetalleProblema?> ActualizarNombreAsync(string nombre, CancellationToken ct = default)
     {
         using var respuesta = await Cliente.PutAsJsonAsync("api/perfil", new PeticionActualizarPerfil(nombre), ct);
-        return respuesta.IsSuccessStatusCode ? null : await respuesta.Content.ReadFromJsonAsync<DetalleProblema>(ct);
+        return respuesta.IsSuccessStatusCode ? null : await respuesta.LeerProblemaAsync(ct);
     }
 
     public async Task<DetalleProblema?> CambiarContrasenaAsync(
@@ -24,6 +24,6 @@ public sealed class ServicioDePerfil(IHttpClientFactory fabrica)
         using var respuesta = await Cliente.PutAsJsonAsync(
             "api/perfil/contrasena", new PeticionCambiarContrasena(contrasenaActual, contrasenaNueva), ct);
 
-        return respuesta.IsSuccessStatusCode ? null : await respuesta.Content.ReadFromJsonAsync<DetalleProblema>(ct);
+        return respuesta.IsSuccessStatusCode ? null : await respuesta.LeerProblemaAsync(ct);
     }
 }

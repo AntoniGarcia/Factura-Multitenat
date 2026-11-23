@@ -49,7 +49,7 @@ public sealed class ServicioFiscalDelProveedor(IHttpClientFactory fabrica)
     {
         if (r.IsSuccessStatusCode) return (await r.Content.ReadFromJsonAsync<ConfiguracionFiscalProveedorDto>(), null);
         if (r.Content.Headers.ContentType?.MediaType is "application/json" or "application/problem+json")
-            return (null, await r.Content.ReadFromJsonAsync<DetalleProblema>());
+            return (null, await r.LeerProblemaAsync());
         return (null, new DetalleProblema("fiscal-proveedor", "No se pudo completar la operación", (int)r.StatusCode,
             "Revisa la conexión y el tamaño de los archivos.", null, "", null));
     }

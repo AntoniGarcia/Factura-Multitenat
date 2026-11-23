@@ -33,7 +33,7 @@ public sealed class ServicioDeTrasladosCartaPorte(IHttpClientFactory fabrica)
         using var respuesta = await Cliente.PostAsync($"api/traslados-carta-porte/{comprobanteId}/validar-xml", null, ct);
         return respuesta.IsSuccessStatusCode
             ? (await respuesta.Content.ReadFromJsonAsync<ValidacionXmlCartaPorteDto>(ct), null)
-            : (null, await respuesta.Content.ReadFromJsonAsync<DetalleProblema>(ct));
+            : (null, await respuesta.LeerProblemaAsync(ct));
     }
 
     public Task<(ArchivoParaDescarga? Archivo, DetalleProblema? Error)> ObtenerVistaPreviaPdfAsync(Guid comprobanteId, CancellationToken ct = default)
@@ -46,12 +46,12 @@ public sealed class ServicioDeTrasladosCartaPorte(IHttpClientFactory fabrica)
         HttpResponseMessage respuesta, CancellationToken ct)
         => respuesta.IsSuccessStatusCode
             ? (await respuesta.Content.ReadFromJsonAsync<TrasladoCartaPorteDto>(ct), null)
-            : (null, await respuesta.Content.ReadFromJsonAsync<DetalleProblema>(ct));
+            : (null, await respuesta.LeerProblemaAsync(ct));
 
     private async Task<(ArchivoParaDescarga? Archivo, DetalleProblema? Error)> ObtenerArchivoAsync(string ruta, string nombrePredeterminado, CancellationToken ct)
     {
         using var respuesta = await Cliente.GetAsync(ruta, ct);
-        if (!respuesta.IsSuccessStatusCode) return (null, await respuesta.Content.ReadFromJsonAsync<DetalleProblema>(ct));
+        if (!respuesta.IsSuccessStatusCode) return (null, await respuesta.LeerProblemaAsync(ct));
         var nombre = respuesta.Content.Headers.ContentDisposition?.FileNameStar ?? respuesta.Content.Headers.ContentDisposition?.FileName?.Trim('"') ?? nombrePredeterminado;
         return (new ArchivoParaDescarga(nombre, respuesta.Content.Headers.ContentType?.MediaType ?? "application/octet-stream", await respuesta.Content.ReadAsByteArrayAsync(ct)), null);
     }

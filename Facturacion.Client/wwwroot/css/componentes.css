@@ -57,8 +57,8 @@
 }
 
 :root[data-tema="calido"] .indicador-estado-principal {
-    background: rgba(var(--acento-calido-rgb), 0.15);
-    color: var(--acento-calido);
+    background: rgba(var(--acento-rgb), 0.15);
+    color: var(--acento-texto);
 }
 
 .buscador-catalogo-clave {
@@ -1625,7 +1625,7 @@
 }
 
 .ficha-cuenta-metricas dd.cifra-tabular {
-    font-family: var(--fuente-mono);
+    font-family: var(--tipografia-monoespaciada);
     font-variant-numeric: tabular-nums;
 }
 
@@ -1963,7 +1963,7 @@
 .ficha-empresa-rfc {
     display: block;
     color: var(--texto);
-    font-family: var(--fuente-mono);
+    font-family: var(--tipografia-monoespaciada);
     font-size: 1.125rem;
     font-variant-numeric: tabular-nums;
     font-weight: var(--peso-titulo);
@@ -2188,8 +2188,8 @@
 
 /* Variante por tema cálido/sepia: el acento cambia a ámbar. */
 :root[data-tema="calido"] .permiso-chip {
-    background: rgba(var(--acento-calido-rgb), 0.15);
-    color: var(--acento-calido);
+    background: rgba(var(--acento-rgb), 0.15);
+    color: var(--acento-texto);
 }
 
 /* Contenido de los diálogos de catálogo (DialogoDeCliente, DialogoDeProducto): scroll

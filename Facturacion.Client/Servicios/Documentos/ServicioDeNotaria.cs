@@ -66,26 +66,26 @@ public sealed class ServicioDeNotaria(IHttpClientFactory fabrica)
         using var respuesta = await Cliente.PostAsync($"api/notaria/comprobantes/{comprobanteId}/validar-xml", null, ct);
         return respuesta.IsSuccessStatusCode
             ? (await respuesta.Content.ReadFromJsonAsync<string>(ct), null)
-            : (null, await respuesta.Content.ReadFromJsonAsync<DetalleProblema>(ct));
+            : (null, await respuesta.LeerProblemaAsync(ct));
     }
 
     private static async Task<(ConfiguracionNotarioDto? Exito, DetalleProblema? Error)> LeerAsync(
         HttpResponseMessage respuesta, CancellationToken ct)
         => respuesta.StatusCode == HttpStatusCode.NoContent ? (null, null) : respuesta.IsSuccessStatusCode
             ? (await LeerOpcionalAsync<ConfiguracionNotarioDto>(respuesta, ct), null)
-            : (null, await respuesta.Content.ReadFromJsonAsync<DetalleProblema>(ct));
+            : (null, await respuesta.LeerProblemaAsync(ct));
 
     private static async Task<(DatosNotariaDto? Exito, DetalleProblema? Error)> LeerDatosAsync(
         HttpResponseMessage respuesta, CancellationToken ct)
         => respuesta.StatusCode == HttpStatusCode.NoContent ? (null, null) : respuesta.IsSuccessStatusCode
             ? (await LeerOpcionalAsync<DatosNotariaDto>(respuesta, ct), null)
-            : (null, await respuesta.Content.ReadFromJsonAsync<DetalleProblema>(ct));
+            : (null, await respuesta.LeerProblemaAsync(ct));
 
     private static async Task<(PartesNotarialesDto? Exito, DetalleProblema? Error)> LeerPartesAsync(
         HttpResponseMessage respuesta, CancellationToken ct)
         => respuesta.StatusCode == HttpStatusCode.NoContent ? (null, null) : respuesta.IsSuccessStatusCode
             ? (await LeerOpcionalAsync<PartesNotarialesDto>(respuesta, ct), null)
-            : (null, await respuesta.Content.ReadFromJsonAsync<DetalleProblema>(ct));
+            : (null, await respuesta.LeerProblemaAsync(ct));
 
     private static async Task<T?> LeerOpcionalAsync<T>(HttpResponseMessage respuesta, CancellationToken ct)
     {

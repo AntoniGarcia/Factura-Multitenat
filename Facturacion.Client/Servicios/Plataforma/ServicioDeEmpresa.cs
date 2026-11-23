@@ -66,7 +66,7 @@ public sealed class ServicioDeEmpresa(IHttpClientFactory fabrica)
     public async Task<DetalleProblema?> ProbarCorreoAsync(PeticionGuardarCorreoDeEmpresa peticion, CancellationToken ct = default)
     {
         using var respuesta = await Cliente.PostAsJsonAsync("api/empresa/correo/probar", peticion, ct);
-        return respuesta.IsSuccessStatusCode ? null : await respuesta.Content.ReadFromJsonAsync<DetalleProblema>(ct);
+        return respuesta.IsSuccessStatusCode ? null : await respuesta.LeerProblemaAsync(ct);
     }
 
     public async Task<(CertificadoCsdDto? Exito, DetalleProblema? Error)> CargarCertificadoAsync(
@@ -92,7 +92,7 @@ public sealed class ServicioDeEmpresa(IHttpClientFactory fabrica)
 
         return respuesta.IsSuccessStatusCode
             ? null
-            : await respuesta.Content.ReadFromJsonAsync<DetalleProblema>(ct);
+            : await respuesta.LeerProblemaAsync(ct);
     }
 
     public async Task QuitarLogoAsync(CancellationToken ct = default)
@@ -152,7 +152,7 @@ public sealed class ServicioDeEmpresa(IHttpClientFactory fabrica)
 
         return respuesta.IsSuccessStatusCode
             ? null
-            : await respuesta.Content.ReadFromJsonAsync<DetalleProblema>(ct);
+            : await respuesta.LeerProblemaAsync(ct);
     }
 
     /// <summary>
@@ -162,5 +162,5 @@ public sealed class ServicioDeEmpresa(IHttpClientFactory fabrica)
         HttpResponseMessage respuesta, CancellationToken ct)
         => respuesta.IsSuccessStatusCode
             ? (await respuesta.Content.ReadFromJsonAsync<T>(ct), null)
-            : (default, await respuesta.Content.ReadFromJsonAsync<DetalleProblema>(ct));
+            : (default, await respuesta.LeerProblemaAsync(ct));
 }

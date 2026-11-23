@@ -25,7 +25,7 @@ public sealed class ServicioDeTableroDeOperador(IHttpClientFactory fabrica)
 
         return respuesta.IsSuccessStatusCode
             ? (await respuesta.Content.ReadFromJsonAsync<MembresiaDeOperadorDto>(ct), null)
-            : (null, await respuesta.Content.ReadFromJsonAsync<DetalleProblema>(ct));
+            : (null, await respuesta.LeerProblemaAsync(ct));
     }
 
     public async Task<DetalleProblema?> CancelarMembresiaAsync(
@@ -36,6 +36,6 @@ public sealed class ServicioDeTableroDeOperador(IHttpClientFactory fabrica)
 
         return respuesta.IsSuccessStatusCode
             ? null
-            : await respuesta.Content.ReadFromJsonAsync<DetalleProblema>(ct);
+            : await respuesta.LeerProblemaAsync(ct);
     }
 }

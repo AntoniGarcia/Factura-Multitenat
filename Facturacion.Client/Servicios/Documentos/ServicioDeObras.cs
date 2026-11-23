@@ -31,7 +31,7 @@ public sealed class ServicioDeObras(IHttpClientFactory fabrica)
         using var respuesta = await Cliente.GetAsync($"api/obras/comprobantes/{comprobanteId}/conciliacion-fiscal", ct);
         return respuesta.IsSuccessStatusCode
             ? (await respuesta.Content.ReadFromJsonAsync<ConciliacionFiscalObraDto>(ct), null)
-            : (null, await respuesta.Content.ReadFromJsonAsync<DetalleProblema>(ct));
+            : (null, await respuesta.LeerProblemaAsync(ct));
     }
 
     public async Task<(ArchivoParaDescarga? Archivo, DetalleProblema? Error)> ObtenerEstimacionPdfAsync(
@@ -39,7 +39,7 @@ public sealed class ServicioDeObras(IHttpClientFactory fabrica)
     {
         using var respuesta = await Cliente.GetAsync($"api/obras/comprobantes/{comprobanteId}/estimacion.pdf", ct);
         if (!respuesta.IsSuccessStatusCode)
-            return (null, await respuesta.Content.ReadFromJsonAsync<DetalleProblema>(ct));
+            return (null, await respuesta.LeerProblemaAsync(ct));
 
         var contenido = await respuesta.Content.ReadAsByteArrayAsync(ct);
         var nombre = respuesta.Content.Headers.ContentDisposition?.FileNameStar
@@ -52,5 +52,5 @@ public sealed class ServicioDeObras(IHttpClientFactory fabrica)
         HttpResponseMessage respuesta, CancellationToken ct)
         => respuesta.IsSuccessStatusCode
             ? (await respuesta.Content.ReadFromJsonAsync<DatosObraDto>(ct), null)
-            : (null, await respuesta.Content.ReadFromJsonAsync<DetalleProblema>(ct));
+            : (null, await respuesta.LeerProblemaAsync(ct));
 }

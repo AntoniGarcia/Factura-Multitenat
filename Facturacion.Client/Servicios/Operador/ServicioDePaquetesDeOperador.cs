@@ -17,7 +17,7 @@ public sealed class ServicioDePaquetesDeOperador(IHttpClientFactory fabrica)
     public async Task<DetalleProblema?> EliminarAsync(Guid id, CancellationToken ct = default)
     {
         using var respuesta = await Cliente.DeleteAsync($"api/operador/paquetes/{id}", ct);
-        return respuesta.IsSuccessStatusCode ? null : await respuesta.Content.ReadFromJsonAsync<DetalleProblema>(ct);
+        return respuesta.IsSuccessStatusCode ? null : await respuesta.LeerProblemaAsync(ct);
     }
 
     public async Task<IReadOnlyList<ClaveSatDto>> ClavesSatAsync(
@@ -59,5 +59,5 @@ public sealed class ServicioDePaquetesDeOperador(IHttpClientFactory fabrica)
         HttpResponseMessage respuesta, CancellationToken ct)
         => respuesta.IsSuccessStatusCode
             ? (await respuesta.Content.ReadFromJsonAsync<T>(ct), null)
-            : (default, await respuesta.Content.ReadFromJsonAsync<DetalleProblema>(ct));
+            : (default, await respuesta.LeerProblemaAsync(ct));
 }

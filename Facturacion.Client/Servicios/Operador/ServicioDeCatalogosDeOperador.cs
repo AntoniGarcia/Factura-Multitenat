@@ -10,7 +10,7 @@ public sealed class ServicioDeCatalogosDeOperador(IHttpClientFactory fabrica)
     public async Task<(ActualizacionCatalogosDto? Datos, DetalleProblema? Error)> ObtenerActualizacionAsync(CancellationToken ct = default)
     {
         using var respuesta = await fabrica.CreateClient(ClientesHttp.ApiOperador).GetAsync("api/operador/catalogos-sat/actualizacion", ct);
-        if (!respuesta.IsSuccessStatusCode) return (null, await respuesta.Content.ReadFromJsonAsync<DetalleProblema>(ct));
+        if (!respuesta.IsSuccessStatusCode) return (null, await respuesta.LeerProblemaAsync(ct));
         if (respuesta.StatusCode == System.Net.HttpStatusCode.NoContent) return (null, null);
         return (await respuesta.Content.ReadFromJsonAsync<ActualizacionCatalogosDto>(ct), null);
     }
@@ -23,7 +23,7 @@ public sealed class ServicioDeCatalogosDeOperador(IHttpClientFactory fabrica)
             $"api/operador/catalogos-sat/{Uri.EscapeDataString(catalogo)}/actualizar", contenido, ct);
         if (respuesta.IsSuccessStatusCode) return (await respuesta.Content.ReadFromJsonAsync<ActualizacionCatalogosDto>(ct), null);
         if (respuesta.Content.Headers.ContentType?.MediaType == "application/problem+json" || respuesta.Content.Headers.ContentType?.MediaType == "application/json")
-            return (null, await respuesta.Content.ReadFromJsonAsync<DetalleProblema>(ct));
+            return (null, await respuesta.LeerProblemaAsync(ct));
         return (null, new DetalleProblema("archivo-no-recibido", "No se pudo cargar el archivo", (int)respuesta.StatusCode,
             "Revisa el tamaño del archivo y el límite de carga del servidor.", null, "", null));
     }
@@ -33,7 +33,7 @@ public sealed class ServicioDeCatalogosDeOperador(IHttpClientFactory fabrica)
         using var respuesta = await fabrica.CreateClient(ClientesHttp.ApiOperador).GetAsync("api/operador/catalogos-sat", ct);
         return respuesta.IsSuccessStatusCode
             ? (await respuesta.Content.ReadFromJsonAsync<IReadOnlyList<CatalogoSatDeOperadorDto>>(ct), null)
-            : (null, await respuesta.Content.ReadFromJsonAsync<DetalleProblema>(ct));
+            : (null, await respuesta.LeerProblemaAsync(ct));
     }
 
     public async Task<(PaginaCatalogoSatDto? Datos, DetalleProblema? Error)> ConsultarAsync(
@@ -44,6 +44,6 @@ public sealed class ServicioDeCatalogosDeOperador(IHttpClientFactory fabrica)
         using var respuesta = await fabrica.CreateClient(ClientesHttp.ApiOperador).GetAsync(ruta, ct);
         return respuesta.IsSuccessStatusCode
             ? (await respuesta.Content.ReadFromJsonAsync<PaginaCatalogoSatDto>(ct), null)
-            : (null, await respuesta.Content.ReadFromJsonAsync<DetalleProblema>(ct));
+            : (null, await respuesta.LeerProblemaAsync(ct));
     }
 }

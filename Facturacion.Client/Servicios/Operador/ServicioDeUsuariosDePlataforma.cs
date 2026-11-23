@@ -31,7 +31,7 @@ public sealed class ServicioDeUsuariosDePlataforma(IHttpClientFactory fabrica)
 
         return respuesta.IsSuccessStatusCode
             ? null
-            : await respuesta.Content.ReadFromJsonAsync<DetalleProblema>(ct);
+            : await respuesta.LeerProblemaAsync(ct);
     }
 
     public async Task<DetalleProblema?> CambiarActivoAsync(
@@ -43,7 +43,7 @@ public sealed class ServicioDeUsuariosDePlataforma(IHttpClientFactory fabrica)
 
         return respuesta.IsSuccessStatusCode
             ? null
-            : await respuesta.Content.ReadFromJsonAsync<DetalleProblema>(ct);
+            : await respuesta.LeerProblemaAsync(ct);
     }
 
     public async Task<DetalleProblema?> EliminarAccesoAsync(
@@ -59,7 +59,7 @@ public sealed class ServicioDeUsuariosDePlataforma(IHttpClientFactory fabrica)
 
         return respuesta.IsSuccessStatusCode
             ? null
-            : await respuesta.Content.ReadFromJsonAsync<DetalleProblema>(ct);
+            : await respuesta.LeerProblemaAsync(ct);
     }
 
     public async Task<DetalleProblema?> CambiarCorreoAsync(
@@ -71,6 +71,6 @@ public sealed class ServicioDeUsuariosDePlataforma(IHttpClientFactory fabrica)
 
         return respuesta.IsSuccessStatusCode
             ? null
-            : await respuesta.Content.ReadFromJsonAsync<DetalleProblema>(ct);
+            : await respuesta.LeerProblemaAsync(ct);
     }
 }

@@ -27,7 +27,7 @@ public sealed class ServicioDeDescargas(IJSRuntime js, IHttpClientFactory fabric
                 {
                     try
                     {
-                        var problema = await respuesta.Content.ReadFromJsonAsync<DetalleProblema>(ct);
+                        var problema = await respuesta.LeerProblemaAsync(ct);
                         if (problema is not null) return problema;
                     }
                     catch (JsonException) { }

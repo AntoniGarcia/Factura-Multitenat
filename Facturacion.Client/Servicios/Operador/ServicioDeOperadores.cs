@@ -14,7 +14,7 @@ public sealed class ServicioDeOperadores(IHttpClientFactory fabrica)
     {
         using var respuesta = await Cliente.PostAsync(
             $"api/operador/operadores/{id}/eliminar", content: null, ct);
-        return respuesta.IsSuccessStatusCode ? null : await respuesta.Content.ReadFromJsonAsync<DetalleProblema>(ct);
+        return respuesta.IsSuccessStatusCode ? null : await respuesta.LeerProblemaAsync(ct);
     }
 
     public async Task<PaginaDeOperadores> ListarAsync(
@@ -81,5 +81,5 @@ public sealed class ServicioDeOperadores(IHttpClientFactory fabrica)
         HttpResponseMessage respuesta, CancellationToken ct)
         => respuesta.IsSuccessStatusCode
             ? (await respuesta.Content.ReadFromJsonAsync<T>(ct), null)
-            : (default, await respuesta.Content.ReadFromJsonAsync<DetalleProblema>(ct));
+            : (default, await respuesta.LeerProblemaAsync(ct));
 }

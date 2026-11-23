@@ -77,7 +77,7 @@ public sealed class ServicioDeEmision(IHttpClientFactory fabrica)
 
         return respuesta.IsSuccessStatusCode
             ? null
-            : await respuesta.Content.ReadFromJsonAsync<DetalleProblema>(ct);
+            : await respuesta.LeerProblemaAsync(ct);
     }
 
     public async Task<(CfdiRelacionadoResueltoDto? Exito, DetalleProblema? Error)> ResolverRelacionadoAsync(
@@ -132,7 +132,7 @@ public sealed class ServicioDeEmision(IHttpClientFactory fabrica)
         HttpResponseMessage respuesta, CancellationToken ct)
         => respuesta.IsSuccessStatusCode
             ? (await respuesta.Content.ReadFromJsonAsync<T>(ct), null)
-            : (default, await respuesta.Content.ReadFromJsonAsync<DetalleProblema>(ct));
+            : (default, await respuesta.LeerProblemaAsync(ct));
 
     private async Task<(ArchivoParaDescarga? Archivo, DetalleProblema? Error)> ObtenerArchivoAsync(
         string ruta, string nombrePredeterminado, CancellationToken ct)
@@ -140,7 +140,7 @@ public sealed class ServicioDeEmision(IHttpClientFactory fabrica)
         using var respuesta = await Cliente.GetAsync(ruta, ct);
 
         if (!respuesta.IsSuccessStatusCode)
-            return (null, await respuesta.Content.ReadFromJsonAsync<DetalleProblema>(ct));
+            return (null, await respuesta.LeerProblemaAsync(ct));
 
         var contenido = await respuesta.Content.ReadAsByteArrayAsync(ct);
         var tipo = respuesta.Content.Headers.ContentType?.MediaType ?? "application/octet-stream";

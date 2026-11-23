@@ -44,7 +44,7 @@ public sealed class ServicioDeTimbres(
         using var respuesta = await Cliente.GetAsync($"api/timbres/compras/{compraId}/comprobante", ct);
 
         if (!respuesta.IsSuccessStatusCode)
-            return (null, await respuesta.Content.ReadFromJsonAsync<DetalleProblema>(ct));
+            return (null, await respuesta.LeerProblemaAsync(ct));
 
         var contenido = await respuesta.Content.ReadAsByteArrayAsync(ct);
         return (new ArchivoParaDescarga(
@@ -93,7 +93,7 @@ public sealed class ServicioDeTimbres(
 
         return respuesta.IsSuccessStatusCode
             ? (await respuesta.Content.ReadFromJsonAsync<CompraDto>(ct), null)
-            : (null, await respuesta.Content.ReadFromJsonAsync<DetalleProblema>(ct));
+            : (null, await respuesta.LeerProblemaAsync(ct));
     }
 
     public static string RutaDeExportacion(string? tipo, DateTime? desde, DateTime? hasta)
