@@ -45,16 +45,33 @@ public sealed class CabecerasDeSeguridad(RequestDelegate siguiente)
     {
         Fijas(contexto.Response.Headers);
 
+        var puedeSerHtml = PuedeSerHtml(contexto.Request.Path);
         var politicaConocida = _politicaDelHtml;
 
-        if (politicaConocida is not null || !PuedeSerHtml(contexto.Request.Path))
+        if (!puedeSerHtml)
         {
-            contexto.Response.Headers.ContentSecurityPolicy = politicaConocida ?? PoliticaDeContenido.Base;
+            contexto.Response.Headers.ContentSecurityPolicy = PoliticaDeContenido.Base;
+            await siguiente(contexto);
+            return;
+        }
+
+        if (politicaConocida is not null)
+        {
+            contexto.Response.Headers.ContentSecurityPolicy = politicaConocida;
             await siguiente(contexto);
             return;
         }
 
         await PrimeraNavegacion(contexto);
+    }
+
+    /// <summary>
+    /// Reaplica las cabeceras de seguridad sobre una respuesta de error tras <c>Response.Clear()</c>.
+    /// </summary>
+    public static void AplicarEnError(HttpResponse respuesta)
+    {
+        Fijas(respuesta.Headers);
+        respuesta.Headers.ContentSecurityPolicy = PoliticaDeContenido.Base;
     }
 
     private static void Fijas(IHeaderDictionary cabeceras)
@@ -64,11 +81,12 @@ public sealed class CabecerasDeSeguridad(RequestDelegate siguiente)
         cabeceras["Permissions-Policy"] = PoliticaPermisos;
     }
 
-    // Las peticiones de assets traen extensión (.js, .wasm, .css, .br...). Las de
-    // navegación no, y son las únicas que pueden devolver el HTML del que hay que sacar los
-    // hashes; MapFallbackToFile responde a cualquiera de ellas con index.html.
+    // Las peticiones de API y de assets con extensión (.js, .wasm, .css, .br...) no devuelven
+    // index.html; las de navegación sin extensión (o .html) sí pueden devolverlo.
     private static bool PuedeSerHtml(PathString ruta)
     {
+        if (ruta.StartsWithSegments("/api")) return false;
+
         var valor = ruta.Value;
 
         return string.IsNullOrEmpty(valor)

@@ -83,7 +83,7 @@ public static class InstalacionModule
                 return;
             }
             if (contexto.Request.Path.StartsWithSegments("/api/instalacion")
-                && !AccesoAlAsistente.Autoriza(app.Environment, contexto))
+                && !AccesoAlAsistente.Autoriza(app.Environment, contexto, app.Configuration))
             {
                 await ResultadosDeError.EscribirProblema(contexto, 403, "instalacion-acceso",
                     "Acceso no permitido", "Abre el asistente desde el servidor o desde el sitio de revisión.");
@@ -118,7 +118,7 @@ public static class InstalacionModule
             Procesar(parametros, contexto, estado, constructor, guardar: true)).RequireRateLimiting("instalacion");
         app.MapPost("/api/instalacion/finalizar", async (HttpContext contexto) =>
         {
-            if (!AccesoAlAsistente.Autoriza(constructor.Environment, contexto))
+            if (!AccesoAlAsistente.Autoriza(constructor.Environment, contexto, constructor.Configuration))
                 return Problema(contexto, 403, "instalacion-acceso", "Abre el asistente desde el servidor o desde el sitio de revisión.");
             if (estado.ConfiguracionPendiente.Length > 0 || constructor.Configuration.GetValue<bool>("Instalacion:SoloConexion"))
                 return Problema(contexto, 409, "instalacion-pendiente", "La instalación está incompleta.");
@@ -142,7 +142,7 @@ public static class InstalacionModule
         }).RequireRateLimiting("instalacion");
         app.MapPost("/api/instalacion/operador", async (DatosDelOperadorInicial datos, HttpContext contexto) =>
         {
-            if (!AccesoAlAsistente.Autoriza(constructor.Environment, contexto))
+            if (!AccesoAlAsistente.Autoriza(constructor.Environment, contexto, constructor.Configuration))
                 return Problema(contexto, 403, "instalacion-acceso", "Abre el asistente desde el servidor o desde el sitio de revisión.");
             if (InstalacionDelOperador.Validar(datos) is { } error)
                 return Problema(contexto, 400, "operador-datos", error);
@@ -209,7 +209,7 @@ public static class InstalacionModule
     private static async Task<IResult> Procesar(
         ParametrosDeConexion parametros, HttpContext contexto, EstadoDeInstalacion estado, WebApplicationBuilder constructor, bool guardar)
     {
-        if (!AccesoAlAsistente.Autoriza(constructor.Environment, contexto))
+        if (!AccesoAlAsistente.Autoriza(constructor.Environment, contexto, constructor.Configuration))
             return Problema(contexto, 403, "instalacion-acceso", "Abre el asistente desde el servidor o desde el sitio de revisión.");
         if (estado.ConexionConfigurada || estado.Archivo.Existe)
             return Problema(contexto, 409, "conexion-configurada", "La conexión ya está guardada. Este asistente no permite reemplazarla.");

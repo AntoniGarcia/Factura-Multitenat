@@ -101,7 +101,9 @@ public sealed class ConfiguracionDeInstalacion
             new DirectoryInfo(Path.Combine(_directorio, "llavero-instalacion")), opciones =>
             {
                 opciones.SetApplicationName("Facturacion.Instalacion");
-                if (OperatingSystem.IsWindows()) opciones.ProtectKeysWithDpapi();
+                // LocalMachine evita fallos en IIS cuando LoadUserProfile es false o cambia el AppPool;
+                // el acceso al llavero se protege mediante ACL NTFS sobre la carpeta privada.
+                if (OperatingSystem.IsWindows()) opciones.ProtectKeysWithDpapi(protectToLocalMachine: true);
             });
         return proveedor.CreateProtector("ConexionSql", "v1");
     }

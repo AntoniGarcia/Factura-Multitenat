@@ -270,11 +270,6 @@ public static class InfraestructuraModule
             ?.GetCustomAttribute<AssemblyInformationalVersionAttribute>()
             ?.InformationalVersion;
 
-        if (string.IsNullOrEmpty(informativa))
-            return "desconocida";
-
-        // La versión informativa trae el hash del commit después de un '+'.
-        var separador = informativa.IndexOf('+');
-        return separador < 0 ? informativa : informativa[..separador];
+        return Facturacion.Shared.Comun.VersionDeCompilacion.Formatear(informativa);
     }
 }

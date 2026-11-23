@@ -1,5 +1,6 @@
 @inject IServicioDeVersion Version
 @inject NavigationManager Navegacion
+@inject IJSRuntime Js
 @implements IAsyncDisposable
 
 @*
@@ -17,7 +18,7 @@
         <div class="guarda-version-caja">
             <p class="guarda-version-titulo">Hay una versión nueva del sistema</p>
             <p>Se va a recargar la página para traerla. Esto no cierra tu sesión.</p>
-            <button type="button" @onclick="Recargar">Recargar ahora</button>
+            <button type="button" @onclick="RecargarAsync">Recargar ahora</button>
         </div>
     </div>
 }
@@ -73,15 +74,20 @@
         // El aviso no se puede descartar y, además, se fuerza la recarga sola a los pocos
         // segundos: no depende de que alguien note el aviso y haga clic.
         await Task.Delay(TimeSpan.FromSeconds(8));
-        Recargar();
+        await RecargarAsync();
     }
 
-    private void Recargar()
+    private async Task RecargarAsync()
     {
-        // forceLoad: true, no un simple StateHasChanged: hace falta una recarga completa
-        // del documento para que el navegador vuelva a pedir el WebAssembly, no solo
-        // re-renderizar con el que ya está cargado en memoria.
-        Navegacion.NavigateTo(Navegacion.Uri, forceLoad: true);
+        try
+        {
+            await Js.InvokeVoidAsync("actualizarYRecargarPwa");
+        }
+        catch
+        {
+            // Respaldo si el entorno JS no responde: recarga completa del documento.
+            Navegacion.NavigateTo(Navegacion.Uri, forceLoad: true);
+        }
     }
 
     public ValueTask DisposeAsync()

@@ -18,13 +18,14 @@ $asp = $configuracion.configuration.location.'system.webServer'.aspNetCore
 if ($asp.hostingModel -ne 'outofprocess') { throw 'El paquete de revision requiere outofprocess.' }
 $variables = @{}
 foreach ($elemento in $asp.environmentVariables.environmentVariable) { $variables[$elemento.name] = $elemento.value }
+if ($variables.ContainsKey('Instalacion__ConexionSinCifrarRevision')) { throw 'Retira la opcion anterior de conexion legible.' }
 if ($variables.ASPNETCORE_ENVIRONMENT -ne 'Staging' -or $variables.Pac__Modo -ne 'Deshabilitado' -or $variables.Instalacion__ArranqueAutomatico -ne 'true') { throw 'La configuracion no coincide con revision sin PAC.' }
 $privado = $variables.Instalacion__Directorio
 $raiz = [IO.Path]::GetFullPath($DirectorioSitio).TrimEnd('\')
 if ($variables.Instalacion__JuntoAlServidorRevision -eq 'true') {
-    if ($privado -or $variables.Instalacion__ConexionSinCifrarRevision -ne 'true') { throw 'La entrega junto al servidor no debe mezclar rutas externas y requiere conexion legible de revision.' }
+    if ($privado) { throw 'La entrega junto al servidor no debe mezclar rutas externas.' }
     $ocultos = @($configuracion.configuration.location.'system.webServer'.security.requestFiltering.hiddenSegments.add | ForEach-Object segment)
-    if ('cnf' -notin $ocultos -or 'appsettings.Instalacion.json' -notin $ocultos) { throw 'Falta bloquear el acceso web a la configuracion.' }
+    if ('cnf' -notin $ocultos -or 'appsettings.Instalacion.json' -notin $ocultos -or 'llavero-instalacion' -notin $ocultos) { throw 'Falta bloquear el acceso web a la configuracion y al llavero.' }
 } else {
     if (-not [IO.Path]::IsPathRooted($privado)) { throw 'La carpeta privada debe ser absoluta.' }
     if ($privado -eq $raiz -or ([IO.Path]::GetFullPath($privado)).StartsWith($raiz + '\', [StringComparison]::OrdinalIgnoreCase)) { throw 'La carpeta privada no puede quedar dentro del sitio.' }

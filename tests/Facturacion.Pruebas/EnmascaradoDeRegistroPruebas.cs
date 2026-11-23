@@ -106,4 +106,31 @@ public sealed class EnmascaradoDeRegistroPruebas
         Assert.Contains("01010101", mensaje);
         Assert.Contains("H87", mensaje);
     }
+
+    [Fact]
+    public void Los_datos_sensibles_en_excepciones_e_internas_tambien_se_enmascaran()
+    {
+        var capturado = new SinkDeMemoria();
+        var interna = new InvalidOperationException("Server=.;User Id=sa;Password=ClaveUltraSecreta123;Encrypt=True");
+        var externa = new ApplicationException("Falló consulta del receptor AAA010101AAA con Mantenimiento abcdef1234567890", interna);
+
+        using (var registro = new LoggerConfiguration()
+            .MinimumLevel.Verbose()
+            .Enrich.With<EnriquecedorDatosSensibles>()
+            .WriteTo.Enmascarado(destino => destino.Sink(capturado))
+            .CreateLogger())
+        {
+            registro.Error(externa, "Error al procesar");
+        }
+
+        var evento = Assert.Single(capturado.Eventos);
+        var textoExcepcion = evento.Exception?.ToString() ?? string.Empty;
+
+        Assert.DoesNotContain("AAA010101AAA", textoExcepcion);
+        Assert.DoesNotContain("ClaveUltraSecreta123", textoExcepcion);
+        Assert.DoesNotContain("abcdef1234567890", textoExcepcion);
+        Assert.Contains("AAA**********", textoExcepcion);
+        Assert.Contains(EnmascaradorDeTextoSensible.ValorOmitido, textoExcepcion);
+        Assert.Contains("[token omitido]", textoExcepcion);
+    }
 }

@@ -102,10 +102,12 @@ $asp.SetAttribute('hostingModel','outofprocess')
 $asp.SetAttribute('stdoutLogEnabled','false')
 $asp.SetAttribute('stdoutLogFile',(Join-Path $DirectorioPrivado 'logs\stdout'))
 if (-not $asp.environmentVariables) { [void]$asp.AppendChild($web.CreateElement('environmentVariables')) }
+foreach ($nodoAnterior in @($asp.environmentVariables.environmentVariable | Where-Object name -eq 'Instalacion__ConexionSinCifrarRevision')) {
+    [void]$nodoAnterior.ParentNode.RemoveChild($nodoAnterior)
+}
 $valores = @{
     ASPNETCORE_ENVIRONMENT='Staging'; Pac__Modo='Deshabilitado';
     Instalacion__ArranqueAutomatico='true';
-    Instalacion__ConexionSinCifrarRevision='true';
     Instalacion__Directorio=(Join-Path $DirectorioPrivado 'cnf');
     AllowedHosts=((@('localhost','127.0.0.1','[::1]',$NombreHost) | Select-Object -Unique) -join ';')
 }

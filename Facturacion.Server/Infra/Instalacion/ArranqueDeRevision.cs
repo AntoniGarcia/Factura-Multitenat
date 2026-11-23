@@ -98,7 +98,8 @@ public static class ArranqueDeRevision
         return DataProtectionProvider.Create(new DirectoryInfo(Path.Combine(directorio, "llavero-instalacion")), opciones =>
         {
             opciones.SetApplicationName("Facturacion.Instalacion");
-            if (OperatingSystem.IsWindows()) opciones.ProtectKeysWithDpapi();
+            // LocalMachine evita fallos en IIS si LoadUserProfile es false; protegido por ACL NTFS en la carpeta privada.
+            if (OperatingSystem.IsWindows()) opciones.ProtectKeysWithDpapi(protectToLocalMachine: true);
         }).CreateProtector("ArranqueRevision", "v1");
     }
 

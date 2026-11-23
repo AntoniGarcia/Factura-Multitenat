@@ -23,7 +23,8 @@ public static partial class EnmascaradorDeTextoSensible
     private static readonly string[] NombresSensibles =
     [
         "password", "pwd", "contrasena", "contraseña", "token", "secret", "secreto",
-        "privatekey", "llaveprivada", "apikey", "authorization", "cookie", "csd", "pfx"
+        "privatekey", "llaveprivada", "apikey", "authorization", "cookie", "csd", "pfx",
+        "connectionstring", "cadenadeconexion"
     ];
 
     /// <summary>Enmascara todo lo sensible que encuentre dentro de un texto libre.</summary>
@@ -33,6 +34,8 @@ public static partial class EnmascaradorDeTextoSensible
 
         var resultado = Certificado().Replace(texto, CertificadoOmitido);
         resultado = TokenJwt().Replace(resultado, TokenOmitido);
+        resultado = TokenAutorizacion().Replace(resultado, "$1 " + TokenOmitido);
+        resultado = SecretoDeConexion().Replace(resultado, "$1=" + ValorOmitido);
         resultado = Rfc().Replace(resultado, coincidencia => coincidencia.Value[..3] + "**********");
         return resultado;
     }
@@ -60,4 +63,12 @@ public static partial class EnmascaradorDeTextoSensible
 
     [GeneratedRegex(@"-----BEGIN [A-Z ]+-----[\s\S]*?-----END [A-Z ]+-----")]
     private static partial Regex Certificado();
+
+    // Credenciales dentro de cadenas de conexión (SQL Server / SMTP).
+    [GeneratedRegex(@"(?i)\b(Password|Pwd)\s*=\s*[^;""'\r\n]+")]
+    private static partial Regex SecretoDeConexion();
+
+    // Encabezados con token opaco (Bearer o Mantenimiento).
+    [GeneratedRegex(@"(?i)\b(Bearer|Mantenimiento)\s+[A-Za-z0-9._~+/=-]{8,}")]
+    private static partial Regex TokenAutorizacion();
 }

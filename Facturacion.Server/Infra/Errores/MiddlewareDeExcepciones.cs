@@ -1,4 +1,5 @@
 using System.Diagnostics;
+using Facturacion.Server.Infra.Seguridad;
 using Facturacion.Shared.Comun;
 
 namespace Facturacion.Server.Infra.Errores;
@@ -36,6 +37,7 @@ public sealed class MiddlewareDeExcepciones(RequestDelegate siguiente, ILogger<M
                 Activity.Current?.Id ?? contexto.TraceIdentifier, contexto.Request.Path.Value);
 
             contexto.Response.Clear();
+            CabecerasDeSeguridad.AplicarEnError(contexto.Response);
             contexto.Response.StatusCode = problema.Estado;
             contexto.Response.ContentType = TipoContenido;
 
@@ -68,6 +70,7 @@ public sealed class MiddlewareDeExcepciones(RequestDelegate siguiente, ILogger<M
                 : StatusCodes.Status500InternalServerError;
 
             contexto.Response.Clear();
+            CabecerasDeSeguridad.AplicarEnError(contexto.Response);
             contexto.Response.StatusCode = estado;
             contexto.Response.ContentType = TipoContenido;
 

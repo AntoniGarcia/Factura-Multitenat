@@ -41,12 +41,7 @@ public sealed class ServicioDeVersion(IHttpClientFactory fabrica) : IServicioDeV
             .GetCustomAttribute<AssemblyInformationalVersionAttribute>()
             ?.InformationalVersion;
 
-        if (string.IsNullOrEmpty(informativa)) return "desconocida";
-
-        // La versión informativa trae el hash del commit después de un '+', igual que en
-        // el Server; se recorta para comparar lo mismo que /api/version devuelve.
-        var separador = informativa.IndexOf('+');
-        return separador < 0 ? informativa : informativa[..separador];
+        return Facturacion.Shared.Comun.VersionDeCompilacion.Formatear(informativa);
     }
 
     private sealed record RespuestaVersion([property: JsonPropertyName("version")] string Version);

@@ -4,9 +4,14 @@ namespace Facturacion.Server.Infra.Instalacion;
 
 public static class AccesoAlAsistente
 {
-    public static bool Autoriza(IHostEnvironment entorno, HttpContext contexto)
+    public const string ClaveAccesoRemotoRevision = "Instalacion:PermitirAccesoRemotoRevision";
+
+    public static bool Autoriza(IHostEnvironment entorno, HttpContext contexto, IConfiguration? configuracion = null)
     {
-        if (!entorno.IsStaging())
+        var permiteRemoto = entorno.IsStaging()
+            && configuracion?.GetValue<bool>(ClaveAccesoRemotoRevision) == true;
+
+        if (!permiteRemoto)
         {
             var ip = contexto.Connection.RemoteIpAddress;
             if (ip is null || !IPAddress.IsLoopback(ip.IsIPv4MappedToIPv6 ? ip.MapToIPv4() : ip)) return false;

@@ -31,6 +31,7 @@
     </PackageReference>
     <PackageReference Include="Serilog.AspNetCore" />
     <PackageReference Include="Serilog.Sinks.Console" />
+    <PackageReference Include="Serilog.Sinks.File" />
   </ItemGroup>
 
   <!-- NPOI usa SkiaSharp al abrir XLS; el paquete 3.119.2 declara lib/net8.0/_._
@@ -53,6 +54,8 @@
     <Content Update="appsettings.Development.json" CopyToPublishDirectory="Never" />
     <Content Remove="cnf/**" />
     <None Remove="cnf/**" />
+    <Content Remove="almacenamiento/**" />
+    <None Remove="almacenamiento/**" />
     <Content Remove="Infra/Instalacion/Recursos/**" />
     <EmbeddedResource Include="Infra/Instalacion/Recursos/*" />
     <Content Remove="Infra/ActualizacionBase/Recursos/**;Infra/ActualizacionBase/ScriptsPermitidos.json" />
