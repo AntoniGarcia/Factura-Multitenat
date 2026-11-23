@@ -25,17 +25,15 @@ public abstract class ColaDeCodigosDeRecuperacion(
     protected abstract Task<Destinatario?> BuscarDestinatarioAsync(IServiceProvider servicios,
         string correoNormalizado, CancellationToken ct);
 
-    public async Task<Resultado> SolicitarAsync(string correoNormalizado, CancellationToken ct)
+    public Task<Resultado> SolicitarAsync(string correoNormalizado, CancellationToken ct)
     {
-        await using var ambito = ambitos.CreateAsyncScope();
-        var destinatario = await BuscarDestinatarioAsync(ambito.ServiceProvider, correoNormalizado, ct);
-        if (destinatario is null)
-            return ErrorNegocio.Validacion("recuperacion-no-disponible",
-                "No se pudo iniciar la recuperación con ese correo. Revisa el correo de tu cuenta e inténtalo de nuevo.");
-
-        return _solicitudes.Writer.TryWrite(correoNormalizado)
+        // Responde igual exista o no el destinatario para evitar enumeración de cuentas;
+        // el worker de fondo descarta silenciosamente los correos que no aplican.
+        var resultado = _solicitudes.Writer.TryWrite(correoNormalizado)
             ? Resultado.Exito()
             : ErrorNegocio.LimiteExcedido("recuperacion-ocupada", "Vuelve a solicitar el código en un minuto.");
+
+        return Task.FromResult(resultado);
     }
 
     internal CodigoEmitido? Validar(string correoNormalizado, string codigo)

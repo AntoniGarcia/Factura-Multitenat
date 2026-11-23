@@ -54,9 +54,9 @@ public sealed class RecuperacionDeClientePruebas : IAsyncLifetime
         {
             using var plazo = new CancellationTokenSource(TimeSpan.FromSeconds(20));
             foreach (var noDisponible in new[] { "DESCONOCIDO", "INTERNO", "INACTIVO", "SIN-VERIFICAR" })
-                Assert.Equal("recuperacion-no-disponible",
-                    (await colaCliente.SolicitarAsync($"{noDisponible}@EXAMPLE.INVALID", plazo.Token)).Error?.Codigo);
+                Assert.True((await colaCliente.SolicitarAsync($"{noDisponible}@EXAMPLE.INVALID", plazo.Token)).EsExito);
             Assert.True((await colaCliente.SolicitarAsync(Correo.ToUpperInvariant(), plazo.Token)).EsExito);
+            // El primer correo emitido debe ser el del titular elegible: ninguno de los anteriores dispara envío.
             var codigo = await LeerCodigoAsync("facturación");
             Assert.True((await colaOperador.SolicitarAsync(Correo.ToUpperInvariant(), plazo.Token)).EsExito);
             var codigoOperador = await LeerCodigoAsync("operador");

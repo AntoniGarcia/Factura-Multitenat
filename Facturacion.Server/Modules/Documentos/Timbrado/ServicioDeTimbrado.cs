@@ -1,6 +1,7 @@
 using Facturacion.Server.Data;
 using Facturacion.Server.Data.Entidades.Documentos;
 using Facturacion.Server.Infra.Bitacora;
+using Facturacion.Server.Infra.Errores;
 using Facturacion.Server.Infra.Tenencia;
 using Facturacion.Server.Modules.Documentos.Pagos;
 using Facturacion.Server.Modules.Documentos.Egresos;
@@ -92,7 +93,7 @@ public sealed class ServicioDeTimbrado(
         var (comprobante, intento) = apartado.Valor;
 
         // ── Paso 2: fuera de toda transacción ───────────────────────────────────────────
-        RespuestaDePac respuesta;
+        string xmlSellado;
 
         try
         {
@@ -115,17 +116,21 @@ public sealed class ServicioDeTimbrado(
             intento.XmlEnviado = sellado.Valor.Xml;
             await baseDeDatos.SaveChangesAsync(ct);
 
-            respuesta = await EnviarConReintentosAsync(pac, sellado.Valor.Xml, intento.ClaveIdempotencia!, ct);
+            xmlSellado = sellado.Valor.Xml;
         }
         catch (Exception ex)
         {
             // Cualquier excepción antes de enviar es nuestra, no del PAC: se puede revertir
             // sin riesgo de duplicar, porque el comprobante nunca salió.
             registro.LogError(ex, "Falló la preparación del timbrado de {Comprobante}.", comprobanteId);
-            await cierre.RevertirAsync(comprobante, intento, "error-al-preparar", ex.Message, ct);
+            await cierre.RevertirAsync(comprobante, intento, "error-al-preparar", ex.Message, CancellationToken.None);
 
             return ErrorNegocio.Regla("error-al-preparar", "No se pudo preparar el comprobante para timbrar.");
         }
+
+        // Una vez que se inicia el envío al PAC, nunca se revierte por excepción de red o
+        // cancelación del cliente: el comprobante queda en 'timbrando' para conciliación.
+        var respuesta = await EnviarConReintentosAsync(pac, xmlSellado, intento.ClaveIdempotencia!, ct);
 
         return await ResolverAsync(comprobante, intento, respuesta, ct);
     }
@@ -178,6 +183,10 @@ public sealed class ServicioDeTimbrado(
         if (comprobante.TipoDeComprobante == TiposDeComprobante.Ingreso &&
             ReglaDeInformacionGlobal.Validar(comprobante.ReceptorRfc, comprobante.ReceptorNombre, comprobante.GlobalPeriodicidad) is { } sinGlobal)
             return sinGlobal;
+
+        // Refresca la fecha de emisión al momento de timbrar para evitar rechazos CFDI40101 (>72 h)
+        // en borradores creados días antes.
+        comprobante.FechaEmisionUtc = DateTime.UtcNow;
 
         var obra = await baseDeDatos.DatosObra.AsNoTracking()
             .FirstOrDefaultAsync(x => x.ComprobanteId == comprobanteId, ct);
@@ -281,29 +290,10 @@ public sealed class ServicioDeTimbrado(
             if (validacionPago.EsFallo) return validacionPago.Error!;
         }
 
-        // Un reintento conserva el folio del intento anterior; no reserva otro.
-        FolioReservadoDto? folio = null;
-
-        if (comprobante.Folio is null && comprobante.SerieId is { } serieId)
+        if (comprobante.TipoDeComprobante == TiposDeComprobante.Traslado)
         {
-            folio = await folios.ReservarAsync(serieId, ct);
-            comprobante.SerieId = folio.SerieId;
-            comprobante.Serie = folio.Serie;
-            comprobante.Folio = folio.Folio;
-        }
-
-        ReservaTimbreDto timbre;
-
-        try
-        {
-            timbre = await timbres.ReservarAsync(comprobanteId, ct);
-        }
-        catch (Exception ex)
-        {
-            await transaccion.RollbackAsync(ct);
-            registro.LogWarning(ex, "No se pudo apartar timbre para {Comprobante}.", comprobanteId);
-
-            return ErrorNegocio.Regla("sin-timbres", "No quedan timbres disponibles para timbrar.");
+            var validacionTraslado = await xml.GenerarAsync(comprobante, ct);
+            if (validacionTraslado.EsFallo) return validacionTraslado.Error!;
         }
 
         var intento = new IntentoTimbrado
@@ -336,12 +326,78 @@ public sealed class ServicioDeTimbrado(
 
         await baseDeDatos.SaveChangesAsync(ct);
         await transaccion.CommitAsync(ct);
+        await transaccion.DisposeAsync();
+
+        // Los procedimientos dbo.ReservarTimbre y dbo.ReservarFolio manejan su propia
+        // transacción con ROLLBACK interno; se invocan con @@TRANCOUNT = 0 para evitar el
+        // error 266 de SQL Server. El comprobante ya está en 'timbrando', así que ninguna
+        // petición concurrente puede volver a apartarlo.
+        ReservaTimbreDto timbre;
+
+        try
+        {
+            timbre = await timbres.ReservarAsync(comprobanteId, ct);
+        }
+        catch (ErrorDeNegocioExcepcion negocio)
+        {
+            await CompensarApartadoAsync(comprobante, intento, estatusAnterior, negocio.Error.Codigo, negocio.Error.Mensaje);
+            registro.LogWarning("No se pudo apartar timbre para {Comprobante}: {Codigo}", comprobanteId, negocio.Error.Codigo);
+            return negocio.Error;
+        }
+        catch (Exception ex)
+        {
+            await CompensarApartadoAsync(comprobante, intento, estatusAnterior, "error-al-reservar-timbre", ex.Message);
+            registro.LogError(ex, "Error inesperado al apartar timbre para {Comprobante}.", comprobanteId);
+            return ErrorNegocio.Regla("error-al-reservar-timbre", "No se pudo apartar el timbre. Inténtalo de nuevo.");
+        }
+
+        // Un reintento conserva el folio del intento anterior; no reserva otro.
+        if (comprobante.Folio is null && comprobante.SerieId is { } serieId)
+        {
+            try
+            {
+                var folio = await folios.ReservarAsync(serieId, ct);
+                comprobante.SerieId = folio.SerieId;
+                comprobante.Serie = folio.Serie;
+                comprobante.Folio = folio.Folio;
+                comprobante.ModificadoUtc = DateTime.UtcNow;
+                await baseDeDatos.SaveChangesAsync(ct);
+            }
+            catch (Exception ex)
+            {
+                try
+                {
+                    await timbres.DevolverAsync(timbre.ReservaId, "error-al-reservar-folio", CancellationToken.None);
+                }
+                catch (Exception exDevolver)
+                {
+                    registro.LogError(exDevolver, "No se pudo devolver el timbre {Reserva} tras fallar el folio.", timbre.ReservaId);
+                }
+
+                await CompensarApartadoAsync(comprobante, intento, estatusAnterior, "error-al-reservar-folio", ex.Message);
+                registro.LogError(ex, "No se pudo apartar folio para {Comprobante}.", comprobanteId);
+                return ErrorNegocio.Regla("error-al-reservar-folio", "No se pudo apartar el folio para el comprobante. No se consumió ningún timbre.");
+            }
+        }
 
         registro.LogInformation(
             "Comprobante {Comprobante} apartado para timbrar. Intento {Numero}, timbres restantes {Restantes}.",
             comprobanteId, intento.Numero, timbre.DisponiblesDespues);
 
         return (comprobante, intento);
+    }
+
+    private async Task CompensarApartadoAsync(
+        Comprobante comprobante, IntentoTimbrado intento, string estatusAnterior, string codigo, string mensaje)
+    {
+        comprobante.Estatus = estatusAnterior;
+        comprobante.ModificadoUtc = DateTime.UtcNow;
+        intento.Resultado = ResultadosDeIntento.Rechazado;
+        intento.TerminadoUtc = DateTime.UtcNow;
+        intento.DuracionMs = (int)(intento.TerminadoUtc.Value - intento.IniciadoUtc).TotalMilliseconds;
+        intento.CodigoError = codigo;
+        intento.MensajeError = mensaje;
+        await baseDeDatos.SaveChangesAsync(CancellationToken.None);
     }
 
     // ── Paso 2 ──────────────────────────────────────────────────────────────────────────
@@ -355,7 +411,19 @@ public sealed class ServicioDeTimbrado(
 
         for (var intento = 0; intento <= Esperas.Length; intento++)
         {
-            if (intento > 0) await Task.Delay(Esperas[intento - 1], ct);
+            if (intento > 0)
+            {
+                try
+                {
+                    await Task.Delay(Esperas[intento - 1], ct);
+                }
+                catch (OperationCanceledException)
+                {
+                    // El primer envío ya salió al PAC: cancelar la espera no permite dar el
+                    // timbrado por fallido; queda en comunicación incierta para conciliación.
+                    return respuesta;
+                }
+            }
 
             try
             {

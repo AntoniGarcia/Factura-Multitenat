@@ -57,12 +57,21 @@ public sealed class FiltroDeIdempotencia(
         // La búsqueda es solo por clave, igual que el índice único: buscar también por ruta
         // encontraría «nada» para una clave reciclada en otro endpoint y el insert chocaría
         // contra el índice sin que supiéramos por qué.
+        var ahora = DateTime.UtcNow;
         var existente = await baseDeDatos.ClavesIdempotencia
             .AsNoTracking()
             .FirstOrDefaultAsync(c => c.Clave == clave, ct);
 
         if (existente is not null)
-            return DeLaClaveExistente(existente, ruta, hash, clave, http);
+        {
+            if (existente.ExpiraUtc > ahora)
+                return DeLaClaveExistente(existente, ruta, hash, clave, http);
+
+            // Si la purga horaria todavía no eliminó la clave vencida, se retira antes de reclamar.
+            await baseDeDatos.ClavesIdempotencia
+                .Where(c => c.Id == existente.Id && c.ExpiraUtc <= ahora)
+                .ExecuteDeleteAsync(ct);
+        }
 
         var reclamo = new ClaveIdempotencia
         {
@@ -74,8 +83,8 @@ public sealed class FiltroDeIdempotencia(
             HashPeticion = hash,
             CodigoEstado = EnCurso,
             RespuestaJson = string.Empty,
-            CreadoUtc = DateTime.UtcNow,
-            ExpiraUtc = DateTime.UtcNow.Add(Ventana)
+            CreadoUtc = ahora,
+            ExpiraUtc = ahora.Add(Ventana)
         };
 
         baseDeDatos.ClavesIdempotencia.Add(reclamo);
@@ -95,18 +104,43 @@ public sealed class FiltroDeIdempotencia(
                 .AsNoTracking()
                 .FirstOrDefaultAsync(c => c.Clave == clave, ct);
 
-            return ganadora is null
+            return ganadora is null || ganadora.ExpiraUtc <= DateTime.UtcNow
                 ? ErrorNegocio.Conflicto(
                     "idempotency-key-en-conflicto",
                     "No se pudo registrar la operación. Vuelve a intentarlo.").AResultado(http)
                 : DeLaClaveExistente(ganadora, ruta, hash, clave, http);
         }
 
-        var respuesta = await siguiente(contexto);
+        object? respuesta;
+        try
+        {
+            respuesta = await siguiente(contexto);
+        }
+        catch
+        {
+            await LiberarReclamoEnCursoAsync(reclamo.Id);
+            throw;
+        }
 
-        await GuardarRespuesta(reclamo.Id, respuesta, http, ct);
+        // CancellationToken.None: si el cliente corta la conexión justo tras terminar el cobro
+        // o el timbrado, igual se persiste la respuesta para no dejar la clave bloqueada en EnCurso.
+        await GuardarRespuesta(reclamo.Id, respuesta, http, CancellationToken.None);
 
         return respuesta;
+    }
+
+    private async Task LiberarReclamoEnCursoAsync(Guid reclamoId)
+    {
+        try
+        {
+            await baseDeDatos.ClavesIdempotencia
+                .Where(c => c.Id == reclamoId && c.CodigoEstado == EnCurso)
+                .ExecuteDeleteAsync(CancellationToken.None);
+        }
+        catch (Exception ex)
+        {
+            registro.LogWarning(ex, "No se pudo liberar el reclamo de idempotencia {Reclamo} tras una excepción.", reclamoId);
+        }
     }
 
     private object DeLaClaveExistente(

@@ -30,10 +30,14 @@ public sealed class BarridoDeReservasDeTimbre(
 {
     private static readonly TimeSpan Intervalo = TimeSpan.FromMinutes(5);
 
-    /// <summary>Antigüedad a partir de la cual una reserva sin resolver se da por abandonada.</summary>
-    private static readonly TimeSpan Plazo = TimeSpan.FromMinutes(30);
+    /// <summary>
+    /// Antigüedad a partir de la cual una reserva sin resolver se da por abandonada.
+    /// Es deliberadamente mayor que la ventana de conciliación de timbrados (30 min) para no
+    /// devolver un timbre mientras la conciliación todavía puede confirmar el comprobante.
+    /// </summary>
+    public static readonly TimeSpan Plazo = TimeSpan.FromHours(2);
 
-    private const string Motivo = "Devuelta por el barrido: la reserva pasó de 30 minutos sin resolverse.";
+    private const string Motivo = "Devuelta por el barrido: la reserva pasó de 2 horas sin resolverse.";
 
     protected override async Task ExecuteAsync(CancellationToken ct)
     {

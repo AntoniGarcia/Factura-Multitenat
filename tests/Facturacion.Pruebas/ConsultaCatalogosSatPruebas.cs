@@ -128,7 +128,7 @@ public sealed class ConsultaCatalogosSatPruebas : IAsyncLifetime
         var permiso = new Claim(ClavesDeClaim.Permiso, PermisosDePanel.VerCatalogosSat);
         Assert.False((await autorizacion.AuthorizeAsync(Principal(operador), null, PoliticasDeOperador.VerCatalogosSat)).Succeeded);
         Assert.True((await autorizacion.AuthorizeAsync(Principal(operador, permiso), null, PoliticasDeOperador.VerCatalogosSat)).Succeeded);
-        Assert.True((await autorizacion.AuthorizeAsync(Principal(operador, new(ClavesDeClaim.Permiso, PermisosDePanel.VerConfiguracion)),
+        Assert.False((await autorizacion.AuthorizeAsync(Principal(operador, new(ClavesDeClaim.Permiso, PermisosDePanel.VerConfiguracion)),
             null, PoliticasDeOperador.VerCatalogosSat)).Succeeded);
         Assert.False((await autorizacion.AuthorizeAsync(Principal(operador, permiso, new(ClavesDeClaim.Empresa, Guid.NewGuid().ToString())),
             null, PoliticasDeOperador.VerCatalogosSat)).Succeeded);

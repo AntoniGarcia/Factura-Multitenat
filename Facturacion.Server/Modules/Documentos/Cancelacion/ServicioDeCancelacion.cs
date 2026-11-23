@@ -69,22 +69,19 @@ public sealed class ServicioDeCancelacion(
         var (comprobante, solicitud) = apartado.Valor;
 
         // ── Paso 2: fuera de toda transacción ───────────────────────────────────────────
-        RespuestaDeCancelacion respuesta;
+        DatosDeCancelacion datos;
 
         try
         {
             var certificado = await csd.ObtenerAsync(ct);
-
-            respuesta = await pac.CancelarAsync(
-                new DatosDeCancelacion(
-                    comprobante.Uuid!.Value,
-                    comprobante.EmisorRfc,
-                    solicitud.Motivo,
-                    solicitud.UuidSustituye,
-                    certificado.CertificadoCer,
-                    certificado.LlavePrivadaKey,
-                    certificado.ContrasenaLlave),
-                ct);
+            datos = new DatosDeCancelacion(
+                comprobante.Uuid!.Value,
+                comprobante.EmisorRfc,
+                solicitud.Motivo,
+                solicitud.UuidSustituye,
+                certificado.CertificadoCer,
+                certificado.LlavePrivadaKey,
+                certificado.ContrasenaLlave);
         }
         catch (Exception ex)
         {
@@ -92,11 +89,25 @@ public sealed class ServicioDeCancelacion(
             // así que se puede revertir sin riesgo de dejar el sistema y el SAT en desacuerdo.
             registro.LogError(ex, "Falló la preparación de la cancelación de {Comprobante}.", comprobanteId);
 
-            await RevertirAsync(comprobante, solicitud, "error-al-preparar", ct);
+            await RevertirAsync(comprobante, solicitud, "error-al-preparar", CancellationToken.None);
 
             return ErrorNegocio.Regla(
                 "error-al-preparar",
                 "No se pudo preparar la cancelación. El comprobante sigue vigente.");
+        }
+
+        RespuestaDeCancelacion respuesta;
+
+        try
+        {
+            respuesta = await pac.CancelarAsync(datos, ct);
+        }
+        catch (Exception ex)
+        {
+            // La petición ya pudo llegar al PAC/SAT: nunca se revierte a timbrado ante error de
+            // red o cancelación del cliente; queda en_cancelacion para consultar estatus.
+            registro.LogWarning(ex, "Error de comunicación al solicitar cancelación de {Comprobante}.", comprobanteId);
+            respuesta = new RespuestaDeCancelacion(ResultadoDeCancelacion.ErrorDeComunicacion, Mensaje: ex.Message);
         }
 
         return await ResolverAsync(comprobante, solicitud, respuesta, ct);
@@ -400,12 +411,9 @@ public sealed class ServicioDeCancelacion(
         }
         else if (estado.Contains("VIGENTE", StringComparison.Ordinal))
         {
-            // Vigente y con solicitud rechazada o vencida: la cancelación no prosperó y el
-            // comprobante vuelve a ser una factura normal.
-            var noProspero =
-                cancelacion.Contains("RECHAZAD", StringComparison.Ordinal) ||
-                cancelacion.Contains("PLAZO VENCIDO", StringComparison.Ordinal) ||
-                cancelacion.Length == 0;
+            // Solo revierte a timbrado cuando el SAT confirma rechazo expreso; un estatus vacío
+            // puede reflejar latencia del servicio de consulta, y 'PLAZO VENCIDO' cancela el CFDI.
+            var noProspero = cancelacion.Contains("RECHAZAD", StringComparison.Ordinal);
 
             if (comprobante.Estatus == EstatusComprobante.EnCancelacion.ACadena() && noProspero)
             {

@@ -49,12 +49,11 @@ public sealed class RecuperacionDeOperadorPruebas : IAsyncLifetime
         try
         {
             using var plazo = new CancellationTokenSource(TimeSpan.FromSeconds(20));
-            Assert.Equal("recuperacion-no-disponible",
-                (await cola.SolicitarAsync(inactivo.CorreoNormalizado, plazo.Token)).Error?.Codigo);
-            Assert.Equal("recuperacion-no-disponible",
-                (await cola.SolicitarAsync("DESCONOCIDO@EXAMPLE.INVALID", plazo.Token)).Error?.Codigo);
+            Assert.True((await cola.SolicitarAsync(inactivo.CorreoNormalizado, plazo.Token)).EsExito);
+            Assert.True((await cola.SolicitarAsync("DESCONOCIDO@EXAMPLE.INVALID", plazo.Token)).EsExito);
             Assert.True((await cola.SolicitarAsync(operador.CorreoNormalizado, plazo.Token)).EsExito);
 
+            // Solo el operador activo recibe correo; inactivo y desconocido se descartan sin revelarlo.
             var correo = await _correo.Mensajes.Reader.ReadAsync(plazo.Token);
             Assert.Equal(operador.Correo, Assert.Single(correo.Para));
             Assert.True(correo.EsConfidencial);

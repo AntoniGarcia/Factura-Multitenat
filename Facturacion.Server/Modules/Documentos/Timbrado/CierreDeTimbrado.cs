@@ -64,19 +64,30 @@ public sealed class CierreDeTimbrado(
 
         await baseDeDatos.SaveChangesAsync(ct);
 
-        if (await ReservaDeTimbreAsync(comprobante.Id, ct) is { } timbre)
-            await timbres.ConfirmarAsync(timbre, ct);
-
         if (await ReservaDeFolioAsync(comprobante, ct) is { } folio)
             await folios.ConfirmarAsync(folio, comprobante.Id, ct);
 
         await transaccion.CommitAsync(ct);
+        await transaccion.DisposeAsync();
+
+        // ConfirmarTimbre maneja su propia transacción SQL; se ejecuta fuera de la de EF
+        // para evitar transacciones anidadas con ROLLBACK interno.
+        if (await ReservaDeTimbreAsync(comprobante.Id, ct) is { } timbre)
+        {
+            await timbres.ConfirmarAsync(timbre, ct);
+        }
+        else
+        {
+            registro.LogError(
+                "El comprobante {Comprobante} (UUID {Uuid}) se confirmó sin reserva de timbre activa; revisa el saldo de la cuenta.",
+                comprobante.Id, respuesta.Uuid);
+        }
 
         registro.LogInformation(
             "Comprobante {Comprobante} timbrado con UUID {Uuid}.", comprobante.Id, respuesta.Uuid);
     }
 
-    /// <summary>Devuelve el timbre al fallar y conserva el folio apartado para no reutilizarlo.</summary>
+    /// <summary>Devuelve el timbre al fallar y conserva el folio apartado para poder reintentarlo.</summary>
     public async Task RevertirAsync(
         Comprobante comprobante, IntentoTimbrado intento, string? codigo, string? mensaje, CancellationToken ct)
     {
@@ -99,14 +110,14 @@ public sealed class CierreDeTimbrado(
             });
 
         await baseDeDatos.SaveChangesAsync(ct);
+        await transaccion.CommitAsync(ct);
+        await transaccion.DisposeAsync();
 
+        // El folio permanece en estado 'reservado' mientras el comprobante siga en 'error'
+        // conservándolo, para que un reintento posterior pueda confirmarlo sin fallar.
+        // DevolverTimbre maneja su propia transacción SQL; corre fuera de la de EF.
         if (await ReservaDeTimbreAsync(comprobante.Id, ct) is { } timbre)
             await timbres.DevolverAsync(timbre, codigo ?? "timbrado-fallido", ct);
-
-        if (await ReservaDeFolioAsync(comprobante, ct) is { } folio)
-            await folios.LiberarSiNoUsadoAsync(folio, ct);
-
-        await transaccion.CommitAsync(ct);
 
         registro.LogWarning(
             "Comprobante {Comprobante} quedó en error: {Codigo} {Mensaje}", comprobante.Id, codigo, mensaje);
