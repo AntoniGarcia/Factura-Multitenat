@@ -143,7 +143,7 @@ public sealed class GeneradorDeXmlCfdi
                 new XAttribute("ClaveUnidad", c.Concepto.ClaveUnidad),
                 Opcional("Unidad", c.Concepto.UnidadTexto),
                 new XAttribute("Descripcion", c.Concepto.Descripcion),
-                new XAttribute("ValorUnitario", Moneda(c.Concepto.ValorUnitario, d)),
+                new XAttribute("ValorUnitario", ValorUnitario(c.Concepto.ValorUnitario, d)),
                 new XAttribute("Importe", Moneda(c.Importe, d)),
                 c.Descuento > 0 ? new XAttribute("Descuento", Moneda(c.Descuento, d)) : null,
                 new XAttribute("ObjetoImp", c.Concepto.ObjetoImp));
@@ -237,4 +237,20 @@ public sealed class GeneradorDeXmlCfdi
 
     private static string Moneda(decimal valor, int decimales)
         => valor.ToString("F" + decimales.ToString(CultureInfo.InvariantCulture), CultureInfo.InvariantCulture);
+
+    // Preserva hasta 6 decimales significativos (mínimo los de la moneda) para evitar
+    // ValorUnitario="0.00" (CFDI40166) o errores de tolerancia en cantidades altas (CFDI40167).
+    private static string ValorUnitario(decimal valor, int decimalesMoneda)
+    {
+        var minimo = Math.Clamp(decimalesMoneda, 0, DecimalesDeTasa);
+        var texto = valor.ToString("F" + DecimalesDeTasa.ToString(CultureInfo.InvariantCulture), CultureInfo.InvariantCulture);
+        var punto = texto.IndexOf('.');
+        if (punto < 0) return texto;
+
+        var fin = texto.Length;
+        while (fin > punto + 1 + minimo && texto[fin - 1] == '0')
+            fin--;
+
+        return fin == punto + 1 ? texto[..punto] : texto[..fin];
+    }
 }

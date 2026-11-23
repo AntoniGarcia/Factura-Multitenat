@@ -13,7 +13,7 @@ public sealed class GeneradorDePdfEstimacionObra
     private static readonly CultureInfo Cultura = CultureInfo.GetCultureInfo("es-MX");
 
     public byte[] Generar(Comprobante factura, DatosObraDto obra, DateTime fechaLocal)
-        => Document.Create(documento =>
+        => Facturacion.Server.Infra.Pdf.CandadoDePdf.Generar(Document.Create(documento =>
         {
             documento.Page(pagina =>
             {
@@ -119,7 +119,7 @@ public sealed class GeneradorDePdfEstimacionObra
                 });
 
             });
-        }).GeneratePdf();
+        }));
 
     private static string? Estado(Comprobante factura) => factura.Estatus switch
     {

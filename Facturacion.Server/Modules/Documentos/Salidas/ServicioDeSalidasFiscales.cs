@@ -300,7 +300,7 @@ public sealed class ServicioDeSalidasFiscales(
             .FirstOrDefaultAsync(c => c.Id == comprobanteId, ct);
 
     private static bool EsFiscal(Comprobante comprobante)
-        => comprobante.Estatus is "timbrado" or "cancelado" && comprobante.Uuid is not null;
+        => comprobante.Estatus is "timbrado" or "en_cancelacion" or "cancelado" && comprobante.Uuid is not null;
 
 }
 

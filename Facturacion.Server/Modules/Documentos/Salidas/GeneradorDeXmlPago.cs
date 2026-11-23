@@ -262,7 +262,7 @@ public static class GeneradorDeXmlPago
             new XAttribute("FechaPago", fechaLocal.ToString("yyyy-MM-ddTHH:mm:ss", CultureInfo.InvariantCulture)),
             new XAttribute("FormaDePagoP", pago.FormaDePagoP),
             new XAttribute("MonedaP", pago.MonedaP),
-            new XAttribute("TipoCambioP", Moneda(CambioAMxn(pago), DecimalesDeTasa)),
+            new XAttribute("TipoCambioP", pago.MonedaP == "MXN" ? "1" : Moneda(CambioAMxn(pago), DecimalesDeTasa)),
             new XAttribute("Monto", Moneda(pago.Monto, d)),
             Opcional("NumOperacion", pago.NumOperacion),
             Opcional("RfcEmisorCtaOrd", pago.RfcEmisorCtaOrd),
@@ -276,7 +276,7 @@ public static class GeneradorDeXmlPago
             Opcional("SelloPago", pago.SelloPago));
 
         foreach (var documento in pago.Documentos.OrderBy(x => x.NumParcialidad).ThenBy(x => x.IdDocumento))
-            nodo.Add(NodoDeDocumento(documento, d));
+            nodo.Add(NodoDeDocumento(documento, pago.MonedaP));
 
         if (impuestos.Count > 0)
         {
@@ -297,15 +297,18 @@ public static class GeneradorDeXmlPago
         return nodo;
     }
 
-    private static XElement NodoDeDocumento(DocumentoPagado documento, int d)
+    private static XElement NodoDeDocumento(DocumentoPagado documento, string monedaPago)
     {
-        d = documento.DecimalesMonedaDR;
+        var d = documento.DecimalesMonedaDR;
+        var equivalencia = string.Equals(documento.MonedaDR, monedaPago, StringComparison.OrdinalIgnoreCase)
+            ? "1"
+            : Moneda(documento.EquivalenciaDR, 10);
         var nodo = new XElement(Pago20 + "DoctoRelacionado",
             new XAttribute("IdDocumento", documento.IdDocumento.ToString().ToUpperInvariant()),
             Opcional("Serie", documento.Serie),
             Opcional("Folio", documento.Folio),
             new XAttribute("MonedaDR", documento.MonedaDR),
-            new XAttribute("EquivalenciaDR", Moneda(documento.EquivalenciaDR, 10)),
+            new XAttribute("EquivalenciaDR", equivalencia),
             new XAttribute("NumParcialidad", documento.NumParcialidad.ToString(CultureInfo.InvariantCulture)),
             new XAttribute("ImpSaldoAnt", Moneda(documento.ImpSaldoAnt, d)),
             new XAttribute("ImpPagado", Moneda(documento.ImpPagado, d)),

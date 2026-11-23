@@ -51,10 +51,13 @@ public static class ExpresionImpresa
             ? selloCfd
             : selloCfd[^CaracteresDeSello..];
 
-        // Sin Uri.EscapeDataString en 'fe' a propósito; ver el resumen de la clase.
+        // Sin Uri.EscapeDataString en 'fe' a propósito; en 're' y 'rr' sí se escapa '&' para no
+        // romper los parámetros de la URL en personas morales con '&' en el RFC.
+        var re = rfcEmisor.Replace("&", "%26", StringComparison.Ordinal);
+        var rr = rfcReceptor.Replace("&", "%26", StringComparison.Ordinal);
         return $"{Portal}?id={folioFiscal.ToString().ToUpperInvariant()}" +
-               $"&re={rfcEmisor}" +
-               $"&rr={rfcReceptor}" +
+               $"&re={re}" +
+               $"&rr={rr}" +
                $"&tt={total}" +
                $"&fe={fe}";
     }

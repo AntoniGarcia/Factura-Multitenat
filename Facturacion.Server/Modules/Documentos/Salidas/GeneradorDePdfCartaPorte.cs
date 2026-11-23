@@ -15,7 +15,7 @@ public sealed class GeneradorDePdfCartaPorte
     /// <param name="leyendaDelTimbre">El atributo <c>Leyenda</c> del timbre; ver <see cref="DatosDelPdf"/>.</param>
     public byte[] Generar(Comprobante comprobante, TrasladoCartaPorte traslado, TimeZoneInfo zona, bool esBorrador = true,
         string? leyendaDelTimbre = null)
-        => Document.Create(documento => documento.Page(pagina =>
+        => Facturacion.Server.Infra.Pdf.CandadoDePdf.Generar(Document.Create(documento => documento.Page(pagina =>
         {
             pagina.Size(PageSizes.Letter);
             pagina.Margin(0.9f, Unit.Centimetre);
@@ -79,7 +79,7 @@ public sealed class GeneradorDePdfCartaPorte
             });
             if (!esBorrador)
                 pagina.Footer().PaddingTop(6).BorderTop(0.5f).PaddingTop(4).Element(c => Pie(c, comprobante));
-        })).GeneratePdf();
+        })));
 
     private static string Fecha(DateTime utc, TimeZoneInfo zona) => TimeZoneInfo.ConvertTimeFromUtc(DateTime.SpecifyKind(utc, DateTimeKind.Utc), zona).ToString("dd/MM/yyyy HH:mm", CultureInfo.InvariantCulture);
 
@@ -112,6 +112,7 @@ public sealed class GeneradorDePdfCartaPorte
 
         using var generador = new QRCodeGenerator();
         using var datos = generador.CreateQrCode(expresion, QRCodeGenerator.ECCLevel.M);
-        return new PngByteQRCode(datos).GetGraphic(20);
+        using var qr = new PngByteQRCode(datos);
+        return qr.GetGraphic(20);
     }
 }

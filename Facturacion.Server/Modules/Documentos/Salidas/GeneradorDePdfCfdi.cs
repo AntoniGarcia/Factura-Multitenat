@@ -55,7 +55,7 @@ public sealed class GeneradorDePdfCfdi
     private const float AnchoFechas = 154;
 
     public byte[] Generar(Comprobante comprobante, DatosDelPdf datos)
-        => Construir(comprobante, datos).GeneratePdf();
+        => Facturacion.Server.Infra.Pdf.CandadoDePdf.Generar(Construir(comprobante, datos));
 
     public IDocument Construir(Comprobante comprobante, DatosDelPdf datos)
     {
@@ -220,7 +220,7 @@ public sealed class GeneradorDePdfCfdi
 
     private static void SeccionComercioExterior(
         IContainer contenedor, Comprobante comprobante, DatosComercioExteriorDto datos)
-        => contenedor.PreventPageBreak().Column(columna =>
+        => contenedor.Column(columna =>
         {
             columna.Item().PaddingBottom(4).Element(e => EstiloDeComprobante.Seccion(e, "COMERCIO EXTERIOR 2.0"));
             columna.Item().Border(0.5f).Padding(6).Column(detalle =>
@@ -273,7 +273,7 @@ public sealed class GeneradorDePdfCfdi
         => valor is null ? "—" : Cifra(valor.Value, decimales);
 
     private static void SeccionNotarial(IContainer contenedor, DatosNotarialesDelPdf datos, int decimales)
-        => contenedor.PreventPageBreak().Column(columna =>
+        => contenedor.Column(columna =>
         {
             columna.Item().PaddingBottom(4).Element(e => EstiloDeComprobante.Seccion(e, "DATOS NOTARIALES"));
             columna.Item().Border(0.5f).Padding(6).Column(detalle =>

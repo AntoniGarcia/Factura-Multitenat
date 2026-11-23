@@ -36,7 +36,7 @@ public sealed class GeneradorDeComprobanteDeCompraPdf
     private const string Borde = EstiloDeComprobante.Borde;
 
     public byte[] Generar(DatosDeComprobanteDeCompra datos)
-        => Document.Create(documento => documento.Page(pagina =>
+        => Facturacion.Server.Infra.Pdf.CandadoDePdf.Generar(Document.Create(documento => documento.Page(pagina =>
         {
             pagina.Size(PageSizes.Letter);
             pagina.MarginHorizontal(0.9f, Unit.Centimetre);
@@ -51,7 +51,7 @@ public sealed class GeneradorDeComprobanteDeCompraPdf
                 texto.Span(datos.CompraId.ToString().ToUpperInvariant())
                     .FontSize(7).FontFamily(Fonts.Consolas).FontColor(TextoSecundario);
             });
-        })).GeneratePdf();
+        })));
 
     private static void Encabezado(IContainer contenedor, DatosDeComprobanteDeCompra datos)
         => contenedor.PaddingBottom(12).Column(columna =>
