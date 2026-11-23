@@ -36,13 +36,7 @@ public sealed class ServicioDeVersion(IHttpClientFactory fabrica) : IServicioDeV
     }
 
     private static string LeerVersionCompilada()
-    {
-        var informativa = Assembly.GetExecutingAssembly()
-            .GetCustomAttribute<AssemblyInformationalVersionAttribute>()
-            ?.InformationalVersion;
-
-        return Facturacion.Shared.Comun.VersionDeCompilacion.Formatear(informativa);
-    }
+        => Facturacion.Shared.Comun.VersionDeCompilacion.Actual;
 
     private sealed record RespuestaVersion([property: JsonPropertyName("version")] string Version);
 }

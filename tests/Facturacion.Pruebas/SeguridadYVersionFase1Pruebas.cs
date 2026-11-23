@@ -89,6 +89,13 @@ public sealed class SeguridadYVersionFase1Pruebas
     }
 
     [Fact]
+    public void Version_actual_del_ensamblado_compartido_es_determinista_y_no_desconocida()
+    {
+        Assert.NotEqual("desconocida", VersionDeCompilacion.Actual);
+        Assert.StartsWith("0.1.0", VersionDeCompilacion.Actual);
+    }
+
+    [Fact]
     public void El_directorio_de_logs_resuelve_carpeta_privada_y_rechaza_wwwroot()
     {
         var constructor = WebApplication.CreateBuilder(new WebApplicationOptions { EnvironmentName = "Staging", Args = [] });

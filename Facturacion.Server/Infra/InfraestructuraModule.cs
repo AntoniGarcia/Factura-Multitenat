@@ -265,11 +265,5 @@ public static class InfraestructuraModule
     }
 
     private static string VersionCompilada()
-    {
-        var informativa = Assembly.GetEntryAssembly()
-            ?.GetCustomAttribute<AssemblyInformationalVersionAttribute>()
-            ?.InformationalVersion;
-
-        return Facturacion.Shared.Comun.VersionDeCompilacion.Formatear(informativa);
-    }
+        => Facturacion.Shared.Comun.VersionDeCompilacion.Actual;
 }

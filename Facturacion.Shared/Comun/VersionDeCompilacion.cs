@@ -1,3 +1,5 @@
+using System.Reflection;
+
 namespace Facturacion.Shared.Comun;
 
 /// <summary>
@@ -7,6 +9,16 @@ namespace Facturacion.Shared.Comun;
 public static class VersionDeCompilacion
 {
     private const int LongitudDeHash = 12;
+
+    /// <summary>
+    /// Versión leída del ensamblado compartido (<c>Facturacion.Shared</c>), garantizando que
+    /// Server y Client comparen exactamente la misma fuente y no diverjan por tareas de build
+    /// específicas del servidor (como NPOI/SourceLink).
+    /// </summary>
+    public static string Actual { get; } = Formatear(
+        typeof(VersionDeCompilacion).Assembly
+            .GetCustomAttribute<AssemblyInformationalVersionAttribute>()
+            ?.InformationalVersion);
 
     public static string Formatear(string? informativa)
     {
