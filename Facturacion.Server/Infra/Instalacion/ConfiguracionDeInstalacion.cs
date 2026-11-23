@@ -1,3 +1,4 @@
+using System.Security.Cryptography;
 using System.Text.Json;
 using Microsoft.AspNetCore.DataProtection;
 
@@ -9,32 +10,17 @@ public sealed class ConfiguracionDeInstalacion
     private readonly string _directorio;
     private readonly string _archivo;
     private readonly Lazy<IDataProtector> _protector;
-    private readonly bool _conexionSinCifrar;
-
-    public ConfiguracionDeInstalacion(string directorio, bool conexionSinCifrar = false)
+    public ConfiguracionDeInstalacion(string directorio)
     {
-        _conexionSinCifrar = conexionSinCifrar;
         _directorio = Path.GetFullPath(directorio);
         _archivo = Path.Combine(_directorio, "appsettings.Instalacion.json");
-        _protector = new Lazy<IDataProtector>(() =>
-        {
-            if (!OperatingSystem.IsWindows())
-                throw new PlatformNotSupportedException("El asistente de esta entrega utiliza protección de Windows.");
-
-            var proveedor = DataProtectionProvider.Create(
-                new DirectoryInfo(Path.Combine(_directorio, "llavero-instalacion")), opciones =>
-                {
-                    opciones.SetApplicationName("Facturacion.Instalacion");
-                    if (OperatingSystem.IsWindows()) opciones.ProtectKeysWithDpapi();
-                });
-            return proveedor.CreateProtector("ConexionSql", "v1");
-        });
+        _protector = new Lazy<IDataProtector>(CrearProtector);
     }
 
     public bool Existe => File.Exists(_archivo);
     public string Directorio => _directorio;
 
-    public string? LeerConexion()
+    public string? LeerConexion(bool migrarFormatoAnterior = false)
     {
         if (!Existe) return null;
         var contenido = File.ReadAllText(_archivo);
@@ -45,11 +31,12 @@ public sealed class ConfiguracionDeInstalacion
             throw new InvalidDataException("La configuración de instalación no tiene un formato válido.");
         if (numeroVersion == 2)
         {
-            if (!_conexionSinCifrar)
-                throw new InvalidDataException("La conexión sin cifrar solo se admite en el modo explícito de revisión.");
+            if (!migrarFormatoAnterior)
+                throw new InvalidDataException("El formato anterior necesita migrarse desde la instalación de revisión.");
             var revision = JsonSerializer.Deserialize<ConexionEnClaro>(contenido);
             if (string.IsNullOrWhiteSpace(revision?.Conexion))
                 throw new InvalidDataException("La conexión de revisión está vacía.");
+            MigrarConexion(revision.Conexion, revision.GuardadaUtc);
             return revision.Conexion;
         }
         var documento = JsonSerializer.Deserialize<ConexionPersistida>(contenido)
@@ -67,14 +54,8 @@ public sealed class ConfiguracionDeInstalacion
         {
             if (Existe) return false;
             Directory.CreateDirectory(_directorio);
-            object datos = _conexionSinCifrar
-                ? new ConexionEnClaro(2, conexion, DateTimeOffset.UtcNow)
-                : new ConexionPersistida(1, _protector.Value.Protect(conexion), DateTimeOffset.UtcNow);
             temporal = Path.Combine(_directorio, $".conexion-{Guid.NewGuid():N}.tmp");
-            await File.WriteAllTextAsync(temporal, JsonSerializer.Serialize(datos, new JsonSerializerOptions
-            {
-                WriteIndented = true
-            }), ct);
+            await File.WriteAllTextAsync(temporal, Cifrar(conexion, DateTimeOffset.UtcNow), ct);
             try { File.Move(temporal, _archivo, overwrite: false); }
             catch (IOException) when (Existe) { return false; }
             return true;
@@ -84,6 +65,45 @@ public sealed class ConfiguracionDeInstalacion
             if (temporal is not null && File.Exists(temporal)) File.Delete(temporal);
             _escritura.Release();
         }
+    }
+
+    private void MigrarConexion(string conexion, DateTimeOffset guardadaUtc)
+    {
+        var temporal = Path.Combine(_directorio, $".conexion-{Guid.NewGuid():N}.tmp");
+        try
+        {
+            File.WriteAllText(temporal, Cifrar(conexion, guardadaUtc));
+            // Mantiene el archivo anterior intacto si no se puede escribir el reemplazo cifrado.
+            
+            File.Replace(temporal, _archivo, destinationBackupFileName: null);
+        }
+        finally
+        {
+            if (File.Exists(temporal)) File.Delete(temporal);
+        }
+    }
+
+    private string Cifrar(string conexion, DateTimeOffset guardadaUtc)
+    {
+        var protegida = _protector.Value.Protect(conexion);
+        // Otro proveedor debe poder leer la clave persistida antes de reemplazar el JSON.
+        if (!string.Equals(CrearProtector().Unprotect(protegida), conexion, StringComparison.Ordinal))
+            throw new CryptographicException("No se pudo verificar el cifrado de la conexión SQL.");
+        return JsonSerializer.Serialize(new ConexionPersistida(1, protegida, guardadaUtc));
+    }
+
+    private IDataProtector CrearProtector()
+    {
+        if (!OperatingSystem.IsWindows())
+            throw new PlatformNotSupportedException("El asistente de esta entrega utiliza protección de Windows.");
+
+        var proveedor = DataProtectionProvider.Create(
+            new DirectoryInfo(Path.Combine(_directorio, "llavero-instalacion")), opciones =>
+            {
+                opciones.SetApplicationName("Facturacion.Instalacion");
+                if (OperatingSystem.IsWindows()) opciones.ProtectKeysWithDpapi();
+            });
+        return proveedor.CreateProtector("ConexionSql", "v1");
     }
 
     private sealed record ConexionPersistida(int Version, string ConexionProtegida, DateTimeOffset GuardadaUtc);

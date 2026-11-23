@@ -20,10 +20,7 @@ public static class InstalacionModule
         var rutas = RutasDeInstalacion.Obtener(constructor);
         var ruta = rutas.Conexion;
 
-        var conexionSinCifrar = configuracion.GetValue<bool>("Instalacion:ConexionSinCifrarRevision");
-        if (conexionSinCifrar && !constructor.Environment.IsStaging())
-            throw new InvalidOperationException("La conexión sin cifrar solo se permite en Staging para revisión.");
-        var archivo = new ConfiguracionDeInstalacion(ruta, conexionSinCifrar);
+        var archivo = new ConfiguracionDeInstalacion(ruta);
         ArranqueDeRevision.Cargar(constructor, rutas.Interna);                    /////////////////
         string? errorCarga = null;
         var conexion = configuracion.GetConnectionString("BaseDeDatos");    
@@ -31,16 +28,17 @@ public static class InstalacionModule
         {
             try
             {
-                conexion = archivo.LeerConexion();
+                conexion = archivo.LeerConexion(migrarFormatoAnterior: constructor.Environment.IsStaging());
                 configuracion.AddInMemoryCollection(new Dictionary<string, string?>
                 {
                     ["ConnectionStrings:BaseDeDatos"] = conexion
                 });
             }
             catch (Exception error) when (error is System.Security.Cryptography.CryptographicException
-                or IOException or InvalidDataException or System.Text.Json.JsonException or PlatformNotSupportedException)
+                or IOException or UnauthorizedAccessException or InvalidDataException or System.Text.Json.JsonException
+                or PlatformNotSupportedException)
             {
-                errorCarga = "No se pudo leer la conexión guardada. Conserva cnf y su llavero y utiliza la misma identidad de Windows que realizó la instalación.";
+                errorCarga = "No se pudo cargar la conexión protegida. Conserva cnf y su llavero, y revisa que la identidad del sitio pueda leerlos y actualizar la configuración anterior.";
             }
         }
 
@@ -227,6 +225,11 @@ public static class InstalacionModule
         {
             if (!await estado.Archivo.GuardarAsync(ConexionSqlDeInstalacion.CrearCadena(parametros, constructor.Environment), contexto.RequestAborted))
                 return Problema(contexto, 409, "conexion-configurada", "Otra solicitud ya guardó la conexión.");
+        }
+        catch (Exception error) when (error is System.Security.Cryptography.CryptographicException or PlatformNotSupportedException)
+        {
+            return Problema(contexto, 500, "conexion-cifrado",
+                "La conexión SQL funciona, pero no se pudo proteger. Revisa el perfil de Windows del grupo IIS y los permisos del llavero de instalación.");
         }
         catch (Exception error) when (error is UnauthorizedAccessException or IOException)
         {

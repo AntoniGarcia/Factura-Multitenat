@@ -64,7 +64,7 @@ public static class ConexionSqlDeInstalacion
                 4060 or 916 => "No se pudo abrir esa base. Revisa el nombre y los permisos del usuario SQL.",
                 -2 or 53 or 26 or 40 or 10060 or 10061 or 11001 =>
                     "No se pudo contactar SQL Server. Revisa servidor, instancia, puerto y acceso de red desde este equipo.",
-                _ => "SQL Server no aceptó la conexión. Revisa los datos, los permisos y el certificado del servidor SQL."
+                _ => "SQL Server no aceptó la conexión. Revisa los datos, los permisos y el certificado del servidor SQL. "
             };
             return new(false, mensaje);
         }

@@ -110,7 +110,6 @@ public sealed class ArranqueDeRevisionPruebas : IDisposable
             constructor.Configuration["ConnectionStrings:BaseDeDatos"] = null;
             constructor.Configuration["Instalacion:ArranqueAutomatico"] = "true";
             constructor.Configuration["Instalacion:JuntoAlServidorRevision"] = "true";
-            constructor.Configuration["Instalacion:ConexionSinCifrarRevision"] = "true";
             return constructor;
         }
         var primero = Crear();
@@ -122,6 +121,7 @@ public sealed class ArranqueDeRevisionPruebas : IDisposable
         const string conexion = "Server=prueba;Database=prueba;Integrated Security=true";
         Assert.True(await estado.Archivo.GuardarAsync(conexion, default));
         Assert.True(File.Exists(Path.Combine(_directorio, "cnf", "appsettings.Instalacion.json")));
+        Assert.DoesNotContain(conexion, File.ReadAllText(Path.Combine(_directorio, "cnf", "appsettings.Instalacion.json")));
         Assert.Empty(Directory.GetFiles(_directorio));
         Assert.Empty(Directory.GetFiles(Path.Combine(_directorio, "cnf"), "*.tmp"));
         Assert.True(File.Exists(Path.Combine(_directorio, "cnf", "appsettings.ArranqueRevision.json")));
@@ -163,7 +163,6 @@ public sealed class ArranqueDeRevisionPruebas : IDisposable
                 constructor.Configuration["ConnectionStrings:BaseDeDatos"] = null;
                 constructor.Configuration["Instalacion:ArranqueAutomatico"] = "true";
                 constructor.Configuration["Instalacion:JuntoAlServidorRevision"] = "true";
-                constructor.Configuration["Instalacion:ConexionSinCifrarRevision"] = "true";
                 return constructor;
             }
             var primero = Crear();

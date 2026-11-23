@@ -6,9 +6,8 @@ public sealed record RutasDeInstalacion(string Conexion, string Interna)
     {
         var configuracion = constructor.Configuration;
         var juntoAlServidor = configuracion.GetValue<bool>("Instalacion:JuntoAlServidorRevision");
-        if (juntoAlServidor && (!constructor.Environment.IsStaging()
-            || !configuracion.GetValue<bool>("Instalacion:ConexionSinCifrarRevision")))
-            throw new InvalidOperationException("La configuración junto al servidor requiere Staging y conexión legible de revisión.");
+        if (juntoAlServidor && !constructor.Environment.IsStaging())
+            throw new InvalidOperationException("La configuración junto al servidor requiere Staging.");
         if (juntoAlServidor && !string.IsNullOrWhiteSpace(configuracion["Instalacion:Directorio"]))
             throw new InvalidOperationException("No combines la configuración junto al servidor con una ruta de instalación externa.");
         var sitio = Path.GetFullPath(constructor.Environment.ContentRootPath);
