@@ -97,7 +97,7 @@ else
     private ActualizacionCatalogosDto? _actualizacion;
     private readonly CancellationTokenSource _cancelacion = new();
     private Task? _seguimiento;
-    private bool PuedeActualizar => SesionOperador.TienePermiso(PoliticasDelPanel.AdministrarConfiguracion);
+    private bool PuedeActualizar => SesionOperador.TienePermiso(PoliticasDelPanel.ActualizarCatalogosSat);
     private bool Actualizando => _actualizacion?.Estado == "cargando";
     private CatalogoSatDeOperadorDto? Seleccionado => _catalogos.FirstOrDefault(x => x.Definicion.Clave == _catalogo);
     private bool FaltaBusqueda => Seleccionado?.Definicion.RequiereBusqueda == true && _texto.Trim().Length < 3;

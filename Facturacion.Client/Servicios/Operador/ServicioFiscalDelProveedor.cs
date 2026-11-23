@@ -32,14 +32,13 @@ public sealed class ServicioFiscalDelProveedor(IHttpClientFactory fabrica)
 
     public async Task<(ConfiguracionFiscalProveedorDto? Datos, DetalleProblema? Error)> CargarCsdAsync(
         Stream cer, string nombreCer, Stream key, string nombreKey, string contrasena,
-        string contrasenaOperador, byte[] version)
+        byte[] version)
     {
         using var contenido = new MultipartFormDataContent
         {
             { new StreamContent(cer), "cer", nombreCer },
             { new StreamContent(key), "key", nombreKey },
             { new StringContent(contrasena), "contrasena" },
-            { new StringContent(contrasenaOperador), "contrasenaOperador" },
             { new StringContent(Convert.ToBase64String(version)), "version" }
         };
         using var respuesta = await Cliente.PostAsync($"{Ruta}/certificados", contenido);

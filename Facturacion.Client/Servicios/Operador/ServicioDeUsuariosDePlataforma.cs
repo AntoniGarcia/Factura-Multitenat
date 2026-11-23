@@ -23,11 +23,11 @@ public sealed class ServicioDeUsuariosDePlataforma(IHttpClientFactory fabrica)
     }
 
     public async Task<DetalleProblema?> RestablecerContrasenaAsync(
-        Guid usuarioId, string contrasenaNueva, string contrasenaDelOperador, CancellationToken ct = default)
+        Guid usuarioId, string contrasenaNueva, CancellationToken ct = default)
     {
         using var respuesta = await Cliente.PutAsJsonAsync(
             $"api/operador/usuarios/{usuarioId}/contrasena",
-            new PeticionRestablecerContrasenaDeUsuario(contrasenaNueva, contrasenaDelOperador), ct);
+            new PeticionRestablecerContrasenaDeUsuario(contrasenaNueva), ct);
 
         return respuesta.IsSuccessStatusCode
             ? null
@@ -63,11 +63,11 @@ public sealed class ServicioDeUsuariosDePlataforma(IHttpClientFactory fabrica)
     }
 
     public async Task<DetalleProblema?> CambiarCorreoAsync(
-        Guid usuarioId, string correoNuevo, string contrasenaDelOperador, CancellationToken ct = default)
+        Guid usuarioId, string correoNuevo, CancellationToken ct = default)
     {
         using var respuesta = await Cliente.PutAsJsonAsync(
             $"api/operador/usuarios/{usuarioId}/correo",
-            new PeticionCambiarCorreoDeUsuario(correoNuevo, contrasenaDelOperador), ct);
+            new PeticionCambiarCorreoDeUsuario(correoNuevo), ct);
 
         return respuesta.IsSuccessStatusCode
             ? null

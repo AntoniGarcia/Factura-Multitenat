@@ -30,8 +30,9 @@
         <MudSelectItem T="string" Value="@("todos")">Todos</MudSelectItem>
         <MudSelectItem T="string" Value="@("activos")">Activos</MudSelectItem>
         <MudSelectItem T="string" Value="@("inactivos")">Inactivos</MudSelectItem>
+        <MudSelectItem T="string" Value="@("eliminados")">Eliminados</MudSelectItem>
     </MudSelect>
-    @if (Sesion.TienePermiso(PoliticasDelPanel.AdministrarOperadores))
+    @if (Sesion.TienePermiso(PoliticasDelPanel.CrearOperadores))
     {
         <MudButton Color="Color.Primary" Variant="Variant.Filled" StartIcon="@Icons.Material.Filled.PersonAdd"
                    OnClick="Nuevo" Class="ml-4">Nuevo operador</MudButton>
@@ -61,16 +62,28 @@
                              <div>@u.Nombre</div>
                              <div class="texto-secundario">@u.Correo</div>
                          </div>),
-        new("Permisos", u => @<div class="permisos-chips">
-                               @foreach (var p in u.Permisos)
+        new("Permisos", u => @<div>
+                               @if (u.EsPrincipal || u.Permisos.Count == 0)
                                {
-                                   <span class="permiso-chip">@PermisosDePanel.EtiquetaCorta(p)</span>
+                                   <span>@(u.EsPrincipal ? "Todos" : "Sin permisos")</span>
+                               }
+                               else
+                               {
+                                   <details class="resumen-permisos-operador">
+                                       <summary>@u.Permisos.Count @(u.Permisos.Count == 1 ? "permiso" : "permisos")</summary>
+                                       <ul>
+                                           @foreach (var permiso in u.Permisos)
+                                           {
+                                               <li>@PermisosDePanel.EtiquetaCorta(permiso)</li>
+                                           }
+                                       </ul>
+                                   </details>
                                }
                            </div>),
         new("Alta", u => @<span class="cifra-tabular">@u.FechaAltaUtc.ToLocalTime().ToString("dd/MM/yyyy")</span>),
         new("Estado", u => @<span>
                                <span class="indicador-estado indicador-estado-@(u.Activo ? "timbrada" : "borrador")">
-                                   @(u.Activo ? "Activo" : "Desactivado")
+                                   @(u.Eliminado ? "Eliminado" : u.Activo ? "Activo" : "Desactivado")
                                </span>
                                @if (u.EsPrincipal)
                                {
@@ -80,18 +93,25 @@
                                }
                            </span>),
         new("", u => @<div class="acciones-renglon">
-                           @if (!u.EsPrincipal)
+                           @if (Sesion.TienePermiso(PoliticasDelPanel.VerActividadOperadores))
                            {
-                               @if (Sesion.TienePermiso(PoliticasDelPanel.AdministrarOperadores))
+                               <MudButton Size="Size.Small" OnClick="@(() => VerActividad(u))">Actividad</MudButton>
+                           }
+                           @if (PuedeGestionar(u))
+                           {
+                               @if (Sesion.TienePermiso(PoliticasDelPanel.EditarOperadores))
                                {
                                <MudButton Size="Size.Small" Disabled="@_trabajando"
                                           OnClick="@(() => Editar(u))">
                                    Editar
                                </MudButton>
+                               }
+                               @if (Sesion.TienePermiso(PoliticasDelPanel.EliminarOperadores))
+                               {
                                <MudButton Size="Size.Small" Disabled="@_trabajando" Color="Color.Error"
                                           OnClick="@(() => EliminarAsync(u))">Eliminar</MudButton>
                                }
-                               @if (Sesion.TienePermiso(PoliticasDelPanel.CambiarEstadoOperadores))
+                               @if (Sesion.TienePermiso(u.Activo ? PoliticasDelPanel.DesactivarOperadores : PoliticasDelPanel.ReactivarOperadores))
                                {
                                 <MudButton Size="Size.Small" Disabled="@_trabajando"
                                            OnClick="@(() => CambiarActivo(u))"
@@ -107,7 +127,7 @@
         PeticionDePagina peticion, CancellationToken ct)
     {
         var pagina = await Operadores.ListarAsync(
-            _texto, FiltroDeActivos(), peticion.Pagina, peticion.TamanoPagina, ct);
+            _texto, FiltroDeActivos(), _filtroEstado == "eliminados", peticion.Pagina, peticion.TamanoPagina, ct);
 
         return new ResultadoDePagina<OperadorDto>(pagina.Elementos, pagina.Total);
     }
@@ -132,6 +152,22 @@
     };
 
     private Task RecargarAsync() => _tabla?.RecargarAsync() ?? Task.CompletedTask;
+
+    private bool PuedeGestionar(OperadorDto operador)
+        => !operador.Eliminado && !operador.EsPrincipal && operador.Id != Sesion.Sesion?.OperadorId
+           && (Sesion.Sesion?.EsPrincipal == true
+               || operador.Permisos.All(p => Sesion.Sesion?.Permisos.Contains(p) == true));
+
+    private Task VerActividad(OperadorDto operador)
+        => Dialogos.ShowAsync<DialogoDeActividadDeOperador>("Actividad del operador",
+            new DialogParameters<DialogoDeActividadDeOperador>
+            {
+                { x => x.Operador, operador },
+                { x => x.PuedeLimpiar, Sesion.TienePermiso(PermisosDePanel.LimpiarActividadOperadores)
+                    && (Sesion.Sesion?.EsPrincipal == true || !operador.EsPrincipal
+                        && operador.Permisos.All(p => Sesion.Sesion?.Permisos.Contains(p) == true)) }
+            },
+            new DialogOptions { MaxWidth = MaxWidth.Small, FullWidth = true });
 
     private async Task Nuevo()
     {
@@ -172,43 +208,17 @@
     {
         if (_trabajando) return;
 
-        string? motivo = null;
-
-        if (operador.Activo)
-        {
-            var parametros = new DialogParameters<DialogoDeMotivo>
-            {
-                { x => x.Titulo, "Desactivar operador" },
-                { x => x.Mensaje, $"«{operador.Nombre}» ({operador.Correo}) dejará de poder entrar al panel y se cerrarán sus sesiones." },
-                { x => x.EtiquetaCampo, "Motivo de la desactivación" },
-                { x => x.TextoConfirmar, "Desactivar" }
-            };
-
-            var referencia = await Dialogos.ShowAsync<DialogoDeMotivo>("Desactivar operador", parametros);
-            var resultado = await referencia.Result;
-
-            if (resultado is not { Canceled: false, Data: string texto }) return;
-
-            motivo = texto;
-        }
-        else
-        {
-            var confirmado = await Confirmacion.ConfirmarAsync(
-                "Activar operador",
-                $"«{operador.Nombre}» volverá a poder entrar al panel.",
-                "Activar");
-
-            if (!confirmado) return;
-        }
+        var accion = operador.Activo ? "Desactivar" : "Activar";
+        var mensaje = operador.Activo
+            ? $"«{operador.Nombre}» dejará de poder entrar al panel y se cerrarán sus sesiones."
+            : $"«{operador.Nombre}» volverá a poder entrar al panel.";
+        if (!await Confirmacion.ConfirmarAsync($"{accion} operador", mensaje, accion, esPeligrosa: operador.Activo)) return;
 
         _trabajando = true;
         _error = null;
         _aviso = null;
 
-        var contrasena = await PedirContrasenaOperadorAsync((operador.Activo ? "desactivar" : "activar") + " a " + operador.Nombre);
-        if (contrasena is null) { _trabajando = false; return; }
-
-        var (exito, error) = await Operadores.CambiarActivoAsync(operador.Id, new PeticionCambiarActivoOperador(!operador.Activo, motivo), contrasena, CancellationToken.None);
+        var (exito, error) = await Operadores.CambiarActivoAsync(operador.Id, new PeticionCambiarActivoOperador(!operador.Activo));
 
         _error = error;
         _trabajando = false;
@@ -219,21 +229,6 @@
         await RecargarAsync();
     }
 
-    private async Task<string?> PedirContrasenaOperadorAsync(string accion)
-    {
-        var parametros = new DialogParameters<DialogoConfirmarContrasenaOperador>
-        {
-            { x => x.Mensaje, $"Escribe tu contraseña de operador para {accion}." },
-            { x => x.EtiquetaCampo, "Tu contraseña" },
-            { x => x.TextoConfirmar, "Confirmar" }
-        };
-
-        var referencia = await Dialogos.ShowAsync<DialogoConfirmarContrasenaOperador>("Confirmar contraseña", parametros);
-        var resultado = await referencia.Result;
-
-        return resultado is { Canceled: false, Data: string contrasena } ? contrasena : null;
-    }
-
     private async Task EliminarAsync(OperadorDto operador)
     {
         if (_trabajando) return;
@@ -242,16 +237,10 @@
         _aviso = null;
         try
         {
-            var parametros = new DialogParameters<DialogoConfirmarContrasenaOperador>
-            {
-                { x => x.Mensaje, $"Eliminar a «{operador.Nombre}». Escribe tu contraseña de operador. Solo se permite si no tiene actividad registrada." },
-                { x => x.TextoConfirmar, "Eliminar" },
-                { x => x.ColorConfirmar, Color.Error }
-            };
-            var referencia = await Dialogos.ShowAsync<DialogoConfirmarContrasenaOperador>("Eliminar operador", parametros,
-                new DialogOptions { BackdropClick = false, MaxWidth = MaxWidth.Small, FullWidth = true });
-            if (await referencia.Result is not { Canceled: false, Data: string contrasena }) return;
-            _error = await Operadores.EliminarAsync(operador.Id, contrasena);
+            if (!await Confirmacion.ConfirmarAsync("Eliminar operador",
+                $"¿Eliminar a «{operador.Nombre}»? Su acceso se elimina definitivamente y se conserva su actividad.",
+                "Eliminar", esPeligrosa: true)) return;
+            _error = await Operadores.EliminarAsync(operador.Id);
             if (_error is null)
             {
                 _aviso = "Operador eliminado.";

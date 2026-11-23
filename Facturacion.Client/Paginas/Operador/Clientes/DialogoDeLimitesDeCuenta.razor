@@ -19,19 +19,10 @@
         </div>
         </section>
 
-        <section class="operador-dialogo-bloque" aria-labelledby="cuenta-limites-confirmacion">
-        <h2 id="cuenta-limites-confirmacion" class="seccion-titulo">Confirmar cambios</h2>
-        <MudTextField @bind-Value="_contrasena" Label="Tu contraseña de operador"
-                      InputType="@(_verContrasena ? InputType.Text : InputType.Password)"
-                      Adornment="Adornment.End"
-                      AdornmentIcon="@(_verContrasena ? Icons.Material.Filled.VisibilityOff : Icons.Material.Filled.Visibility)"
-                      OnAdornmentClick="@(() => _verContrasena = !_verContrasena)"
-                      Immediate="true" MaxLength="128" Required="true" />
-        </section>
     </DialogContent>
     <DialogActions>
         <MudButton OnClick="Cancelar">Cancelar</MudButton>
-        <MudButton Variant="Variant.Filled" Color="Color.Primary" Disabled="@(_contrasena.Length < 12)" OnClick="Guardar">
+        <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="Guardar">
             Guardar límites
         </MudButton>
     </DialogActions>
@@ -43,8 +34,6 @@
     [Parameter] public LimitesDeCuentaDto Limites { get; set; } = new(1, 0, 1, 0);
 
     private int _usuarios, _empresas;
-    private bool _verContrasena;
-    private string _contrasena = string.Empty;
 
     protected override void OnInitialized()
     {
@@ -53,7 +42,7 @@
     }
 
     private void Guardar() => Dialogo.Close(DialogResult.Ok(
-        new PeticionCambiarLimitesDeCuenta(_usuarios, _empresas, _contrasena)));
+        new PeticionCambiarLimitesDeCuenta(_usuarios, _empresas)));
 
     private void Cancelar() => Dialogo.Cancel();
 }

@@ -67,6 +67,11 @@ else
                         Editar contacto
                     </MudButton>
                 }
+                else if (PuedeCambiarContrasenaDelTitular)
+                {
+                    <MudButton Variant="Variant.Outlined" Disabled="@_trabajando"
+                               OnClick="CambiarContrasenaDelTitular">Cambiar contraseña del titular</MudButton>
+                }
             </div>
         </div>
 
@@ -103,6 +108,10 @@ else
     </section>
 
     <PanelErrores Problema="_error" />
+    @if (_aviso is not null)
+    {
+        <div class="aviso-documentos" role="status">@_aviso</div>
+    }
 
     @if (TotalDeComprasPendientes > 0)
     {
@@ -201,7 +210,7 @@ else
                         <h2>Paquetes exclusivos</h2>
                         <p>Solo los ve esta cuenta, y cualquiera de sus empresas puede comprarlos.</p>
                     </div>
-                    @if (Sesion.TienePermiso(PoliticasDelPanel.AsignarTimbres))
+                    @if (Sesion.TienePermiso(PoliticasDelPanel.CrearPaquetesExclusivos))
                     {
                         <MudButton Variant="Variant.Filled"
                                    Color="Color.Primary"
@@ -242,18 +251,26 @@ else
                             </span>
                         </MudTd>
                         <MudTd DataLabel="Acciones" Class="celda-accion-ficha">
-                            @if (Sesion.TienePermiso(PoliticasDelPanel.AsignarTimbres))
+                            @if (Sesion.TienePermiso(PoliticasDelPanel.EditarPaquetesExclusivos))
                             {
                                 <MudButton Size="Size.Small" Variant="Variant.Text" Disabled="@_trabajando"
                                            OnClick="@(() => EditarPaquetePersonalizado(context))">
                                     Editar
                                 </MudButton>
+                            }
+                            @if (Sesion.TienePermiso(context.Activo ? PoliticasDelPanel.DesactivarPaquetesExclusivos : PoliticasDelPanel.ReactivarPaquetesExclusivos))
+                            {
                                 <MudButton Size="Size.Small" Variant="Variant.Text"
                                            Color="@(context.Activo ? Color.Error : Color.Primary)"
                                            Disabled="@_trabajando"
                                            OnClick="@(() => CambiarActivoPaquetePersonalizado(context))">
                                     @(context.Activo ? "Desactivar" : "Reactivar")
                                 </MudButton>
+                            }
+                            @if (Sesion.TienePermiso(PermisosDePanel.EliminarPaquetesExclusivos))
+                            {
+                                <MudButton Size="Size.Small" Color="Color.Error" Disabled="@_trabajando"
+                                           OnClick="@(() => EliminarPaquetePersonalizado(context))">Eliminar</MudButton>
                             }
                         </MudTd>
                     </RowTemplate>
@@ -351,6 +368,7 @@ else
     private DetalleDeCuentaDto? _detalle;
     private IReadOnlyList<MembresiaDeOperadorDto> _membresias = [];
     private DetalleProblema? _error;
+    private string? _aviso;
     private bool _cargando = true;
     private bool _trabajando;
 
@@ -489,6 +507,27 @@ else
         if (_error is null) await CargarAsync();
     }
 
+    private async Task EliminarPaquetePersonalizado(PaquetePersonalizadoDto paquete)
+    {
+        if (_trabajando) return;
+        _trabajando = true;
+        _error = null;
+        _aviso = null;
+        try
+        {
+            if (!await Confirmacion.ConfirmarAsync("Eliminar paquete exclusivo",
+                    $"«{paquete.Nombre}» desaparecerá del catálogo de esta cuenta. Las compras registradas se conservarán.",
+                    "Eliminar", esPeligrosa: true)) return;
+            _error = await Clientes.EliminarPaquetePersonalizadoAsync(Id, paquete.Id);
+            if (_error is null)
+            {
+                _aviso = "Paquete eliminado.";
+                await CargarAsync();
+            }
+        }
+        finally { _trabajando = false; }
+    }
+
     private async Task CambiarActivoPaquetePersonalizado(PaquetePersonalizadoDto paquete)
     {
         if (_trabajando) return;
@@ -510,6 +549,29 @@ else
         if (_error is null) await CargarAsync();
     }
 
+    private bool PuedeCambiarContrasenaDelTitular => _detalle?.NombreTitular is not null
+        && Sesion.TienePermiso(PoliticasDelPanel.RestablecerContrasenasUsuarios);
+
+    private async Task CambiarContrasenaDelTitular()
+    {
+        if (_trabajando || !PuedeCambiarContrasenaDelTitular || _detalle?.NombreTitular is not { } nombre) return;
+        var cuentaId = Id;
+        var referencia = await Dialogos.ShowAsync<DialogoDeContrasenaDeUsuario>("Cambiar contraseña del titular",
+            new DialogParameters<DialogoDeContrasenaDeUsuario> { { x => x.NombreUsuario, nombre } },
+            new DialogOptions { MaxWidth = MaxWidth.Small, FullWidth = true });
+        if (await referencia.Result is not { Canceled: false, Data: string contrasena }) return;
+
+        _trabajando = true;
+        _error = null;
+        _aviso = null;
+        try
+        {
+            _error = await Clientes.CambiarContrasenaDelTitularAsync(cuentaId, contrasena);
+            if (_error is null) _aviso = "Contraseña del titular actualizada.";
+        }
+        finally { _trabajando = false; }
+    }
+
     private async Task EditarCorreoDeContacto()
     {
         if (_trabajando || _detalle is null) return;
@@ -518,19 +580,26 @@ else
         {
             { x => x.Mensaje, $"Correo de contacto de «{_detalle.Cuenta.Nombre}». " +
                               "No cambia el acceso de ningún usuario." },
-            { x => x.TextoConfirmar, "Guardar" }
+            { x => x.TextoConfirmar, "Guardar correo" },
+            { x => x.CorreoActual, _detalle.Cuenta.CorreoContacto },
+            { x => x.PermiteCambiarContrasena, PuedeCambiarContrasenaDelTitular }
         };
 
         var referencia = await Dialogos.ShowAsync<DialogoDeCambioDeCorreo>("Editar correo de contacto", parametros);
         var resultado = await referencia.Result;
 
-        if (resultado is not { Canceled: false, Data: ValueTuple<string, string> datos }) return;
+        if (resultado is { Canceled: false, Data: true })
+        {
+            await CambiarContrasenaDelTitular();
+            return;
+        }
+        if (resultado is not { Canceled: false, Data: string valor }) return;
 
         _trabajando = true;
         _error = null;
 
         _error = await Clientes.CambiarCorreoDeContactoDeCuentaAsync(
-            Id, new PeticionCambiarCorreoDeContactoDeCuenta(datos.Item1, datos.Item2));
+            Id, new PeticionCambiarCorreoDeContactoDeCuenta(valor));
 
         _trabajando = false;
 

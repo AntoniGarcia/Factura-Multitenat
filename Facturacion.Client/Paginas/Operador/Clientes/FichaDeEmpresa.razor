@@ -63,7 +63,7 @@ else
                     Módulos
                 </MudButton>
                 }
-                @if (Sesion.TienePermiso(PoliticasDelPanel.CambiarEstadoEmpresas))
+                @if (Sesion.TienePermiso(_ficha.Activa ? PoliticasDelPanel.DesactivarEmpresas : PoliticasDelPanel.ReactivarEmpresas))
                 {
                 <MudButton Variant="Variant.Text"
                            Color="@(_ficha.Activa ? Color.Error : Color.Primary)"
@@ -198,7 +198,7 @@ else
                                     Modificar correo
                                 </MudMenuItem>
                                 }
-                                @if (Sesion.TienePermiso(PoliticasDelPanel.CambiarEstadoUsuarios))
+                                @if (Sesion.TienePermiso(context.Activo ? PoliticasDelPanel.DesactivarUsuarios : PoliticasDelPanel.ReactivarUsuarios))
                                 {
                                 <MudMenuItem OnClick="@(() => CambiarActivo(context))">
                                     <MudIcon Icon="@(context.Activo
@@ -424,7 +424,7 @@ else
     private bool PuedeGestionarUsuarios =>
         Sesion.TienePermiso(PoliticasDelPanel.RestablecerContrasenasUsuarios) ||
         Sesion.TienePermiso(PoliticasDelPanel.CambiarCorreosUsuarios) ||
-        Sesion.TienePermiso(PoliticasDelPanel.CambiarEstadoUsuarios) ||
+        Sesion.TienePermiso(PoliticasDelPanel.DesactivarUsuarios) || Sesion.TienePermiso(PoliticasDelPanel.ReactivarUsuarios) ||
         Sesion.TienePermiso(PoliticasDelPanel.QuitarAccesoUsuarios);
 
     protected override async Task OnParametersSetAsync()
@@ -558,7 +558,7 @@ else
             await Dialogos.ShowAsync<DialogoDeComprobanteDeCompra>(
                 "Comprobante de compra",
                 parametros,
-                new DialogOptions { MaxWidth = MaxWidth.ExtraLarge, FullWidth = true, CloseOnEscapeKey = true });
+                new DialogOptions { MaxWidth = MaxWidth.ExtraLarge, FullWidth = true });
         }
         finally
         {
@@ -570,58 +570,23 @@ else
     {
         if (_trabajando || _ficha is null) return;
 
-        if (_ficha.Activa)
-        {
-            var parametros = new DialogParameters<DialogoDeBajaDeEmpresa>
-            {
-                { x => x.NombreEmpresa, _ficha.NombreFiscal }
-            };
-
-            var referencia = await Dialogos.ShowAsync<DialogoDeBajaDeEmpresa>("Desactivar empresa", parametros);
-            var resultado = await referencia.Result;
-
-            if (resultado is not { Canceled: false, Data: ValueTuple<string, string> baja }) return;
-
-            _trabajando = true;
-            _error = null;
-            _aviso = null;
-
-            _error = await Clientes.CambiarActivoEmpresaAsync(
-                CuentaId, EmpresaId,
-                new PeticionCambiarActivoDeEmpresa(false, baja.Item1, baja.Item2));
-
-            _trabajando = false;
-
-            if (_error is null) _aviso = "Empresa desactivada. Sus datos y comprobantes se conservan.";
-
-            await CargarAsync();
-            return;
-        }
-
-        var confirmar = new DialogParameters<DialogoConfirmarContrasenaOperador>
-        {
-            { x => x.Mensaje, $"Vas a reactivar «{_ficha.NombreFiscal}» ({_ficha.Rfc})." },
-            { x => x.TextoConfirmar, "Reactivar" }
-        };
-
-        var refReactivar = await Dialogos.ShowAsync<DialogoConfirmarContrasenaOperador>("Reactivar la empresa", confirmar);
-        var resReactivar = await refReactivar.Result;
-
-        if (resReactivar is not { Canceled: false, Data: string contrasena }) return;
+        var activa = _ficha.Activa;
+        var accion = activa ? "Desactivar" : "Reactivar";
+        var mensaje = activa
+            ? $"«{_ficha.NombreFiscal}» dejará de emitir. Sus datos y comprobantes se conservan."
+            : $"«{_ficha.NombreFiscal}» podrá volver a emitir comprobantes.";
+        if (!await Confirmacion.ConfirmarAsync($"{accion} empresa", mensaje, accion, esPeligrosa: activa)) return;
 
         _trabajando = true;
         _error = null;
         _aviso = null;
-
-        _error = await Clientes.CambiarActivoEmpresaAsync(
-            CuentaId, EmpresaId,
-            new PeticionCambiarActivoDeEmpresa(true, null, contrasena));
-
-        _trabajando = false;
-
-        if (_error is null) _aviso = "Empresa reactivada.";
-
-        await CargarAsync();
+        try
+        {
+            _error = await Clientes.CambiarActivoEmpresaAsync(CuentaId, EmpresaId, new PeticionCambiarActivoDeEmpresa(!activa, null));
+            if (_error is null) _aviso = activa ? "Empresa desactivada." : "Empresa reactivada.";
+            await CargarAsync();
+        }
+        finally { _trabajando = false; }
     }
 
     private async Task ActualizarLicencias()
@@ -635,7 +600,7 @@ else
         };
 
         var referencia = await Dialogos.ShowAsync<DialogoDeLicenciasDeEmpresa>(
-            "Módulos contratados", parametros, new DialogOptions { CloseOnEscapeKey = true });
+            "Módulos contratados", parametros);
         var resultado = await referencia.Result;
 
         if (resultado is not { Canceled: false, Data: PeticionActualizarLicenciasDeEmpresa peticion }) return;
@@ -679,13 +644,13 @@ else
 
         var resultado = await referencia.Result;
 
-        if (resultado is not { Canceled: false, Data: ValueTuple<string, string> datos }) return;
+        if (resultado is not { Canceled: false, Data: string valor }) return;
 
         _trabajando = true;
         _error = null;
         _aviso = null;
 
-        _error = await Usuarios.RestablecerContrasenaAsync(usuario.Id, datos.Item1, datos.Item2);
+        _error = await Usuarios.RestablecerContrasenaAsync(usuario.Id, valor);
 
         _trabajando = false;
 
@@ -709,13 +674,13 @@ else
         var referencia = await Dialogos.ShowAsync<DialogoDeCambioDeCorreo>("Modificar correo", parametros);
         var resultado = await referencia.Result;
 
-        if (resultado is not { Canceled: false, Data: ValueTuple<string, string> datos }) return;
+        if (resultado is not { Canceled: false, Data: string valor }) return;
 
         _trabajando = true;
         _error = null;
         _aviso = null;
 
-        _error = await Usuarios.CambiarCorreoAsync(usuario.Id, datos.Item1, datos.Item2);
+        _error = await Usuarios.CambiarCorreoAsync(usuario.Id, valor);
 
         _trabajando = false;
 
@@ -728,41 +693,17 @@ else
     {
         if (_trabajando) return;
 
-        string? motivo = null;
-
-        if (usuario.Activo)
-        {
-            var parametros = new DialogParameters<DialogoDeMotivo>
-            {
-                { x => x.Titulo, "Dar de baja el acceso" },
-                { x => x.Mensaje, $"«{usuario.Nombre}» ({usuario.Correo}) dejará de poder entrar a " +
-                                  $"«{_ficha!.NombreFiscal}» y sus sesiones se cerrarán." },
-                { x => x.EtiquetaCampo, "Motivo de la baja" },
-                { x => x.TextoConfirmar, "Dar de baja" }
-            };
-
-            var referencia = await Dialogos.ShowAsync<DialogoDeMotivo>("Dar de baja el acceso", parametros);
-            var resultado = await referencia.Result;
-
-            if (resultado is not { Canceled: false, Data: string texto }) return;
-
-            motivo = texto;
-        }
-        else
-        {
-            var confirmado = await Confirmacion.ConfirmarAsync(
-                "Reactivar el acceso",
-                $"«{usuario.Nombre}» volverá a poder entrar a «{_ficha!.NombreFiscal}».",
-                "Reactivar");
-
-            if (!confirmado) return;
-        }
+        var accion = usuario.Activo ? "Desactivar" : "Reactivar";
+        var mensaje = usuario.Activo
+            ? $"«{usuario.Nombre}» dejará de poder entrar y sus sesiones se cerrarán."
+            : $"«{usuario.Nombre}» volverá a poder entrar al sistema.";
+        if (!await Confirmacion.ConfirmarAsync($"{accion} usuario", mensaje, accion, esPeligrosa: usuario.Activo)) return;
 
         _trabajando = true;
         _error = null;
         _aviso = null;
 
-        _error = await Usuarios.CambiarActivoAsync(usuario.Id, !usuario.Activo, motivo);
+        _error = await Usuarios.CambiarActivoAsync(usuario.Id, !usuario.Activo, null);
 
         _trabajando = false;
 

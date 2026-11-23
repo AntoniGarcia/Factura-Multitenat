@@ -11,7 +11,6 @@
 @inject ServicioDePerfilDeOperador Perfil
 @inject ServicioDeSesionDeOperador Sesion
 @inject ServicioDeConfiguracionDelSistema ConfiguracionDelSistema
-@inject IDialogService Dialogos
 @inject NavigationManager Navegacion
 
 <PageTitle>Configuración</PageTitle>
@@ -118,7 +117,7 @@
             <MudTextField @bind-Value="_puertoTexto" Label="Puerto" HelperText="587 (STARTTLS)." Class="cifra-tabular" Disabled="@(!PuedeAdministrarSistema || _trabajando)" />
             <MudTextField @bind-Value="_usuarioSmtp" Label="Usuario" MaxLength="254" Disabled="@(!PuedeAdministrarSistema || _trabajando)" />
             <MudTextField @bind-Value="_contrasenaSmtpNueva" Label="Contraseña"
-                          InputType="InputType.Password" MaxLength="512" Disabled="@(!PuedeAdministrarSistema || _trabajando)"
+                          InputType="InputType.Password" MaxLength="512" Disabled="@(!(PuedeAdministrarSistema || PuedeProbarCorreo) || _trabajando)"
                           HelperText="@(_contrasenaSmtpConfigurada ? "Configurada; déjala vacía para conservarla." : "Sin credencial configurada.")" />
             <MudTextField @bind-Value="_remitenteCorreo" Label="Correo del remitente"
                           InputType="InputType.Email" MaxLength="254" Disabled="@(!PuedeAdministrarSistema || _trabajando)" />
@@ -128,7 +127,7 @@
         <div class="rejilla-campos">
             <MudSwitch @bind-Value="_usarTls" Label="Usar conexión segura" Color="Color.Primary" Disabled="@(!PuedeAdministrarSistema || _trabajando)" />
         </div>
-        @if (PuedeAdministrarSistema)
+        @if (PuedeProbarCorreo)
         {
             <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="ProbarConfiguracionDelSistema" Disabled="@(_trabajando || _sistemaCargando)">
                 @(_trabajando ? "Procesando…" : "Probar conexión")
@@ -203,7 +202,8 @@
     private string? _aviso;
     private bool _trabajando;
     private bool _verContrasena;
-    private bool PuedeAdministrarSistema => Sesion.TienePermiso(PoliticasDelPanel.AdministrarConfiguracion);
+    private bool PuedeProbarCorreo => Sesion.TienePermiso(PoliticasDelPanel.ProbarCorreoSistema);
+    private bool PuedeAdministrarSistema => Sesion.TienePermiso(PoliticasDelPanel.EditarCorreoSistema);
 
     private string _nombre = string.Empty;
     private string _correo = string.Empty;
@@ -346,7 +346,7 @@
 
     private async Task ProcesarConfiguracionDelSistema(bool probar)
     {
-        if (_trabajando || _sistemaCargando || !PuedeAdministrarSistema) return;
+        if (_trabajando || _sistemaCargando || !(probar ? PuedeProbarCorreo : PuedeAdministrarSistema)) return;
 
         if (!int.TryParse(_puertoTexto, out var puerto) || puerto is < 1 or > 65535)
         {
@@ -361,17 +361,6 @@
             return;
         }
 
-        var parametros = new DialogParameters<DialogoConfirmarContrasenaOperador>
-        {
-            { x => x.Mensaje, probar ? "Confirma tu contraseña para comprobar el SMTP sin guardar cambios ni enviar correos." : "Vas a cambiar la configuración del correo saliente, el nombre del sistema y los mensajes del registro. Esto afecta a todos los correos que envía el SaaS." },
-            { x => x.TextoConfirmar, probar ? "Probar conexión" : "Guardar cambios" }
-        };
-
-        var referencia = await Dialogos.ShowAsync<DialogoConfirmarContrasenaOperador>(
-            "Configuración del sistema", parametros);
-        var resultado = await referencia.Result;
-
-        if (resultado is not { Canceled: false, Data: string contrasena }) return;
 
         _trabajando = true;
         _error = null;
@@ -389,8 +378,7 @@
             _asuntoVerificacion.Trim(),
             _cuerpoVerificacion.Trim(),
             _asuntoContrasena.Trim(),
-            _cuerpoContrasena.Trim(),
-            contrasena);
+            _cuerpoContrasena.Trim());
 
         try
         {

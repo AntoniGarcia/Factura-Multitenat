@@ -30,9 +30,9 @@ public static class FiscalDelProveedorEndpoints
             if (!TryOperador(contexto, out var id)) return Results.Unauthorized();
             var r = await servicio.GuardarAsync(id, p, ct);
             return r.EsExito ? Results.Ok(r.Valor) : r.Error!.AResultado(contexto);
-        }).RequireAuthorization(PoliticasDeOperador.AdministrarConfiguracion);
+        }).RequireAuthorization(PoliticasDeOperador.EditarDatosFiscalesProveedor);
         grupo.MapPost("/certificados", CargarCertificado)
-            .RequireAuthorization(PoliticasDeOperador.AdministrarConfiguracion)
+            .RequireAuthorization(PoliticasDeOperador.CargarCertificadoProveedor)
             .DisableAntiforgery().WithMetadata(new RequestSizeLimitAttribute(256 * 1024));
     }
 
@@ -64,7 +64,7 @@ public static class FiscalDelProveedorEndpoints
         using var cerMemoria = new MemoryStream(); using var keyMemoria = new MemoryStream();
         await cer.CopyToAsync(cerMemoria, ct); await key.CopyToAsync(keyMemoria, ct);
         var r = await servicio.CargarCsdAsync(id, cerMemoria.ToArray(), keyMemoria.ToArray(),
-            form["contrasena"].ToString(), form["contrasenaOperador"].ToString(), Convert.FromBase64String(versionTexto), ct);
+            form["contrasena"].ToString(), Convert.FromBase64String(versionTexto), ct);
         return r.EsExito ? Results.Ok(r.Valor) : r.Error!.AResultado(contexto);
     }
 

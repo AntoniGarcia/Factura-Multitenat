@@ -6,7 +6,6 @@ using Facturacion.Server.Modules.Operador.Paquetes;
 using Facturacion.Server.Modules.Plataforma;
 using Facturacion.Shared.Comun;
 using Facturacion.Shared.Operador;
-using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 
 namespace Facturacion.Server.Modules.Operador.Clientes;
@@ -32,7 +31,6 @@ namespace Facturacion.Server.Modules.Operador.Clientes;
 /// </summary>
 public sealed class ServicioDeClientesDePlataforma(
     AppDbContext baseDeDatos,
-    IPasswordHasher<OperadorPlataforma> hasher,
     IServicioDeBitacora bitacora,
     ServicioDePaquetesPersonalizados paquetesPersonalizados)
 {
@@ -141,10 +139,13 @@ public sealed class ServicioDeClientesDePlataforma(
             .FirstOrDefaultAsync(ct) ?? 0;
 
         var paquetes = await paquetesPersonalizados.ListarAsync(cuentaId, ct);
+        var nombreTitular = await baseDeDatos.Users.AsNoTracking()
+            .Where(u => u.CuentaId == cuentaId && u.EsTitular)
+            .Select(u => u.Nombre).SingleOrDefaultAsync(ct);
 
         return new DetalleDeCuentaDto(cuenta, empresas, new LimitesDeCuentaDto(
             limites.LimiteDeUsuarios, usuariosActivos, limites.LimiteDeEmpresas, cuenta.Empresas),
-            reservados, paquetes);
+            reservados, paquetes, nombreTitular);
     }
 
     /// <summary>
@@ -154,9 +155,6 @@ public sealed class ServicioDeClientesDePlataforma(
     public async Task<Resultado<LimitesDeCuentaDto>> CambiarLimitesAsync(
         Guid operadorId, Guid cuentaId, PeticionCambiarLimitesDeCuenta peticion, CancellationToken ct)
     {
-        if (await ContrasenaDelOperadorEsIncorrecta(operadorId, peticion.ContrasenaDelOperador, ct))
-            return ErrorNegocio.Validacion("contrasena-incorrecta", "Tu contraseña de operador no es correcta.");
-
         if (peticion.LimiteDeUsuarios is < 1 or > LimitesDeCuenta.Maximo ||
             peticion.LimiteDeEmpresas is < 1 or > LimitesDeCuenta.Maximo)
             return ErrorNegocio.Validacion("limite-invalido", $"Los límites van de 1 a {LimitesDeCuenta.Maximo}.");
@@ -284,20 +282,10 @@ public sealed class ServicioDeClientesDePlataforma(
     /// <summary>
     /// Activa o desactiva una empresa de una cuenta. Baja lógica (<c>Activo = false</c>): no se
     /// borra nada, los comprobantes ya timbrados siguen inmutables y el cambio es reversible.
-    /// <para>
-    /// Es una operación grave —deja a la empresa sin poder facturar—, así que exige la
-    /// contraseña del propio operador, igual que el resto de las operaciones de soporte.
-    /// </para>
     /// </summary>
     public async Task<Resultado<bool>> CambiarActivoEmpresaAsync(
         Guid operadorId, Guid cuentaId, Guid empresaId, PeticionCambiarActivoDeEmpresa peticion, CancellationToken ct)
     {
-        if (await ContrasenaDelOperadorEsIncorrecta(operadorId, peticion.ContrasenaDelOperador, ct))
-            return ErrorNegocio.Validacion("contrasena-incorrecta", "Tu contraseña de operador no es correcta.");
-
-        if (!peticion.Activo && string.IsNullOrWhiteSpace(peticion.Motivo))
-            return ErrorNegocio.Validacion("motivo-requerido", "Escribe por qué se da de baja la empresa.");
-
         var empresa = await baseDeDatos.Empresas
             .SingleOrDefaultAsync(e => e.Id == empresaId && e.CuentaId == cuentaId, ct);
 
@@ -328,15 +316,11 @@ public sealed class ServicioDeClientesDePlataforma(
     }
 
     /// <summary>
-    /// Registra los módulos contratados sin alterar datos fiscales ni acceso de usuarios. La
-    /// contraseña del operador evita que una sesión abandonada active servicios de pago.
+    /// Registra los módulos contratados sin alterar datos fiscales ni acceso de usuarios.
     /// </summary>
     public async Task<Resultado<LicenciasDeEmpresaDto>> ActualizarLicenciasAsync(
         Guid operadorId, Guid cuentaId, Guid empresaId, PeticionActualizarLicenciasDeEmpresa peticion, CancellationToken ct)
     {
-        if (await ContrasenaDelOperadorEsIncorrecta(operadorId, peticion.ContrasenaDelOperador, ct))
-            return ErrorNegocio.Validacion("contrasena-incorrecta", "Tu contraseña de operador no es correcta.");
-
         var empresa = await baseDeDatos.Empresas
             .SingleOrDefaultAsync(e => e.Id == empresaId && e.CuentaId == cuentaId, ct);
 
@@ -368,16 +352,11 @@ public sealed class ServicioDeClientesDePlataforma(
     }
 
     /// <summary>
-    /// Cambia el correo de contacto de una cuenta. Es una operación de soporte del SaaS, así
-    /// que exige la contraseña del operador. Cambiar este correo no toca las sesiones ni las
-    /// credenciales de la cuenta.
+    /// Cambia el correo de contacto de una cuenta sin modificar sus sesiones ni credenciales.
     /// </summary>
     public async Task<Resultado<bool>> CambiarCorreoDeContactoDeCuentaAsync(
         Guid operadorId, Guid cuentaId, PeticionCambiarCorreoDeContactoDeCuenta peticion, CancellationToken ct)
     {
-        if (await ContrasenaDelOperadorEsIncorrecta(operadorId, peticion.ContrasenaDelOperador, ct))
-            return ErrorNegocio.Validacion("contrasena-incorrecta", "Tu contraseña de operador no es correcta.");
-
         if (!EsCorreoValido(peticion.CorreoNuevo))
             return ErrorNegocio.Validacion("correo-invalido", "Escribe un correo válido.");
 
@@ -414,18 +393,6 @@ public sealed class ServicioDeClientesDePlataforma(
 
     private static LicenciasDeEmpresaDto Licencias(Empresa empresa)
         => new(empresa.LicNotarios, empresa.LicObras, empresa.LicComercio, empresa.LicINE);
-
-    private async Task<bool> ContrasenaDelOperadorEsIncorrecta(
-        Guid operadorId, string contrasena, CancellationToken ct)
-    {
-        var operador = await baseDeDatos.OperadoresPlataforma
-            .SingleOrDefaultAsync(o => o.Id == operadorId && o.Activo, ct);
-
-        if (operador is null) return true;
-
-        return hasher.VerifyHashedPassword(operador, operador.HashContrasena, contrasena)
-            is PasswordVerificationResult.Failed;
-    }
 
     /// <summary>
     /// La cabecera de una sola cuenta, con los mismos totales que el listado. Se consulta por

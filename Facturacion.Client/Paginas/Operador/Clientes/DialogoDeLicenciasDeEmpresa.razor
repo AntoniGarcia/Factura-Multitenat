@@ -16,19 +16,10 @@
         </div>
         </section>
 
-        <section class="operador-dialogo-bloque" aria-labelledby="empresa-modulos-confirmacion">
-        <h2 id="empresa-modulos-confirmacion" class="seccion-titulo">Confirmar cambios</h2>
-        <MudTextField @bind-Value="_contrasena" Label="Tu contraseña de operador"
-                      InputType="@(_verContrasena ? InputType.Text : InputType.Password)"
-                      Adornment="Adornment.End"
-                      AdornmentIcon="@(_verContrasena ? Icons.Material.Filled.VisibilityOff : Icons.Material.Filled.Visibility)"
-                      OnAdornmentClick="@(() => _verContrasena = !_verContrasena)"
-                      Immediate="true" MaxLength="128" Required="true" />
-        </section>
     </DialogContent>
     <DialogActions>
         <MudButton OnClick="Cancelar">Cancelar</MudButton>
-        <MudButton Variant="Variant.Filled" Color="Color.Primary" Disabled="@(_contrasena.Length < 12)" OnClick="Guardar">
+        <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="Guardar">
             Guardar módulos
         </MudButton>
     </DialogActions>
@@ -39,8 +30,7 @@
     [Parameter] public string NombreEmpresa { get; set; } = string.Empty;
     [Parameter] public LicenciasDeEmpresaDto Licencias { get; set; } = new(false, false, false, false);
 
-    private bool _notarios, _obras, _comercio, _ine, _verContrasena;
-    private string _contrasena = string.Empty;
+    private bool _notarios, _obras, _comercio, _ine;
 
     protected override void OnInitialized()
     {
@@ -51,7 +41,7 @@
     }
 
     private void Guardar() => Dialogo.Close(DialogResult.Ok(
-        new PeticionActualizarLicenciasDeEmpresa(_notarios, _obras, _comercio, _ine, _contrasena)));
+        new PeticionActualizarLicenciasDeEmpresa(_notarios, _obras, _comercio, _ine)));
 
     private void Cancelar() => Dialogo.Cancel();
 }

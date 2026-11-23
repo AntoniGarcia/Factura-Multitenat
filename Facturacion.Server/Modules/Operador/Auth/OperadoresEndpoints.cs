@@ -1,18 +1,14 @@
-using System.ComponentModel.DataAnnotations;
 using System.Security.Claims;
 using Facturacion.Server.Infra.Errores;
 using Facturacion.Server.Modules.Operador.Auth;
 using Facturacion.Shared.Comun;
 using Facturacion.Shared.Operador;
+using Facturacion.Server.Modules.Plataforma.Auth;
 
 namespace Facturacion.Server.Modules.Operador.Auth;
 
 /// <summary>
 /// Administración de operadores del SaaS: lista, alta, edición, permisos y baja/alta.
-/// <para>
-/// Todos los endpoints exigen la política de operador. Las operaciones de escritura
-/// exigen además la contraseña del operador que la ejecuta (re-autenticación).
-/// </para>
 /// </summary>
 public static class OperadoresEndpoints
 {
@@ -24,10 +20,22 @@ public static class OperadoresEndpoints
 
         grupo.MapGet("/", Listar).RequireAuthorization(PoliticasDeOperador.VerOperadores);
         grupo.MapGet("/{id:guid}", Obtener).RequireAuthorization(PoliticasDeOperador.VerOperadores);
-        grupo.MapPost("/", Crear).RequireAuthorization(PoliticasDeOperador.AdministrarOperadores);
-        grupo.MapPut("/{id:guid}", Actualizar).RequireAuthorization(PoliticasDeOperador.AdministrarOperadores);
-        grupo.MapPost("/{id:guid}/activo", CambiarActivo).RequireAuthorization(PoliticasDeOperador.CambiarEstadoOperadores);
-        grupo.MapPost("/{id:guid}/eliminar", Eliminar).RequireAuthorization(PoliticasDeOperador.AdministrarOperadores);
+        grupo.MapGet("/{id:guid}/actividad", async (Guid id, int? pagina, ServicioDeOperadores servicio, CancellationToken ct) =>
+        {
+            if (await servicio.ObtenerAsync(id, ct) is null) return Results.NotFound();
+            return Results.Ok(await servicio.ActividadAsync(id, Math.Clamp(pagina ?? 0, 0, 100_000), ct));
+        }).RequireAuthorization(PoliticasDeOperador.VerActividadOperadores);
+        grupo.MapDelete("/{id:guid}/actividad/sesiones", async (Guid id, ServicioDeOperadores operadores,
+            HttpContext contexto, CancellationToken ct) =>
+        {
+            if (!TryOperador(contexto, out var operadorId)) return Results.Unauthorized();
+            var resultado = await operadores.LimpiarHistorialDeSesionesAsync(operadorId, id, ct);
+            return resultado.EsExito ? Results.Ok(resultado.Valor) : resultado.Error!.AResultado(contexto);
+        }).RequireAuthorization(PoliticasDeOperador.VerActividadOperadores, PermisosDePanel.LimpiarActividadOperadores);
+        grupo.MapPost("/", Crear).RequireAuthorization(PoliticasDeOperador.CrearOperadores);
+        grupo.MapPut("/{id:guid}", Actualizar).RequireAuthorization(PoliticasDeOperador.EditarOperadores);
+        grupo.MapPost("/{id:guid}/activo", CambiarActivo);
+        grupo.MapPost("/{id:guid}/eliminar", Eliminar).RequireAuthorization(PoliticasDeOperador.EliminarOperadores);
     }
 
     private static async Task<IResult> Listar(
@@ -35,21 +43,22 @@ public static class OperadoresEndpoints
         CancellationToken ct,
         string? texto = null,
         bool? activos = null,
+        bool eliminados = false,
         int pagina = 0,
         int tamano = 25)
     {
         var tamanoEfectivo = Math.Clamp(tamano, 1, 100);
         var paginaEfectiva = Math.Max(pagina, 0);
 
-        return Results.Ok(await operadores.ListarAsync(texto, activos, paginaEfectiva, tamanoEfectivo, ct));
+        return Results.Ok(await operadores.ListarAsync(texto, activos, eliminados, paginaEfectiva, tamanoEfectivo, ct));
     }
 
     private static async Task<IResult> Eliminar(
-        Guid id, PeticionEliminarConContrasena peticion, ServicioDeOperadores operadores,
+        Guid id, ServicioDeOperadores operadores,
         HttpContext contexto, CancellationToken ct)
     {
         if (!TryOperador(contexto, out var operadorId)) return Results.Unauthorized();
-        var resultado = await operadores.EliminarAsync(operadorId, id, peticion.Contrasena, ct);
+        var resultado = await operadores.EliminarAsync(operadorId, id, ct);
         return resultado.EsFallo ? resultado.Error!.AResultado(contexto) : Results.NoContent();
     }
 
@@ -64,7 +73,7 @@ public static class OperadoresEndpoints
     }
 
     private static async Task<IResult> Crear(
-        PeticionCrearOperador peticion,
+        PeticionGuardarOperador peticion,
         ServicioDeOperadores operadores,
         HttpContext contexto,
         CancellationToken ct)
@@ -72,7 +81,7 @@ public static class OperadoresEndpoints
         if (!TryOperador(contexto, out var operadorId)) return Results.Unauthorized();
 
         var resultado = await operadores.CrearAsync(
-            operadorId, peticion.Peticion, peticion.ContrasenaOperador, ct);
+            operadorId, peticion, ct);
 
         return resultado.EsExito
             ? Results.Ok(resultado.Valor)
@@ -81,7 +90,7 @@ public static class OperadoresEndpoints
 
     private static async Task<IResult> Actualizar(
         Guid id,
-        PeticionCrearOperador peticion,
+        PeticionGuardarOperador peticion,
         ServicioDeOperadores operadores,
         HttpContext contexto,
         CancellationToken ct)
@@ -89,7 +98,7 @@ public static class OperadoresEndpoints
         if (!TryOperador(contexto, out var operadorId)) return Results.Unauthorized();
 
         var resultado = await operadores.ActualizarAsync(
-            operadorId, id, peticion.Peticion, peticion.ContrasenaOperador, ct);
+            operadorId, id, peticion, ct);
 
         return resultado.EsExito
             ? Results.Ok(resultado.Valor)
@@ -98,15 +107,19 @@ public static class OperadoresEndpoints
 
     private static async Task<IResult> CambiarActivo(
         Guid id,
-        PeticionCambiarActivoOperadorWrapper peticion,
+        PeticionCambiarActivoOperador peticion,
         ServicioDeOperadores operadores,
         HttpContext contexto,
         CancellationToken ct)
     {
         if (!TryOperador(contexto, out var operadorId)) return Results.Unauthorized();
 
+        if (!PermisosDePanel.Autoriza(contexto.User.FindAll(ClavesDeClaim.Permiso).Select(c => c.Value),
+                peticion.Activo ? PermisosDePanel.ReactivarOperadores : PermisosDePanel.DesactivarOperadores))
+            return Results.Forbid(authenticationSchemes: [EsquemasDeAutenticacion.Operador]);
+
         var resultado = await operadores.CambiarActivoAsync(
-            operadorId, id, peticion.Peticion, peticion.ContrasenaOperador, ct);
+            operadorId, id, peticion, ct);
 
         return resultado.EsExito
             ? Results.Ok(resultado.Valor)
@@ -116,13 +129,3 @@ public static class OperadoresEndpoints
     private static bool TryOperador(HttpContext contexto, out Guid operadorId)
         => Guid.TryParse(contexto.User.FindFirstValue(ClavesDeClaim.Operador), out operadorId);
 }
-
-/// <summary>Wrapper para que el body tenga: { peticion: {...}, contrasenaOperador: "..." }</summary>
-public sealed record PeticionCrearOperador(
-    PeticionGuardarOperador Peticion,
-    [property: Required] string ContrasenaOperador);
-
-/// <summary>Wrapper para cambio de activo con re-autenticación.</summary>
-public sealed record PeticionCambiarActivoOperadorWrapper(
-    PeticionCambiarActivoOperador Peticion,
-    [property: Required] string ContrasenaOperador);

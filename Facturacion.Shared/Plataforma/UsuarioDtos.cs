@@ -21,8 +21,7 @@ public sealed record UsuarioDeLaCuentaDto(
     IReadOnlyList<Guid> Empresas);
 
 /// <summary>
-/// Una empresa activa de la cuenta, para elegir a cuáles entra un usuario. Lleva sus licencias
-/// porque los permisos de Notaría, Obra y Comercio Exterior solo se ofrecen donde hay módulo.
+/// Una empresa activa de la cuenta, para elegir a cuáles entra un usuario.
 /// </summary>
 public sealed record EmpresaParaAccesoDto(
     Guid Id,

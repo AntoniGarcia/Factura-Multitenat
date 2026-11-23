@@ -70,7 +70,7 @@
                               Correo
                           </MudButton>
                           }
-                          @if (Sesion.TienePermiso(PoliticasDelPanel.CambiarEstadoUsuarios))
+                          @if (Sesion.TienePermiso(u.Activo ? PoliticasDelPanel.DesactivarUsuarios : PoliticasDelPanel.ReactivarUsuarios))
                           {
                           <MudButton Size="Size.Small" Disabled="@_trabajando"
                                      OnClick="@(() => CambiarActivo(u))">
@@ -111,13 +111,13 @@
 
         var resultado = await referencia.Result;
 
-        if (resultado is not { Canceled: false, Data: ValueTuple<string, string> datos }) return;
+        if (resultado is not { Canceled: false, Data: string valor }) return;
 
         _trabajando = true;
         _error = null;
         _aviso = null;
 
-        _error = await Usuarios.RestablecerContrasenaAsync(usuario.Id, datos.Item1, datos.Item2);
+        _error = await Usuarios.RestablecerContrasenaAsync(usuario.Id, valor);
 
         _trabajando = false;
 
@@ -141,13 +141,13 @@
         var referencia = await Dialogos.ShowAsync<DialogoDeCambioDeCorreo>("Modificar correo", parametros);
         var resultado = await referencia.Result;
 
-        if (resultado is not { Canceled: false, Data: ValueTuple<string, string> datos }) return;
+        if (resultado is not { Canceled: false, Data: string valor }) return;
 
         _trabajando = true;
         _error = null;
         _aviso = null;
 
-        _error = await Usuarios.CambiarCorreoAsync(usuario.Id, datos.Item1, datos.Item2);
+        _error = await Usuarios.CambiarCorreoAsync(usuario.Id, valor);
 
         _trabajando = false;
 
@@ -160,41 +160,17 @@
     {
         if (_trabajando) return;
 
-        string? motivo = null;
-
-        if (usuario.Activo)
-        {
-            var parametros = new DialogParameters<DialogoDeMotivo>
-            {
-                { x => x.Titulo, "Dar de baja el acceso" },
-                { x => x.Mensaje, $"«{usuario.Nombre}» ({usuario.Correo}) dejará de poder entrar y " +
-                                  "sus sesiones se cerrarán." },
-                { x => x.EtiquetaCampo, "Motivo de la baja" },
-                { x => x.TextoConfirmar, "Dar de baja" }
-            };
-
-            var referencia = await Dialogos.ShowAsync<DialogoDeMotivo>("Dar de baja el acceso", parametros);
-            var resultado = await referencia.Result;
-
-            if (resultado is not { Canceled: false, Data: string texto }) return;
-
-            motivo = texto;
-        }
-        else
-        {
-            var confirmado = await Confirmacion.ConfirmarAsync(
-                "Reactivar el acceso",
-                $"«{usuario.Nombre}» volverá a poder entrar al sistema.",
-                "Reactivar");
-
-            if (!confirmado) return;
-        }
+        var accion = usuario.Activo ? "Desactivar" : "Reactivar";
+        var mensaje = usuario.Activo
+            ? $"«{usuario.Nombre}» dejará de poder entrar y sus sesiones se cerrarán."
+            : $"«{usuario.Nombre}» volverá a poder entrar al sistema.";
+        if (!await Confirmacion.ConfirmarAsync($"{accion} usuario", mensaje, accion, esPeligrosa: usuario.Activo)) return;
 
         _trabajando = true;
         _error = null;
         _aviso = null;
 
-        _error = await Usuarios.CambiarActivoAsync(usuario.Id, !usuario.Activo, motivo);
+        _error = await Usuarios.CambiarActivoAsync(usuario.Id, !usuario.Activo, null);
 
         _trabajando = false;
 

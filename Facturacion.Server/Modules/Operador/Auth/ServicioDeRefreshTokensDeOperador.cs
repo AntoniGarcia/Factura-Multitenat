@@ -86,13 +86,6 @@ public sealed class ServicioDeRefreshTokensDeOperador(
         actual.ConsumidoUtc = consumido;
         actual.ReemplazadoPorId = nuevo.Registro.Id;
 
-        bitacora.Registrar(
-            EntidadesDeBitacora.RefreshTokenOperador,
-            actual.Id.ToString(),
-            AccionesDeBitacora.TokenRotado,
-            despues: new { actual.FamiliaId, Nuevo = nuevo.Registro.Id },
-            operadorId: actual.OperadorId);
-
         await baseDeDatos.SaveChangesAsync(ct);
         await transaccion.CommitAsync(ct);
 

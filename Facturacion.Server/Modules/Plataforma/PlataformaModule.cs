@@ -1,4 +1,5 @@
 ﻿using System.Text;
+using System.Security.Claims;
 using Facturacion.Server.Data;
 using Facturacion.Server.Data.Entidades.Plataforma;
 using Facturacion.Server.Infra.Errores;
@@ -20,6 +21,7 @@ using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.IdentityModel.Tokens;
+using Microsoft.EntityFrameworkCore;
 
 namespace Facturacion.Server.Modules.Plataforma;
 
@@ -68,6 +70,9 @@ public static class PlataformaModule
         servicios.AddScoped<ServicioDeTokens>();
         servicios.AddScoped<ServicioDeRefreshTokens>();
         servicios.AddScoped<ServicioDeAutenticacion>();
+        servicios.AddScoped<ServicioDeRecuperacionDeCliente>();
+        servicios.AddSingleton<ColaDeRecuperacionDeCliente>();
+        servicios.AddHostedService(proveedor => proveedor.GetRequiredService<ColaDeRecuperacionDeCliente>());
 
         servicios.AddOptions<OpcionesDeSoporte>().Bind(configuracion.GetSection(OpcionesDeSoporte.Seccion));
         servicios.AddScoped<ServicioDeUsuarios>();
@@ -192,7 +197,8 @@ public static class PlataformaModule
                         StatusCodes.Status403Forbidden,
                         "sin-permiso",
                         "No tienes permiso para esta operación",
-                        "Esta operación es del panel de operador.")
+                        "Esta operación es del panel de operador."),
+                    OnTokenValidated = ValidarSesionDeOperadorAsync
                 };
             });
 
@@ -208,6 +214,28 @@ public static class PlataformaModule
             .AgregarPoliticasDeOperador();
 
         return servicios;
+    }
+
+    private static async Task ValidarSesionDeOperadorAsync(TokenValidatedContext contexto)
+    {
+        var principal = contexto.Principal;
+        if (principal is null
+            || !Guid.TryParse(principal.FindFirstValue(ClavesDeClaim.Operador), out var operador)
+            || !Guid.TryParse(principal.FindFirstValue(ClavesDeClaim.Familia), out var familia))
+        {
+            contexto.Fail("Falta la sesión de operador.");
+            return;
+        }
+
+        var db = contexto.HttpContext.RequestServices.GetRequiredService<AppDbContext>();
+        var ahora = DateTime.UtcNow;
+        var vigente = await db.RefreshTokensOperador.AnyAsync(t =>
+            t.OperadorId == operador && t.FamiliaId == familia
+            && t.RevocadoUtc == null && t.ConsumidoUtc == null && t.ExpiraUtc > ahora
+            && t.Operador.Activo && (t.Operador.BloqueadoHastaUtc == null || t.Operador.BloqueadoHastaUtc <= ahora),
+            contexto.HttpContext.RequestAborted);
+
+        if (!vigente) contexto.Fail("La sesión de operador ya no está activa.");
     }
 
     public static WebApplication MapPlataforma(this WebApplication aplicacion)

@@ -27,5 +27,4 @@ public sealed record PeticionGuardarFiscalProveedor(
     [property: Required, StringLength(5)] string CodigoPostalExpedicion,
     [property: Required, MaxLength(64)] string ZonaHoraria,
     [property: Required, MaxLength(25)] string Serie,
-    byte[]? Version,
-    [property: Required, MaxLength(128)] string ContrasenaDelOperador);
+    byte[]? Version);

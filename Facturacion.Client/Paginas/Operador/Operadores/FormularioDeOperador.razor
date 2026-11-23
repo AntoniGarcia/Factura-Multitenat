@@ -3,7 +3,7 @@
 @using Facturacion.Shared.Operador
 @using Facturacion.Client.Paginas.Operador.Operadores
 @inject ServicioDeOperadores Operadores
-@inject IDialogService Dialogos
+@inject ServicioDeSesionDeOperador Sesion
 
 <MudDialog Class="dialogo-edicion-operador">
     <DialogContent>
@@ -14,7 +14,10 @@
             <p class="mensaje-exito" role="status">@_resultado.Mensaje</p>
 
             <div class="tarjeta-formulario-acciones">
-                <MudButton Variant="Variant.Text" OnClick="Limpiar">Crear otro</MudButton>
+                @if (_modo == ModoFormulario.Crear)
+                {
+                    <MudButton Variant="Variant.Text" OnClick="Limpiar">Crear otro</MudButton>
+                }
                 <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="CerrarConExito">Cerrar</MudButton>
             </div>
         }
@@ -25,8 +28,11 @@
                 <section class="formulario-catalogo-seccion formulario-catalogo-seccion-ancha" aria-labelledby="operador-datos-acceso">
                 <h2 id="operador-datos-acceso" class="seccion-titulo">Datos de acceso</h2>
                 <div class="operador-edicion-campos">
-                    <MudTextField @bind-Value="_correo" Label="Correo" Immediate="true" InputType="InputType.Email" MaxLength="254" Required="true" Margin="Margin.Dense" />
+                    <MudTextField @bind-Value="_correo" Label="Correo" Immediate="true" InputType="InputType.Email" MaxLength="254" Required="true" Margin="Margin.Dense"
+                                  ReadOnly="@(!PuedeCambiarCorreo)" />
                     <MudTextField @bind-Value="_nombre" Label="Nombre" Immediate="true" MaxLength="128" Required="true" Margin="Margin.Dense" />
+                    @if (PuedeCambiarContrasena)
+                    {
                     <MudTextField @bind-Value="_contrasena" Label="@(_modo == ModoFormulario.Crear ? "Contraseña del operador" : "Nueva contraseña")" Immediate="true" Margin="Margin.Dense"
                                   InputType="@(_verContrasena ? InputType.Text : InputType.Password)"
                                   Adornment="Adornment.End"
@@ -35,12 +41,14 @@
                                   MaxLength="128"
                                   Required="@(_modo == ModoFormulario.Crear)"
                                   HelperText="@(_modo == ModoFormulario.Crear ? "Compártela por un medio seguro." : "Déjala vacía para conservar la actual.")" />
-                    <MudTextField @bind-Value="_contrasenaOperador" Label="Tu contraseña" Immediate="true" Margin="Margin.Dense"
-                                  InputType="@(_verContrasenaOp ? InputType.Text : InputType.Password)"
-                                  Adornment="Adornment.End"
-                                  AdornmentIcon="@(_verContrasenaOp ? Icons.Material.Filled.VisibilityOff : Icons.Material.Filled.Visibility)"
-                                  OnAdornmentClick="@(() => _verContrasenaOp = !_verContrasenaOp)"
-                                  MaxLength="128" Required="true" HelperText="Autoriza los cambios." />
+                    @if (_modo == ModoFormulario.Crear || _contrasena.Length > 0 || _confirmacion.Length > 0)
+                    {
+                        <MudTextField @bind-Value="_confirmacion" Label="Repetir contraseña" Immediate="true"
+                                      InputType="InputType.Password" MaxLength="128" Margin="Margin.Dense"
+                                      Error="@(_confirmacion.Length > 0 && _contrasena != _confirmacion)"
+                                      ErrorText="Las contraseñas no coinciden." />
+                    }
+                    }
                 </div>
 
                 </section>
@@ -57,7 +65,7 @@
         @if (_resultado is null)
         {
             <MudButton Variant="Variant.Text" OnClick="Cancelar" Disabled="@_guardando">Cancelar</MudButton>
-            <MudButton Variant="Variant.Filled" Color="Color.Primary" ButtonType="ButtonType.Submit" form="formulario-operador" Disabled="@_guardando">
+            <MudButton Variant="Variant.Filled" Color="Color.Primary" ButtonType="ButtonType.Submit" form="formulario-operador" Disabled="@(!PuedeGuardar)">
                 @(_guardando ? "Guardando…" : (_modo == ModoFormulario.Crear ? "Crear operador" : "Guardar cambios"))
             </MudButton>
         }
@@ -77,14 +85,19 @@
     private string _correo = string.Empty;
     private string _nombre = string.Empty;
     private string _contrasena = string.Empty;
-    private string _contrasenaOperador = string.Empty;
+    private string _confirmacion = string.Empty;
     private bool _verContrasena;
-    private bool _verContrasenaOp;
     private List<string> _permisos = [];
     private RespuestaFormularioOperador? _resultado;
     private DetalleProblema? _error;
     private bool _guardando;
     private ModoFormulario _modo;
+    private bool PuedeCambiarContrasena => _modo == ModoFormulario.Crear
+        || Sesion.Sesion?.EsPrincipal == true
+        || Sesion.TienePermiso(PermisosDePanel.CambiarContrasenaOperadores);
+
+    private bool PuedeCambiarCorreo => _modo == ModoFormulario.Crear
+        || Sesion.TienePermiso(PermisosDePanel.CambiarCorreoOperadores);
 
     protected override void OnInitialized()
     {
@@ -98,8 +111,12 @@
         }
     }
 
+    private bool PuedeGuardar => !_guardando && _contrasena == _confirmacion
+        && (_modo == ModoFormulario.Editar && _contrasena.Length == 0 || _contrasena.Length >= 12);
+
     private async Task Guardar()
     {
+        if (!PuedeGuardar) return;
         _guardando = true;
         _error = null;
 
@@ -108,7 +125,7 @@
             if (_modo == ModoFormulario.Crear)
             {
                 var peticion = new PeticionGuardarOperador(_correo, _nombre, _contrasena, _permisos);
-                var (exito, error) = await Operadores.CrearAsync(peticion, _contrasenaOperador, CancellationToken.None);
+                var (exito, error) = await Operadores.CrearAsync(peticion);
 
                 _error = error;
                 _resultado = exito is not null ? new RespuestaFormularioOperador("Operador creado correctamente.") : null;
@@ -116,19 +133,22 @@
                 if (exito is not null)
                 {
                     _contrasena = string.Empty;
-                    _contrasenaOperador = string.Empty;
+                    _confirmacion = string.Empty;
                 }
             }
             else if (Operador is not null)
             {
                 var peticion = new PeticionGuardarOperador(_correo, _nombre, _contrasena, _permisos);
-                var (exito, error) = await Operadores.ActualizarAsync(Operador.Id, peticion, _contrasenaOperador, CancellationToken.None);
+                var (exito, error) = await Operadores.ActualizarAsync(Operador.Id, peticion);
 
                 _error = error;
                 _resultado = exito is not null ? new RespuestaFormularioOperador("Operador actualizado correctamente.") : null;
 
                 if (exito is not null)
-                    _contrasenaOperador = string.Empty;
+                {
+                    _contrasena = string.Empty;
+                    _confirmacion = string.Empty;
+                }
             }
         }
         finally
@@ -144,9 +164,8 @@
         _correo = string.Empty;
         _nombre = string.Empty;
         _contrasena = string.Empty;
-        _contrasenaOperador = string.Empty;
+        _confirmacion = string.Empty;
         _verContrasena = false;
-        _verContrasenaOp = false;
         _permisos = [];
         _resultado = null;
         _error = null;

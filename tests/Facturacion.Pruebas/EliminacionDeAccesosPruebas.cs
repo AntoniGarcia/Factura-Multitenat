@@ -115,7 +115,7 @@ public sealed class EliminacionDeAccesosPruebas : IAsyncLifetime
     }
 
     [Fact]
-    public async Task Operador_no_elimina_principal_a_si_mismo_ni_historial()
+    public async Task Operador_no_elimina_principal_ni_a_si_mismo_y_conserva_el_historial()
     {
         await using var db = Abrir();
         var principal = Operador(true);
@@ -124,19 +124,20 @@ public sealed class EliminacionDeAccesosPruebas : IAsyncLifetime
         db.OperadoresPlataforma.AddRange(principal, nuevo, historico);
         await db.SaveChangesAsync();
         var bitacora = new ServicioDeBitacora(db, new ContextoEmpresaFijo(), new ContextoDeOperadorFijo(principal.Id), new HttpContextAccessor());
-        using var memoria = new MemoryCache(new MemoryCacheOptions());
         var servicio = new ServicioDeOperadores(db, new PasswordHasher<OperadorPlataforma>(),
             new ServicioDeRefreshTokensDeOperador(db, bitacora, NullLogger<ServicioDeRefreshTokensDeOperador>.Instance),
-            bitacora, new ControlDeIntentos(memoria));
-        Assert.Equal("contrasena-incorrecta", (await servicio.EliminarAsync(principal.Id, nuevo.Id, "incorrecta", default)).Error?.Codigo);
-        Assert.Equal("operador-protegido", (await servicio.EliminarAsync(principal.Id, principal.Id, Contrasena, default)).Error?.Codigo);
-        Assert.Equal("operador-protegido", (await servicio.EliminarAsync(nuevo.Id, principal.Id, Contrasena, default)).Error?.Codigo);
-        Assert.Equal("operador-protegido", (await servicio.EliminarAsync(nuevo.Id, nuevo.Id, Contrasena, default)).Error?.Codigo);
+            bitacora);
+        Assert.Equal("operador-protegido", (await servicio.EliminarAsync(principal.Id, principal.Id, default)).Error?.Codigo);
+        Assert.Equal("operador-protegido", (await servicio.EliminarAsync(nuevo.Id, principal.Id, default)).Error?.Codigo);
+        Assert.Equal("operador-protegido", (await servicio.EliminarAsync(nuevo.Id, nuevo.Id, default)).Error?.Codigo);
         bitacora.Registrar(EntidadesDeBitacora.OperadorPlataforma, nuevo.Id.ToString(), AccionesDeBitacora.OperadorActualizado, operadorId: historico.Id);
         await db.SaveChangesAsync();
-        Assert.Equal("operador-con-historial", (await servicio.EliminarAsync(principal.Id, historico.Id, Contrasena, default)).Error?.Codigo);
-        Assert.True((await servicio.EliminarAsync(principal.Id, nuevo.Id, Contrasena, default)).EsExito);
-        Assert.False(await db.OperadoresPlataforma.AnyAsync(x => x.Id == nuevo.Id));
+        Assert.True((await servicio.EliminarAsync(principal.Id, historico.Id, default)).EsExito);
+        Assert.Contains(await servicio.ActividadAsync(historico.Id, 0, default), e => e.Accion == AccionesDeBitacora.OperadorActualizado);
+        Assert.Equal("operador-eliminado", (await servicio.CambiarActivoAsync(principal.Id, historico.Id, new(true), default)).Error?.Codigo);
+        Assert.True((await servicio.EliminarAsync(principal.Id, nuevo.Id, default)).EsExito);
+        Assert.True((await db.OperadoresPlataforma.SingleAsync(x => x.Id == nuevo.Id)).EstaEliminado());
+        Assert.DoesNotContain((await servicio.ListarAsync(null, null, false, 0, 25, default)).Elementos, x => x.Id == nuevo.Id);
         Assert.True(await db.Bitacora.IgnoreQueryFilters().AnyAsync(x => x.EntidadId == nuevo.Id.ToString() && x.Accion == AccionesDeBitacora.OperadorEliminado));
     }
 

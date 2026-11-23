@@ -11,7 +11,7 @@ namespace Facturacion.Server.Modules.Operador.Clientes;
 /// Soporte sobre los usuarios de las cuentas: restablecer contraseñas y dar de baja accesos.
 /// <para>
 /// Son las dos operaciones del panel con más alcance sobre datos ajenos, así que van en su
-/// propio grupo y las dos exigen la contraseña del operador dentro del cuerpo.
+/// propio grupo y cada acción exige su permiso.
 /// </para>
 /// </summary>
 public static class UsuariosDePlataformaEndpoints
@@ -26,7 +26,7 @@ public static class UsuariosDePlataformaEndpoints
         grupo.MapDelete("/{id:guid}/empresas/{empresaId:guid}/acceso", EliminarAccesoAEmpresa).RequireAuthorization(PoliticasDeOperador.QuitarAccesoUsuarios);
         grupo.MapPut("/{id:guid}/contrasena", RestablecerContrasena).RequireAuthorization(PoliticasDeOperador.RestablecerContrasenasUsuarios);
         grupo.MapPut("/{id:guid}/correo", CambiarCorreo).RequireAuthorization(PoliticasDeOperador.CambiarCorreosUsuarios);
-        grupo.MapPost("/{id:guid}/activo", CambiarActivo).RequireAuthorization(PoliticasDeOperador.CambiarEstadoUsuarios);
+        grupo.MapPost("/{id:guid}/activo", CambiarActivo);
     }
 
     private static async Task<IResult> Listar(
@@ -62,6 +62,10 @@ public static class UsuariosDePlataformaEndpoints
         CancellationToken ct)
     {
         if (!TryOperador(contexto, out var operadorId)) return Results.Unauthorized();
+
+        if (!PermisosDePanel.Autoriza(contexto.User.FindAll(ClavesDeClaim.Permiso).Select(c => c.Value),
+                peticion.Activo ? PermisosDePanel.ReactivarUsuarios : PermisosDePanel.DesactivarUsuarios))
+            return Results.Forbid(authenticationSchemes: [EsquemasDeAutenticacion.Operador]);
 
         var resultado = await usuarios.CambiarActivoAsync(operadorId, id, peticion, ct);
 

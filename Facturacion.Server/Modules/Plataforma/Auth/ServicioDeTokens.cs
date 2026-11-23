@@ -94,7 +94,7 @@ public sealed class ServicioDeTokens(IOptions<OpcionesDeJwt> opciones)
 
         // Permisos del operador: misma clave que los inquilinos, así las políticas
         // RequireClaim(ClavesDeClaim.Permiso, ...) funcionan igual.
-        var permisos = operador.Permisos.Select(p => p.Permiso).ToList();
+        var permisos = operador.PermisosDelPanel();
         claims.AddRange(permisos.Select(p => new Claim(ClavesDeClaim.Permiso, p)));
 
         var credenciales = new SigningCredentials(

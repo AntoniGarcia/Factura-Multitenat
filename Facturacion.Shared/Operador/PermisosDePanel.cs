@@ -1,46 +1,21 @@
 namespace Facturacion.Shared.Operador;
 
-/// <summary>Un permiso concreto del panel con su etiqueta para la interfaz.</summary>
 public sealed record PermisoDePanel(string Clave, string Etiqueta);
 
-/// <summary>
-/// Una sección del panel: su permiso de entrada (<see cref="Ver"/>) y, donde aplica, las
-/// acciones que dependen de ella (<see cref="Acciones"/>). No se dibuja una acción sin su
-/// «ver»: para administrar algo primero hay que poder verlo.
-/// </summary>
 public sealed record SeccionDePermisosDePanel(
-    string Titulo,
-    PermisoDePanel Ver,
-    IReadOnlyList<PermisoDePanel> Acciones);
+    string Titulo, PermisoDePanel Ver, IReadOnlyList<PermisoDePanel> Acciones);
 
-/// <summary>
-/// Los permisos del panel del operador, no los de facturación.
-///
-/// <para><b>Por qué son un vocabulario aparte</b></para>
-/// Los permisos de <see cref="Facturacion.Shared.Comun.Permisos"/> describen lo que un usuario
-/// puede hacer dentro de una empresa (timbrar, cancelar, comprar timbres…). El operador no
-/// tiene empresa: lo suyo es administrar el SaaS. Mezclarlos hacía que un operador terminara
-/// con permisos de inquilino que no significan nada en su interfaz.
-///
-/// <para><b>Una por sección: ver + acciones</b></para>
-/// Cada sección se abre con su permiso <c>ver</c>; las operaciones que acepta quedan detrás de
-/// él como acciones (<c>administrar</c>, <c>acreditar</c>, <c>asignar</c>). Un operador sin el
-/// «ver» de una sección no entra a ella, y sin la acción no ejecuta lo que está detrás de ella.
-/// El Tablero no tiene permiso: cualquier operador activo lo ve.
-/// </para>
-/// </summary>
+/// <summary>Permisos del panel del SaaS, separados de los de facturación.</summary>
 public static class PermisosDePanel
 {
     public const string VerPaquetes = "panel_ver_paquetes";
     public const string AdministrarPaquetes = "panel_administrar_paquetes";
-
     public const string VerCompras = "panel_ver_compras";
     public const string AcreditarCompras = "panel_acreditar_compras";
     public const string SoloAcreditarCompras = "panel_solo_acreditar_compras";
     public const string DescartarCompras = "panel_descartar_compras";
     public const string FacturarCompras = "panel_facturar_compras";
     public const string TimbrarCompras = "panel_timbrar_compras";
-
     public const string VerClientes = "panel_ver_clientes";
     public const string AdministrarClientes = "panel_administrar_clientes";
     public const string AsignarTimbres = "panel_asignar_timbres";
@@ -49,189 +24,188 @@ public static class PermisosDePanel
     public const string GestionarLicencias = "panel_gestionar_licencias";
     public const string GestionarMembresias = "panel_gestionar_membresias";
     public const string GestionarLimites = "panel_gestionar_limites";
-
     public const string VerUsuarios = "panel_ver_usuarios";
     public const string AdministrarUsuarios = "panel_administrar_usuarios";
     public const string RestablecerContrasenasUsuarios = "panel_restablecer_contrasenas_usuarios";
     public const string CambiarCorreosUsuarios = "panel_cambiar_correos_usuarios";
     public const string CambiarEstadoUsuarios = "panel_cambiar_estado_usuarios";
     public const string QuitarAccesoUsuarios = "panel_quitar_acceso_usuarios";
-
     public const string VerOperadores = "panel_ver_operadores";
     public const string AdministrarOperadores = "panel_administrar_operadores";
     public const string CambiarEstadoOperadores = "panel_cambiar_estado_operadores";
-
+    public const string RestablecerContrasenasOperadores = "panel_restablecer_contrasenas_operadores";
     public const string CambiarEstadoPaquetes = "panel_cambiar_estado_paquetes";
-
-    public const string VerConfiguracion = "panel_ver_configuracion";
+    public const string VerConfiguracion = "panel_ver_ajustes_sistema";
     public const string VerCatalogosSat = "panel_ver_catalogos_sat";
     public const string AdministrarConfiguracion = "panel_administrar_configuracion";
+    private const string VerConfiguracionAnterior = "panel_ver_configuracion";
+    public const string CrearPaquetes = "panel_crear_paquetes";
+    public const string EditarPaquetes = "panel_editar_paquetes";
+    public const string EliminarPaquetes = "panel_eliminar_paquetes";
+    public const string RetirarPaquetes = "panel_retirar_paquetes";
+    public const string ReactivarPaquetes = "panel_reactivar_paquetes";
+    public const string DesactivarEmpresas = "panel_desactivar_empresas";
+    public const string ReactivarEmpresas = "panel_reactivar_empresas";
+    public const string CrearPaquetesExclusivos = "panel_crear_paquetes_exclusivos";
+    public const string EditarPaquetesExclusivos = "panel_editar_paquetes_exclusivos";
+    public const string EliminarPaquetesExclusivos = "panel_eliminar_paquetes_exclusivos";
+    public const string DesactivarPaquetesExclusivos = "panel_desactivar_paquetes_exclusivos";
+    public const string ReactivarPaquetesExclusivos = "panel_reactivar_paquetes_exclusivos";
+    public const string DesactivarUsuarios = "panel_desactivar_usuarios";
+    public const string ReactivarUsuarios = "panel_reactivar_usuarios";
+    public const string CrearOperadores = "panel_crear_operadores";
+    public const string EditarOperadores = "panel_editar_operadores";
+    public const string EliminarOperadores = "panel_eliminar_operadores";
+    public const string DesactivarOperadores = "panel_desactivar_operadores";
+    public const string ReactivarOperadores = "panel_reactivar_operadores";
+    public const string CambiarCorreoOperadores = "panel_cambiar_correo_operadores";
+    public const string CambiarContrasenaOperadores = "panel_cambiar_contrasena_operadores";
+    public const string VerActividadOperadores = "panel_ver_actividad_operadores";
+    public const string LimpiarActividadOperadores = "panel_limpiar_actividad_operadores";
+    public const string ActualizarCatalogosSat = "panel_actualizar_catalogos_sat";
+    public const string EditarCorreoSistema = "panel_editar_correo_sistema";
+    public const string ProbarCorreoSistema = "panel_probar_correo_sistema";
+    public const string EditarDatosFiscalesProveedor = "panel_editar_datos_fiscales";
+    public const string CargarCertificadoProveedor = "panel_cargar_certificado_proveedor";
+    public const string AbrirFormularioPaquetes = "panel_politica_formulario_paquetes";
 
-    /// <summary>Claves del panel, en el orden de las secciones (ver y luego acciones).</summary>
-    public static IReadOnlyList<string> Todos { get; } =
-    [
-        VerPaquetes,
-        AdministrarPaquetes,
-        CambiarEstadoPaquetes,
-        VerCompras,
-        AcreditarCompras,
-        SoloAcreditarCompras,
-        DescartarCompras,
-        FacturarCompras,
-        TimbrarCompras,
-        VerClientes,
-        AdministrarClientes,
-        AsignarTimbres,
-        EditarContactoCuentas,
-        CambiarEstadoEmpresas,
-        GestionarLicencias,
-        GestionarMembresias,
-        GestionarLimites,
-        VerUsuarios,
-        AdministrarUsuarios,
-        RestablecerContrasenasUsuarios,
-        CambiarCorreosUsuarios,
-        CambiarEstadoUsuarios,
-        QuitarAccesoUsuarios,
-        VerOperadores,
-        AdministrarOperadores,
-        CambiarEstadoOperadores,
-        VerConfiguracion,
-        VerCatalogosSat,
-        AdministrarConfiguracion
-    ];
-
-    private static readonly IReadOnlyDictionary<string, string> Etiquetas = new Dictionary<string, string>
-    {
-        [VerPaquetes] = "Ver paquetes",
-        [AdministrarPaquetes] = "Acceso completo a paquetes",
-        [CambiarEstadoPaquetes] = "Desactivar y reactivar paquetes",
-        [VerCompras] = "Ver compras",
-        [AcreditarCompras] = "Acreditar y descartar compras",
-        [SoloAcreditarCompras] = "Acreditar compras",
-        [DescartarCompras] = "Descartar compras",
-        [FacturarCompras] = "Preparar facturas",
-        [TimbrarCompras] = "Timbrar facturas de compras",
-        [VerClientes] = "Ver cuentas",
-        [AdministrarClientes] = "Acceso completo a cuentas",
-        [AsignarTimbres] = "Gestionar paquetes exclusivos",
-        [EditarContactoCuentas] = "Editar contacto de cuentas",
-        [CambiarEstadoEmpresas] = "Desactivar y reactivar empresas",
-        [GestionarLicencias] = "Gestionar módulos de empresas",
-        [GestionarMembresias] = "Gestionar membresías",
-        [GestionarLimites] = "Cambiar límites de la cuenta",
-        [VerUsuarios] = "Ver usuarios",
-        [AdministrarUsuarios] = "Acceso completo a usuarios",
-        [RestablecerContrasenasUsuarios] = "Restablecer contraseñas",
-        [CambiarCorreosUsuarios] = "Cambiar correos de usuarios",
-        [CambiarEstadoUsuarios] = "Desactivar y reactivar usuarios",
-        [QuitarAccesoUsuarios] = "Quitar acceso a empresas",
-        [VerOperadores] = "Ver operadores",
-        [AdministrarOperadores] = "Acceso completo a operadores",
-        [CambiarEstadoOperadores] = "Desactivar y reactivar operadores",
-        [VerConfiguracion] = "Ver configuración",
-        [VerCatalogosSat] = "Consultar catálogos del SAT",
-        [AdministrarConfiguracion] = "Editar configuración"
-    };
-
-    /// <summary>
-    /// Las secciones con su «ver» y sus acciones, listas para dibujar el selector jerárquico.
-    /// </summary>
     public static IReadOnlyList<SeccionDePermisosDePanel> Secciones { get; } =
     [
-        new("Paquetes",
-            new(VerPaquetes, "Ver paquetes"),
-            [
-                new(AdministrarPaquetes, Etiquetas[AdministrarPaquetes]),
-                new(CambiarEstadoPaquetes, Etiquetas[CambiarEstadoPaquetes])
-            ]),
-        new("Compras",
-            new(VerCompras, "Ver compras"),
-            [
-                new(AcreditarCompras, Etiquetas[AcreditarCompras]),
-                new(SoloAcreditarCompras, Etiquetas[SoloAcreditarCompras]),
-                new(DescartarCompras, Etiquetas[DescartarCompras]),
-                new(FacturarCompras, Etiquetas[FacturarCompras]),
-                new(TimbrarCompras, Etiquetas[TimbrarCompras])
-            ]),
-        new("Cuentas",
-            new(VerClientes, Etiquetas[VerClientes]),
-            [
-                new(AdministrarClientes, Etiquetas[AdministrarClientes]),
-                new(AsignarTimbres, Etiquetas[AsignarTimbres]),
-                new(EditarContactoCuentas, Etiquetas[EditarContactoCuentas]),
-                new(CambiarEstadoEmpresas, Etiquetas[CambiarEstadoEmpresas]),
-                new(GestionarLicencias, Etiquetas[GestionarLicencias]),
-                new(GestionarMembresias, Etiquetas[GestionarMembresias]),
-                new(GestionarLimites, Etiquetas[GestionarLimites])
-            ]),
-        new("Usuarios",
-            new(VerUsuarios, "Ver usuarios"),
-            [
-                new(AdministrarUsuarios, Etiquetas[AdministrarUsuarios]),
-                new(RestablecerContrasenasUsuarios, Etiquetas[RestablecerContrasenasUsuarios]),
-                new(CambiarCorreosUsuarios, Etiquetas[CambiarCorreosUsuarios]),
-                new(CambiarEstadoUsuarios, Etiquetas[CambiarEstadoUsuarios]),
-                new(QuitarAccesoUsuarios, Etiquetas[QuitarAccesoUsuarios])
-            ]),
-        new("Operadores",
-            new(VerOperadores, "Ver operadores"),
-            [
-                new(AdministrarOperadores, Etiquetas[AdministrarOperadores]),
-                new(CambiarEstadoOperadores, Etiquetas[CambiarEstadoOperadores])
-            ]),
-        new("Catálogos del SAT", new(VerCatalogosSat, "Consultar catálogos del SAT"), []),
-        new("Configuración",
-            new(VerConfiguracion, "Ver configuración"),
-            [new(AdministrarConfiguracion, Etiquetas[AdministrarConfiguracion])])
+        new("Paquetes", new(VerPaquetes, "Ver paquetes"),
+        [
+            new(CrearPaquetes, "Crear paquetes"),
+            new(EditarPaquetes, "Editar paquetes"),
+            new(EliminarPaquetes, "Eliminar paquetes"),
+            new(RetirarPaquetes, "Retirar paquetes"),
+            new(ReactivarPaquetes, "Reactivar paquetes")
+        ]),
+        new("Compras", new(VerCompras, "Ver compras"),
+        [
+            new(SoloAcreditarCompras, "Acreditar compras"),
+            new(DescartarCompras, "Descartar compras"),
+            new(FacturarCompras, "Preparar facturas"),
+            new(TimbrarCompras, "Timbrar facturas de compras")
+        ]),
+        new("Cuentas", new(VerClientes, "Ver cuentas"),
+        [
+            new(EditarContactoCuentas, "Editar contacto de cuentas"),
+            new(DesactivarEmpresas, "Desactivar empresas"),
+            new(ReactivarEmpresas, "Reactivar empresas"),
+            new(GestionarLicencias, "Gestionar módulos de empresas"),
+            new(GestionarMembresias, "Gestionar membresías"),
+            new(GestionarLimites, "Cambiar límites de la cuenta"),
+            new(CrearPaquetesExclusivos, "Crear paquetes exclusivos"),
+            new(EditarPaquetesExclusivos, "Editar paquetes exclusivos"),
+            new(EliminarPaquetesExclusivos, "Eliminar paquetes exclusivos"),
+            new(DesactivarPaquetesExclusivos, "Desactivar paquetes exclusivos"),
+            new(ReactivarPaquetesExclusivos, "Reactivar paquetes exclusivos")
+        ]),
+        new("Usuarios", new(VerUsuarios, "Ver usuarios"),
+        [
+            new(RestablecerContrasenasUsuarios, "Restablecer contraseñas"),
+            new(CambiarCorreosUsuarios, "Cambiar correos de usuarios"),
+            new(DesactivarUsuarios, "Dar de baja a usuarios"),
+            new(ReactivarUsuarios, "Reactivar usuarios"),
+            new(QuitarAccesoUsuarios, "Quitar acceso a empresas")
+        ]),
+        new("Operadores", new(VerOperadores, "Ver operadores"),
+        [
+            new(CrearOperadores, "Crear operadores"),
+            new(EditarOperadores, "Editar datos y permisos"),
+            new(EliminarOperadores, "Eliminar operadores"),
+            new(DesactivarOperadores, "Desactivar operadores"),
+            new(ReactivarOperadores, "Reactivar operadores"),
+            new(CambiarCorreoOperadores, "Cambiar correos de operadores"),
+            new(CambiarContrasenaOperadores, "Restablecer contraseñas de operadores"),
+            new(VerActividadOperadores, "Consultar actividad de operadores"),
+            new(LimpiarActividadOperadores, "Limpiar historial de sesiones de operadores")
+        ]),
+        new("Catálogos del SAT", new(VerCatalogosSat, "Consultar catálogos del SAT"),
+        [
+            new(ActualizarCatalogosSat, "Actualizar catálogos del SAT")
+        ]),
+        new("Configuración", new(VerConfiguracion, "Ver configuración"),
+        [
+            new(EditarCorreoSistema, "Guardar configuración del correo y mensajes"),
+            new(ProbarCorreoSistema, "Probar la conexión del correo"),
+            new(EditarDatosFiscalesProveedor, "Editar los datos fiscales del proveedor"),
+            new(CargarCertificadoProveedor, "Cargar el certificado del proveedor")
+        ])
     ];
 
-    /// <summary>
-    /// Devuelve el «ver» que una acción exige, o <c>null</c> si la clave no es una acción
-    /// (o no existe). El servidor la usa para rechazar una acción sin su sección.
-    /// </summary>
-    public static string? VerQueExige(string clave) => clave switch
-    {
-        AdministrarPaquetes => VerPaquetes,
-        CambiarEstadoPaquetes => VerPaquetes,
-        AcreditarCompras => VerCompras,
-        SoloAcreditarCompras or DescartarCompras or FacturarCompras or TimbrarCompras => VerCompras,
-        AdministrarClientes => VerClientes,
-        AsignarTimbres => VerClientes,
-        EditarContactoCuentas or CambiarEstadoEmpresas or GestionarLicencias or GestionarMembresias or GestionarLimites => VerClientes,
-        AdministrarUsuarios => VerUsuarios,
-        RestablecerContrasenasUsuarios or CambiarCorreosUsuarios or CambiarEstadoUsuarios or QuitarAccesoUsuarios => VerUsuarios,
-        AdministrarOperadores => VerOperadores,
-        CambiarEstadoOperadores => VerOperadores,
-        AdministrarConfiguracion => VerConfiguracion,
-        _ => null
-    };
+    public static IReadOnlyList<string> Todos { get; } =
+        [.. Secciones.SelectMany(s => s.Acciones.Prepend(s.Ver)).Select(p => p.Clave)];
 
-    /// <summary>Los permisos generales anteriores conservan el alcance que ya tenían.</summary>
-    public static string? PermisoGeneralQueAutoriza(string clave) => clave switch
+    private static readonly IReadOnlyDictionary<string, string> Etiquetas = Secciones
+        .SelectMany(s => s.Acciones.Prepend(s.Ver)).ToDictionary(p => p.Clave, p => p.Etiqueta);
+
+    private static readonly IReadOnlyDictionary<string, string[]> Anteriores =
+        new Dictionary<string, string[]>
+        {
+            [CrearPaquetes] = [AdministrarPaquetes],
+            [EditarPaquetes] = [AdministrarPaquetes],
+            [RetirarPaquetes] = [CambiarEstadoPaquetes, AdministrarPaquetes],
+            [ReactivarPaquetes] = [CambiarEstadoPaquetes, AdministrarPaquetes],
+            [SoloAcreditarCompras] = [AcreditarCompras],
+            [DescartarCompras] = [AcreditarCompras],
+            [EditarContactoCuentas] = [AdministrarClientes],
+            [DesactivarEmpresas] = [CambiarEstadoEmpresas, AdministrarClientes],
+            [ReactivarEmpresas] = [CambiarEstadoEmpresas, AdministrarClientes],
+            [GestionarLicencias] = [AdministrarClientes],
+            [GestionarMembresias] = [AdministrarClientes],
+            [GestionarLimites] = [AdministrarClientes],
+            [CrearPaquetesExclusivos] = [AsignarTimbres],
+            [EditarPaquetesExclusivos] = [AsignarTimbres],
+            [DesactivarPaquetesExclusivos] = [AsignarTimbres],
+            [ReactivarPaquetesExclusivos] = [AsignarTimbres],
+            [RestablecerContrasenasUsuarios] = [AdministrarUsuarios],
+            [CambiarCorreosUsuarios] = [AdministrarUsuarios],
+            [DesactivarUsuarios] = [CambiarEstadoUsuarios, AdministrarUsuarios],
+            [ReactivarUsuarios] = [CambiarEstadoUsuarios, AdministrarUsuarios],
+            [QuitarAccesoUsuarios] = [AdministrarUsuarios],
+            [CrearOperadores] = [AdministrarOperadores],
+            [EditarOperadores] = [AdministrarOperadores],
+            [EliminarOperadores] = [AdministrarOperadores],
+            [DesactivarOperadores] = [CambiarEstadoOperadores, AdministrarOperadores],
+            [ReactivarOperadores] = [CambiarEstadoOperadores, AdministrarOperadores],
+            [CambiarCorreoOperadores] = [RestablecerContrasenasOperadores],
+            [CambiarContrasenaOperadores] = [RestablecerContrasenasOperadores],
+            [ActualizarCatalogosSat] = [AdministrarConfiguracion],
+            [EditarCorreoSistema] = [AdministrarConfiguracion],
+            [ProbarCorreoSistema] = [AdministrarConfiguracion],
+            [EditarDatosFiscalesProveedor] = [AdministrarConfiguracion],
+            [CargarCertificadoProveedor] = [AdministrarConfiguracion],
+            [VerConfiguracion] = [VerConfiguracionAnterior],
+            [VerCatalogosSat] = [VerConfiguracionAnterior]
+        };
+
+    private static readonly IReadOnlyDictionary<string, string> SeccionDeAccion = Secciones
+        .SelectMany(s => s.Acciones.Select(a => (a.Clave, s.Ver.Clave)))
+        .ToDictionary(x => x.Item1, x => x.Item2);
+
+    public static IReadOnlyList<string> DesdeAsignacionesGuardadas(IEnumerable<string> asignados)
     {
-        VerCatalogosSat => VerConfiguracion,
-        CambiarEstadoPaquetes => AdministrarPaquetes,
-        SoloAcreditarCompras or DescartarCompras => AcreditarCompras,
-        EditarContactoCuentas or CambiarEstadoEmpresas or GestionarLicencias or GestionarMembresias or GestionarLimites => AdministrarClientes,
-        RestablecerContrasenasUsuarios or CambiarCorreosUsuarios or CambiarEstadoUsuarios or QuitarAccesoUsuarios => AdministrarUsuarios,
-        CambiarEstadoOperadores => AdministrarOperadores,
-        _ => null
-    };
+        // La edición guarda solo casillas concretas; las claves agrupadas quedan como compatibilidad de lectura.
+        var originales = asignados.ToHashSet(StringComparer.Ordinal);
+        var resultado = Todos.Where(p => originales.Contains(p) ||
+            Anteriores.TryGetValue(p, out var anteriores) && anteriores.Any(originales.Contains)).ToList();
+
+        // La política anterior para actualizar catálogos exigía acceso a Configuración.
+        if (!originales.Contains(ActualizarCatalogosSat) && !originales.Contains(VerConfiguracionAnterior))
+            resultado.Remove(ActualizarCatalogosSat);
+        return resultado;
+    }
 
     public static bool Autoriza(IEnumerable<string>? asignados, string requerido)
     {
         if (asignados is null) return false;
-
         var permisos = asignados.ToHashSet(StringComparer.Ordinal);
-        var ver = VerQueExige(requerido);
-        if (ver is not null && !permisos.Contains(ver)) return false;
+        if (requerido == AbrirFormularioPaquetes)
+            return Autoriza(permisos, CrearPaquetes) || Autoriza(permisos, EditarPaquetes);
 
         return permisos.Contains(requerido)
-            || PermisoGeneralQueAutoriza(requerido) is { } general && permisos.Contains(general);
+            && (!SeccionDeAccion.TryGetValue(requerido, out var ver) || permisos.Contains(ver));
     }
-
-    public static bool EsValido(string clave) => Etiquetas.ContainsKey(clave);
 
     public static string EtiquetaCorta(string clave) => Etiquetas.GetValueOrDefault(clave, clave);
 }

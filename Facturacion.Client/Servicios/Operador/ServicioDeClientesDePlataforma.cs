@@ -8,6 +8,13 @@ namespace Facturacion.Client.Servicios.Operador;
 /// <summary>Llama a <c>/api/operador/cuentas</c>: las cuentas contratantes y su ficha.</summary>
 public sealed class ServicioDeClientesDePlataforma(IHttpClientFactory fabrica)
 {
+    public async Task<DetalleProblema?> CambiarContrasenaDelTitularAsync(Guid id, string contrasena, CancellationToken ct = default)
+    {
+        using var respuesta = await Cliente.PutAsJsonAsync($"api/operador/cuentas/{id}/titular/contrasena",
+            new PeticionRestablecerContrasenaDeUsuario(contrasena), ct);
+        return respuesta.IsSuccessStatusCode ? null : await respuesta.Content.ReadFromJsonAsync<DetalleProblema>(ct);
+    }
+
     private HttpClient Cliente => fabrica.CreateClient(ClientesHttp.ApiOperador);
 
     public async Task<PaginaDeCuentas> ListarAsync(
@@ -100,6 +107,13 @@ public sealed class ServicioDeClientesDePlataforma(IHttpClientFactory fabrica)
         return respuesta.IsSuccessStatusCode
             ? null
             : await respuesta.Content.ReadFromJsonAsync<DetalleProblema>(ct);
+    }
+
+    public async Task<DetalleProblema?> EliminarPaquetePersonalizadoAsync(
+        Guid cuentaId, Guid paqueteId, CancellationToken ct = default)
+    {
+        using var respuesta = await Cliente.DeleteAsync($"api/operador/cuentas/{cuentaId}/paquetes/{paqueteId}", ct);
+        return respuesta.IsSuccessStatusCode ? null : await respuesta.Content.ReadFromJsonAsync<DetalleProblema>(ct);
     }
 
     public async Task<DetalleProblema?> CambiarActivoPaquetePersonalizadoAsync(

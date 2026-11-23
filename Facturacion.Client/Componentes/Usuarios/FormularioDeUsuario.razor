@@ -41,7 +41,8 @@
     <p class="seccion-ayuda">Selecciona una sección para revisar sus permisos. Marca solo los accesos necesarios.</p>
     @if (_empresas is not null)
     {
-        <SelectorDePermisos @bind-Value="_permisos" Empresas="_empresas" @bind-EmpresasElegidas="_elegidas" />
+        <SelectorDePermisos @bind-Value="_permisos" Empresas="_empresas" @bind-EmpresasElegidas="_elegidas"
+                            Deshabilitado="@_enviando" />
     }
     </section>
     </div>

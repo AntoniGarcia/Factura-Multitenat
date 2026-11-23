@@ -299,7 +299,7 @@
             await Dialogos.ShowAsync<DialogoDeComprobanteDeCompra>(
                 $"Comprobante · {compra.EmpresaNombre}",
                 parametros,
-                new DialogOptions { MaxWidth = MaxWidth.ExtraLarge, FullWidth = true, CloseOnEscapeKey = true });
+                new DialogOptions { MaxWidth = MaxWidth.ExtraLarge, FullWidth = true });
         }
         finally
         {

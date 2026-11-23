@@ -23,7 +23,7 @@ public static class CatalogosDeOperadorEndpoints
             return actualizador.Estado is { } estado ? Results.Ok(estado) : Results.NoContent();
         });
         grupo.MapPost("/{catalogo}/actualizar", IniciarActualizacion)
-            .RequireAuthorization(PoliticasDeOperador.AdministrarConfiguracion);
+            .RequireAuthorization(PoliticasDeOperador.ActualizarCatalogosSat);
         grupo.MapGet("/{catalogo}", async (string catalogo, ServicioDeCatalogosDeOperador servicio, HttpContext contexto,
             CancellationToken ct, string? texto = null, bool? vigentes = null, int pagina = 0, int tamano = 24) =>
         {

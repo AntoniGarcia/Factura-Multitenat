@@ -2,6 +2,10 @@ using System.ComponentModel.DataAnnotations;
 
 namespace Facturacion.Shared.Operador;
 
+public sealed record PeticionRecuperarContrasenaOperador(string Correo);
+
+public sealed record PeticionRestablecerContrasenaOperador(string Correo, string Codigo, string ContrasenaNueva);
+
 /// <summary>
 /// Credenciales del panel de operador. No hay alta pública: los operadores se crean por
 /// consola, así que no existe un DTO de registro.

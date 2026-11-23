@@ -6,7 +6,6 @@ using Facturacion.Shared.Comun;
 using Facturacion.Shared.Contratos;
 using Facturacion.Shared.Operador;
 using Microsoft.AspNetCore.DataProtection;
-using Microsoft.AspNetCore.Identity;
 using Microsoft.Data.SqlClient;
 using Microsoft.EntityFrameworkCore;
 
@@ -14,7 +13,6 @@ namespace Facturacion.Server.Modules.Operador.Configuracion;
 
 public sealed class ServicioFiscalDelProveedor(
     AppDbContext db,
-    IPasswordHasher<OperadorPlataforma> hasher,
     IDataProtectionProvider protecciones,
     IServicioDeBitacora bitacora)
 {
@@ -37,9 +35,6 @@ public sealed class ServicioFiscalDelProveedor(
     public async Task<Resultado<ConfiguracionFiscalProveedorDto>> GuardarAsync(
         Guid operadorId, PeticionGuardarFiscalProveedor p, CancellationToken ct)
     {
-        if (!await ConfirmarOperadorAsync(operadorId, p.ContrasenaDelOperador, ct))
-            return ErrorNegocio.Validacion("contrasena-incorrecta", "Tu contraseña de operador no es correcta.");
-
         var rfc = (p.Rfc ?? "").Trim().ToUpperInvariant();
         var validacionRfc = Rfc.Validar(rfc);
         if (!validacionRfc.EsValido || Rfc.EsGenerico(rfc))
@@ -89,11 +84,9 @@ public sealed class ServicioFiscalDelProveedor(
     }
 
     public async Task<Resultado<ConfiguracionFiscalProveedorDto>> CargarCsdAsync(
-        Guid operadorId, byte[] cer, byte[] key, string contrasena, string contrasenaOperador,
+        Guid operadorId, byte[] cer, byte[] key, string contrasena,
         byte[]? version, CancellationToken ct)
     {
-        if (!await ConfirmarOperadorAsync(operadorId, contrasenaOperador, ct))
-            return ErrorNegocio.Validacion("contrasena-incorrecta", "Tu contraseña de operador no es correcta.");
         if (cer.Length is 0 or > 65536 || key.Length is 0 or > 65536 || contrasena.Length is 0 or > 512)
             return ErrorNegocio.Validacion("csd-incompleto", "Carga los archivos .cer y .key, de hasta 64 KB, y su contraseña.");
         var c = await db.ConfiguracionFiscalProveedor.SingleOrDefaultAsync(ct);
@@ -138,13 +131,6 @@ public sealed class ServicioFiscalDelProveedor(
 
     private IDataProtector Protector(string rfc, string parte)
         => protecciones.CreateProtector("Facturacion.CsdProveedor.v1", rfc, parte);
-
-    private async Task<bool> ConfirmarOperadorAsync(Guid id, string? contrasena, CancellationToken ct)
-    {
-        if (string.IsNullOrEmpty(contrasena) || contrasena.Length > 128) return false;
-        var o = await db.OperadoresPlataforma.AsNoTracking().SingleOrDefaultAsync(x => x.Id == id && x.Activo, ct);
-        return o is not null && hasher.VerifyHashedPassword(o, o.HashContrasena, contrasena) != PasswordVerificationResult.Failed;
-    }
 
     private static bool VersionCoincide(ConfiguracionFiscalProveedor? c, byte[]? version)
         => c is null ? version is null : version is { Length: 8 } && c.Version.AsSpan().SequenceEqual(version);

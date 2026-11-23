@@ -20,13 +20,9 @@ public sealed record FichaDeEmpresaDto(
 /// <summary>Módulos contratados para una empresa, administrados únicamente por el operador.</summary>
 public sealed record LicenciasDeEmpresaDto(bool Notarios, bool Obras, bool Comercio, bool Ine);
 
-/// <summary>
-/// Cambio de módulos contratados. La contraseña vuelve a confirmar una operación comercial
-/// que habilita funciones de pago para la empresa.
-/// </summary>
+/// <summary>Cambio de módulos contratados por la empresa.</summary>
 public sealed record PeticionActualizarLicenciasDeEmpresa(
     bool Notarios,
     bool Obras,
     bool Comercio,
-    bool Ine,
-    [property: System.ComponentModel.DataAnnotations.Required] string ContrasenaDelOperador);
+    bool Ine);

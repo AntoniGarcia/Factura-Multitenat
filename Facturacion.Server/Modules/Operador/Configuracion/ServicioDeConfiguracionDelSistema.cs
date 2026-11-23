@@ -4,7 +4,6 @@ using Facturacion.Server.Infra.Almacen;
 using Facturacion.Server.Infra.Correo;
 using Facturacion.Shared.Comun;
 using Facturacion.Shared.Operador;
-using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 
 namespace Facturacion.Server.Modules.Operador.Configuracion;
@@ -15,7 +14,6 @@ namespace Facturacion.Server.Modules.Operador.Configuracion;
 /// </summary>
 public sealed class ServicioDeConfiguracionDelSistema(
     AppDbContext baseDeDatos,
-    IPasswordHasher<OperadorPlataforma> hasher,
     IProveedorDeConfiguracionDelSistema proveedor,
     IProtectorDeSecretosDelSistema protector)
 {
@@ -77,11 +75,22 @@ public sealed class ServicioDeConfiguracionDelSistema(
                 "bienvenida-sin-marcador",
                 "El mensaje de bienvenida debe conservar la palabra CORREO.");
 
-        if (await ContrasenaDelOperadorEsIncorrecta(operadorId, peticion.ContrasenaDelOperador, ct))
-            return ErrorNegocio.Validacion("contrasena-incorrecta", "Tu contraseña de operador no es correcta.");
-
         var guardada = await baseDeDatos.ConfiguracionesDelSistema
             .SingleOrDefaultAsync(c => c.Id == 1, ct);
+
+        if (string.IsNullOrWhiteSpace(peticion.ContrasenaSmtpNueva))
+        {
+            try
+            {
+                var efectiva = await proveedor.ObtenerAsync(ct);
+                if (efectiva.ContrasenaSmtpConfigurada && !MismoDestinoSmtp(peticion, efectiva.Correo))
+                    return CapturarContrasenaSmtp();
+            }
+            catch (System.Security.Cryptography.CryptographicException)
+            {
+                return ErrorNegocio.Validacion("smtp-contrasena-ilegible", "No se pudo leer la contraseña SMTP guardada. Captúrala de nuevo.");
+            }
+        }
 
         if (guardada is null)
         {
@@ -124,15 +133,18 @@ public sealed class ServicioDeConfiguracionDelSistema(
     }
 
     public async Task<Resultado<bool>> ProbarAsync(
-        Guid operadorId, PeticionGuardarConfiguracionDelSistema peticion, CancellationToken ct)
+        PeticionGuardarConfiguracionDelSistema peticion, CancellationToken ct)
     {
-        if (string.IsNullOrEmpty(peticion.ContrasenaDelOperador)
-            || await ContrasenaDelOperadorEsIncorrecta(operadorId, peticion.ContrasenaDelOperador, ct))
-            return ErrorNegocio.Validacion("contrasena-incorrecta", "Tu contraseña de operador no es correcta.");
         string? contrasena = peticion.ContrasenaSmtpNueva;
         if (string.IsNullOrWhiteSpace(contrasena))
         {
-            try { contrasena = (await proveedor.ObtenerAsync(ct)).Correo.Contrasena; }
+            try
+            {
+                var efectiva = await proveedor.ObtenerAsync(ct);
+                if (efectiva.ContrasenaSmtpConfigurada && !MismoDestinoSmtp(peticion, efectiva.Correo))
+                    return CapturarContrasenaSmtp();
+                contrasena = efectiva.Correo.Contrasena;
+            }
             catch (System.Security.Cryptography.CryptographicException)
             {
                 return ErrorNegocio.Validacion("smtp-contrasena-ilegible", "No se pudo leer la contraseña SMTP guardada. Captúrala de nuevo.");
@@ -146,17 +158,13 @@ public sealed class ServicioDeConfiguracionDelSistema(
         return await ProbadorSmtp.ProbarAsync(peticion.Servidor.Trim(), peticion.Puerto, peticion.Usuario.Trim(), contrasena!, ct);
     }
 
-    private async Task<bool> ContrasenaDelOperadorEsIncorrecta(
-        Guid operadorId, string contrasena, CancellationToken ct)
-    {
-        var operador = await baseDeDatos.OperadoresPlataforma
-            .SingleOrDefaultAsync(o => o.Id == operadorId && o.Activo, ct);
+    private static bool MismoDestinoSmtp(PeticionGuardarConfiguracionDelSistema peticion, OpcionesDeCorreo correo)
+        => string.Equals(peticion.Servidor.Trim().TrimEnd('.'), correo.Servidor?.Trim().TrimEnd('.'), StringComparison.OrdinalIgnoreCase)
+            && peticion.Puerto == correo.Puerto
+            && string.Equals(peticion.Usuario.Trim(), correo.Usuario, StringComparison.Ordinal);
 
-        if (operador is null) return true;
-
-        return hasher.VerifyHashedPassword(operador, operador.HashContrasena, contrasena)
-            is PasswordVerificationResult.Failed;
-    }
+    private static ErrorNegocio CapturarContrasenaSmtp() => ErrorNegocio.Validacion(
+        "smtp-credencial-requerida", "Captura la contraseña SMTP al cambiar su servidor, puerto o usuario.");
 
     private static bool EsCorreoValido(string? correo)
     {

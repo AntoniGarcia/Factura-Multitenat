@@ -1,6 +1,7 @@
 @using Facturacion.Shared.Operador
+@using Facturacion.Client.Servicios.Operador
+@inject ServicioDeSesionDeOperador Sesion
 
-@* Muestra módulos a la izquierda y sus acciones a la derecha. Cada acción requiere su sección; el servidor también valida esa relación. *@
 <div class="selector-permisos-panel">
     <div class="permisos-modulos" role="group" aria-label="Módulos del panel">
         @foreach (var seccion in PermisosDePanel.Secciones)
@@ -8,17 +9,17 @@
             var activa = SeccionActiva.Ver.Clave == seccion.Ver.Clave;
             var verMarcado = Value.Contains(seccion.Ver.Clave);
 
-            <div class="permiso-modulo @(activa ? "activo" : null)">
-                <MudCheckBox T="bool"
-                             Value="@verMarcado"
-                             ValueChanged="@(marcado => CambiarVer(seccion, marcado))"
-                             Label="@seccion.Ver.Etiqueta"
-                             Disabled="@Deshabilitado" />
+            <div class="permiso-modulo @(activa ? "activo" : null)" @key="seccion.Ver.Clave">
+                <input type="checkbox" class="permiso-modulo-casilla"
+                       aria-label="@($"Permiso: {seccion.Ver.Etiqueta}")"
+                       checked="@verMarcado"
+                       disabled="@(Deshabilitado || !PuedeDelegar(seccion.Ver.Clave))"
+                       @onchange="@(e => CambiarCasilla(seccion.Ver.Clave, e.Value is true))" />
                 <button type="button"
-                        class="permiso-modulo-mostrar"
-                        aria-label="@($"Mostrar acciones de {seccion.Titulo}")"
+                        class="permiso-modulo-mostrar permiso-modulo-navegacion"
                         aria-pressed="@activa"
                         @onclick="@(() => SeleccionarSeccion(seccion))">
+                    <span>@seccion.Ver.Etiqueta</span>
                     <span class="permiso-modulo-cantidad">
                         @AccionesHabilitadas(seccion)
                     </span>
@@ -29,25 +30,31 @@
         }
     </div>
 
-    <section class="permisos-detalle" aria-labelledby="permisos-detalle-titulo">
+    @{ var seccionActiva = SeccionActiva; }
+    <section class="permisos-detalle" aria-labelledby="permisos-detalle-titulo" @key="seccionActiva.Ver.Clave">
         <div class="permisos-detalle-encabezado">
-            <h3 id="permisos-detalle-titulo">@SeccionActiva.Titulo</h3>
-            <span>@AccionesHabilitadas(SeccionActiva) de @SeccionActiva.Acciones.Count</span>
+            <h3 id="permisos-detalle-titulo">@seccionActiva.Titulo</h3>
+            <span>@AccionesHabilitadas(seccionActiva) de @seccionActiva.Acciones.Count</span>
         </div>
-        <div class="permisos-acciones" role="group" aria-label="@($"Acciones de {SeccionActiva.Titulo}")">
-            @foreach (var accion in SeccionActiva.Acciones)
+        @{ var claves = ClavesDeSeccion(seccionActiva).Where(PuedeDelegar).ToList(); }
+        <MudButton Size="Size.Small" ButtonType="ButtonType.Button" Variant="Variant.Outlined" Color="Color.Primary"
+                   Disabled="@(Deshabilitado || claves.All(Value.Contains))"
+                   OnClick="@(() => CambiarClaves(claves, marcar: true))">
+            Seleccionar todo
+        </MudButton>
+        @if (seccionActiva.Acciones.Count > 0)
+        {
+            <p class="permisos-detalle-ayuda">Para usar las acciones del módulo, habilita también su casilla de acceso.</p>
+        }
+        <div class="permisos-acciones" role="group" aria-label="@($"Acciones de {seccionActiva.Titulo}")">
+            @foreach (var accion in seccionActiva.Acciones)
             {
-                var incluido = !Value.Contains(accion.Clave) && PermisosDePanel.Autoriza(Value, accion.Clave);
                 <div class="permiso-casilla" @key="accion.Clave">
                 <MudCheckBox T="bool"
-                             Value="@(Value.Contains(accion.Clave) || incluido)"
-                             ValueChanged="@(marcado => CambiarAccion(SeccionActiva, accion.Clave, marcado))"
+                             Value="@Value.Contains(accion.Clave)"
+                             ValueChanged="@(marcado => CambiarCasilla(accion.Clave, marcado))"
                              Label="@accion.Etiqueta"
-                             Disabled="@(Deshabilitado || incluido)" />
-                @if (incluido)
-                {
-                    <span class="permiso-concedido">Incluido</span>
-                }
+                             Disabled="@(Deshabilitado || !PuedeDelegar(accion.Clave))" />
                 </div>
             }
         </div>
@@ -67,7 +74,7 @@
     private string _seccionActivaClave = PermisosDePanel.Secciones[0].Ver.Clave;
 
     private int AccionesHabilitadas(SeccionDePermisosDePanel seccion)
-        => seccion.Acciones.Count(accion => PermisosDePanel.Autoriza(Value, accion.Clave));
+        => seccion.Acciones.Count(accion => Value.Contains(accion.Clave));
 
     private SeccionDePermisosDePanel SeccionActiva =>
         PermisosDePanel.Secciones.FirstOrDefault(s => s.Ver.Clave == _seccionActivaClave)
@@ -76,46 +83,14 @@
     private void SeleccionarSeccion(SeccionDePermisosDePanel seccion) =>
         _seccionActivaClave = seccion.Ver.Clave;
 
-    /// <summary>
-    /// Desmarcar «ver» quita también las acciones de esa sección: ninguna puede queda asignada sin acceso al módulo.
-    /// </summary>
-    private async Task CambiarVer(SeccionDePermisosDePanel seccion, bool marcado)
-    {
-        SeleccionarSeccion(seccion);
+    private bool PuedeDelegar(string clave) => Sesion.Sesion is { } sesion
+        && (sesion.EsPrincipal || sesion.Permisos.Contains(clave));
 
-        if (marcado)
-        {
-            await ValueChanged.InvokeAsync(SobreLista(Value, seccion.Ver.Clave, marcado: true));
-            return;
-        }
+    private static IEnumerable<string> ClavesDeSeccion(SeccionDePermisosDePanel seccion)
+        => seccion.Acciones.Select(a => a.Clave).Prepend(seccion.Ver.Clave);
 
-        var clavesDeLaSeccion = seccion.Acciones.Select(a => a.Clave).Append(seccion.Ver.Clave);
-        await ValueChanged.InvokeAsync([.. Value.Where(p => !clavesDeLaSeccion.Contains(p))]);
-    }
+    private Task CambiarClaves(IEnumerable<string> claves, bool marcar)
+        => ValueChanged.InvokeAsync(marcar ? [.. Value.Union(claves)] : [.. Value.Except(claves)]);
 
-    /// <summary>
-    /// Al marcar una acción se asegura el «ver» de su sección: no puede haber una sin la otra.
-    /// </summary>
-    private async Task CambiarAccion(SeccionDePermisosDePanel seccion, string clave, bool marcado)
-    {
-        List<string> nuevo = marcado
-            ? SobreAccion(Value, seccion.Ver.Clave, clave)
-            : [.. Value.Where(p => p != clave)];
-
-        await ValueChanged.InvokeAsync(nuevo);
-    }
-
-    private static List<string> SobreLista(List<string> actual, string clave, bool marcado)
-    {
-        if (marcado && !actual.Contains(clave)) return [.. actual, clave];
-        if (!marcado) return [.. actual.Where(p => p != clave)];
-        return actual;
-    }
-
-    /// <summary>Marca una acción y, si hace falta, también el «ver» de su sección.</summary>
-    private static List<string> SobreAccion(List<string> actual, string ver, string accion)
-    {
-        var conAccion = SobreLista(actual, accion, marcado: true);
-        return SobreLista(conAccion, ver, marcado: true);
-    }
+    private Task CambiarCasilla(string clave, bool marcado) => CambiarClaves([clave], marcado);
 }

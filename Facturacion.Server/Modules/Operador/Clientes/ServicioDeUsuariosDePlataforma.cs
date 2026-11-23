@@ -20,15 +20,14 @@ namespace Facturacion.Server.Modules.Operador.Clientes;
 /// un administrador —quien se dio de alta solo administra su propia contraseña—, y aquí esa
 /// limitación no aplica: el proveedor puede hacerlo con cualquiera.
 /// <para>
-/// Por eso: exige la contraseña del propio operador en cada llamada, cierra todas las
-/// sesiones del usuario afectado, y deja en la bitácora quién lo hizo y sobre quién. La
+/// La API exige el permiso correspondiente, cierra todas las sesiones del usuario afectado
+/// y deja en la bitácora quién lo hizo y sobre quién. La
 /// contraseña nueva no entra a la bitácora en ningún caso.
 /// </para>
 /// </summary>
 public sealed class ServicioDeUsuariosDePlataforma(
     AppDbContext baseDeDatos,
     UserManager<Usuario> usuarios,
-    IPasswordHasher<OperadorPlataforma> hasher,
     ServicioDeRefreshTokens refrescos,
     IServicioDeBitacora bitacora)
 {
@@ -83,19 +82,25 @@ public sealed class ServicioDeUsuariosDePlataforma(
         return new PaginaDeUsuariosDePlataforma(elementos, total);
     }
 
-    /// <summary>
-    /// Pone una contraseña nueva a un usuario de cualquier cuenta y cierra todas sus sesiones.
-    /// </summary>
+    public async Task<Resultado<bool>> RestablecerContrasenaDelTitularAsync(
+        Guid operadorId, Guid cuentaId, PeticionRestablecerContrasenaDeUsuario peticion, CancellationToken ct)
+    {
+        var titular = await baseDeDatos.Users.AsNoTracking()
+            .Where(u => u.CuentaId == cuentaId && u.EsTitular)
+            .Select(u => (Guid?)u.Id).SingleOrDefaultAsync(ct);
+        if (titular is null)
+            return ErrorNegocio.NoEncontrado("titular-no-encontrado", "Esta cuenta no tiene un titular registrado.");
+
+        return await RestablecerContrasenaAsync(operadorId, titular.Value, peticion, ct);
+    }
+
+    /// <summary>Pone una contraseña nueva a un usuario y cierra sus sesiones.</summary>
     public async Task<Resultado<bool>> RestablecerContrasenaAsync(
         Guid operadorId,
         Guid usuarioId,
         PeticionRestablecerContrasenaDeUsuario peticion,
         CancellationToken ct)
     {
-        if (await ContrasenaDelOperadorEsIncorrecta(operadorId, peticion.ContrasenaDelOperador, ct))
-            return ErrorNegocio.Validacion(
-                "contrasena-incorrecta", "Tu contraseña de operador no es correcta.");
-
         var usuario = await usuarios.FindByIdAsync(usuarioId.ToString());
 
         if (usuario is null)
@@ -239,16 +244,12 @@ public sealed class ServicioDeUsuariosDePlataforma(
 
     /// <summary>
     /// Cambia el correo de un usuario de cualquier cuenta. Toca la identidad de la persona y
-    /// quien entra al sistema con ese correo, así que exige la contraseña del operador y deja
+    /// quien entra al sistema con ese correo, así que la API exige su propio permiso y deja
     /// registro de quién lo hizo y sobre quién.
     /// </summary>
     public async Task<Resultado<bool>> CambiarCorreoAsync(
         Guid operadorId, Guid usuarioId, PeticionCambiarCorreoDeUsuario peticion, CancellationToken ct)
     {
-        if (await ContrasenaDelOperadorEsIncorrecta(operadorId, peticion.ContrasenaDelOperador, ct))
-            return ErrorNegocio.Validacion(
-                "contrasena-incorrecta", "Tu contraseña de operador no es correcta.");
-
         var usuario = await baseDeDatos.Users.SingleOrDefaultAsync(u => u.Id == usuarioId, ct);
 
         if (usuario is null)
@@ -308,15 +309,4 @@ public sealed class ServicioDeUsuariosDePlataforma(
            && correo.Length <= 254
            && new System.Net.Mail.MailAddress(correo.Trim()).Address == correo.Trim();
 
-    private async Task<bool> ContrasenaDelOperadorEsIncorrecta(
-        Guid operadorId, string contrasena, CancellationToken ct)
-    {
-        var operador = await baseDeDatos.OperadoresPlataforma
-            .SingleOrDefaultAsync(o => o.Id == operadorId && o.Activo, ct);
-
-        if (operador is null) return true;
-
-        return hasher.VerifyHashedPassword(operador, operador.HashContrasena, contrasena)
-            is PasswordVerificationResult.Failed;
-    }
 }

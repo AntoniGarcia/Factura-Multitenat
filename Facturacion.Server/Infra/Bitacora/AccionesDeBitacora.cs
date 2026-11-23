@@ -131,6 +131,7 @@ public static class AccionesDeBitacora
     public const string InicioSesionOperador = "inicio_sesion_operador";
     public const string InicioSesionOperadorFallido = "inicio_sesion_operador_fallido";
     public const string CierreSesionOperador = "cierre_sesion_operador";
+    public const string HistorialDeSesionesLimpiado = "historial_de_sesiones_limpiado";
     public const string OperadorCreado = "operador_creado";
     public const string OperadorActualizado = "operador_actualizado";
     public const string OperadorPermisosCambiados = "operador_permisos_cambiados";
@@ -139,6 +140,7 @@ public static class AccionesDeBitacora
     public const string PaqueteCreado = "paquete_creado";
     public const string PaqueteActualizado = "paquete_actualizado";
     public const string PaqueteDesactivado = "paquete_desactivado";
+    public const string PaqueteEliminado = "paquete_eliminado";
     public const string PaqueteReactivado = "paquete_reactivado";
     public const string CompraRechazada = "compra_rechazada";
     public const string MembresiaRegistrada = "membresia_registrada";

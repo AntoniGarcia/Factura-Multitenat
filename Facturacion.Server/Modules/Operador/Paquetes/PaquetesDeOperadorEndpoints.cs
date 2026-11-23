@@ -8,7 +8,7 @@ namespace Facturacion.Server.Modules.Operador.Paquetes;
 /// <summary>
 /// El catálogo de paquetes visto desde el panel del proveedor.
 /// <para>
-/// Lectura: permiso <c>ver_paquetes</c>. Escritura: permiso <c>administrar_paquetes</c>.
+/// Cada operación de escritura exige su permiso.
 /// Nótese que el inquilino tiene su propio <c>GET /api/timbres/paquetes</c>, que solo devuelve
 /// los activos y sin el orden ni el estado: son dos vistas distintas del mismo catálogo.
 /// </para>
@@ -29,9 +29,14 @@ public static class PaquetesDeOperadorEndpoints
                 PermisosDePanel.Autoriza(c.User.FindAll(ClavesDeClaim.Permiso).Select(x => x.Value), PermisosDePanel.VerPaquetes) ||
                 PermisosDePanel.Autoriza(c.User.FindAll(ClavesDeClaim.Permiso).Select(x => x.Value), PermisosDePanel.VerClientes)));
         grupo.MapGet("/{id:guid}", Obtener).RequireAuthorization(PoliticasDeOperador.VerPaquetes);
-        grupo.MapPost("/", Crear).RequireAuthorization(PoliticasDeOperador.AdministrarPaquetes);
-        grupo.MapPut("/{id:guid}", Actualizar).RequireAuthorization(PoliticasDeOperador.AdministrarPaquetes);
-        grupo.MapPost("/{id:guid}/activo", CambiarActivo).RequireAuthorization(PoliticasDeOperador.CambiarEstadoPaquetes);
+        grupo.MapPost("/", Crear).RequireAuthorization(PoliticasDeOperador.CrearPaquetes);
+        grupo.MapPut("/{id:guid}", Actualizar).RequireAuthorization(PoliticasDeOperador.EditarPaquetes);
+        grupo.MapDelete("/{id:guid}", async (Guid id, ServicioDePaquetesDeOperador paquetes, HttpContext contexto, CancellationToken ct) =>
+        {
+            var resultado = await paquetes.EliminarAsync(id, null, ct);
+            return resultado.EsExito ? Results.NoContent() : resultado.Error!.AResultado(contexto);
+        }).RequireAuthorization(PoliticasDeOperador.EliminarPaquetes);
+        grupo.MapPost("/{id:guid}/activo", CambiarActivo);
     }
 
     private static async Task<IResult> Listar(
@@ -80,6 +85,9 @@ public static class PaquetesDeOperadorEndpoints
         HttpContext contexto,
         CancellationToken ct)
     {
+        if (!PermisosDePanel.Autoriza(contexto.User.FindAll(ClavesDeClaim.Permiso).Select(c => c.Value),
+                peticion.Activo ? PermisosDePanel.ReactivarPaquetes : PermisosDePanel.RetirarPaquetes))
+            return Results.Forbid(authenticationSchemes: [EsquemasDeAutenticacion.Operador]);
         var resultado = await paquetes.CambiarActivoAsync(id, peticion.Activo, ct);
 
         return resultado.EsExito

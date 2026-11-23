@@ -1,8 +1,12 @@
+using Facturacion.Shared.Operador;
+
 namespace Facturacion.Server.Data.Entidades.Plataforma;
 
 /// <summary>Operador de la plataforma, independiente de las cuentas y empresas emisoras.</summary>
 public sealed class OperadorPlataforma
 {
+    // La baja definitiva libera el correo de entrada sin perder el Id histórico.
+    public const string PrefijoEliminado = "ELIMINADO:";
     public Guid Id { get; set; }
 
     public required string Nombre { get; set; }
@@ -51,6 +55,11 @@ public sealed class OperadorPlataforma
 
     public ICollection<RefreshTokenOperador> RefreshTokens { get; set; } = [];
 
-    /// <summary>Permisos asignados a este operador. Claves de <see cref="Facturacion.Shared.Comun.Permisos"/>.</summary>
+    /// <summary>Permisos asignados en el panel del operador.</summary>
     public ICollection<PermisoOperador> Permisos { get; set; } = [];
+
+    public IReadOnlyList<string> PermisosDelPanel()
+        => EsPrincipal ? PermisosDePanel.Todos : PermisosDePanel.DesdeAsignacionesGuardadas(Permisos.Select(p => p.Permiso));
+
+    public bool EstaEliminado() => CorreoNormalizado.StartsWith(PrefijoEliminado, StringComparison.Ordinal);
 }

@@ -50,7 +50,8 @@ public sealed record DetalleDeCuentaDto(
     IReadOnlyList<EmpresaDeCuentaDto> Empresas,
     LimitesDeCuentaDto Limites,
     int TimbresReservados,
-    IReadOnlyList<PaquetePersonalizadoDto> PaquetesPersonalizados);
+    IReadOnlyList<PaquetePersonalizadoDto> PaquetesPersonalizados,
+    string? NombreTitular = null);
 
 /// <summary>
 /// Cuántos usuarios activos y cuántas empresas admite la cuenta, y cuántos usa. Un usuario
@@ -65,8 +66,7 @@ public sealed record LimitesDeCuentaDto(
 /// <summary>Nuevos límites de una cuenta. No pueden quedar por debajo de lo que ya usa.</summary>
 public sealed record PeticionCambiarLimitesDeCuenta(
     [property: System.ComponentModel.DataAnnotations.Range(1, 999)] int LimiteDeUsuarios,
-    [property: System.ComponentModel.DataAnnotations.Range(1, 999)] int LimiteDeEmpresas,
-    [property: System.ComponentModel.DataAnnotations.Required] string ContrasenaDelOperador);
+    [property: System.ComponentModel.DataAnnotations.Range(1, 999)] int LimiteDeEmpresas);
 
 /// <summary>Una página de cuentas y cuántas hay en total con ese filtro.</summary>
 public sealed record PaginaDeCuentas(
@@ -80,8 +80,7 @@ public sealed record PaginaDeCuentas(
 /// </summary>
 public sealed record PeticionCambiarActivoDeEmpresa(
     bool Activo,
-    [property: System.ComponentModel.DataAnnotations.MaxLength(300)] string? Motivo,
-    [property: System.ComponentModel.DataAnnotations.Required] string ContrasenaDelOperador);
+    [property: System.ComponentModel.DataAnnotations.MaxLength(300)] string? Motivo);
 
 /// <summary>
 /// Nuevo correo de contacto de una cuenta. Es un dato administrativo del SaaS, no un inicio de
@@ -91,5 +90,4 @@ public sealed record PeticionCambiarCorreoDeContactoDeCuenta(
     [property: System.ComponentModel.DataAnnotations.Required]
     [property: System.ComponentModel.DataAnnotations.EmailAddress]
     [property: System.ComponentModel.DataAnnotations.MaxLength(254)]
-    string CorreoNuevo,
-    [property: System.ComponentModel.DataAnnotations.Required] string ContrasenaDelOperador);
+    string CorreoNuevo);

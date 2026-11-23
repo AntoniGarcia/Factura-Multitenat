@@ -22,7 +22,7 @@
     <div class="aviso-documentos" role="status">@_aviso</div>
 }
 
-@if (Sesion.TienePermiso(PoliticasDelPanel.AdministrarPaquetes))
+@if (Sesion.TienePermiso(PoliticasDelPanel.CrearPaquetes))
 {
 <div class="acciones-formulario">
     <MudButton Variant="Variant.Filled" Color="Color.Primary" StartIcon="@Icons.Material.Filled.Add"
@@ -74,19 +74,24 @@ else
                     </td>
                     <td>
                         <div class="acciones-renglon">
-                            @if (Sesion.TienePermiso(PoliticasDelPanel.AdministrarPaquetes))
+                            @if (Sesion.TienePermiso(PoliticasDelPanel.EditarPaquetes))
                             {
                             <MudButton Size="Size.Small"
                                        OnClick="@(() => Navegacion.NavigateTo($"/operador/paquetes/{paquete.Id}"))">
                                 Editar
                             </MudButton>
                             }
-                            @if (Sesion.TienePermiso(PoliticasDelPanel.CambiarEstadoPaquetes))
+                            @if (Sesion.TienePermiso(paquete.Activo ? PoliticasDelPanel.RetirarPaquetes : PoliticasDelPanel.ReactivarPaquetes))
                             {
                             <MudButton Size="Size.Small" Disabled="@_trabajando"
                                        OnClick="@(() => CambiarActivo(paquete))">
                                 @(paquete.Activo ? "Retirar" : "Reactivar")
                             </MudButton>
+                            }
+                            @if (Sesion.TienePermiso(PoliticasDelPanel.EliminarPaquetes))
+                            {
+                                <MudButton Size="Size.Small" Color="Color.Error" Disabled="@_trabajando"
+                                           OnClick="@(() => EliminarAsync(paquete))">Eliminar</MudButton>
                             }
                         </div>
                     </td>
@@ -150,5 +155,23 @@ else
         _trabajando = false;
 
         if (error is null) await CargarAsync();
+    }
+
+    private async Task EliminarAsync(PaqueteDeOperadorDto paquete)
+    {
+        if (_trabajando) return;
+        _trabajando = true;
+        _error = null;
+        _aviso = null;
+        try
+        {
+            if (!await Confirmacion.ConfirmarAsync("Eliminar paquete",
+                    $"«{paquete.Nombre}» desaparecerá del catálogo. Las compras registradas se conservarán.",
+                    "Eliminar", esPeligrosa: true)) return;
+            _error = await Paquetes.EliminarAsync(paquete.Id);
+            if (_error is null) _aviso = "Paquete eliminado.";
+            await CargarAsync();
+        }
+        finally { _trabajando = false; }
     }
 }

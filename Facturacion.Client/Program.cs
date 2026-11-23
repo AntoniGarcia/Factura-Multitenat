@@ -93,7 +93,7 @@ builder.Services.AddAuthorizationCore(opciones =>
 
     // Las del panel del proveedor, igual que el Server: ver y acciones por sección.
     // Misma advertencia que las de arriba: aquí solo sirven para enrutar y ocultar.
-    foreach (var permiso in Facturacion.Shared.Operador.PermisosDePanel.Todos)
+    foreach (var permiso in Facturacion.Shared.Operador.PermisosDePanel.Todos.Append(Facturacion.Shared.Operador.PermisosDePanel.AbrirFormularioPaquetes))
         opciones.AddPolicy(permiso, politica => politica
             .RequireAuthenticatedUser()
             .RequireAssertion(contexto => Facturacion.Shared.Operador.PermisosDePanel.Autoriza(

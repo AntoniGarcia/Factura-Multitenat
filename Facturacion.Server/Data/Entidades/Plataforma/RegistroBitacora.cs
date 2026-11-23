@@ -10,7 +10,8 @@ namespace Facturacion.Server.Data.Entidades.Plataforma;
 /// <c>IgnoreQueryFilters</c> con filtro explícito por cuenta.
 /// </para>
 /// <para>
-/// Un renglón de bitácora no se modifica ni se borra nunca.
+/// Los registros fiscales, administrativos y de seguridad son permanentes. El panel
+/// permite limpiar los inicios, cierres y renovaciones normales de sesión de un operador.
 /// </para>
 /// </summary>
 public sealed class RegistroBitacora : IEntidadDeEmpresaOpcional

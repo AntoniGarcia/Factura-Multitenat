@@ -1,10 +1,5 @@
 @using MudBlazor
 
-@*
-    Restablecer la contraseña de un usuario de un cliente. Pide dos cosas: la contraseña
-    nueva y la del propio operador, porque esta operación permite entrar como esa persona.
-*@
-
 <MudDialog>
     <DialogContent>
         <p class="dialogo-cancelacion-aviso">
@@ -21,8 +16,9 @@
                           Immediate="true" MaxLength="128"
                           HelperText="Al menos 12 caracteres." />
 
-            <MudTextField @bind-Value="_deLOperador" Label="Tu contraseña de operador"
-                          InputType="InputType.Password" Immediate="true" />
+            <MudTextField @bind-Value="_confirmacion" Label="Repetir contraseña"
+                          InputType="InputType.Password" Immediate="true" MaxLength="128"
+                          Error="@(_confirmacion.Length > 0 && _nueva != _confirmacion)" ErrorText="Las contraseñas no coinciden." />
         </div>
     </DialogContent>
     <DialogActions>
@@ -45,11 +41,11 @@
     public string CorreoUsuario { get; set; } = string.Empty;
 
     private string _nueva = string.Empty;
-    private string _deLOperador = string.Empty;
+    private string _confirmacion = string.Empty;
     private bool _ver;
 
     private bool SePuedeConfirmar =>
-        _nueva.Length >= 12 && !string.IsNullOrWhiteSpace(_deLOperador);
+        _nueva.Length >= 12 && _nueva == _confirmacion;
 
-    private void Confirmar() => Dialogo.Close(DialogResult.Ok((_nueva, _deLOperador)));
+    private void Confirmar() => Dialogo.Close(DialogResult.Ok(_nueva));
 }

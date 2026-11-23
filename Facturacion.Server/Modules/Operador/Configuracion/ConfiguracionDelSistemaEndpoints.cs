@@ -27,14 +27,13 @@ public static class ConfiguracionDelSistemaEndpoints
             return Results.Ok(new EstadoDeIntegracionFiscalDto(
                 pac is not null, pac is Facturacion.Server.Modules.Documentos.Dobles.DobleProveedorPac));
         }).RequireAuthorization(PoliticasDeOperador.VerConfiguracion);
-        grupo.MapPut("/", Guardar).RequireAuthorization(PoliticasDeOperador.AdministrarConfiguracion);
+        grupo.MapPut("/", Guardar).RequireAuthorization(PoliticasDeOperador.EditarCorreoSistema);
         grupo.MapPost("/smtp/probar", async (PeticionGuardarConfiguracionDelSistema peticion,
             ServicioDeConfiguracionDelSistema servicio, HttpContext contexto, CancellationToken ct) =>
         {
-            if (!TryOperador(contexto, out var operadorId)) return Results.Unauthorized();
-            var resultado = await servicio.ProbarAsync(operadorId, peticion, ct);
+            var resultado = await servicio.ProbarAsync(peticion, ct);
             return resultado.EsExito ? Results.Ok() : resultado.Error!.AResultado(contexto);
-        }).RequireAuthorization(PoliticasDeOperador.AdministrarConfiguracion);
+        }).RequireAuthorization(PoliticasDeOperador.ProbarCorreoSistema);
     }
 
     private static async Task<IResult> Obtener(

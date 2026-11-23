@@ -1,0 +1,157 @@
+@using Facturacion.Shared.Operador
+@using Facturacion.Client.Servicios.Operador
+@using Facturacion.Client.Servicios.Plataforma
+@inject ServicioDeOperadores Operadores
+@inject IServicioDeConfirmacion Confirmacion
+
+<MudDialog Class="dialogo-actividad-operador">
+    <DialogContent>
+        <p><strong>@Operador.Nombre</strong></p>
+        @if (_mensajeLimpieza is not null)
+        {
+            <p role="@(_errorLimpieza ? "alert" : "status")">@_mensajeLimpieza</p>
+        }
+        @if (_cargando)
+        {
+            <p role="status">Cargando actividad…</p>
+        }
+        else if (_error)
+        {
+            <p role="alert">No se pudo consultar la actividad.</p>
+        }
+        else if (_elementos.Count == 0)
+        {
+            <p>@(_pagina == 0 ? "No hay actividad registrada." : "No hay más registros de actividad.")</p>
+        }
+        else
+        {
+            <MudSimpleTable Dense="true" Hover="true">
+                <thead><tr><th scope="col">Fecha y hora</th><th scope="col">Qué ocurrió</th></tr></thead>
+                <tbody>
+                    @foreach (var evento in _elementos)
+                    {
+                        <tr>
+                            <td class="cifra-tabular">@DateTime.SpecifyKind(evento.MomentoUtc, DateTimeKind.Utc).ToLocalTime().ToString("dd/MM/yyyy HH:mm")</td>
+                            <td>
+                                @Descripcion(evento)
+                                @if (!evento.RealizadaPorOperador)
+                                {
+                                    <div class="texto-secundario">Registrado sobre este operador</div>
+                                }
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </MudSimpleTable>
+        }
+        <div class="acciones-formulario">
+            <MudButton Disabled="@(_cargando || _limpiando || _pagina == 0)" OnClick="@(() => CargarAsync(_pagina - 1))">Anterior</MudButton>
+            <MudButton Disabled="@(_cargando || _limpiando || _error || _elementos.Count < 25)" OnClick="@(() => CargarAsync(_pagina + 1))">Siguiente</MudButton>
+        </div>
+    </DialogContent>
+    <DialogActions>
+        @if (PuedeLimpiar)
+        {
+            <MudButton Size="Size.Small" Variant="Variant.Outlined" Color="Color.Error"
+                       Disabled="@(_cargando || _limpiando || _error || (_pagina == 0 && _elementos.Count == 0))"
+                       OnClick="LimpiarAsync">Limpiar sesiones</MudButton>
+        }
+        <MudButton OnClick="@(() => Dialogo.Close())">Cerrar</MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter] private IMudDialogInstance Dialogo { get; set; } = default!;
+    [Parameter, EditorRequired] public OperadorDto Operador { get; set; } = default!;
+    [Parameter] public bool PuedeLimpiar { get; set; }
+
+    private IReadOnlyList<ActividadDeOperadorDto> _elementos = [];
+    private bool _cargando, _error, _limpiando, _errorLimpieza;
+    private string? _mensajeLimpieza;
+    private int _pagina;
+
+    protected override Task OnInitializedAsync() => CargarAsync(0);
+
+    private async Task CargarAsync(int pagina)
+    {
+        _cargando = true;
+        _error = false;
+        try
+        {
+            _elementos = await Operadores.ActividadAsync(Operador.Id, pagina);
+            _pagina = pagina;
+        }
+        catch (HttpRequestException) { _error = true; }
+        finally { _cargando = false; }
+    }
+
+    private async Task LimpiarAsync()
+    {
+        _limpiando = true;
+        _mensajeLimpieza = null;
+        _errorLimpieza = false;
+        try
+        {
+            if (!await Confirmacion.ConfirmarAsync("Limpiar historial de sesiones",
+                    $"Se borrarán los inicios, cierres y renovaciones normales de sesión de «{Operador.Nombre}». " +
+                    "Se conservarán las alertas de seguridad, los cambios administrativos y la actividad de facturación.",
+                    "Limpiar sesiones", esPeligrosa: true)) return;
+
+            var eliminados = await Operadores.LimpiarHistorialDeSesionesAsync(Operador.Id);
+            _mensajeLimpieza = eliminados switch
+            {
+                0 => "No había sesiones que limpiar.",
+                1 => "Se eliminó 1 registro de sesión.",
+                _ => $"Se eliminaron {eliminados:N0} registros de sesión."
+            };
+            await CargarAsync(0);
+        }
+        catch (HttpRequestException)
+        {
+            _errorLimpieza = true;
+            _mensajeLimpieza = "No se pudo limpiar el historial de sesiones.";
+        }
+        finally { _limpiando = false; }
+    }
+
+    private static string Descripcion(ActividadDeOperadorDto evento) => evento.Accion switch
+    {
+        "inicio_sesion_operador" => "Inicio de sesión en el panel",
+        "inicio_sesion_operador_fallido" => "Intento fallido de entrar al panel",
+        "cierre_sesion_operador" => "Cierre de sesión en el panel",
+        "token_rotado" => "Renovación automática de la sesión",
+        "reutilizacion_de_token" => "Alerta de seguridad: se intentó reutilizar una sesión anterior",
+        "familia_invalidada" => "Sesiones cerradas por el sistema",
+        "historial_de_sesiones_limpiado" => "Limpieza del historial de sesiones",
+        "operador_creado" => "Alta de un operador",
+        "operador_actualizado" => "Edición de datos de un operador",
+        "operador_permisos_cambiados" => "Cambio de permisos de un operador",
+        "operador_desactivado" => "Desactivación del acceso de un operador",
+        "operador_reactivado" => "Reactivación del acceso de un operador",
+        "operador_eliminado" => "Eliminación del acceso de un operador",
+        "contrasena_cambiada" => evento.Entidad == "Usuario" ? "Cambio de contraseña de un usuario de facturación" : "Cambio de contraseña de un operador",
+        "correo_cambiado" => "Cambio de correo de acceso",
+        "perfil_actualizado" => "Actualización del perfil",
+        "paquete_creado" => "Creación de un paquete de timbres",
+        "paquete_actualizado" => "Edición de un paquete de timbres",
+        "paquete_desactivado" => "Retiro de un paquete de la venta",
+        "paquete_reactivado" => "Reactivación de un paquete para venta",
+        "paquete_eliminado" => "Eliminación de un paquete del catálogo",
+        "compra_acreditada" => "Acreditación de una compra de timbres",
+        "compra_rechazada" => "Rechazo de una compra de timbres",
+        "timbres_asignados_por_operador" => "Asignación de timbres a una cuenta",
+        "correo_de_cuenta_cambiado_por_operador" => "Cambio del correo de contacto de una cuenta",
+        "correo_de_usuario_cambiado_por_operador" => "Cambio del correo de acceso de un usuario",
+        "limites_de_cuenta_cambiados_por_operador" => "Cambio de límites de usuarios o empresas de una cuenta",
+        "acceso_a_empresa_eliminado_por_operador" => "Retiro del acceso de un usuario a una empresa",
+        "empresa_desactivada_por_operador" => "Desactivación de una empresa",
+        "empresa_reactivada_por_operador" => "Reactivación de una empresa",
+        "licencias_de_empresa_actualizadas_por_operador" => "Cambio de módulos habilitados para una empresa",
+        "membresia_registrada" => "Registro de una membresía",
+        "membresia_cancelada" => "Cancelación de una membresía",
+        "fiscal_proveedor_guardada" => "Actualización de datos fiscales del proveedor",
+        "csd_proveedor_cargado" => "Carga del certificado de sello digital del proveedor",
+        _ => evento.Accion.Length == 0 ? "Actividad sin descripción" :
+            char.ToUpperInvariant(evento.Accion[0]) + evento.Accion[1..].Replace('_', ' ')
+    };
+}

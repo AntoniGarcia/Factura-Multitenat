@@ -35,36 +35,53 @@ public static class PoliticasDeOperador
 
     /// <summary>Permisos individuales del panel — mismas claves que <see cref="PermisosDePanel"/>.</summary>
     public const string VerPaquetes = PermisosDePanel.VerPaquetes;
-    public const string AdministrarPaquetes = PermisosDePanel.AdministrarPaquetes;
-    public const string CambiarEstadoPaquetes = PermisosDePanel.CambiarEstadoPaquetes;
     public const string VerCompras = PermisosDePanel.VerCompras;
-    public const string AcreditarCompras = PermisosDePanel.AcreditarCompras;
     public const string SoloAcreditarCompras = PermisosDePanel.SoloAcreditarCompras;
     public const string DescartarCompras = PermisosDePanel.DescartarCompras;
     public const string FacturarCompras = PermisosDePanel.FacturarCompras;
     public const string TimbrarCompras = PermisosDePanel.TimbrarCompras;
     public const string VerClientes = PermisosDePanel.VerClientes;
-    public const string AdministrarClientes = PermisosDePanel.AdministrarClientes;
-    public const string AsignarTimbres = PermisosDePanel.AsignarTimbres;
     public const string EditarContactoCuentas = PermisosDePanel.EditarContactoCuentas;
-    public const string CambiarEstadoEmpresas = PermisosDePanel.CambiarEstadoEmpresas;
     public const string GestionarLicencias = PermisosDePanel.GestionarLicencias;
     public const string GestionarMembresias = PermisosDePanel.GestionarMembresias;
     public const string GestionarLimites = PermisosDePanel.GestionarLimites;
     public const string VerUsuarios = PermisosDePanel.VerUsuarios;
-    public const string AdministrarUsuarios = PermisosDePanel.AdministrarUsuarios;
     public const string RestablecerContrasenasUsuarios = PermisosDePanel.RestablecerContrasenasUsuarios;
     public const string CambiarCorreosUsuarios = PermisosDePanel.CambiarCorreosUsuarios;
-    public const string CambiarEstadoUsuarios = PermisosDePanel.CambiarEstadoUsuarios;
     public const string QuitarAccesoUsuarios = PermisosDePanel.QuitarAccesoUsuarios;
     public const string VerOperadores = PermisosDePanel.VerOperadores;
-    public const string AdministrarOperadores = PermisosDePanel.AdministrarOperadores;
-    public const string CambiarEstadoOperadores = PermisosDePanel.CambiarEstadoOperadores;
     public const string VerConfiguracion = PermisosDePanel.VerConfiguracion;
     public const string VerCatalogosSat = PermisosDePanel.VerCatalogosSat;
-    public const string AdministrarConfiguracion = PermisosDePanel.AdministrarConfiguracion;
 
     /// <summary>Todas las políticas de permiso, para iterar si se necesita.</summary>
+    public const string CrearPaquetes = PermisosDePanel.CrearPaquetes;
+    public const string EditarPaquetes = PermisosDePanel.EditarPaquetes;
+    public const string EliminarPaquetes = PermisosDePanel.EliminarPaquetes;
+    public const string RetirarPaquetes = PermisosDePanel.RetirarPaquetes;
+    public const string ReactivarPaquetes = PermisosDePanel.ReactivarPaquetes;
+    public const string DesactivarEmpresas = PermisosDePanel.DesactivarEmpresas;
+    public const string ReactivarEmpresas = PermisosDePanel.ReactivarEmpresas;
+    public const string CrearPaquetesExclusivos = PermisosDePanel.CrearPaquetesExclusivos;
+    public const string EditarPaquetesExclusivos = PermisosDePanel.EditarPaquetesExclusivos;
+    public const string DesactivarPaquetesExclusivos = PermisosDePanel.DesactivarPaquetesExclusivos;
+    public const string ReactivarPaquetesExclusivos = PermisosDePanel.ReactivarPaquetesExclusivos;
+    public const string DesactivarUsuarios = PermisosDePanel.DesactivarUsuarios;
+    public const string ReactivarUsuarios = PermisosDePanel.ReactivarUsuarios;
+    public const string CrearOperadores = PermisosDePanel.CrearOperadores;
+    public const string EditarOperadores = PermisosDePanel.EditarOperadores;
+    public const string EliminarOperadores = PermisosDePanel.EliminarOperadores;
+    public const string DesactivarOperadores = PermisosDePanel.DesactivarOperadores;
+    public const string ReactivarOperadores = PermisosDePanel.ReactivarOperadores;
+    public const string CambiarCorreoOperadores = PermisosDePanel.CambiarCorreoOperadores;
+    public const string CambiarContrasenaOperadores = PermisosDePanel.CambiarContrasenaOperadores;
+    public const string VerActividadOperadores = PermisosDePanel.VerActividadOperadores;
+    public const string ActualizarCatalogosSat = PermisosDePanel.ActualizarCatalogosSat;
+    public const string EditarCorreoSistema = PermisosDePanel.EditarCorreoSistema;
+    public const string ProbarCorreoSistema = PermisosDePanel.ProbarCorreoSistema;
+    public const string EditarDatosFiscalesProveedor = PermisosDePanel.EditarDatosFiscalesProveedor;
+    public const string CargarCertificadoProveedor = PermisosDePanel.CargarCertificadoProveedor;
+    public const string AbrirFormularioPaquetes = PermisosDePanel.AbrirFormularioPaquetes;
+
     public static IReadOnlyList<string> Permisos { get; } = PermisosDePanel.Todos;
 
     public static AuthorizationBuilder AgregarPoliticasDeOperador(this AuthorizationBuilder constructor)
@@ -79,8 +96,7 @@ public static class PoliticasDeOperador
                 !contexto.User.HasClaim(c => c.Type == ClavesDeClaim.Cuenta) &&
                 !contexto.User.HasClaim(c => c.Type == ClavesDeClaim.Usuario)));
 
-        // El permiso general anterior también autoriza sus acciones concretas. Así una
-        // cuenta de operador existente conserva su alcance al actualizar la aplicación.
+        // El token ya trae las claves concretas, incluidas las convertidas de asignaciones anteriores.
         foreach (var permiso in Permisos)
         {
             constructor.AddPolicy(permiso, politica => politica

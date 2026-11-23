@@ -4,7 +4,6 @@
 @using Facturacion.Shared.Operador
 @inject ServicioFiscalDelProveedor Servicio
 @inject ServicioDeSesionDeOperador Sesion
-@inject IDialogService Dialogos
 
 <PanelErrores Problema="_error" />
 @if (_aviso is not null)
@@ -70,7 +69,7 @@ else
                     <p><span class="cifra-tabular">@certificado.NumeroSerie</span> · @Estado(certificado)
                         · Vigencia: @certificado.VigenciaDesdeUtc.ToString("dd/MM/yyyy") al @certificado.VigenciaHastaUtc.ToString("dd/MM/yyyy")</p>
                 }
-                @if (PuedeEditar)
+                @if (PuedeCargarCertificado)
                 {
                     @if (HayCambios)
                     {
@@ -95,7 +94,8 @@ else
 }
 
 @code {
-    private bool PuedeEditar => Sesion.TienePermiso(PoliticasDelPanel.AdministrarConfiguracion);
+    private bool PuedeEditar => Sesion.TienePermiso(PoliticasDelPanel.EditarDatosFiscalesProveedor);
+    private bool PuedeCargarCertificado => Sesion.TienePermiso(PoliticasDelPanel.CargarCertificadoProveedor);
     private MudForm? _formulario;
     private bool _cargando = true, _ocupado;
     private DetalleProblema? _error;
@@ -141,15 +141,6 @@ else
             x.Texto.Contains(texto, StringComparison.OrdinalIgnoreCase) || x.Id.Contains(texto, StringComparison.OrdinalIgnoreCase))
             .Select(x => x.Id));
 
-    private async Task<string?> Confirmar(string mensaje)
-    {
-        var parametros = new DialogParameters<DialogoConfirmarContrasenaOperador>
-        { { x => x.Mensaje, mensaje }, { x => x.TextoConfirmar, "Confirmar" } };
-        var dialogo = await Dialogos.ShowAsync<DialogoConfirmarContrasenaOperador>("Facturación del proveedor", parametros);
-        var r = await dialogo.Result;
-        return r is { Canceled: false, Data: string contrasena } ? contrasena : null;
-    }
-
     private async Task Guardar()
     {
         if (_ocupado || !PuedeEditar || _formulario is null) return;
@@ -158,9 +149,7 @@ else
         _ocupado = true; _aviso = null; _mensaje = null; _error = null;
         try
         {
-            var contrasena = await Confirmar("Confirma tu contraseña para guardar los datos fiscales del proveedor.");
-            if (contrasena is null) return;
-            var (datos, error) = await Servicio.GuardarAsync(new(_rfc, _nombre, _regimen, _cp, _zona, _serie, _version, contrasena));
+            var (datos, error) = await Servicio.GuardarAsync(new(_rfc, _nombre, _regimen, _cp, _zona, _serie, _version));
             _error = error;
             if (datos is not null)
             {
@@ -175,18 +164,16 @@ else
 
     private async Task CargarCsd()
     {
-        if (_ocupado || !PuedeEditar || HayCambios || _version is null || _cer is null || _key is null) return;
+        if (_ocupado || !PuedeCargarCertificado || HayCambios || _version is null || _cer is null || _key is null) return;
         _aviso = null; _mensaje = null; _error = null;
         if (_cer.Size is 0 or > 65536 || _key.Size is 0 or > 65536)
         { _mensaje = "Cada archivo admite hasta 64 KB."; return; }
         _ocupado = true;
         try
         {
-            var contrasena = await Confirmar("Confirma tu contraseña para cargar el CSD del proveedor.");
-            if (contrasena is null) return;
             await using var cer = _cer.OpenReadStream(65536);
             await using var key = _key.OpenReadStream(65536);
-            var (datos, error) = await Servicio.CargarCsdAsync(cer, _cer.Name, key, _key.Name, _contrasenaCsd, contrasena, _version);
+            var (datos, error) = await Servicio.CargarCsdAsync(cer, _cer.Name, key, _key.Name, _contrasenaCsd, _version);
             _error = error;
             if (datos is not null)
             {
