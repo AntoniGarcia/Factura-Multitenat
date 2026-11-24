@@ -26,6 +26,10 @@ public sealed record DatosDelPdf(
 {
     public TimeZoneInfo? ZonaHoraria { get; init; }
     public Facturacion.Shared.Obras.ServicioParcialConstruccionDto? ServicioParcial { get; init; }
+
+    // No viene del XML: las deducciones de obra no están en el CFDI. Se congelan al timbrar
+    // porque la pestaña Obra solo se edita en borrador.
+    public Facturacion.Shared.Obras.DatosObraDto? EstimacionObra { get; init; }
 }
 
 /// <summary>
@@ -178,6 +182,8 @@ public sealed class GeneradorDePdfCfdi
             {
                 columna.Item().Element(e => Conceptos(e, c, datos.Decimales));
                 columna.Item().Element(e => Totales(e, c, datos.Decimales, datos.ImpuestosLocales ?? []));
+                if (datos.EstimacionObra is { } estimacion && DeduccionesDeObra(estimacion) is { Count: > 0 } deducciones)
+                    columna.Item().PaddingTop(10).Element(e => CalculoDeEstimacion(e, c, estimacion, deducciones, datos.Decimales));
                 if (datos.Notaria is { } notaria)
                     columna.Item().PaddingTop(10).Element(e => SeccionNotarial(e, notaria, datos.Decimales));
             }
@@ -435,6 +441,48 @@ public sealed class GeneradorDePdfCfdi
                 totales.Item().PaddingTop(8).Background(EstiloDeComprobante.Azul).Padding(5)
                     .DefaultTextStyle(t => t.FontColor(EstiloDeComprobante.Blanco))
                     .Element(e => Dato(e, $"TOTAL {c.Moneda}", Cifra(c.Total, decimales), negrita: true, anchoDelValor: 66));
+            });
+        });
+
+    // ── Factura de obra: del total del CFDI al importe líquido ──────────────────────────
+
+    // Lo que se resta del total y no está en el CFDI. En obra pública la primera deducción ya va
+    // como impuesto local retenido, así que no se repite.
+    private static IReadOnlyList<(string Etiqueta, decimal Importe)> DeduccionesDeObra(
+        Facturacion.Shared.Obras.DatosObraDto estimacion)
+    {
+        var renglones = new List<(string, decimal)>();
+        if (estimacion.Retenciones != 0)
+            renglones.Add(($"Retenciones ({Cifra(estimacion.PorcentajeRetenciones ?? 0, 2)} %)", estimacion.Retenciones));
+        if (estimacion.Devoluciones != 0)
+            renglones.Add(($"Devoluciones ({Cifra(estimacion.PorcentajeDevoluciones ?? 0, 2)} %)", estimacion.Devoluciones));
+        var omitirPrimera = estimacion.TipoObra == Facturacion.Shared.Obras.TiposDeObra.Publica;
+        foreach (var (deduccion, indice) in estimacion.Deducciones.Select((d, i) => (d, i)))
+            if (deduccion.Porcentaje != 0 && !(omitirPrimera && indice == 0))
+                renglones.Add(($"{deduccion.Nombre} ({Cifra(deduccion.Porcentaje, 2)} %)", deduccion.Importe));
+        return renglones;
+    }
+
+    private static void CalculoDeEstimacion(IContainer contenedor, Comprobante c,
+        Facturacion.Shared.Obras.DatosObraDto estimacion, IReadOnlyList<(string Etiqueta, decimal Importe)> deducciones,
+        int decimales)
+        => contenedor.PreventPageBreak().Column(columna =>
+        {
+            columna.Item().Element(e => EstiloDeComprobante.Seccion(e, "Cálculo de la estimación"));
+            columna.Item().Row(fila =>
+            {
+                fila.RelativeItem().PaddingTop(4).PaddingRight(12).Text(
+                    "Informativo: no forma parte del CFDI. Son las deducciones del contrato que se restan del " +
+                    "total de la factura para llegar al importe que se paga.").FontSize(7).Light();
+                fila.ConstantItem(230).PaddingTop(4).PaddingHorizontal(4).Column(calculo =>
+                {
+                    calculo.Item().Element(e => Dato(e, $"Total del CFDI {c.Moneda}", Cifra(c.Total, decimales), anchoDelValor: 63));
+                    foreach (var (etiqueta, importe) in deducciones)
+                        calculo.Item().PaddingTop(3).Element(e => Dato(e, etiqueta, "−" + Cifra(importe, decimales), anchoDelValor: 63));
+                    calculo.Item().PaddingTop(4).BorderTop(0.5f).BorderColor(EstiloDeComprobante.Borde).PaddingTop(3)
+                        .Element(e => Dato(e, "Importe líquido estimado", Cifra(estimacion.ImporteLiquido, decimales),
+                            negrita: true, anchoDelValor: 66));
+                });
             });
         });
 

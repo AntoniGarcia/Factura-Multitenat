@@ -6,7 +6,6 @@
 @using Facturacion.Shared.Documentos
 @inject ServicioDeListado Listado
 @inject ServicioDeEmision Emision
-@inject ServicioDeObras Obras
 @inject ServicioDeCancelacion Cancelacion
 @inject ServicioDeDescargas Descargas
 @inject NavigationManager Navegacion
@@ -24,15 +23,22 @@
     <div class="aviso-documentos" role="status">@_aviso</div>
 }
 
-<SiTienePermiso Permiso="@Permisos.Politicas.Crear">
-    <div class="documentos-cabecera-acciones">
+<div class="documentos-cabecera-acciones">
+    <SiTienePermiso Permiso="@Permisos.Politicas.Cancelar">
+        <MudButton Variant="Variant.Outlined"
+                   StartIcon="@Icons.Material.Filled.CancelPresentation"
+                   OnClick="@(() => Navegacion.NavigateTo("/cancelaciones"))">
+            Solicitudes de cancelación
+        </MudButton>
+    </SiTienePermiso>
+    <SiTienePermiso Permiso="@Permisos.Politicas.Crear">
         <MudButton Variant="Variant.Filled" Color="Color.Primary"
                    StartIcon="@Icons.Material.Filled.Add"
                    OnClick="AbrirNuevoComprobanteAsync">
             Nuevo comprobante
         </MudButton>
-    </div>
-</SiTienePermiso>
+    </SiTienePermiso>
+</div>
 
 <section class="documentos-filtros" aria-label="Filtros de documentos">
 <div class="documentos-busqueda">
@@ -259,17 +265,6 @@
                     </MudButton>
                 }
 
-                @if (_detalleSeleccionado is { Variante: VariantesDeFactura.Obra } &&
-                     Sesion.TienePermiso(Permisos.DocumentosDescarga))
-                {
-                    <MudButton Variant="Variant.Outlined"
-                               StartIcon="@Icons.Material.Filled.PictureAsPdf"
-                               Disabled="@_preparandoEstimacion"
-                               OnClick="VerEstimacionAsync">
-                        @(_preparandoEstimacion ? "Preparando estimación…" : "PDF de estimación")
-                    </MudButton>
-                }
-
                 @if (_detalleSeleccionado is { } detalleConXml && (EsCfdiFiscal(detalleConXml) || EsBorradorDeRevision(detalleConXml)) &&
                      Sesion.TienePermiso(Permisos.DocumentosDescarga))
                 {
@@ -311,12 +306,11 @@
                         </MudButton>
                     }
 
-                    if (seleccionado.Uuid is not null)
-                    {
-                        <MudButton Variant="Variant.Text" OnClick="@(() => VerificarAnteSat(seleccionado))">
-                            Verificar SAT
-                        </MudButton>
-                    }
+                    <MudButton Variant="Variant.Text" Disabled="@(seleccionado.Uuid is null)"
+                               title="@(seleccionado.Uuid is null ? "Disponible cuando el documento está timbrado." : null)"
+                               OnClick="@(() => VerificarAnteSat(seleccionado))">
+                        Consultar estatus
+                    </MudButton>
                 }
             </footer>
         </aside>
@@ -333,7 +327,6 @@
     private ComprobanteDto? _detalleSeleccionado;
     private bool _cargandoVista;
     private bool _preparandoPdf;
-    private bool _preparandoEstimacion;
     private bool _descargandoXml;
     private bool _timbrando;
     private int _versionDeVista;
@@ -515,39 +508,6 @@
         finally
         {
             _preparandoPdf = false;
-        }
-    }
-
-    private async Task VerEstimacionAsync()
-    {
-        if (_detalleSeleccionado is not { } detalle || _preparandoEstimacion) return;
-
-        _preparandoEstimacion = true;
-        _error = null;
-
-        try
-        {
-            var (archivo, error) = await Obras.ObtenerEstimacionPdfAsync(detalle.Id);
-            _error = error;
-
-            if (archivo is null) return;
-
-            var parametros = new DialogParameters<DialogoDeComprobanteDeCompra>
-            {
-                { x => x.Archivo, archivo },
-                { x => x.TituloVistaPrevia, "Estimación de obra" },
-                { x => x.EsBorrador, detalle.Estatus is "borrador" or "error" },
-                { x => x.AvisoFiscal, "Documento de control del contrato; no sustituye al CFDI." }
-            };
-
-            await Dialogos.ShowAsync<DialogoDeComprobanteDeCompra>(
-                "PDF de estimación",
-                parametros,
-                new DialogOptions { MaxWidth = MaxWidth.ExtraLarge, FullWidth = true });
-        }
-        finally
-        {
-            _preparandoEstimacion = false;
         }
     }
 
@@ -803,6 +763,6 @@
             "en_espera_del_receptor" =>
                 "El SAT registró la solicitud. El comprobante sigue vigente hasta que el receptor " +
                 "la acepte o se venza el plazo de tres días hábiles.",
-            _ => "La solicitud quedó registrada. Usa «Verificar SAT» para conocer su desenlace."
+            _ => "La solicitud quedó registrada. Usa «Consultar estatus» para conocer su desenlace."
         };
 }

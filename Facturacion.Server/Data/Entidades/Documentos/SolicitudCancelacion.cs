@@ -53,6 +53,9 @@ public sealed class SolicitudCancelacion : IEntidadDeEmpresa
     public string? EstatusCancelacionSat { get; set; }
 
     public DateTime? ConsultadaUtc { get; set; }
+
+    // El acuse de cancelación tal como lo devolvió el PAC.
+    public string? Acuse { get; set; }
 }
 
 /// <summary>

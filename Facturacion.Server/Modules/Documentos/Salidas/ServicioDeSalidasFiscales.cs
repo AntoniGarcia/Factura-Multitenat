@@ -135,10 +135,18 @@ public sealed class ServicioDeSalidasFiscales(
                 "El XML de este CFDI no se pudo leer para generar el PDF. Avisa a soporte.");
         }
 
+        var obra = await baseDeDatos.DatosObra.AsNoTracking()
+            .FirstOrDefaultAsync(x => x.ComprobanteId == comprobanteId, ct);
+
         var contenido = generadorPdf.Generar(comprobante,
             new DatosDelPdf(fechaLocal, decimales, logo?.Contenido, Notaria: datosNotariales,
                 ComercioExterior: datosComercio, ImpuestosLocales: impuestosLocales,
-                LeyendaDelTimbre: leyenda) { ZonaHoraria = zona, ServicioParcial = servicioParcial });
+                LeyendaDelTimbre: leyenda)
+            {
+                ZonaHoraria = zona,
+                ServicioParcial = servicioParcial,
+                EstimacionObra = obra is null ? null : ServicioDeObras.Calcular(comprobante, obra)
+            });
 
         return new ArchivoFiscal(NombreDeArchivoFiscal.Construir(comprobante, zona, "pdf"), "application/pdf", contenido);
     }
@@ -229,6 +237,19 @@ public sealed class ServicioDeSalidasFiscales(
             return ErrorNegocio.Conflicto(
                 "comprobante-sin-cfdi", "El XML fiscal solo está disponible después del timbrado.");
 
+        var zona = await huso.ObtenerAsync(ct);
+        var nombre = NombreDeArchivoFiscal.Construir(comprobante, zona, "xml");
+
+        var guardado = await baseDeDatos.XmlsDeComprobante
+            .AsNoTracking()
+            .Where(x => x.ComprobanteId == comprobanteId)
+            .Select(x => x.Xml)
+            .FirstOrDefaultAsync(ct);
+
+        if (guardado is not null)
+            return new ArchivoFiscal(nombre, "application/xml", System.Text.Encoding.UTF8.GetBytes(guardado));
+
+        // Timbrados antes de guardar el XML en la base que CopiaDeXmlTimbrados aún no copia.
         if (string.IsNullOrWhiteSpace(comprobante.RutaXml))
             return ErrorNegocio.NoEncontrado(
                 "xml-no-disponible",
@@ -239,10 +260,7 @@ public sealed class ServicioDeSalidasFiscales(
             var contenido = await almacen.LeerAsync(
                 comprobante.EmpresaId, CategoriasDeArchivo.XmlTimbrado, comprobante.RutaXml, ct);
 
-            var zona = await huso.ObtenerAsync(ct);
-
-            return new ArchivoFiscal(
-                NombreDeArchivoFiscal.Construir(comprobante, zona, "xml"), "application/xml", contenido);
+            return new ArchivoFiscal(nombre, "application/xml", contenido);
         }
         catch (FileNotFoundException ex)
         {

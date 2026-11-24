@@ -234,9 +234,6 @@ public sealed class ServicioDeEmision(
                 return ErrorNegocio.Validacion("global-nombre",
                     $"La factura global va a nombre de PUBLICO EN GENERAL y esta dice «{nombreReceptor}». " +
                     "Cambia el nombre o quita la información global.");
-
-            if (ReglaDeInformacionGlobal.Validar(receptor.Valor.Rfc, nombreReceptor, peticion.GlobalPeriodicidad) is { } sinGlobal)
-                return sinGlobal;
         }
 
         var conceptosResueltos = await ResolverConceptosAsync(peticion.Conceptos, comprobante.Variante, ct);

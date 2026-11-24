@@ -74,8 +74,8 @@ Un pago guarda cabecera, documentos relacionados, saldos/parcialidad e impuestos
 ### Base, archivos y configuración
 
 - SQL guarda importes, claves, copias fiscales, auditoría y referencias a archivos.
-- `Comprobantes.RutaXml` referencia XML privado. Los intentos de timbrado conservan XML enviado en SQL; la emisión del proveedor también guarda resultados mediante sus tablas de intentos.
-- Los PDF se generan desde datos del documento. No existe una tabla universal de PDF/XML.
+- `XmlsDeComprobante` guarda en claro el XML timbrado de cada comprobante y `SolicitudesCancelacion.Acuse` el acuse de cancelación (24-nov-2026). `Comprobantes.RutaXml` queda solo para los timbrados anteriores, cuyo archivo se copia a la base al arrancar y se conserva como respaldo. Los intentos de timbrado conservan XML enviado en SQL; la emisión del proveedor también guarda resultados mediante sus tablas de intentos.
+- Los PDF se generan desde datos del documento y del XML timbrado; no se guardan.
 - `CertificadosCsd` referencia archivos protegidos; `CertificadosProveedor` contiene CER/KEY cifrados en columnas binarias.
 - `DatosComercioExterior.Contenido` guarda JSON tipado, validado por el servidor. Su validación de negocio no depende de funciones JSON de versiones posteriores a SQL 2014.
 - Conexión y llaves de arranque están en la configuración privada del servidor, no en una tabla de parámetros SQL.

@@ -34,20 +34,6 @@ public sealed class ServicioDeObras(IHttpClientFactory fabrica)
             : (null, await respuesta.Content.ReadFromJsonAsync<DetalleProblema>(ct));
     }
 
-    public async Task<(ArchivoParaDescarga? Archivo, DetalleProblema? Error)> ObtenerEstimacionPdfAsync(
-        Guid comprobanteId, CancellationToken ct = default)
-    {
-        using var respuesta = await Cliente.GetAsync($"api/obras/comprobantes/{comprobanteId}/estimacion.pdf", ct);
-        if (!respuesta.IsSuccessStatusCode)
-            return (null, await respuesta.Content.ReadFromJsonAsync<DetalleProblema>(ct));
-
-        var contenido = await respuesta.Content.ReadAsByteArrayAsync(ct);
-        var nombre = respuesta.Content.Headers.ContentDisposition?.FileNameStar
-            ?? respuesta.Content.Headers.ContentDisposition?.FileName?.Trim('"')
-            ?? $"estimacion-obra-{comprobanteId:N}.pdf";
-        return (new ArchivoParaDescarga(nombre, "application/pdf", contenido), null);
-    }
-
     private static async Task<(DatosObraDto? Exito, DetalleProblema? Error)> LeerAsync(
         HttpResponseMessage respuesta, CancellationToken ct)
         => respuesta.IsSuccessStatusCode

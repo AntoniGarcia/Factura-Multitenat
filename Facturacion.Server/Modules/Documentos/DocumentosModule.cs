@@ -69,14 +69,13 @@ public static class DocumentosModule
         servicios.AddScoped<ValidadorFiscalCartaPorte>();
         servicios.AddScoped<ValidadorFiscalDeComercioExterior>();
         servicios.AddScoped<GeneradorDeXmlComercioExterior>();
-        servicios.AddScoped<GeneradorDePdfEstimacionObra>();
-        servicios.AddScoped<ServicioDePdfEstimacionObra>();
 
         servicios.AgregarPac(configuracion, entorno);
 
         // Saca de 'timbrando' a los comprobantes cuya llamada al PAC nunca volvió. Sin esto,
         // un corte de red deja facturas en un limbo del que nadie las saca.
         servicios.AddHostedService<ConciliacionDeTimbrados>();
+        servicios.AddHostedService<CopiaDeXmlTimbrados>();
 
         // Recoge los borradores que deja atrás abrir «Nueva factura» y cerrar la pantalla.
         servicios.AddHostedService<BarridoDeBorradoresHuerfanos>();

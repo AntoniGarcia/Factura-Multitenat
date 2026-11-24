@@ -141,6 +141,7 @@ public sealed class ServicioDePdfBorrador(
             new DatosDelPdf(fechaLocal, decimales, logo?.Contenido, EsBorrador: true,
                 Notaria: notariaPdf, ComercioExterior: comercioPdf,
                 ImpuestosLocales: ProyeccionMonetariaCfdi.Calcular(comprobante, decimales, obra).Locales) { ZonaHoraria = zona,
-                ServicioParcial = ServicioParcialConstruccion.Leer(obra?.ServicioParcialJson) });
+                ServicioParcial = ServicioParcialConstruccion.Leer(obra?.ServicioParcialJson),
+                EstimacionObra = obra is null ? null : ServicioDeObras.Calcular(comprobante, obra) });
     }
 }

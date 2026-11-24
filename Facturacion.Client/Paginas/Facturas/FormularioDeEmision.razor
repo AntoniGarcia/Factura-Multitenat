@@ -69,16 +69,12 @@ else
             <section class="emision-seccion">
             <h2 class="seccion-titulo">General</h2>
             <div class="catalogo-rejilla catalogo-rejilla-tres">
-                <MudTextField T="string" Value="@NombreDeVariante" Label="Tipo de documento" ReadOnly="true" />
-
                 <MudSelect T="Guid?" Value="@(_serie?.Id)" ValueChanged="AlCambiarSerie" Label="Serie">
                     @foreach (var s in _seriesActivas)
                     {
                         <MudSelectItem T="Guid?" Value="@((Guid?)s.Id)">@s.Prefijo</MudSelectItem>
                     }
                 </MudSelect>
-
-                <MudTextField T="string" Value="@FolioMostrado" Label="Folio" ReadOnly="true" Class="cifra-tabular" />
 
                 <MudSelect T="string" @bind-Value="_moneda" @bind-Value:after="ActualizarVistaPreviaAsync" Label="Moneda">
                     @foreach (var m in _monedasDeCaptura)
@@ -94,28 +90,6 @@ else
                 <CampoMoneda Valor="@(_tipoCambio ?? 0)" ValorCambiado="async v => { _tipoCambio = v; await ActualizarVistaPreviaAsync(); }"
                               Label="Tipo de cambio" Deshabilitado="@(_moneda == "MXN")"
                               Requerido="@(_moneda != "MXN")" />
-            </div>
-            </section>
-
-            <section class="emision-seccion">
-            <h2 class="seccion-titulo">Datos del cliente</h2>
-            <div class="catalogo-rejilla catalogo-rejilla-tres">
-                <BuscadorDeCliente Valor="@_cliente" ValorCambiado="AlElegirClienteAsync" Requerido="true" />
-                <MudTextField T="string" Value="@(_cliente?.Rfc)" Label="R.F.C." ReadOnly="true" Class="cifra-tabular" />
-                @if (EsPublicoEnGeneral)
-                {
-                    @* Ventas sueltas a nombre de quien compra; el cliente del catálogo no cambia. *@
-                    <MudTextField @bind-Value="_receptorNombre" Label="Nombre" MaxLength="254" Immediate="true"
-                                  HelperText="@AyudaNombreReceptor" />
-                }
-                else
-                {
-                    <MudTextField T="string" Value="@(_cliente?.Nombre)" Label="Nombre" ReadOnly="true" />
-                }
-                <MudTextField T="string" Value="@(_cliente?.DomicilioFiscalCp)" Label="CP del cliente" ReadOnly="true" Class="cifra-tabular"
-                              HelperText="@(_cliente?.Rfc is "XAXX010101000" or "XEXX010101000" ? "El CFDI usará el CP de expedición." : null)" />
-                <MudTextField T="string" Value="@(_domicilioDelCliente ?? "—")" Label="Domicilio" ReadOnly="true"
-                              Class="catalogo-campo-amplio" />
 
 <BuscadorCatalogo Catalogo="c_MetodoPago" Opciones="@Catalogos.Obtener("c_MetodoPago")" @bind-Clave="_metodoPago" Label="Método de pago" PuedeLimpiar="true" />
 
@@ -123,6 +97,42 @@ else
 
 <BuscadorCatalogo Catalogo="c_UsoCFDI" Opciones="@Catalogos.Obtener("c_UsoCFDI")" @bind-Clave="_usoCfdi" Label="Uso de CFDI" PuedeLimpiar="false" />
             </div>
+            </section>
+
+            <section class="emision-seccion">
+            <h2 class="seccion-titulo">Datos del cliente</h2>
+            <div class="catalogo-rejilla catalogo-rejilla-tres">
+                <BuscadorDeCliente Valor="@_cliente" ValorCambiado="AlElegirClienteAsync" Requerido="true" />
+                @if (EsPublicoEnGeneral)
+                {
+                    @* Ventas sueltas a nombre de quien compra; el cliente del catálogo no cambia. *@
+                    <MudTextField @bind-Value="_receptorNombre" Label="Nombre del receptor" MaxLength="254" Immediate="true"
+                                  HelperText="@AyudaNombreReceptor" Class="catalogo-campo-amplio" />
+                }
+            </div>
+            @if (_cliente is not null)
+            {
+                <dl class="ficha-datos">
+                    <div><dt>RFC</dt><dd class="cifra-tabular">@_cliente.Rfc</dd></div>
+                    @if (!EsPublicoEnGeneral)
+                    {
+                        <div><dt>Nombre</dt><dd title="@_cliente.Nombre">@_cliente.Nombre</dd></div>
+                    }
+                    <div>
+                        <dt>C.P. fiscal</dt>
+                        <dd class="cifra-tabular">@_cliente.DomicilioFiscalCp</dd>
+                        @if (_cliente.Rfc is "XAXX010101000" or "XEXX010101000")
+                        {
+                            <dd class="ficha-datos-nota">El CFDI usará el CP de expedición.</dd>
+                        }
+                    </div>
+                    <div class="ficha-datos-amplio"><dt>Domicilio</dt><dd title="@_domicilioDelCliente">@(_domicilioDelCliente ?? "—")</dd></div>
+                </dl>
+            }
+            @if (AvisoInformacionGlobal is { } aviso)
+            {
+                <div class="aviso-informacion-global" role="status">@aviso</div>
+            }
             </section>
 
             <section class="emision-seccion">
@@ -199,8 +209,7 @@ else
                             @if (EsFacturaComercio)
                             {
                                 <MudTextField @bind-Value="renglon.NoIdentificacion"
-                                              Label="Identificador de mercancía" MaxLength="100"
-                                              HelperText="Se precarga con el ID interno del producto." />
+                                              Label="Identificador de mercancía" MaxLength="100" />
                             }
 
                             <MudNumericField T="decimal" Value="@renglon.ValorUnitario" ValueChanged="async v => { renglon.ValorUnitario = v; await ActualizarVistaPreviaAsync(); }"
@@ -543,12 +552,12 @@ else
     private bool EsFacturaDeObra => Variante == VariantesDeFactura.Obra;
     private bool EsFacturaComercio => Variante == VariantesDeFactura.ComercioExterior;
 
-    private string NombreDeVariante => Variante switch
+    private string? NombreDeVariante => Variante switch
     {
-        VariantesDeFactura.Notaria => "Factura con complemento Notaría",
-        VariantesDeFactura.ComercioExterior => "Factura con complemento Comercio Exterior",
-        VariantesDeFactura.Obra => "Factura de obra",
-        _ => "Factura básica"
+        VariantesDeFactura.Notaria => "Notaría",
+        VariantesDeFactura.ComercioExterior => "Comercio exterior",
+        VariantesDeFactura.Obra => "Obra",
+        _ => null
     };
 
     private EstatusComprobante EstatusVisual
@@ -568,25 +577,34 @@ else
             var nombre = NombreFiscal.Normalizar(_receptorNombre);
             if (_globalPeriodicidad is not null && nombre.Normalizado != "PUBLICO EN GENERAL")
                 return "Con información global debe ser PUBLICO EN GENERAL.";
-            if (_globalPeriodicidad is null && nombre.Normalizado == "PUBLICO EN GENERAL")
-                return "A este nombre va la información global; si es venta suelta, escribe el nombre del comprador.";
             return nombre.Normalizado != nombre.Original && nombre.Normalizado.Length > 0
                 ? $"En el CFDI irá «{nombre.Normalizado}»."
                 : "Solo para esta factura; el cliente no cambia.";
         }
     }
 
+    // Se puede guardar así, pero no timbrar: el SAT pide la información global a ese nombre.
+    private string? AvisoInformacionGlobal =>
+        EsPublicoEnGeneral && _globalPeriodicidad is null &&
+        NombreFiscal.Normalizar(_receptorNombre).Normalizado == "PUBLICO EN GENERAL"
+            ? EsFacturaBasica
+                ? "A nombre de PUBLICO EN GENERAL el SAT pide la información global. Si juntas las ventas de un " +
+                  "periodo, llénala en la pestaña «Información global»; si es una venta suelta, escribe el nombre del comprador."
+                : "A nombre de PUBLICO EN GENERAL el SAT pide la información global, que este tipo de factura no lleva. " +
+                  "Escribe el nombre del comprador para poder timbrar."
+            : null;
+
     private bool PuedeAgregarRelacionado =>
         !string.IsNullOrWhiteSpace(_tipoRelacion) &&
         !string.IsNullOrWhiteSpace(_serieRelacionado) &&
         _folioRelacionado is > 0;
 
-    private string TituloDeLaPantalla => _comprobante switch
+    // El tipo de factura va en el título, no en un campo de solo lectura.
+    private string TituloDeLaPantalla => (_comprobante switch
     {
-        null => "Nueva factura",
         { Folio: { } folio, Serie: { } serie } => $"Factura {serie}-{folio}",
         _ => "Nueva factura"
-    };
+    }) + (NombreDeVariante is { } variante ? $" · {variante}" : "");
 
     private string FolioMostrado => _comprobante is { Folio: { } f, Serie: { } s } ? $"{s}-{f}" : "Se asigna al timbrar";
 

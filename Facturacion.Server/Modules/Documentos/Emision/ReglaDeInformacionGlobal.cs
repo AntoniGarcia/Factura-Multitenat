@@ -3,8 +3,8 @@ using Facturacion.Shared.Comun;
 namespace Facturacion.Server.Modules.Documentos.Emision;
 
 /// CFDI40130: a XAXX010101000 con el nombre PUBLICO EN GENERAL es factura global y lleva
-/// InformacionGlobal; con otro nombre es venta suelta. Se revisa al guardar y antes de apartar
-/// folio, por los borradores guardados antes de la regla.
+/// InformacionGlobal; con otro nombre es venta suelta. El borrador se guarda sin ella (el
+/// formulario avisa) y se exige antes de apartar folio.
 internal static class ReglaDeInformacionGlobal
 {
     public const string PublicoEnGeneral = "PUBLICO EN GENERAL";

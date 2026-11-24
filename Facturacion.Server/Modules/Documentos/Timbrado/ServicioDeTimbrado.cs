@@ -175,6 +175,7 @@ public sealed class ServicioDeTimbrado(
             return ErrorNegocio.Validacion("precio-unitario-invalido",
                 $"El precio unitario del renglón {sinPrecio.Orden} debe ser mayor que cero. Corrígelo y guarda el borrador.");
 
+        // El borrador se guarda sin información global; el SAT la exige al timbrar.
         if (comprobante.TipoDeComprobante == TiposDeComprobante.Ingreso &&
             ReglaDeInformacionGlobal.Validar(comprobante.ReceptorRfc, comprobante.ReceptorNombre, comprobante.GlobalPeriodicidad) is { } sinGlobal)
             return sinGlobal;

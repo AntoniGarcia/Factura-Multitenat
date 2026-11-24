@@ -33,7 +33,25 @@ public sealed class IntentoTimbradoConfiguracion : IEntityTypeConfiguration<Inte
     }
 }
 
-public sealed class SolicitudCancelacionConfiguracion : IEntityTypeConfiguration<SolicitudCancelacion>
+public sealed class XmlDeComprobanteConfiguracion : IEntityTypeConfiguration<XmlDeComprobante>
+{
+    public void Configure(EntityTypeBuilder<XmlDeComprobante> constructor)
+    {
+        constructor.ToTable("XmlsDeComprobante");
+
+        constructor.HasKey(x => x.ComprobanteId);
+
+        constructor.Property(x => x.Xml).HasColumnType("nvarchar(max)");
+
+        // Un comprobante timbrado nunca se borra; si alguien lo intenta, la llave lo detiene.
+        constructor.HasOne<Comprobante>()
+            .WithOne()
+            .HasForeignKey<XmlDeComprobante>(x => x.ComprobanteId)
+            .OnDelete(DeleteBehavior.Restrict);
+    }
+}
+
+public sealed class SolicitudCancelacionConfiguracion: IEntityTypeConfiguration<SolicitudCancelacion>
 {
     public void Configure(EntityTypeBuilder<SolicitudCancelacion> constructor)
     {
@@ -48,6 +66,7 @@ public sealed class SolicitudCancelacionConfiguracion : IEntityTypeConfiguration
         constructor.Property(s => s.EstadoCfdiSat).HasMaxLength(32);
         constructor.Property(s => s.EsCancelableSat).HasMaxLength(64);
         constructor.Property(s => s.EstatusCancelacionSat).HasMaxLength(64);
+        constructor.Property(s => s.Acuse).HasColumnType("nvarchar(max)");
 
         constructor.HasOne(s => s.Comprobante)
             .WithMany()

@@ -151,7 +151,8 @@ public sealed class ServicioDeObras(
     private static decimal Porcentaje(decimal baseDeCalculo, decimal tasa)
         => Math.Round(baseDeCalculo * tasa / 100m, 6, MidpointRounding.ToEven);
 
-    private static DatosObraDto Calcular(Comprobante comprobante, DatosObra datos)
+    // También lo usa el PDF de la factura, para que el papel dé lo mismo que la pestaña Obra.
+    internal static DatosObraDto Calcular(Comprobante comprobante, DatosObra datos)
     {
         // Subtotal, IVA y total son los del CFDI; retenciones y deducciones solo restan del líquido.
         var importeTrabajos = comprobante.SubTotal;

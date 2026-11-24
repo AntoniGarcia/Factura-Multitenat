@@ -245,6 +245,7 @@ public sealed class ServicioDeCancelacion(
 
         solicitud.CodigoRespuesta = respuesta.CodigoRespuesta;
         solicitud.MensajeRespuesta = respuesta.Mensaje;
+        solicitud.Acuse = respuesta.Acuse ?? solicitud.Acuse;
 
         switch (respuesta.Resultado)
         {
