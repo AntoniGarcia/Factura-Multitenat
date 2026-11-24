@@ -27,10 +27,10 @@ public sealed class ServicioDeEmision(
     /// <summary>Único tipo de comprobante de esta fase: factura de ingreso estándar.</summary>
     private const string TipoFactura = "I";
 
-    /// <summary>Sin objeto de exportación: la de toda factura que no es de Comercio Exterior.</summary>
+    // Sin objeto de exportación: toda factura que no es de Comercio Exterior.
     private const string SinExportacion = "01";
 
-    /// <summary>Exportación definitiva: la que exige el complemento de Comercio Exterior.</summary>
+    // Exportación definitiva: la que exige Comercio Exterior.
     private const string ExportacionDefinitiva = "02";
 
     public async Task<Resultado<VistaPreviaFacturaDto>> CalcularVistaPreviaAsync(
@@ -100,8 +100,7 @@ public sealed class ServicioDeEmision(
             FechaEmisionUtc = DateTime.UtcNow,
             LugarExpedicion = emisor.CodigoPostalExpedicion,
             Moneda = "MXN",
-            // Se deriva de la variante y no de la petición de guardado: así una factura de
-            // Comercio Exterior nace exportación definitiva y ninguna otra puede llegar a serlo.
+            // Se deriva de la variante: solo una factura de Comercio Exterior puede ser exportación definitiva.
             Exportacion = variante == VariantesDeFactura.ComercioExterior ? ExportacionDefinitiva : SinExportacion,
             EmisorRfc = emisor.Rfc,
             EmisorNombre = emisor.Nombre,
@@ -123,10 +122,7 @@ public sealed class ServicioDeEmision(
         return ADto(comprobante);
     }
 
-    /// <summary>
-    /// Ocultar la opción en el modal no basta: sin el módulo contratado no se
-    /// crea el borrador, aunque la petición llegue armada a mano.
-    /// </summary>
+    // Sin el módulo contratado no se crea el borrador, aunque la petición llegue armada a mano.
     private async Task<ErrorNegocio?> ValidarLicenciaDeVarianteAsync(string variante, CancellationToken ct)
     {
         if (variante == VariantesDeFactura.Basica) return null;
@@ -163,10 +159,7 @@ public sealed class ServicioDeEmision(
         return dto with { Conceptos = await ConDatosDelProductoAsync(dto.Conceptos, ct) };
     }
 
-    /// <summary>
-    /// Nombre e ID interno actuales del producto, solo para mostrarlos en la captura. No son
-    /// parte del comprobante: lo que va al CFDI es la copia que guarda cada concepto.
-    /// </summary>
+    // Nombre e ID actuales del producto, solo para la captura; al CFDI va la copia del concepto.
     private async Task<IReadOnlyList<ConceptoDto>> ConDatosDelProductoAsync(
         IReadOnlyList<ConceptoDto> conceptos, CancellationToken ct)
     {
@@ -224,8 +217,8 @@ public sealed class ServicioDeEmision(
         var receptor = await ResolverReceptorAsync(peticion.ClienteId, ct);
         if (receptor.EsFallo) return receptor.Error!;
 
-        // Con el RFC genérico el nombre se captura en cada factura, para ventas sueltas; el SAT
-        // exige PUBLICO EN GENERAL solo en la factura global (AGENTS.md §11).
+        // Con el RFC genérico el nombre se captura en cada factura (ventas sueltas); el SAT
+        // exige PUBLICO EN GENERAL solo en la factura global.
         var nombreReceptor = receptor.Valor?.Nombre;
         if (receptor.Valor is { Rfc: "XAXX010101000" })
         {
@@ -275,8 +268,7 @@ public sealed class ServicioDeEmision(
         var tasaIsh = TasaIshDeCaptura(peticion.TasaIsh, conceptosResueltos.Valor);
         if (tasaIsh.EsFallo) return tasaIsh.Error!;
 
-        // Sin ModificadoUtc el borrador nunca se guardó: no hay valor anterior que valga la
-        // pena conservar, y el registro queda como alta.
+        // Sin ModificadoUtc nunca se guardó: el registro queda como alta.
         var antes = comprobante.ModificadoUtc is null ? null : ADto(comprobante);
 
         AplicarCabecera(comprobante, peticion, receptor.Valor, nombreReceptor);
@@ -294,15 +286,6 @@ public sealed class ServicioDeEmision(
             EntidadesDeBitacora.Comprobante, comprobante.Id.ToString(), AccionesDeBitacora.ComprobanteGuardado,
             antes, ADto(comprobante));
 
-        /*
-        foreach (var e in baseDeDatos.ChangeTracker.Entries<Concepto>())
-        {
-            Console.WriteLine(
-                $"Concepto {e.Entity.Id} | Estado={e.State} | " +
-                $"EmpresaId original={(e.State == EntityState.Added ? "(nuevo, sin original)" : e.OriginalValues[nameof(Concepto.EmpresaId)])} | " +
-                $"EmpresaId actual={e.CurrentValues[nameof(Concepto.EmpresaId)]}");
-        }
-        */
 
         await baseDeDatos.SaveChangesAsync(ct);
 
@@ -310,10 +293,7 @@ public sealed class ServicioDeEmision(
         return ADto(comprobante, ALocales(proyeccion));
     }
 
-    /// <summary>
-    /// La tasa se guarda solo si algún concepto aplica ISH: sin conceptos marcados, la factura no
-    /// lleva el complemento aunque la captura traiga una tasa.
-    /// </summary>
+    // La tasa se guarda solo si algún concepto aplica ISH.
     private static Resultado<decimal?> TasaIshDeCaptura(decimal? tasa, IReadOnlyList<ConceptoResuelto> resueltos)
     {
         if (!resueltos.Any(x => x.AplicaIsh)) return Resultado<decimal?>.Exito(null);
@@ -345,8 +325,7 @@ public sealed class ServicioDeEmision(
                 "comprobante-no-es-borrador",
                 "Solo se puede descartar un comprobante que nunca se intentó timbrar.");
 
-        // El formulario descarta su borrador cada vez que se sale sin guardar; registrar esos
-        // vacíos sería llenar la bitácora de lo mismo que el barrido de huérfanos ya no anota.
+        // Un borrador que nunca se guardó no se anota: el formulario descarta uno cada vez que se sale.
         if (comprobante.ModificadoUtc is not null)
             bitacora.Registrar(
                 EntidadesDeBitacora.Comprobante, comprobante.Id.ToString(), AccionesDeBitacora.BorradorDescartado,
@@ -376,7 +355,7 @@ public sealed class ServicioDeEmision(
             : relacionado;
     }
 
-    /// <summary>Series que tienen CFDI con UUID: las mismas que <see cref="ResolverRelacionadoAsync"/> puede encontrar.</summary>
+    // Series con CFDI que tienen UUID: las mismas que ResolverRelacionadoAsync puede encontrar.
     public async Task<IReadOnlyList<SerieRelacionableDto>> ListarSeriesRelacionablesAsync(CancellationToken ct)
     {
         var filas = await baseDeDatos.Comprobantes
@@ -414,18 +393,6 @@ public sealed class ServicioDeEmision(
     /// Clave de <c>c_TipoDeComprobante</c>: <c>I</c> ingreso, <c>P</c> pago. Nulo trae todo.
     /// </param>
 
-    /*
-     // Filtro por boloque de archivos de un cliente
-    public async Task<PaginaDeComprobantes> ListarAsync(
-    string? busca, EstatusComprobante? estatus, IReadOnlyList<Guid>? clienteIds, string? tipoComprobante,
-    DateTime? desdeUtc, DateTime? hastaUtc,
-    int pagina, int tamano, string? orden, bool descendente, CancellationToken ct)
-{
-    var consulta = baseDeDatos.Comprobantes.AsNoTracking();
-
-    if (clienteIds is { Count: > 0 } clientes)
-        consulta = consulta.Where(c => c.ClienteId != null && clientes.Contains(c.ClienteId.Value)); 
-    */
     public async Task<PaginaDeComprobantes> ListarAsync(
         string? busca, EstatusComprobante? estatus, Guid? clienteId, string? tipoComprobante,
         DateTime? desdeUtc, DateTime? hastaUtc,
@@ -489,23 +456,7 @@ public sealed class ServicioDeEmision(
         return new PaginaDeComprobantes(elementos, total);
     }
 
-    /// <summary>
-    /// Lo más reciente primero por omisión: en una jornada de captura, el documento que se
-    /// busca casi siempre es de hoy.
-    /// </summary>
-    /// 
-    /*
-    // Filtro por boloque de archivos de un cliente
-    private static IQueryable<Comprobante> Ordenar(
-    IQueryable<Comprobante> consulta, string? orden, bool descendente) => orden switch
-{
-    "cliente" => descendente
-        ? consulta.OrderByDescending(c => c.ClienteId).ThenByDescending(c => c.FechaEmisionUtc)
-        : consulta.OrderBy(c => c.ClienteId).ThenByDescending(c => c.FechaEmisionUtc),
-    "folio" => descendente
-        ? consulta.OrderByDescending(c => c.Folio)
-        : consulta.OrderBy(c => c.Folio),
-    */
+    // Por omisión, lo más reciente primero.
     private static IQueryable<Comprobante> Ordenar(
         IQueryable<Comprobante> consulta, string? orden, bool descendente) => orden switch
     {
@@ -573,9 +524,8 @@ public sealed class ServicioDeEmision(
                 return ErrorNegocio.Validacion("numero-identificacion-invalido",
                     $"El identificador del renglón {i + 1} debe tener hasta 100 caracteres y no contener '|'.");
 
-            // La descripción es la del renglón: se precarga con el nombre y la descripción del
-            // producto y el capturista la ajusta en cada factura. Vacía, vale el nombre. Los saltos
-            // de línea se vuelven espacios, que es como los deja la cadena original del SAT.
+            // La descripción es la del renglón (vacía, vale el nombre del producto). Los saltos de línea
+            // se vuelven espacios, como en la cadena original del SAT.
             var descripcion = string.IsNullOrWhiteSpace(linea.Descripcion)
                 ? producto.Descripcion
                 : string.Join(' ', linea.Descripcion.Split((char[]?)null, StringSplitOptions.RemoveEmptyEntries));
@@ -584,8 +534,7 @@ public sealed class ServicioDeEmision(
                 return ErrorNegocio.Validacion("descripcion-de-concepto-invalida",
                     $"La descripción del renglón {i + 1} debe tener hasta 1000 caracteres y no contener «|».");
 
-            // El concepto copia la unidad del producto en cada guardado: basta con corregir el
-            // producto. Detenerlo aquí evita que el error aparezca al timbrar, con el folio ya apartado.
+            // La unidad se copia del producto en cada guardado; detenerlo aquí evita que falle al timbrar.
             if (!UnidadDeConcepto.EsValida(producto.UnidadTexto))
                 return ErrorNegocio.Validacion("unidad-de-concepto-invalida",
                     $"El producto del renglón {i + 1} tiene la unidad «{producto.UnidadTexto}». " +
@@ -626,10 +575,8 @@ public sealed class ServicioDeEmision(
             .FirstOrDefaultAsync(ct)
            ?? new TasasDeCapturaDto(0m, 0m, 0m, 0m);
 
-    /// <summary>
-    /// Traslados del producto y las retenciones marcadas en el renglón. Cada retención conserva
-    /// la tasa del producto si la trae; si no, usa la de Configuración, que no se edita en la factura.
-    /// </summary>
+    // Traslados del producto y retenciones marcadas; cada retención usa la tasa del producto o,
+    // si no la trae, la de Configuración.
     private static Resultado<IReadOnlyList<ImpuestoDeConcepto>> ImpuestosConCasillas(
         ProductoParaConceptoDto producto, IReadOnlyList<string> retenciones, TasasDeCapturaDto tasas, int renglon)
     {
@@ -779,11 +726,8 @@ public sealed class ServicioDeEmision(
             ? await baseDeDatos.DatosObra.AsNoTracking().FirstOrDefaultAsync(x => x.ComprobanteId == comprobante.Id, ct)
             : null;
 
-    /// <summary>
-    /// En una factura de obra el descuento de cada concepto es la amortización del anticipo, y
-    /// lo pone el servidor con el porcentaje guardado en la pestaña Obra: lo que mande la
-    /// captura se descarta, para que conceptos y estimación no se separen.
-    /// </summary>
+    // En obra, el descuento de cada concepto es la amortización del anticipo y lo pone el servidor;
+    // lo que mande la captura se descarta.
     private static ErrorNegocio? AplicarAmortizacionDeObra(Comprobante comprobante, DatosObra? obra, int decimalesMoneda)
         => comprobante.Variante == VariantesDeFactura.Obra
             ? AmortizacionDeObra.Aplicar(comprobante, obra, decimalesMoneda)

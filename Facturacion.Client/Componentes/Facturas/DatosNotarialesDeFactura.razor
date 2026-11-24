@@ -168,8 +168,7 @@ else
         _falloCarga = false;
         try
         {
-            // Si no se pueden leer, la sección avisa y la captura sigue: el servidor los vuelve
-            // a exigir al timbrar.
+            // Si no se pueden leer, se avisa y la captura sigue: el servidor los exige al timbrar.
             (_notario, _) = await Notaria.ObtenerNotarioAsync();
             var (datos, error) = await Notaria.ObtenerParaComprobanteAsync(ComprobanteId);
             _error = error;

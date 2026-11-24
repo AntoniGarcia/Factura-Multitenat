@@ -44,10 +44,7 @@ public sealed class Concepto : IEntidadDeEmpresa
     /// <summary>Clave de <c>c_ObjetoImp</c>: 01 no objeto, 02 sí objeto, 03 sí objeto sin desglose.</summary>
     public required string ObjetoImp { get; set; }
 
-    /// <summary>
-    /// Paga ISH sobre su importe menos el descuento. Es por concepto porque el impuesto grava
-    /// solo el albergue: los alimentos y demás servicios del hotel no lo pagan.
-    /// </summary>
+    // Por concepto porque el ISH grava solo el albergue, no alimentos ni otros servicios.
     public bool AplicaIsh { get; set; }
 
     public List<ImpuestoConcepto> Impuestos { get; set; } = [];

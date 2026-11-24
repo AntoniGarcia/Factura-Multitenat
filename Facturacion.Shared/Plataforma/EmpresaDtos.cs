@@ -75,8 +75,7 @@ public sealed record RespuestaGuardarEmpresa(
     EmpresaDto Empresa,
     NombreFiscalNormalizado Nombre);
 
-/// <summary>Valores por omisión de la empresa. Las tasas viajan como fracción: 0.16 es 16 %.</summary>
-/// <param name="TasaIshPorDefecto">Impuesto local; hoy ningún comprobante lo aplica.</param>
+// Las tasas viajan como fracción: 0.16 es 16 %.
 public sealed record ConfiguracionEmpresaDto(
     decimal TasaIvaPorDefecto,
     decimal TasaIepsPorDefecto,
@@ -86,11 +85,8 @@ public sealed record ConfiguracionEmpresaDto(
     decimal TasaIshPorDefecto,
     int DiasAvisoCaducidadCertificado);
 
-/// <summary>
-/// Servidor SMTP propio de la empresa tal como sale del servidor: sin la contraseña, solo si
-/// hay una guardada.
-/// </summary>
-/// <param name="Configurado">Tiene todo lo necesario para enviar: sin esto no salen comprobantes.</param>
+// Nunca trae la contraseña. Configurado: tiene todo para enviar; sin esto no salen
+// comprobantes.
 public sealed record CorreoDeEmpresaDto(
     bool Configurado,
     string? Servidor,
@@ -100,7 +96,7 @@ public sealed record CorreoDeEmpresaDto(
     string? RemitenteNombre,
     string? RemitenteCorreo);
 
-/// <param name="Contrasena">Vacía o nula conserva la guardada.</param>
+// Contrasena vacía o nula conserva la guardada.
 public sealed record PeticionGuardarCorreoDeEmpresa(
     string? Servidor,
     int Puerto,
@@ -109,10 +105,7 @@ public sealed record PeticionGuardarCorreoDeEmpresa(
     string? RemitenteNombre,
     string? RemitenteCorreo);
 
-/// <summary>
-/// Los dos únicos puertos admitidos para el SMTP de una empresa. El puerto decide el cifrado:
-/// no hay modo sin cifrar, y el 25 de salida lo bloquea Azure.
-/// </summary>
+// Únicos puertos admitidos: el puerto decide el cifrado y no hay modo sin cifrar.
 public static class PuertosSmtp
 {
     public const int SslDirecto = 465;
@@ -181,8 +174,5 @@ public sealed record PeticionCrearEmpresa(
     string CodigoPostalExpedicion,
     string ZonaHoraria);
 
-/// <summary>
-/// Las monedas de <c>c_Moneda</c> que la empresa ofrece al capturar facturas y pagos, además del
-/// peso mexicano, que siempre está y no se guarda. El tipo de cambio se captura en cada documento.
-/// </summary>
+// Monedas además del peso mexicano, que siempre está y no se guarda.
 public sealed record MonedasDeEmpresaDto(IReadOnlyList<string> Monedas);

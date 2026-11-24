@@ -10,10 +10,9 @@ using Microsoft.EntityFrameworkCore;
 
 namespace Facturacion.Server.Modules.Documentos.Salidas;
 
-/// <summary>
-/// Envía el XML y PDF disponibles para descarga. Usa el SMTP de la empresa si está habilitado y no lo sustituye si falla.
-/// Reply-To apunta a la empresa emisora. El historial se guarda después del envío, fuera de la llamada SMTP.
-/// </summary>
+/// Envía el XML y el PDF por el SMTP de la empresa, sin sustituirlo si falla.
+/// Reply-To apunta a la empresa emisora.
+/// El historial se guarda después del envío, fuera de la llamada SMTP.
 public sealed class ServicioDeEnvioDeComprobantes(
     AppDbContext baseDeDatos,
     ServicioDeSalidasFiscales salidas,
@@ -66,7 +65,7 @@ public sealed class ServicioDeEnvioDeComprobantes(
         if (asunto.Length == 0)
             return ErrorNegocio.Validacion("asunto-requerido", "Escribe el asunto del correo.");
 
-        // Un salto de línea en el asunto es cómo se inyectan encabezados en un correo.
+        // Un salto de línea en el asunto permite inyectar encabezados.
         if (asunto.Length > ReglasDeEnvio.LongitudMaximaAsunto || asunto.Contains('\r') || asunto.Contains('\n'))
             return ErrorNegocio.Validacion("asunto-invalido",
                 $"El asunto admite hasta {ReglasDeEnvio.LongitudMaximaAsunto} caracteres en una sola línea.");
@@ -126,7 +125,7 @@ public sealed class ServicioDeEnvioDeComprobantes(
         }
         catch (Exception ex) when (ex is not OperationCanceledException)
         {
-            // Las direcciones no van al log: bastan el comprobante y el traceId de la petición.
+            // Las direcciones no van al log: bastan el comprobante y el traceId.
             registro.LogError(ex, "No se pudo enviar por correo el comprobante {Comprobante}.", comprobanteId);
 
             error = ex is SmtpException smtp ? $"smtp-{(int)smtp.StatusCode}" : "error-inesperado";
@@ -175,8 +174,7 @@ public sealed class ServicioDeEnvioDeComprobantes(
         if (PermisoDeEmision.Exigir(contexto, comprobante, Permisos.Acciones.Enviar) is { } sinPermiso)
             return sinPermiso;
 
-        // Un borrador no es un CFDI, y uno cancelado o en cancelación ya no se le entrega a nadie
-        // como si estuviera vigente.
+        // Un borrador no es un CFDI, y uno cancelado ya no se entrega como vigente.
         if ((comprobante.Estatus != EstatusComprobante.Timbrado.ACadena() || comprobante.Uuid is null) &&
             revision?.Admite(comprobante.Estatus, comprobante.TipoDeComprobante) != true)
             return ErrorNegocio.Conflicto("comprobante-no-enviable",
@@ -185,10 +183,7 @@ public sealed class ServicioDeEnvioDeComprobantes(
         return comprobante;
     }
 
-    /// <summary>
-    /// Direcciones limpias, sin repetir y sin nombre para mostrar: «Juan &lt;x@y.mx&gt;» se rechaza
-    /// porque lo que se guarda y se muestra en el historial tiene que ser exactamente a dónde fue.
-    /// </summary>
+    // Sin nombre para mostrar: el historial debe guardar exactamente a dónde fue.
     private static Resultado<IReadOnlyList<string>> ValidarDestinatarios(IReadOnlyList<string>? destinatarios)
     {
         var limpias = (destinatarios ?? [])
@@ -217,10 +212,7 @@ public sealed class ServicioDeEnvioDeComprobantes(
 
     // ── Apoyo ───────────────────────────────────────────────────────────────────────────
 
-    /// <summary>
-    /// El correo principal del cliente. Se admite que traiga varios separados por coma o punto
-    /// y coma, que es como suelen capturarlos quienes vienen del sistema anterior.
-    /// </summary>
+    // Admite varios correos separados por coma o punto y coma, como los capturaba el sistema anterior.
     private async Task<IReadOnlyList<string>> DestinatariosDelClienteAsync(Guid? clienteId, CancellationToken ct)
     {
         if (clienteId is not { } id) return [];

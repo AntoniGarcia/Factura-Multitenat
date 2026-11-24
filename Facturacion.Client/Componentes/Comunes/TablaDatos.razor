@@ -113,13 +113,8 @@
     [Parameter]
     public Func<T, bool>? EsSeleccionado { get; set; }
 
-    /// <summary>
-    /// Altura fija de la tabla (cualquier valor de CSS: "60vh", "calc(100vh - 12rem)", etc.).
-    /// Nula por defecto: la tabla crece con su contenido, como siempre. Al fijarla, el cuerpo
-    /// scrollea internamente y el encabezado y la paginación quedan fijos (ver FixedHeader/
-    /// FixedFooter abajo), para que una página con muchos registros no esconda los controles
-    /// de paginación fuera de la vista.
-    /// </summary>
+    // Altura fija en CSS ("60vh", "calc(...)"): el cuerpo hace scroll y encabezado y paginación
+    // quedan a la vista. Nula, la tabla crece con su contenido.
     [Parameter]
     public string? Height { get; set; }
 

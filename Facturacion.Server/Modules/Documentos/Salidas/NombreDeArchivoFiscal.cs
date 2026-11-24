@@ -3,15 +3,11 @@ using Facturacion.Server.Data.Entidades.Documentos;
 
 namespace Facturacion.Server.Modules.Documentos.Salidas;
 
-/// <summary>
-/// Nombre de los archivos de un CFDI: <c>SERIE_FOLIO_RFCRECEPTOR_DDMMAAAA_HHMMSS</c>, con la
-/// fecha de emisión en la hora del lugar de expedición. Es la convención del sistema anterior;
-/// los contadores de los clientes tienen sus carpetas y sus reglas de archivo montadas sobre
-/// ella, así que la descarga y el correo la usan igual.
-/// </summary>
+// SERIE_FOLIO_RFCRECEPTOR_DDMMAAAA_HHMMSS con la hora del lugar de expedición: la convención
+// del sistema anterior, sobre la que los contadores tienen montado su archivo.
 public static class NombreDeArchivoFiscal
 {
-    /// <summary>Lo que Windows no admite en un nombre de archivo. Un RFC con Ñ o &amp; sí se queda.</summary>
+    // Lo que Windows no admite en un nombre de archivo; un RFC con Ñ o & sí se queda.
     private static readonly char[] NoAdmitidos = ['\\', '/', ':', '*', '?', '"', '<', '>', '|'];
 
     public static string Construir(Comprobante comprobante, TimeZoneInfo zona, string extension)
@@ -25,7 +21,7 @@ public static class NombreDeArchivoFiscal
         if (!string.IsNullOrWhiteSpace(comprobante.Serie))
             partes.Add(comprobante.Serie);
 
-        // Timbrado sin serie no tiene folio interno; el UUID es lo único que lo distingue.
+        // Sin serie no hay folio interno; el UUID es lo único que lo distingue.
         partes.Add(comprobante.Folio?.ToString(CultureInfo.InvariantCulture)
             ?? comprobante.Uuid?.ToString("N").ToUpperInvariant()
             ?? comprobante.Id.ToString("N"));

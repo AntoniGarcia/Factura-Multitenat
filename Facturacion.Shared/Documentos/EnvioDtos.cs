@@ -1,12 +1,9 @@
 namespace Facturacion.Shared.Documentos;
 
-/// <summary>Límites del envío por correo. Los aplica el servidor; el Client solo los anticipa.</summary>
+// El servidor los aplica; el Client solo los anticipa.
 public static class ReglasDeEnvio
 {
-    /// <summary>
-    /// Tope de destinatarios por envío. El remitente es el del SaaS: sin tope, el formulario
-    /// serviría para mandar correo masivo con nuestra reputación de dominio.
-    /// </summary>
+    // Evita usar el formulario para correo masivo.
     public const int MaximoDestinatarios = 10;
 
     public const int LongitudMaximaAsunto = 200;
@@ -14,12 +11,7 @@ public static class ReglasDeEnvio
     public const int LongitudMaximaMensaje = 4000;
 }
 
-/// <summary>Datos iniciales e historial del diálogo de envío de correo.</summary>
-/// <param name="Destinatarios">El correo principal del cliente, si tiene.</param>
-/// <param name="CorreoDeLaEmpresa">
-/// Destino de la copia oculta («Enviar a cuenta única» del sistema anterior). Nulo si la
-/// empresa no tiene correo de contacto.
-/// </param>
+// CorreoDeLaEmpresa: destino de la copia oculta; nulo si la empresa no tiene correo de contacto.
 public sealed record PropuestaDeEnvioDto(
     IReadOnlyList<string> Destinatarios,
     string Asunto,
@@ -28,7 +20,7 @@ public sealed record PropuestaDeEnvioDto(
     string NombreArchivoXml,
     IReadOnlyList<EnvioDeCorreoDto> Historial);
 
-/// <param name="IncluirXml">El PDF va siempre; el XML es opcional, como en el sistema anterior.</param>
+// El PDF va siempre; el XML es opcional.
 public sealed record PeticionDeEnvio(
     IReadOnlyList<string> Destinatarios,
     string Asunto,

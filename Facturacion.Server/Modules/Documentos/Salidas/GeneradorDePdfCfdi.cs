@@ -11,12 +11,9 @@ using QuestPDF.Infrastructure;
 
 namespace Facturacion.Server.Modules.Documentos.Salidas;
 
-/// <summary>Lo que el PDF necesita y no está dentro del comprobante.</summary>
-/// <param name="Logo">Logo de la empresa, ya descifrado del almacén. Nulo si no tiene.</param>
-/// <param name="LeyendaDelTimbre">
-/// El atributo <c>Leyenda</c> del timbre fiscal: lo que el SAT o el PAC quieren que lea quien
-/// recibe el comprobante. Con el PAC simulado dice que no tiene validez fiscal.
-/// </param>
+/// Lo que el PDF necesita y no está en el comprobante. Logo: ya descifrado; nulo si no hay.
+/// LeyendaDelTimbre: el atributo Leyenda del timbre fiscal; con el PAC simulado dice que no
+/// tiene validez fiscal.
 public sealed record DatosDelPdf(
     DateTime FechaLocal,
     int Decimales,
@@ -59,9 +56,8 @@ public sealed class GeneradorDePdfCfdi
 
     public IDocument Construir(Comprobante comprobante, DatosDelPdf datos)
     {
-        // El QR lleva el total tal como está en el XML. En un pago la raíz dice Total="0" con
-        // moneda XXX; los decimales de la moneda del pago lo volverían «0.00» y el SAT no
-        // encontraría el comprobante.
+        // El QR lleva el total como está en el XML: en un pago es «0» (moneda XXX), y con decimales
+        // el SAT no encontraría el comprobante.
         var qr = datos.EsBorrador ? null : Qr(comprobante, comprobante.TipoDeComprobante == "P" ? 0 : datos.Decimales);
 
         return Document.Create(documento =>
@@ -538,10 +534,7 @@ public sealed class GeneradorDePdfCfdi
 
     // ── Complemento de pago ─────────────────────────────────────────────────────────────
 
-    /// <summary>
-    /// Más angosto que el de los totales: en los datos del pago caben tres pares por renglón,
-    /// y con el ancho normal las etiquetas se parten en dos líneas.
-    /// </summary>
+    // Más angosto que el de totales: caben tres pares por renglón sin partir las etiquetas.
     private const float AnchoDeValorDelPago = 90;
 
     private static void ComplementoDePago(IContainer contenedor, List<Pago> pagos, int decimales, TimeZoneInfo zona)
@@ -553,8 +546,7 @@ public sealed class GeneradorDePdfCfdi
                 {
                     bloque.Item().Element(e => EstiloDeComprobante.Seccion(e, "DATOS DEL PAGO"));
 
-                    // Tres pares etiqueta-valor por renglón: sin separación, el valor de una
-                    // columna queda pegado a la etiqueta de la siguiente.
+                    // Sin separación, el valor de una columna queda pegado a la etiqueta de la siguiente.
                     bloque.Item().PaddingTop(3).Row(fila =>
                     {
                         fila.Spacing(16);
@@ -572,7 +564,7 @@ public sealed class GeneradorDePdfCfdi
                         fila.RelativeItem().Element(e => Dato(e, "No. de operación", pago.NumOperacion ?? "—", anchoDelValor: AnchoDeValorDelPago));
                     });
 
-                    // Los datos bancarios son opcionales en el complemento: solo se muestran si vienen capturados.
+                    // Los datos bancarios son opcionales: solo se muestran si vienen capturados.
                     if (pago.CtaOrdenante is not null || pago.CtaBeneficiario is not null)
                     {
                         bloque.Item().PaddingTop(2).Row(fila =>
@@ -680,8 +672,7 @@ public sealed class GeneradorDePdfCfdi
 
                 if (doc.Impuestos.Count == 0) continue;
 
-                // Misma idea que en Conceptos: el desglose de impuestos de este documento pagado,
-                // proporcional a lo abonado en este pago (no al total de la factura original).
+                // Desglose proporcional a lo abonado en este pago, no al total de la factura.
                 tabla.Cell().ColumnSpan(6).PaddingLeft(15).PaddingBottom(3).Table(sub =>
                 {
                     sub.ColumnsDefinition(columnas =>

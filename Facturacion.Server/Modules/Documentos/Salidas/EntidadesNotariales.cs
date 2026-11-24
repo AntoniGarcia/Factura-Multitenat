@@ -1,10 +1,8 @@
 namespace Facturacion.Server.Modules.Documentos.Salidas;
 
-/// <summary>
-/// El complemento de Notarios Públicos no usa <c>c_Estado</c>: su <c>t_EntidadFederativa</c> es la
-/// clave numérica 01–32 del INEGI. La pantalla y la base trabajan con <c>c_Estado</c>, que es el
-/// catálogo contra el que se valida el código postal, y la traducción ocurre solo al armar el XML.
-/// </summary>
+/// Notarios Públicos usa la clave 01–32 del INEGI, no c_Estado. La base y la pantalla usan
+/// c_Estado, que es contra el que se valida el código postal, y se traduce solo al armar
+/// el XML.
 public static class EntidadesNotariales
 {
     private static readonly IReadOnlyList<(string ClaveEstado, string Clave, string Nombre)> Entidades =
@@ -43,7 +41,7 @@ public static class EntidadesNotariales
         ("ZAC", "32", "Zacatecas")
     ];
 
-    /// <summary>Clave del complemento para una clave de <c>c_Estado</c>; null si no es una entidad de México.</summary>
+    // Nulo si no es una entidad de México.
     public static string? ClaveDelComplemento(string? claveEstado)
     {
         var clave = (claveEstado ?? string.Empty).Trim().ToUpperInvariant();
@@ -52,10 +50,7 @@ public static class EntidadesNotariales
         return null;
     }
 
-    /// <summary>
-    /// Nombre para imprimir. Acepta las dos claves porque la vista previa lee la base (<c>c_Estado</c>)
-    /// y el PDF fiscal lee el XML timbrado (01–32).
-    /// </summary>
+    // Acepta las dos claves: la vista previa lee c_Estado y el PDF fiscal, la del XML (01–32).
     public static string Nombre(string clave)
     {
         foreach (var entidad in Entidades)

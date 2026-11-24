@@ -43,12 +43,12 @@ public sealed class ClienteConfiguracion : IEntityTypeConfiguration<Cliente>
             .HasForeignKey(c => c.CuentaId)
             .OnDelete(DeleteBehavior.Restrict);
 
-        // La clave que teclean los contadores no se puede repetir dentro de la cuenta.
+        // La clave que teclean los contadores no se repite dentro de la cuenta.
         constructor.HasIndex(c => new { c.CuentaId, c.ClaveInterna })
             .IsUnique()
             .HasDatabaseName("IX_Clientes_ClaveInternaPorCuenta");
 
-        // El RFC es único por cuenta, salvo los genéricos. Desactivar un cliente no libera su RFC: debe reactivarse el registro existente. El índice filtrado usa comparaciones simples compatibles con SQL Server.
+        // RFC único por cuenta, salvo los genéricos. Desactivar no libera el RFC: se reactiva el registro.
         constructor.HasIndex(c => new { c.CuentaId, c.Rfc })
             .IsUnique()
             .HasFilter($"[Rfc] <> '{Rfc.GenericoNacional}' AND [Rfc] <> '{Rfc.GenericoExtranjero}'")

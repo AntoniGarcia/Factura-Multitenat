@@ -152,8 +152,7 @@
         @(_guardando ? "Guardando…" : "Guardar datos de comercio exterior")
     </MudButton>
 </div>
-@* La vista previa está en el resumen de la factura, y los archivos timbrados se descargan
-   desde Documentos. *@
+@* La vista previa está en el resumen de la factura; los archivos timbrados, en Documentos. *@
 <div class="comercio-herramientas" role="group" aria-label="Validación de comercio exterior">
     <MudButton Variant="Variant.Outlined" OnClick="ValidarXmlAsync" Disabled="@(_guardando || _validandoXml || !_tieneDatosGuardados)">
         @(_validandoXml ? "Validando…" : "Validar CFDI completo")
@@ -176,10 +175,7 @@
     [Parameter] public string? MonedaFactura { get; set; }
     [Parameter] public decimal? TipoCambioFactura { get; set; }
 
-    /// <summary>
-    /// Falso cuando la pestaña se cierra: MudTabs desecha el componente, pero la referencia que
-    /// guarda la factura sigue viva y no debe usarse para guardar datos que ya no se ven.
-    /// </summary>
+    // Falso al cerrar la pestaña: MudTabs desecha el componente pero la factura guarda la referencia.
     public bool EstaVisible { get; private set; } = true;
 
     public void Dispose() => EstaVisible = false;
@@ -219,10 +215,7 @@
         AplicarTipoCambioDeFactura();
     }
 
-    /// <summary>
-    /// En una factura en dólares el servidor exige que el tipo de cambio USD sea el de la factura;
-    /// se copia para no capturarlo dos veces. En otra moneda lo captura el usuario.
-    /// </summary>
+    // En una factura en dólares el servidor exige ese tipo de cambio: se copia para no capturarlo dos veces.
     private void AplicarTipoCambioDeFactura()
     {
         if (MonedaFactura == "USD" && TipoCambioFactura is > 0 && _datos.TipoCambioUsd != TipoCambioFactura)
@@ -232,14 +225,14 @@
     private void CambiarTipoCambioUsd(decimal? valor)
     {
         _datos = _datos with { TipoCambioUsd = valor };
-        // Las mercancías que se agregaron sin tipo de cambio reciben ahora su valor en dólares.
+        // Las mercancías agregadas sin tipo de cambio reciben ahora su valor en dólares.
         if (_datos.Mercancias is { Count: > 0 } mercancias)
             _datos = _datos with { Mercancias = mercancias.Select(m => m.ValorDolares is null
                 ? m with { ValorDolares = ValorEnDolares(m.OrdenConcepto) } : m).ToArray() };
         RecalcularTotalUsd();
     }
 
-    /// <summary>Misma conversión que valida el servidor: importe por cambio de la factura entre cambio USD.</summary>
+    // La misma conversión que valida el servidor.
     private decimal? ValorEnDolares(int ordenConcepto)
     {
         if (_datos.TipoCambioUsd is not > 0 || ObtenerConceptos().FirstOrDefault(c => c.Orden == ordenConcepto) is not { } concepto)
@@ -319,10 +312,7 @@
 
     private async Task GuardarAsync() => await GuardarDatosAsync();
 
-    /// <summary>
-    /// Guarda la factura y después el complemento. La vista previa del resumen lo llama para no
-    /// mostrar datos del complemento que aún no se guardan.
-    /// </summary>
+    // Guarda la factura y luego el complemento; la vista previa lo usa para no mostrar datos sin guardar.
     public async Task<bool> GuardarDatosAsync()
     {
         if (_guardando) return false;

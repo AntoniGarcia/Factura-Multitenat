@@ -8,7 +8,7 @@ using Microsoft.EntityFrameworkCore;
 
 namespace Facturacion.Server.Modules.Plataforma.Productos;
 
-/// <summary>Administra los productos de la cuenta, que comparten todas sus empresas, y proporciona sus datos para los conceptos.</summary>
+// Productos de la cuenta, compartidos por sus empresas.
 public sealed class ServicioDeProductos(
     AppDbContext baseDeDatos,
     ValidadorDeProducto validador,
@@ -43,8 +43,8 @@ public sealed class ServicioDeProductos(
     {
         var consulta = baseDeDatos.Productos.AsNoTracking();
 
-    // Filtro informativo por la empresa que lo dio de alta. El identificador viene del
-    // navegador, pero el filtro global ya acota a la cuenta: uno ajeno no devuelve nada.
+    // Filtro informativo por la empresa de alta: el filtro global ya acota a la cuenta, así que
+    // una empresa ajena no devuelve nada.
         if (empresaAlta is { } empresa)
             consulta = consulta.Where(p => p.EmpresaAltaId == empresa);
 
@@ -109,8 +109,7 @@ public sealed class ServicioDeProductos(
 
     public async Task<Resultado<ProductoDto>> CrearAsync(PeticionGuardarProducto peticion, CancellationToken ct)
     {
-        // Aquí y no solo en el endpoint: la importación por CSV entra por este método y por
-        // ActualizarAsync, y un renglón sin permiso se rechaza con su mensaje.
+        // También aquí: la importación entra por este método y cada renglón sin permiso se rechaza.
         if (!contexto.Tiene(Permisos.ProductosCrear)) return SinPermiso("crear");
 
         if (PermisoDeCatalogo.ExigirCambioDeEstado(contexto, Permisos.Catalogos.Productos, true, peticion.Activo) is { } sinPermiso)
@@ -262,9 +261,8 @@ public sealed class ServicioDeProductos(
                 continue;
             }
 
-            // Se reconoce por el ID interno si el renglón lo trae; si no, por clave del SAT y
-            // nombre, que es lo que distingue un producto en la práctica. Así se puede recargar
-            // el mismo archivo sin duplicar el catálogo.
+            // Se reconoce por el ID interno o, si no viene, por clave del SAT y nombre: recargar el mismo
+            // archivo no duplica el catálogo.
             var idInterno = Recortar(renglon.Producto.IdInterno);
             var existente = await baseDeDatos.Productos
                 .Include(p => p.Impuestos)
@@ -309,10 +307,8 @@ public sealed class ServicioDeProductos(
         return new ResultadoDeImportacion(creados, actualizados, rechazados);
     }
 
-    /// <summary>
-    /// Borrado físico, solo de un producto que ningún concepto usó, ni siquiera en un borrador
-    /// (AGENTS.md §11). El que ya se usó se desactiva. Sus impuestos se van en cascada.
-    /// </summary>
+    // Borrado físico solo si ningún concepto, ni de un borrador, lo usó; si no, se
+    // desactiva. Sus impuestos se van en cascada.
     public async Task<Resultado> EliminarAsync(Guid id, CancellationToken ct)
     {
         var producto = await baseDeDatos.Productos

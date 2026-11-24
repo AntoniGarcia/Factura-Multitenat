@@ -8,7 +8,7 @@ using Microsoft.EntityFrameworkCore;
 
 namespace Facturacion.Server.Modules.Operador.Paquetes;
 
-/// <summary>Ofertas exclusivas que el operador prepara para una cuenta: cualquiera de sus empresas puede comprarlas.</summary>
+// Ofertas exclusivas de una cuenta: cualquiera de sus empresas puede comprarlas.
 public sealed class ServicioDePaquetesPersonalizados(
     AppDbContext baseDeDatos,
     IServicioDeBitacora bitacora, ClavesSatDePaquete clavesSat)

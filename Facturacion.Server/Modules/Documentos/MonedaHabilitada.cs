@@ -4,10 +4,7 @@ using Microsoft.EntityFrameworkCore;
 
 namespace Facturacion.Server.Modules.Documentos;
 
-/// <summary>
-/// Un documento solo se captura en pesos o en una moneda que la empresa agregó en Configuración.
-/// El selector del formulario ya las limita; esto es lo que cuenta.
-/// </summary>
+// Pesos o una moneda que la empresa agregó en Configuración; el selector ya las limita.
 public static class MonedaHabilitada
 {
     public static async Task<ErrorNegocio?> ExigirAsync(AppDbContext baseDeDatos, string moneda, CancellationToken ct)

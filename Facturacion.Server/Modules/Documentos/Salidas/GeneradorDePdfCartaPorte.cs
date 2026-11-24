@@ -12,7 +12,7 @@ namespace Facturacion.Server.Modules.Documentos.Salidas;
 /// <summary>Representación impresa de un CFDI de traslado con Carta Porte 3.1.</summary>
 public sealed class GeneradorDePdfCartaPorte
 {
-    /// <param name="leyendaDelTimbre">El atributo <c>Leyenda</c> del timbre; ver <see cref="DatosDelPdf"/>.</param>
+    // leyendaDelTimbre: el atributo Leyenda del timbre; ver DatosDelPdf.
     public byte[] Generar(Comprobante comprobante, TrasladoCartaPorte traslado, TimeZoneInfo zona, bool esBorrador = true,
         string? leyendaDelTimbre = null)
         => Document.Create(documento => documento.Page(pagina =>

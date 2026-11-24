@@ -49,7 +49,7 @@ public sealed class ServicioDeProductos(IHttpClientFactory fabrica, ServicioDeDe
         return await LeerAsync<ProductoDto>(respuesta, ct);
     }
 
-    /// <summary>Borra un producto que nunca se usó. El servidor rechaza al que ya está en un concepto.</summary>
+    // El servidor rechaza el producto que ya está en un concepto.
     public async Task<DetalleProblema?> EliminarAsync(Guid id, CancellationToken ct = default)
     {
         using var respuesta = await Cliente.DeleteAsync($"api/productos/{id}", ct);

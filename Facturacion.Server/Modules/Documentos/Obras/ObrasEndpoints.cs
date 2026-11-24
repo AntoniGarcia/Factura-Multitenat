@@ -15,8 +15,7 @@ public static class ObrasEndpoints
         grupo.MapPut("/{comprobanteId:guid}", Guardar);
         grupo.MapGet("/{comprobanteId:guid}/conciliacion-fiscal", ConciliacionFiscal);
 
-        // Fuera del grupo: se abre desde el listado, así que basta con poder descargar documentos.
-        // Cualquier casilla de obra ya trae la descarga entre sus permisos implícitos.
+        // Fuera del grupo: se abre desde el listado y basta con poder descargar.
         rutas.MapGet("/api/obras/comprobantes/{comprobanteId:guid}/estimacion.pdf", EstimacionPdf)
             .WithTags("Constructoras")
             .RequireAuthorization(Permisos.DocumentosDescarga);

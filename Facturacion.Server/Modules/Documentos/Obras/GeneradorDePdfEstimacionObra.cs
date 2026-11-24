@@ -98,7 +98,7 @@ public sealed class GeneradorDePdfEstimacionObra
                             Renglon(desglose, "Subtotal de la estimación", obra.SubtotalEstimacion, true);
                             Renglon(desglose, "IVA de los conceptos", obra.IvaEstimado);
                             Renglon(desglose, "Total de la estimación", obra.TotalEstimacion, true);
-                            // Lo que sigue no está en el CFDI: se descuenta del pago. Con 0 % no aplica.
+                            // No está en el CFDI: se descuenta del pago. Con 0 % no aplica.
                             if (obra.Retenciones != 0)
                                 Renglon(desglose, $"Retenciones ({obra.PorcentajeRetenciones ?? 0:N2} %)", -obra.Retenciones);
                             if (obra.Devoluciones != 0)

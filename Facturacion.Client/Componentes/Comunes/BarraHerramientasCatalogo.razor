@@ -1,7 +1,4 @@
-@*
-    Dos renglones: arriba lo que crea o mueve registros, abajo lo que filtra. En uno solo los
-    seis controles se amontonaban y los filtros quedaban partidos entre los botones.
-*@
+@* Dos renglones: arriba lo que crea o mueve registros, abajo los filtros. *@
 
 <div class="barra-herramientas-catalogo">
     @if (OnNuevo.HasDelegate || OnExportar.HasDelegate || OnSecundario.HasDelegate)
@@ -31,7 +28,7 @@
     }
 
     <div class="barra-herramientas-filtros">
-        @* Con etiqueta, como los selectores: sin ella el buscador quedaba más arriba que ellos. *@
+        @* Con etiqueta, como los selectores, para que quede a su misma altura. *@
         <MudTextField T="string"
                        Label="Buscar"
                        ShrinkLabel="true"
@@ -103,14 +100,11 @@
     [Parameter]
     public EventCallback<bool?> ActivosCambiado { get; set; }
 
-    /// <summary>
-    /// Empresas para el filtro por la que dio de alta el registro, en los catálogos que son de
-    /// la cuenta. Es informativo: no cambia qué puede usar cada empresa. Con una sola no se pinta.
-    /// </summary>
+    // Filtro informativo por la empresa de alta; con una sola empresa no se muestra.
     [Parameter]
     public IReadOnlyList<EmpresaDisponibleDto>? Empresas { get; set; }
 
-    /// <summary>Empresa filtrada; <c>null</c> son todas.</summary>
+    // Null son todas.
     [Parameter]
     public Guid? Empresa { get; set; }
 

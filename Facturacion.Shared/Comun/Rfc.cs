@@ -21,13 +21,9 @@ public static class Rfc
 {
     /// <summary>Público en general. Ver <see cref="EsGenerico"/> para por qué se exceptúa.</summary>
     public const string GenericoNacional = "XAXX010101000";
-    //bool esValido = ValidadorRFC.ValidarRFC("XAXX010101000");
-    //Console.WriteLine(esValido); // true o false
 
     /// <summary>Residente en el extranjero.</summary>
     public const string GenericoExtranjero = "XEXX010101000";
-    //var(valido, tipo) = ValidadorRFCDetallado("XAXX010101000");
-    //Console.WriteLine($"Válido: {valido}, Tipo: {tipo}");
 
     /// <summary>
     /// Tabla del SAT para el dígito verificador: la posición de cada carácter <b>es</b> su

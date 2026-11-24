@@ -1,15 +1,7 @@
 namespace Facturacion.Server.Data.Entidades.Documentos;
 
-/// <summary>
-/// Un envío de comprobante por correo, con éxito o sin él. Es lo que permite contestar «¿a quién
-/// se le mandó y cuándo?» sin buscar en el buzón del SaaS, y de donde el listado toma los
-/// destinatarios para reenviar.
-///
-/// <para>
-/// Se guarda también el envío fallido: un cliente que dice no haber recibido su factura merece
-/// una respuesta mejor que la ausencia de un renglón.
-/// </para>
-/// </summary>
+// Un envío por correo, exitoso o fallido: responde a quién y cuándo se mandó, y de aquí
+// toma el listado los destinatarios para reenviar.
 public sealed class EnvioDeCorreo : IEntidadDeEmpresa
 {
     public Guid Id { get; set; }
@@ -20,10 +12,10 @@ public sealed class EnvioDeCorreo : IEntidadDeEmpresa
 
     public Comprobante Comprobante { get; set; } = null!;
 
-    /// <summary>Direcciones separadas por <c>;</c>, tal como se mandaron.</summary>
+    // Separadas por «;», tal como se mandaron.
     public required string Destinatarios { get; set; }
 
-    /// <summary>Si fue copia oculta a la cuenta de la empresa, la dirección que se usó.</summary>
+    // La dirección de la copia oculta a la empresa, si la hubo.
     public string? CopiaOculta { get; set; }
 
     public required string Asunto { get; set; }
@@ -32,10 +24,7 @@ public sealed class EnvioDeCorreo : IEntidadDeEmpresa
 
     public bool Exitoso { get; set; }
 
-    /// <summary>
-    /// Código corto del fallo, para soporte. El detalle de la excepción va al log con el
-    /// <c>traceId</c>, no aquí: esta columna llega a la pantalla.
-    /// </summary>
+    // Código corto del fallo; llega a la pantalla, así que el detalle va al log.
     public string? Error { get; set; }
 
     public Guid EnviadoPorUsuarioId { get; set; }

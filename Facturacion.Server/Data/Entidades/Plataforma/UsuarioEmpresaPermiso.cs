@@ -2,7 +2,7 @@ namespace Facturacion.Server.Data.Entidades.Plataforma;
 
 /// <summary>
 /// Un permiso concedido a un usuario en una empresa concreta. Desde el 27 de octubre de 2026
-/// (AGENTS.md §11) un usuario tiene los mismos permisos en todas sus empresas; se conserva un
+/// un usuario tiene los mismos permisos en todas sus empresas; se conserva un
 /// juego por empresa porque el token se arma con el de la empresa activa, y
 /// <c>ServicioDeUsuarios</c> los escribe siempre iguales.
 /// <para>

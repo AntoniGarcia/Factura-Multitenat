@@ -98,10 +98,7 @@ public sealed class ServicioDeEmpresa(IHttpClientFactory fabrica)
     public async Task QuitarLogoAsync(CancellationToken ct = default)
         => await Cliente.DeleteAsync("api/empresa/logo", ct);
 
-    /// <summary>
-    /// El logo se pide con el token y no con un <c>&lt;img src&gt;</c> directo: el token vive solo
-    /// en memoria, así que el navegador no lo mandaría. Nulo si no hay.
-    /// </summary>
+    // Con el token y no con <img src>: el token vive solo en memoria y el navegador no lo mandaría.
     public async Task<(byte[] Contenido, string TipoMime)?> ObtenerLogoAsync(CancellationToken ct = default)
     {
         using var respuesta = await Cliente.GetAsync("api/empresa/logo", ct);
@@ -145,7 +142,7 @@ public sealed class ServicioDeEmpresa(IHttpClientFactory fabrica)
         return await LeerAsync<SerieDto>(respuesta, ct);
     }
 
-    /// <summary>Borra una serie que no ha dado folios. El servidor rechaza la que ya se usó.</summary>
+    // El servidor rechaza la serie que ya dio folios.
     public async Task<DetalleProblema?> EliminarSerieAsync(Guid id, CancellationToken ct = default)
     {
         using var respuesta = await Cliente.DeleteAsync($"api/series/{id}", ct);

@@ -52,9 +52,6 @@ public enum ModoDePac
     Real,
     Deshabilitado,
 
-    /// <summary>
-    /// Timbre y sello inventados para probar el circuito completo sin PAC ni CSD. Fuera de
-    /// <c>Development</c> no arranca. Se quita junto con los dobles cuando el PAC real esté listo.
-    /// </summary>
+    // Timbre y sello inventados para probar sin PAC ni CSD; fuera de Development no arranca.
     Simulado
 }

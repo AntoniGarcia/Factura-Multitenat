@@ -12,12 +12,9 @@ using Microsoft.Extensions.Options;
 
 namespace Facturacion.Server.Modules.Plataforma.Usuarios;
 
-/// <summary>
-/// Los usuarios de la cuenta, administrados por su titular. Cada usuario tiene un solo juego de
-/// permisos, el mismo en todas las empresas a las que entra (AGENTS.md §11, 27 de octubre de
-/// 2026). El alta directa no verifica el correo y el creador conoce la contraseña inicial;
-/// queda registrada en bitácora. El titular no se modifica desde esta pantalla.
-/// </summary>
+/// Usuarios de la cuenta, administrados por el titular, con los mismos permisos en todas sus
+/// empresas. El alta no verifica el correo y el creador
+/// conoce la contraseña inicial; queda en bitácora. El titular no se modifica aquí.
 public sealed class ServicioDeUsuarios(
     AppDbContext baseDeDatos,
     UserManager<Usuario> usuarios,
@@ -323,10 +320,7 @@ public sealed class ServicioDeUsuarios(
         return Resultado.Exito();
     }
 
-    /// <summary>
-    /// Fija las empresas a las que entra el usuario y sus permisos, los mismos en todas. Una
-    /// empresa desmarcada conserva el renglón inactivo: volver a marcarla no crea otro.
-    /// </summary>
+    // Una empresa desmarcada conserva su renglón inactivo: volver a marcarla no crea otro.
     public async Task<Resultado> ActualizarPermisosAsync(
         Guid usuarioId, PeticionActualizarPermisos peticion, CancellationToken ct)
     {
@@ -345,7 +339,7 @@ public sealed class ServicioDeUsuarios(
 
         if (await ErrorSiEsTitularAsync(usuarioId, ct) is { } titular) return titular;
 
-        // Ganar la primera empresa activa hace que el usuario ocupe lugar: cuenta contra el límite.
+        // Ganar la primera empresa activa hace que ocupe lugar: cuenta contra el límite.
         var cuenta = await BloquearCuentaAsync(ct);
         if (cuenta is null)
             return ErrorNegocio.NoEncontrado("empresa-no-encontrada", "La empresa activa ya no existe.");
@@ -371,8 +365,7 @@ public sealed class ServicioDeUsuarios(
         var empresasAntes = accesos.Where(ue => ue.Activo).Select(ue => ue.EmpresaId).ToList();
         var clavesAntes = permisosActuales.Select(p => p.PermisoClave).Distinct().ToList();
 
-        // Las empresas que el operador desactivó no se ofrecen en la pantalla; su acceso se
-        // deja como estaba en lugar de leer su ausencia como «desmarcada».
+        // Las empresas desactivadas por el operador no se ofrecen; su acceso se deja como estaba.
         foreach (var acceso in accesos.Where(ue => ue.Empresa.Activa))
             acceso.Activo = elegidas.Valor.Contains(acceso.EmpresaId);
 
@@ -384,7 +377,7 @@ public sealed class ServicioDeUsuarios(
             accesos.Add(nuevo);
         }
 
-        // También en los accesos inactivos: si se reactivan, entran ya con el juego vigente.
+        // También en los accesos inactivos: si se reactivan, entran con el juego vigente.
         FijarPermisos(usuarioId, [.. accesos.Select(ue => ue.EmpresaId)], permisosActuales, peticion.Permisos);
 
         var empresasDespues = accesos.Where(ue => ue.Activo).Select(ue => ue.EmpresaId).ToList();
@@ -401,10 +394,7 @@ public sealed class ServicioDeUsuarios(
         return Resultado.Exito();
     }
 
-    /// <summary>
-    /// Desactiva o reactiva al usuario en toda la cuenta. A qué empresas entra se decide en sus
-    /// permisos; aquí solo se le abre o se le cierra la puerta.
-    /// </summary>
+    // Abre o cierra la puerta en toda la cuenta; a qué empresas entra se decide en sus permisos.
     public async Task<Resultado<UsuarioDeLaCuentaDto>> CambiarActivoAsync(Guid usuarioId, bool activo, CancellationToken ct)
     {
         if (!activo && usuarioId == contexto.UsuarioActual)
@@ -412,9 +402,7 @@ public sealed class ServicioDeUsuarios(
 
         if (await ErrorSiEsTitularAsync(usuarioId, ct) is { } titular) return titular;
 
-        // Reactivar cuenta contra el límite igual que dar de alta. Sin esto había un camino
-        // para pasarse: con el cupo lleno, desactivar a uno, aprovechar el hueco para crear a
-        // otro, y reactivar al primero.
+        // Reactivar cuenta contra el límite: si no, se podría desactivar a uno, crear otro y reactivar al primero.
         await using var transaccion = await baseDeDatos.Database.BeginTransactionAsync(ct);
 
         var cuenta = await BloquearCuentaAsync(ct);
@@ -469,9 +457,7 @@ public sealed class ServicioDeUsuarios(
         Guid Id, string Nombre, string Correo, bool Activo, bool CreadoPorAdministrador, bool EsTitular,
         List<Guid> Empresas, List<string> Permisos);
 
-    // La cuenta sale de la empresa activa y no del claim: es la misma, pero así el usuario
-    // queda colgado justo de la cuenta a la que se le está dando acceso, sin depender de que
-    // el token traiga el claim bien puesto.
+    // La cuenta sale de la empresa activa y no del claim, para colgar al usuario justo de esa cuenta.
     private Task<Guid> CuentaDeLaEmpresaAsync(Guid empresaId, CancellationToken ct)
         => baseDeDatos.Empresas
             .AsNoTracking()
@@ -500,10 +486,8 @@ public sealed class ServicioDeUsuarios(
                 e.Id, e.NombreFiscal, e.Rfc, new LicenciasDto(e.LicNotarios, e.LicObras, e.LicComercio, e.LicINE)))
             .ToListAsync(ct);
 
-    /// <summary>
-    /// Las empresas llegan del navegador (AGENTS.md §11): cada una tiene que ser una empresa
-    /// activa de la cuenta. Una ajena responde igual que una inexistente.
-    /// </summary>
+    // Las empresas llegan del navegador: cada una debe ser activa de la cuenta;
+    // una ajena responde igual que una inexistente.
     private async Task<Resultado<List<Guid>>> ValidarEmpresasAsync(
         Guid cuentaId, IReadOnlyList<Guid>? empresas, CancellationToken ct)
     {
@@ -520,10 +504,7 @@ public sealed class ServicioDeUsuarios(
             : ErrorNegocio.NoEncontrado("empresa-no-disponible", "Alguna de las empresas elegidas ya no está disponible.");
     }
 
-    /// <summary>
-    /// Deja el mismo juego de permisos en cada empresa indicada. Conserva los renglones que no
-    /// cambian, con quién y cuándo los otorgó.
-    /// </summary>
+    // Conserva los renglones que no cambian, con quién y cuándo los otorgó.
     private void FijarPermisos(
         Guid usuarioId, IReadOnlyList<Guid> empresas, IReadOnlyList<UsuarioEmpresaPermiso> actuales, IReadOnlyList<string> permisos)
     {
@@ -548,7 +529,7 @@ public sealed class ServicioDeUsuarios(
     private async Task<bool> EstaEnElLimiteAsync(Cuenta cuenta, CancellationToken ct)
         => await LimitesDeCuenta.UsuariosQueCuentan(baseDeDatos, cuenta.Id).CountAsync(ct) >= cuenta.LimiteDeUsuarios;
 
-    /// <summary>Quien ya tiene acceso activo a alguna empresa de la cuenta no ocupa un lugar nuevo.</summary>
+    // Quien ya tiene acceso activo en la cuenta no ocupa un lugar nuevo.
     private Task<bool> OcupaLugarAsync(Cuenta cuenta, Guid usuarioId, CancellationToken ct)
         => LimitesDeCuenta.UsuariosQueCuentan(baseDeDatos, cuenta.Id).AnyAsync(u => u.Id == usuarioId, ct);
 
@@ -574,8 +555,7 @@ public sealed class ServicioDeUsuarios(
             usuario.CreadoPorAdministrador, usuario.EsTitular, accesos, permisos), empresas);
     }
 
-    // El titular no tiene renglones de permiso: la lista los muestra todos, como el token, y
-    // entra a todas las empresas de su cuenta.
+    // El titular no tiene renglones de permiso: se muestran todos y entra a todas las empresas.
     private UsuarioDeLaCuentaDto ADto(FilaDeUsuario fila, IReadOnlyList<EmpresaParaAccesoDto> empresasDeLaCuenta)
     {
         var empresas = fila.EsTitular

@@ -5,13 +5,10 @@ using Microsoft.EntityFrameworkCore;
 
 namespace Facturacion.Server.Modules.Documentos.Obras;
 
-/// <summary>
-/// El anticipo que amortiza una estimación y lo que le queda por amortizar. Se revisa al guardar
-/// el cálculo de obra y otra vez al timbrar, porque entre las dos otra estimación pudo tomar saldo.
-/// </summary>
+// Se revisa al guardar y al timbrar: entre los dos, otra estimación pudo tomar saldo.
 public static class AnticipoDeObra
 {
-    /// <summary>Clave de <c>c_ClaveProdServ</c> que el Apéndice 6 fija para el CFDI de anticipo.</summary>
+    // Clave que el Apéndice 6 fija para el CFDI de anticipo.
     private const string ClaveDeAnticipo = "84111506";
 
     public static async Task<ErrorNegocio?> ValidarAsync(
@@ -49,7 +46,7 @@ public static class AnticipoDeObra
             return ErrorNegocio.Regla("obra-anticipo-de-otro-cliente",
                 "El anticipo relacionado se emitió a otro cliente.");
 
-        // Solo cuenta lo que ya salió o está saliendo al SAT; un borrador no aparta saldo.
+        // Solo cuenta lo timbrado o en proceso; un borrador no aparta saldo.
         var amortizado = await baseDeDatos.Comprobantes.AsNoTracking()
             .Where(x => x.Id != comprobante.Id &&
                 (x.Estatus == "timbrando" || x.Estatus == "timbrado" || x.Estatus == "en_cancelacion") &&

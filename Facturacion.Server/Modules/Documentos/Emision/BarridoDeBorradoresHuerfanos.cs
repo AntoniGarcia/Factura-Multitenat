@@ -37,33 +37,19 @@ public sealed class BarridoDeBorradoresHuerfanos(
     IServiceScopeFactory fabricaDeAmbitos,
     ILogger<BarridoDeBorradoresHuerfanos> registro) : BackgroundService
 {
-    /// <summary>
-    /// Cada cuánto se revisa. Seis horas y no veinticuatro: el costo de la consulta es
-    /// despreciable contra una tabla indexada, y con un intervalo más corto un fallo
-    /// puntual no implica esperar un día entero para reintentar. Con <see cref="Plazo"/>
-    /// de un día, revisar más seguido no borra nada de más.
-    /// </summary>
+    // Con un Plazo de un día, revisar cada seis horas no borra nada de más y reintenta pronto.
     private static readonly TimeSpan Intervalo = TimeSpan.FromHours(6);
 
-    /// <summary>
-    /// Retardo antes de la pasada inicial. Da tiempo a que la base de datos esté arriba si
-    /// el servicio arranca antes que ella. No es fatal si falla: el ciclo periódico reintenta.
-    /// </summary>
+    // Da tiempo a que la base esté arriba si el servicio arranca antes que ella.
     private static readonly TimeSpan RetardoInicial = TimeSpan.FromMinutes(2);
 
-    /// <summary>
-    /// Antigüedad a partir de la cual un borrador vacío se da por abandonado. Un día es
-    /// suficiente: el filtro ya exige que nadie haya pulsado «Guardar borrador»
-    /// (<c>ModificadoUtc == null</c>), así que no hay captura que perder. El plazo solo
-    /// evita borrar el borrador que el usuario acaba de abrir y todavía tiene en pantalla.
-    /// </summary>
+    // Solo evita borrar el borrador que el usuario acaba de abrir: el filtro ya exige que nunca
+    // se haya guardado (ModificadoUtc nulo).
     private static readonly TimeSpan Plazo = TimeSpan.FromDays(1);
 
     protected override async Task ExecuteAsync(CancellationToken ct)
     {
-        // Pasada inicial: limpia el backlog que se acumuló mientras el servicio estuvo
-        // apagado. El retardo es corto (no el intervalo completo) pero suficiente para que
-        // la base esté arriba si el servicio arranca antes que ella.
+        // Pasada inicial: limpia lo acumulado mientras el servicio estuvo apagado.
         try
         {
             await Task.Delay(RetardoInicial, ct);
@@ -76,8 +62,7 @@ public sealed class BarridoDeBorradoresHuerfanos(
         }
         catch (Exception excepcion)
         {
-            // No es fatal: el ciclo periódico lo reintentará. Si el servicio se reinicia
-            // con frecuencia, el siguiente arranque también lo recupera.
+            // No es fatal: el ciclo periódico lo reintenta.
             registro.LogError(excepcion, "Falló el barrido inicial de borradores huérfanos");
         }
 
@@ -115,9 +100,7 @@ public sealed class BarridoDeBorradoresHuerfanos(
         var borrador = EstatusComprobante.Borrador.ACadena();
         var limite = DateTime.UtcNow - Plazo;
 
-        // Diagnóstico bajo Debug: tres COUNT con NOT EXISTS sobre la tabla más consultada
-        // del sistema no valen la pena en operación normal. Se activan subiendo el nivel
-        // de log a Debug cuando haga falta investigar.
+        // Diagnóstico solo con log en Debug: son tres COUNT sobre la tabla más consultada.
         if (registro.IsEnabled(LogLevel.Debug))
         {
             var total = await baseDeDatos.Comprobantes
@@ -144,13 +127,9 @@ public sealed class BarridoDeBorradoresHuerfanos(
                 total, candidatos, cumplenPlazo, Plazo);
         }
 
-        // IgnoreQueryFilters justificado: el barrido corre fuera de una petición, así que no
-        // hay empresa activa y el filtro global no devolvería ningún renglón. Recorre todas
-        // las empresas a propósito.
-        //
-        // Nota: ExecuteDeleteAsync ejecuta SQL directo y NO dispara las cascadas de EF. Hoy
-        // no importa porque el filtro exige !Conceptos.Any(), pero si algún día se relaja,
-        // habrá que borrar también Conceptos, ComprobantesRelacionados e IntentosTimbrado.
+        /// IgnoreQueryFilters: corre fuera de una petición, sin empresa activa, y recorre todas.
+        /// ExecuteDeleteAsync no dispara las cascadas de EF; hoy no importa porque el filtro exige
+        /// que no haya conceptos, pero si se relaja hay que borrar también lo relacionado.
         var borrados = await baseDeDatos.Comprobantes
             .IgnoreQueryFilters()
             .Where(c => c.Estatus == borrador

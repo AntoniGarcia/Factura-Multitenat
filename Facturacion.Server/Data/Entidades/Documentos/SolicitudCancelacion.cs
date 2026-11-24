@@ -41,18 +41,15 @@ public sealed class SolicitudCancelacion : IEntidadDeEmpresa
 
     public Guid SolicitadaPorUsuarioId { get; set; }
 
-    // ── Última consulta de estatus ante el SAT (§30) ──────────────────────────────────
-    //
-    // Se guardan tal como los nombra el SAT. Son lo que la pantalla de solicitudes muestra
-    // sin volver a preguntar, y lo que le dice al usuario cuándo fue la última vez que se miró.
+    // ── Última consulta de estatus ante el SAT, con los textos tal como los da el SAT ──
 
-    /// <summary>«Vigente», «Cancelado» o «No Encontrado».</summary>
+    // «Vigente», «Cancelado» o «No Encontrado».
     public string? EstadoCfdiSat { get; set; }
 
-    /// <summary>«Cancelable sin aceptación», «Cancelable con aceptación» o «No cancelable».</summary>
+    // «Cancelable sin aceptación», «Cancelable con aceptación» o «No cancelable».
     public string? EsCancelableSat { get; set; }
 
-    /// <summary>«En proceso», «Cancelado con aceptación», «Solicitud rechazada», «Plazo vencido»…</summary>
+    // «En proceso», «Cancelado con aceptación», «Solicitud rechazada», «Plazo vencido»…
     public string? EstatusCancelacionSat { get; set; }
 
     public DateTime? ConsultadaUtc { get; set; }

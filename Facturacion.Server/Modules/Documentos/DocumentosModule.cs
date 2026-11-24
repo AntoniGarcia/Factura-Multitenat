@@ -117,10 +117,8 @@ public static class DocumentosModule
                 throw new InvalidOperationException(
                     "'Pac:Modo=Simulado' solo se permite en Development: produce timbres inventados.");
 
-            // Los dos juntos: sin PAC real tampoco hay quién valide el sello, y sin el doble del
-            // CSD no se podría timbrar en una empresa que todavía no carga su certificado.
-            // Registrado después de PlataformaModule, el del CSD sustituye al real; la
-            // verificación de contratos lo reporta al arrancar.
+            // Los dos juntos: sin PAC real no hay quién valide el sello. Registrado después de
+            // PlataformaModule, el CSD simulado sustituye al real; la verificación de contratos lo avisa.
             servicios.AddSingleton<IProveedorPac, Dobles.DobleProveedorPac>();
             servicios.AddSingleton<IProveedorCsdParaTimbrado, Dobles.DobleProveedorCsdParaTimbrado>();
 

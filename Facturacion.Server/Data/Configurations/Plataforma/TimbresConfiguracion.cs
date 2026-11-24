@@ -131,8 +131,7 @@ public sealed class BolsaTimbresConfiguracion : IEntityTypeConfiguration<BolsaTi
             .HasForeignKey(b => b.CuentaId)
             .OnDelete(DeleteBehavior.Restrict);
 
-        // Exactamente una bolsa por cuenta. Sin esto, una carrera al crear la bolsa la
-        // primera vez dejaría dos renglones y el saldo se partiría en dos.
+        // Una bolsa por cuenta: sin esto, dos altas simultáneas partirían el saldo en dos renglones.
         constructor.HasIndex(b => b.CuentaId).IsUnique();
     }
 }
@@ -148,7 +147,7 @@ public sealed class MovimientoTimbreConfiguracion : IEntityTypeConfiguration<Mov
         constructor.Property(m => m.Tipo).HasMaxLength(20);
         constructor.Property(m => m.Motivo).HasMaxLength(300);
 
-        // El historial siempre se lee de lo más nuevo a lo más viejo dentro de una cuenta.
+        // El historial se lee de lo más nuevo a lo más viejo dentro de una cuenta.
         constructor.HasIndex(m => new { m.CuentaId, m.MomentoUtc });
     }
 }

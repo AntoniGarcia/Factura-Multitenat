@@ -6,29 +6,23 @@ using Microsoft.EntityFrameworkCore;
 
 namespace Facturacion.Server.Modules.Plataforma;
 
-/// <summary>
-/// Cuántos usuarios y empresas puede tener una cuenta (AGENTS.md §11). El operador fija los
-/// límites en la cuenta; aquí se cuentan y se aplican.
-/// </summary>
+// Límites de usuarios y empresas por cuenta: los fija el operador y aquí se aplican.
 internal static class LimitesDeCuenta
 {
     public const int Maximo = 999;
 
-    /// <summary>
-    /// Lee la cuenta con bloqueo de actualización hasta que termine la transacción del alta:
-    /// dos altas simultáneas se forman, y la segunda ya cuenta a la primera.
-    /// </summary>
+    // Bloqueo de actualización hasta el fin de la transacción del alta: la segunda alta cuenta a la primera.
     public static Task<Cuenta?> BloquearAsync(AppDbContext baseDeDatos, Guid cuentaId, CancellationToken ct)
         => baseDeDatos.Cuentas
             .FromSqlInterpolated($"SELECT * FROM [Cuentas] WITH (UPDLOCK, HOLDLOCK) WHERE [Id] = {cuentaId}")
             .FirstOrDefaultAsync(ct);
 
-    /// <summary>Un usuario ocupa lugar mientras tenga acceso activo a alguna empresa. El titular también.</summary>
+    // Ocupa lugar quien tiene acceso activo a alguna empresa, el titular también.
     public static IQueryable<Usuario> UsuariosQueCuentan(AppDbContext baseDeDatos, Guid cuentaId)
         => baseDeDatos.Users.Where(u => u.CuentaId == cuentaId && u.Activo &&
             baseDeDatos.UsuariosEmpresas.Any(ue => ue.UsuarioId == u.Id && ue.Activo));
 
-    /// <summary>Una empresa desactivada por el operador sigue ocupando lugar.</summary>
+    // Una empresa desactivada por el operador sigue ocupando lugar.
     public static Task<int> EmpresasEnUsoAsync(AppDbContext baseDeDatos, Guid cuentaId, CancellationToken ct)
         => baseDeDatos.Empresas.CountAsync(e => e.CuentaId == cuentaId, ct);
 

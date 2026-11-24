@@ -3,18 +3,12 @@ using Facturacion.Shared.Plataforma;
 
 namespace Facturacion.Server.Modules.Plataforma.Clientes;
 
-/// <summary>
-/// Convierte el CSV de clientes en renglones revisables. <b>No guarda nada</b>: igual que el de
-/// productos, cada renglón se valida por su cuenta y uno malo no tira el archivo.
-/// <para>
-/// Usa las mismas columnas que la exportación, así que un catálogo exportado se puede corregir
-/// en Excel y volver a subir. El domicilio de entrega no viaja en el CSV: se captura en la
-/// pantalla del cliente.
-/// </para>
-/// </summary>
+/// No guarda nada: cada renglón se valida por separado y uno malo no tira el archivo.
+/// Usa las mismas columnas que la exportación. El domicilio de entrega no viaja en el CSV:
+/// se captura en la pantalla del cliente.
 public static class LectorDeCsvDeClientes
 {
-    /// <summary>Encabezados que se esperan, en este orden. Activo puede ir al final.</summary>
+    // En este orden; Activo puede ir al final.
     public static readonly string[] Columnas =
     [
         "RFC", "Nombre", "RegimenFiscal", "CodigoPostalFiscal", "UsoCFDI", "MetodoPago", "FormaPago",
@@ -25,7 +19,7 @@ public static class LectorDeCsvDeClientes
 
     public static VistaPreviaDeImportacionDeClientes Analizar(Stream archivo)
     {
-        // Detecta la marca de orden de bytes que traen los CSV de Excel.
+        // Detecta la marca de orden de bytes de los CSV de Excel.
         using var lector = new StreamReader(archivo, Encoding.UTF8, detectEncodingFromByteOrderMarks: true);
 
         var renglones = new List<RenglonDeImportacionDeCliente>();
@@ -61,8 +55,7 @@ public static class LectorDeCsvDeClientes
             renglones.Count(r => r.Error is not null));
     }
 
-    // El archivo exportado empieza con la clave interna, que es informativa: la coincidencia
-    // se resuelve por RFC.
+    // El archivo exportado empieza con la clave interna, que es informativa: se reconoce por RFC.
     private static bool EsEncabezado(string linea, out bool formatoExportado)
     {
         var campos = LectorCsv.Partir(linea);

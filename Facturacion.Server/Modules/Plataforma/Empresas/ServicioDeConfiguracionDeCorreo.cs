@@ -10,14 +10,9 @@ using Microsoft.EntityFrameworkCore;
 
 namespace Facturacion.Server.Modules.Plataforma.Empresas;
 
-/// <summary>
-/// Alta y edición del servidor SMTP de la empresa activa, el único por el que salen sus
-/// comprobantes: por eso se guarda siempre completo.
-/// <para>
-/// La contraseña es de solo escritura: entra cifrada y nunca sale. Una petición sin contraseña
-/// conserva la guardada, para que editar el puerto no obligue a volver a escribirla.
-/// </para>
-/// </summary>
+/// Se guarda siempre completo: es el único SMTP de los comprobantes de la empresa.
+/// La contraseña entra cifrada y nunca sale; una petición sin ella conserva la guardada.
+/// Así editar el puerto no obliga a escribirla de nuevo.
 public sealed class ServicioDeConfiguracionDeCorreo(
     AppDbContext baseDeDatos,
     IContextoEmpresaInterno contexto,
@@ -59,7 +54,7 @@ public sealed class ServicioDeConfiguracionDeCorreo(
 
         if (correo is null)
         {
-            // EmpresaId lo pone el sellado de empresa, igual que en ConfiguracionEmpresa.
+            // EmpresaId lo pone el sellado de empresa.
             correo = new CorreoDeEmpresa();
             baseDeDatos.CorreosDeEmpresa.Add(correo);
         }
@@ -126,7 +121,7 @@ public sealed class ServicioDeConfiguracionDeCorreo(
             return ErrorNegocio.Validacion("smtp-contrasena-invalida",
                 $"La contraseña admite hasta {LongitudMaximaContrasena} caracteres.");
 
-        // Un salto de línea en el nombre del remitente es cómo se inyectan encabezados.
+        // Un salto de línea en el nombre del remitente permite inyectar encabezados.
         if (remitenteNombre is not null && (remitenteNombre.Length > LongitudMaximaNombre || TieneSaltoDeLinea(remitenteNombre)))
             return ErrorNegocio.Validacion("smtp-remitente-nombre-invalido",
                 $"El nombre del remitente admite hasta {LongitudMaximaNombre} caracteres en una sola línea.");
@@ -150,10 +145,7 @@ public sealed class ServicioDeConfiguracionDeCorreo(
         return null;
     }
 
-    /// <summary>
-    /// Solo la dirección, sin nombre ni ángulos: el nombre va en su propio campo. Comparar contra
-    /// lo que interpretó <see cref="MailAddress"/> descarta las formas que admite y no se quieren.
-    /// </summary>
+    // Solo la dirección, sin nombre ni ángulos: se compara contra lo que interpretó MailAddress.
     private static bool EsCorreoValido(string correo)
         => correo.Length <= 254 && !TieneSaltoDeLinea(correo) &&
            MailAddress.TryCreate(correo, out var direccion) && direccion.Address == correo;

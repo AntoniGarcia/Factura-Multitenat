@@ -13,7 +13,7 @@ public static class TrasladosCartaPorteEndpoints
             .WithTags("Carta Porte")
             .RequireAuthorization(Permisos.Politicas.CartaPorte);
 
-        // Se suma a la del grupo. Actualizar decide en el servicio: Crear basta para el borrador propio.
+        // Se suma a la del grupo; Crear basta para el borrador propio.
         grupo.MapPost("", Crear).RequireAuthorization(Permisos.CartaPorteCrear);
         grupo.MapGet("/{comprobanteId:guid}", Obtener);
         grupo.MapPut("/{comprobanteId:guid}", Actualizar);

@@ -4,11 +4,7 @@ using Facturacion.Shared.Documentos;
 
 namespace Facturacion.Server.Modules.Documentos.Salidas;
 
-/// <summary>
-/// Envío de comprobantes por correo. Con <c>timbrar</c>, igual que la descarga: quien puede
-/// descargar el XML ya puede mandárselo a quien quiera, así que un permiso aparte no protegería
-/// nada, y la lista de permisos está cerrada.
-/// </summary>
+// El servicio exige el permiso de enviar del tipo de documento.
 public static class EnvioEndpoints
 {
     public static void MapEnvios(this IEndpointRouteBuilder rutas)

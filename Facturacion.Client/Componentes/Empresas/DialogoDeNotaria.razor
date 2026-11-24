@@ -4,15 +4,7 @@
 @using Facturacion.Shared.Notaria
 @inject ServicioDeNotaria Notaria
 
-@*
-    Mismo formulario que antes vivía en /empresa/notaria, ahora como MudDialog. Esa página @page se deja intacta por si
-    algo más la enlaza directo; DatosDeLaEmpresa.razor (/empresa) ya no navega ahí.
-
-    A diferencia de los diálogos de catálogo, aquí "Guardar" no cierra el diálogo: es una
-    configuración, no un alta, y el formulario original tampoco navegaba fuera al guardar
-    —solo refrescaba los campos con lo que el servidor confirmó—. "Cerrar" es la única
-    salida.
-*@
+@* «Guardar» no cierra el diálogo: es configuración, no un alta. «Cerrar» es la única salida. *@
 
 <MudDialog>
     <TitleContent>

@@ -1,10 +1,6 @@
 namespace Facturacion.Shared.Operador;
 
-/// <summary>
-/// La ficha de una empresa emisora vista desde el panel: identidad fiscal, las compras de
-/// timbres que solicitó y esperan acreditarse o rechazarse, las pagadas recientes y los
-/// usuarios con acceso a esa empresa. El saldo y los paquetes exclusivos son de la cuenta.
-/// </summary>
+// El saldo y los paquetes exclusivos son de la cuenta, no de la empresa.
 public sealed record FichaDeEmpresaDto(
     Guid Id,
     string Rfc,

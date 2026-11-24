@@ -3,18 +3,11 @@ using System.Text.RegularExpressions;
 
 namespace Facturacion.Server.Infra.Correo;
 
-/// <summary>
-/// Convierte texto normal en el HTML de un correo: las plantillas del operador en el registro
-/// y el mensaje libre que el usuario escribe al enviar un CFDI. Vive aparte porque lo usan
-/// los dos, y los dos tienen que escapar exactamente igual.
-/// </summary>
+// Texto a HTML de correo. Lo usan las plantillas del operador y el mensaje al enviar un CFDI,
+// y los dos deben escapar igual.
 public static class PlantillaDeCorreo
 {
-    /// <summary>
-    /// Sustituye los marcadores de una plantilla del operador. Son palabras completas en
-    /// mayúsculas (NOMBRE, CODIGO, CORREO…), no corchetes ni llaves: un operador sin
-    /// experiencia técnica puede leer el mensaje tal y como quedará.
-    /// </summary>
+    // Marcadores en mayúsculas (NOMBRE, CODIGO…), legibles para un operador sin experiencia técnica.
     public static string Rellenar(string plantilla, params (string Marcador, string Valor)[] valores)
     {
         var resultado = plantilla;
@@ -25,12 +18,8 @@ public static class PlantillaDeCorreo
         return resultado;
     }
 
-    /// <summary>
-    /// Se sustituyen primero los marcadores (con los valores en bruto, aún sin escapar) y se
-    /// escapa y convierte todo al final: así un nombre o un correo raros no pueden colar
-    /// etiquetas dentro del mensaje, por mucho que la plantilla esté en manos de otro.
-    /// Las líneas en blanco separan párrafos.
-    /// </summary>
+    // Sustituye con los valores en bruto y escapa todo al final, para que ningún valor cuele
+    // etiquetas. Las líneas en blanco separan párrafos.
     public static string Renderizar(string plantilla, params (string Marcador, string Valor)[] valores)
     {
         var texto = Rellenar(plantilla, valores);

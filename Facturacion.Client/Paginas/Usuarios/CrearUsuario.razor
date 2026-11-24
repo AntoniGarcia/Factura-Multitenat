@@ -13,7 +13,7 @@
 <TarjetaFormulario RutaVolver="/">
 @if (_resultado is null)
 {
-    @* El @key nuevo en «Crear otro» hace que Blazor arme el formulario desde cero, vacío. *@
+    @* El @key nuevo en «Crear otro» rearma el formulario vacío. *@
     <FormularioDeUsuario @key="_versionDelFormulario"
                          AlCrear="r => _resultado = r"
                          AlCancelar="@(() => Navegacion.NavigateTo("/empresa/usuarios"))" />

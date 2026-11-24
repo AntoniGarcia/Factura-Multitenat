@@ -1,13 +1,10 @@
 namespace Facturacion.Server.Data.Entidades.Plataforma;
 
-/// <summary>
-/// SMTP de la empresa para sus comprobantes, separado de la configuración fiscal. Es el único
-/// camino: sin él completo los comprobantes no se envían, y el SMTP del sistema queda solo para
-/// los correos de la plataforma. El puerto determina TLS: 465 directo o 587 con STARTTLS.
-/// </summary>
+// Único camino de los comprobantes de la empresa. El puerto decide el TLS: 465 directo o 587
+// con STARTTLS.
 public sealed class CorreoDeEmpresa : IEntidadDeEmpresa
 {
-    /// <summary>Es también la llave primaria: un servidor de correo por empresa.</summary>
+    // También es la llave primaria: un servidor de correo por empresa.
     public Guid EmpresaId { get; set; }
 
     public Empresa Empresa { get; set; } = null!;
@@ -18,7 +15,7 @@ public sealed class CorreoDeEmpresa : IEntidadDeEmpresa
 
     public string? Usuario { get; set; }
 
-    /// <summary>Cifrada con un propósito propio por empresa. Nunca sale del servidor.</summary>
+    // Cifrada con un propósito propio por empresa; nunca sale del servidor.
     public string? ContrasenaCifrada { get; set; }
 
     public string? RemitenteNombre { get; set; }

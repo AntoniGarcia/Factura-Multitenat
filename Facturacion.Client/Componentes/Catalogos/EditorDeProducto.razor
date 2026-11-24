@@ -4,10 +4,7 @@
 @inject ServicioDeCatalogos Catalogos
 @inject IBusquedaDeCatalogo Busqueda
 
-@*
-    El formulario del producto, sin marco: la página que lo contiene pone sus botones y los
-    liga al formulario con IdDelFormulario, igual que EditorDeCliente.
-*@
+@* Solo los campos, igual que EditorDeCliente. *@
 
 <PanelErrores Problema="_error" />
 <AvisoCambiosSinGuardar HayCambios="TieneCambiosSinGuardar" />
@@ -196,22 +193,22 @@ else
 <ActualizadorDeCatalogos AlCambiar="@(() => { })" />
 
 @code {
-    /// <summary>Null para crear; con valor, precarga ese producto para editarlo.</summary>
+    // Null para crear; con valor, carga ese producto para editarlo.
     [Parameter]
     public Guid? Id { get; set; }
 
-    /// <summary>Identificador del formulario, para que los botones del contenedor lo envíen.</summary>
+    // Para que los botones del contenedor envíen este formulario.
     [Parameter, EditorRequired]
     public string IdDelFormulario { get; set; } = string.Empty;
 
     [Parameter]
     public EventCallback AlGuardar { get; set; }
 
-    /// <summary>Mientras carga o guarda: el contenedor deshabilita su botón de guardar.</summary>
+    // El contenedor deshabilita su botón de guardar mientras tanto.
     [Parameter]
     public EventCallback<bool> OcupadoCambiado { get; set; }
 
-    /// <summary>El código interno del producto que se edita, para el título del contenedor.</summary>
+    // Para el título del contenedor.
     [Parameter]
     public EventCallback<int> CodigoCargado { get; set; }
 
@@ -261,7 +258,7 @@ else
     private decimal? _nuevaTasa;
     private bool _nuevoEsRetencion;
 
-    /// <summary>Atajos de IVA que completan impuesto, factor y tasa sin sustituir la configuración detallada.</summary>
+    // Atajos que completan impuesto, factor y tasa del IVA.
     private static readonly (string Etiqueta, string Factor, decimal? Tasa)[] Atajos =
     [
         ("IVA 16 %", "Tasa", 0.16m),
@@ -270,7 +267,7 @@ else
         ("Exento de IVA", "Exento", null)
     ];
 
-    // Se carga una sola vez: avisar al contenedor lo vuelve a dibujar (ver EditorDeCliente).
+    // Una sola vez (ver EditorDeCliente).
     protected override async Task OnInitializedAsync()
     {
         _cargando = true;
@@ -296,8 +293,7 @@ else
                 _impuestos.AddRange(producto.Impuestos);
                 PrepararNuevoImpuesto();
 
-                // Se resuelven contra el catálogo para poder mostrar la descripción, que es
-                // lo que le dice al capturista si eligió la clave correcta.
+                // Se resuelven para mostrar la descripción, que confirma si la clave es la correcta.
                 _claveProdServSel = await ResolverAsync("c_ClaveProdServ", producto.ClaveProdServ);
                 _claveUnidadSel = await ResolverAsync("c_ClaveUnidad", producto.ClaveUnidad);
 
@@ -322,10 +318,8 @@ else
     {
         _claveUnidadSel = clave;
 
-        // La unidad en texto se precarga con la del catálogo, pero se puede cambiar: es lo
-        // que ve el cliente y a veces conviene que diga «Caja con 12» y no «Pieza». Un nombre
-        // del catálogo que no cabe en los 20 caracteres del SAT no se precarga ni se recorta:
-        // «Gramo por centímetro» ya significa otra cosa.
+        // Se precarga el nombre de la unidad del catálogo solo si cabe en los 20 caracteres del SAT;
+        // no se recorta porque cambiaría su significado.
         if (clave is not null && string.IsNullOrWhiteSpace(_unidadTexto) &&
             UnidadDeConcepto.EsValida(clave.Descripcion))
             _unidadTexto = clave.Descripcion;
@@ -363,8 +357,7 @@ else
     private void AplicarAtajo((string Etiqueta, string Factor, decimal? Tasa) atajo)
     {
         if (!ReglasDeObjetoImpuesto.PermiteImpuesto(_objetoImp, "002", false)) return;
-        // Solo reemplaza el traslado de IVA; si el producto tiene retenciones o IEPS
-        // configurados a mano, se respetan.
+        // Solo reemplaza el traslado de IVA; retenciones e IEPS capturados a mano se respetan.
         _impuestos.RemoveAll(i => i is { Impuesto: "002", EsRetencion: false });
         _impuestos.Insert(0, new ImpuestoDeProductoDto("002", atajo.Factor, atajo.Tasa, EsRetencion: false));
     }

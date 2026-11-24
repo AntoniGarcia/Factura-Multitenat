@@ -58,7 +58,7 @@ public static class AccionesDeBitacora
     public const string ClienteDesactivado = "cliente_desactivado";
     public const string ClienteReactivado = "cliente_reactivado";
     public const string ClienteEliminado = "cliente_eliminado";
-    // Solo las escribe la migración que unió los catálogos de las empresas de cada cuenta.
+    // Solo la escribió la migración que unió los catálogos de cada cuenta.
     public const string ClienteFusionado = "cliente_fusionado";
     public const string ClienteRenumerado = "cliente_renumerado";
 
@@ -68,7 +68,7 @@ public static class AccionesDeBitacora
     public const string ProductoDesactivado = "producto_desactivado";
     public const string ProductoReactivado = "producto_reactivado";
 
-    // Borrado físico de un registro de catálogo que nunca se usó (AGENTS.md §11).
+    // Borrado físico de un registro de catálogo que nunca se usó.
     public const string ProductoEliminado = "producto_eliminado";
     public const string ProductoRenumerado = "producto_renumerado";
     public const string VehiculoEliminado = "vehiculo_eliminado";
@@ -83,10 +83,7 @@ public static class AccionesDeBitacora
     public const string ReservaAbandonada = "reserva_de_timbre_abandonada";
 
     // ── Comprobantes: emisión, timbrado, cancelación y pagos ──────────────────────────
-    //
-    // Crear el borrador vacío no se registra, por la misma razón por la que el barrido de
-    // huérfanos no deja rastro: todavía no lleva ningún dato fiscal. El primer guardado se
-    // registra como alta, sin valor anterior.
+    // Crear el borrador vacío no se registra; el primer guardado se registra como alta.
     public const string ComprobanteGuardado = "comprobante_guardado";
     public const string BorradorDescartado = "borrador_descartado";
     public const string TimbradoIniciado = "timbrado_iniciado";
@@ -95,10 +92,7 @@ public static class AccionesDeBitacora
     public const string CancelacionSolicitada = "cancelacion_solicitada";
     public const string CancelacionResuelta = "cancelacion_resuelta";
 
-    /// <summary>
-    /// El SAT contestó un estatus distinto del que tenía el sistema y se ajustó al suyo. Es
-    /// el único cambio de estatus que no nace de una acción del usuario en esta aplicación.
-    /// </summary>
+    // El único cambio de estatus que no nace de una acción del usuario: lo dicta el SAT.
     public const string EstatusSincronizadoConSat = "estatus_sincronizado_con_sat";
 
     // ── Documentos de traslado (Carta Porte) ──────────────────────────────────────────

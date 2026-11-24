@@ -70,15 +70,13 @@ public sealed class ServicioDeClientesDePlataforma(
                 Empresas = baseDeDatos.Empresas.Count(e => e.CuentaId == c.Id),
                 Usuarios = baseDeDatos.Users.Count(u => u.CuentaId == c.Id),
 
-                // IgnoreQueryFilters justificado: BolsaTimbres lleva el filtro de cuenta y el
-                // panel no tiene cuenta activa. Acotado por CuentaId, nunca abierto.
+                // IgnoreQueryFilters: el panel no tiene cuenta activa; acotado por CuentaId.
                 Timbres = baseDeDatos.BolsasTimbres
                     .IgnoreQueryFilters()
                     .Where(b => b.CuentaId == c.Id)
                     .Sum(b => (int?)b.Disponibles) ?? 0,
 
-                // IgnoreQueryFilters justificado: ComprasTimbres lleva el filtro de cuenta y
-                // el panel no tiene cuenta activa. Acotado por CuentaId, nunca abierto.
+                // IgnoreQueryFilters: el panel no tiene cuenta activa; acotado por CuentaId.
                 ComprasPendientes = baseDeDatos.ComprasTimbres
                     .IgnoreQueryFilters()
                     .Count(cmp => cmp.Estado == EstadosDeCompra.PendienteDePago &&
@@ -119,8 +117,7 @@ public sealed class ServicioDeClientesDePlataforma(
             .OrderBy(e => e.NombreFiscal)
             .Select(e => new EmpresaDeCuentaDto(
                 e.Id, e.Rfc, e.NombreFiscal, e.RegimenFiscal, e.Activa, e.FechaAltaUtc,
-                // IgnoreQueryFilters justificado: igual que arriba; se cuentan las pendientes
-                // que solicitó esta empresa concreta, no las de las demás.
+                // IgnoreQueryFilters: solo las pendientes que solicitó esta empresa.
                 baseDeDatos.ComprasTimbres.IgnoreQueryFilters()
                     .Count(c => c.EmpresaId == e.Id && c.Estado == EstadosDeCompra.PendienteDePago)))
             .ToListAsync(ct);
@@ -132,7 +129,7 @@ public sealed class ServicioDeClientesDePlataforma(
             .SingleAsync(ct);
         var usuariosActivos = await LimitesDeCuenta.UsuariosQueCuentan(baseDeDatos, cuentaId).CountAsync(ct);
 
-        // IgnoreQueryFilters justificado: igual que en el listado, acotado a esta cuenta.
+        // IgnoreQueryFilters: acotado a esta cuenta.
         var reservados = await baseDeDatos.BolsasTimbres.IgnoreQueryFilters()
             .Where(b => b.CuentaId == cuentaId)
             .Select(b => (int?)b.Reservados)
@@ -148,10 +145,7 @@ public sealed class ServicioDeClientesDePlataforma(
             reservados, paquetes, nombreTitular);
     }
 
-    /// <summary>
-    /// Fija cuántos usuarios activos y cuántas empresas admite la cuenta. No se baja de lo que
-    /// ya usa: una cuenta pasada de su límite no podría ni reactivar a quien ya tenía.
-    /// </summary>
+    // No se baja de lo que ya usa: una cuenta pasada de su límite no podría reactivar a nadie.
     public async Task<Resultado<LimitesDeCuentaDto>> CambiarLimitesAsync(
         Guid operadorId, Guid cuentaId, PeticionCambiarLimitesDeCuenta peticion, CancellationToken ct)
     {
@@ -159,7 +153,7 @@ public sealed class ServicioDeClientesDePlataforma(
             peticion.LimiteDeEmpresas is < 1 or > LimitesDeCuenta.Maximo)
             return ErrorNegocio.Validacion("limite-invalido", $"Los límites van de 1 a {LimitesDeCuenta.Maximo}.");
 
-        // El mismo bloqueo que toman las altas de usuarios y empresas: nadie entra mientras se mide.
+        // El mismo bloqueo de las altas de usuarios y empresas: nadie entra mientras se mide.
         await using var transaccion = await baseDeDatos.Database.BeginTransactionAsync(ct);
 
         var cuenta = await LimitesDeCuenta.BloquearAsync(baseDeDatos, cuentaId, ct);

@@ -20,7 +20,7 @@ public sealed record PeticionGuardarDatosObra(
     public ServicioParcialConstruccionDto? ServicioParcial { get; init; }
 }
 
-/// <param name="IvaEstimado">IVA trasladado de los conceptos, tal como sale en el CFDI.</param>
+// IvaEstimado: IVA trasladado de los conceptos, como sale en el CFDI.
 public sealed record DatosObraDto(
     decimal ImporteTrabajos,
     decimal PorcentajeAmortizacion,

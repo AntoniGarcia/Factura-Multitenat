@@ -1,21 +1,12 @@
 namespace Facturacion.Server.Infra.Correo;
 
-/// <summary>
-/// Envío de correo del SaaS: registro, contraseñas e invitaciones. Los comprobantes no pasan
-/// por aquí, salen por <see cref="IServicioDeCorreoDeEmpresa"/> con el SMTP de cada empresa;
-/// <see cref="MensajeDeCorreo"/> es común a los dos.
-/// </summary>
+// Correo del SaaS: registro, contraseñas e invitaciones. Los comprobantes salen por
+// IServicioDeCorreoDeEmpresa.
 
 public sealed record AdjuntoDeCorreo(string NombreArchivo, byte[] Contenido, string TipoMime);
 
-/// <param name="ResponderA">
-/// Es del CFDI: el aviso de una factura responde al correo de la empresa emisora
-///, no al buzón del SaaS. El registro no lo usa.
-/// </param>
-/// <param name="CopiaOculta">
-/// La copia a la cuenta de la empresa va oculta: el cliente no tiene por qué ver a dónde
-/// archiva su proveedor lo que le manda.
-/// </param>
+// ResponderA: en un CFDI, el correo de la empresa emisora. CopiaOculta: el cliente no ve a
+// dónde archiva su proveedor lo que le manda.
 public sealed record MensajeDeCorreo(
     IReadOnlyList<string> Para,
     string Asunto,

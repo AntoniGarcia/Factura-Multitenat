@@ -4,19 +4,9 @@ using Facturacion.Shared.Comun;
 
 namespace Facturacion.Server.Infra.Correo;
 
-/// <summary>
-/// Decide si el servidor SMTP que capturó una empresa es un destino al que este servidor puede
-/// conectarse.
-///
-/// <para><b>Por qué</b></para>
-/// El servidor lo escribe el usuario. Sin esta revisión, la aplicación se conectaría adonde le
-/// digan: su propia red interna, el servicio de metadatos de Azure, otro equipo de la VNet.
-///
-/// <para><b>Resolver una sola vez y conectar a esa IP</b></para>
-/// Si se validara el nombre y después el cliente SMTP lo resolviera de nuevo, un DNS bajo
-/// control de un atacante podría contestar una IP pública a la validación y una privada a la
-/// conexión. Por eso devuelve la dirección ya validada, y la conexión va a ella.
-/// </summary>
+/// El servidor SMTP lo escribe el usuario: sin esta revisión la aplicación se conectaría a su
+/// propia red interna o a servicios de metadatos. Resuelve el nombre una sola vez y devuelve
+/// la IP validada para conectar a ella (evita que el DNS conteste distinto en cada consulta).
 public static class DestinoSmtp
 {
     public const int LongitudMaxima = 253;
@@ -50,8 +40,8 @@ public static class DestinoSmtp
             return ErrorNegocio.Validacion("smtp-servidor-no-encontrado",
                 $"No se encontró el servidor «{servidor}». Revisa que esté bien escrito.");
 
-        // Basta una dirección no permitida para rechazar el nombre entero: un registro con una
-        // IP pública y otra privada es justo la forma de colar la segunda.
+        // Una sola dirección no permitida rechaza el nombre: mezclar una IP pública y una privada es
+        // la forma de colar la segunda.
         if (direcciones.Any(d => !EsPublica(d)))
             return ErrorNegocio.Validacion("smtp-servidor-no-permitido",
                 "Ese servidor apunta a una red privada o local. Usa el servidor público de tu proveedor de correo.");

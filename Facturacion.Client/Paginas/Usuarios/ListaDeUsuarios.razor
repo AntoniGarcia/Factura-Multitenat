@@ -137,8 +137,7 @@ else
         _aviso = null;
         try
         {
-            // Sin cerrar con clic fuera: un clic distraído borraría la contraseña y los
-            // permisos ya capturados. Escape y Cancelar siguen cerrando.
+            // Sin cerrar con clic fuera: perdería la contraseña y los permisos capturados.
             var opciones = new DialogOptions { MaxWidth = MaxWidth.Medium, FullWidth = true, BackdropClick = false };
             var referencia = await Dialogos.ShowAsync<DialogoDeUsuario>("Nuevo usuario", opciones);
             var resultado = await referencia.Result;
@@ -155,8 +154,7 @@ else
         }
     }
 
-    // Con decenas de casillas la lista completa no cabe en un renglón: se resume por sección
-    // («Emitir 12 · Catálogos 4»). El detalle está en Editar usuario.
+    // Resumen por sección («Emitir 12 · Catálogos 4»); el detalle está en Editar usuario.
     private static string Etiquetas(IReadOnlyList<string> permisos)
     {
         var partes = Permisos.Secciones

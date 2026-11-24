@@ -212,7 +212,7 @@ public sealed class ServicioDeTrasladosCartaPorte(
             p.Mercancias.Select(x => x.Orden).Distinct().Count() != p.Mercancias.Count)
             return ErrorNegocio.Validacion("orden-repetido", "Cada ubicación y mercancía debe tener un orden distinto.");
 
-        // El filtro de la cuenta deja fuera los productos ajenos: un id de otra cuenta no cuenta.
+        // El filtro de la cuenta deja fuera los productos de otra cuenta.
         var productos = p.Mercancias.Where(x => x.ProductoId is not null).Select(x => x.ProductoId!.Value).Distinct().ToList();
         if (productos.Count > 0 &&
             await baseDeDatos.Productos.AsNoTracking().CountAsync(x => productos.Contains(x.Id), ct) != productos.Count)

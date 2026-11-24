@@ -46,10 +46,7 @@ public sealed class ServicioDeSesion(IHttpClientFactory fabrica)
 
     public bool TokenVigente => _accessToken is not null && DateTime.UtcNow < _expiraUtc;
 
-    /// <summary>
-    /// Acepta una clave de permiso o el nombre de una política compuesta de
-    /// <see cref="Permisos.Politicas"/>, que se cumple con cualquiera de sus permisos.
-    /// </summary>
+    // Acepta una clave de permiso o una política compuesta, que se cumple con cualquiera de sus permisos.
     public bool TienePermiso(string permiso)
         => Sesion is { } sesion &&
            (Permisos.Politicas.Compuestas.TryGetValue(permiso, out var claves)

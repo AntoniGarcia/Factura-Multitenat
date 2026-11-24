@@ -11,7 +11,7 @@ public sealed class ServicioDeEmision(IHttpClientFactory fabrica)
 {
     private HttpClient Cliente => fabrica.CreateClient(ClientesHttp.Api);
 
-    /// <param name="variante">Una de <see cref="VariantesDeFactura"/>; nula crea una factura básica.</param>
+    // Variante nula crea una factura básica.
     public async Task<(ComprobanteDto? Exito, DetalleProblema? Error)> CrearBorradorAsync(
         string? variante, CancellationToken ct = default)
     {
@@ -89,10 +89,7 @@ public sealed class ServicioDeEmision(IHttpClientFactory fabrica)
         return await LeerAsync<CfdiRelacionadoResueltoDto>(respuesta, ct);
     }
 
-    /// <summary>
-    /// Series que se pueden relacionar, como opciones del buscador: la clave es la serie y la
-    /// descripción dice qué tipos de CFDI tiene timbrados.
-    /// </summary>
+    // Opciones del buscador: la clave es la serie y la descripción, los tipos de CFDI timbrados.
     public async Task<IReadOnlyList<ClaveSatDto>> ListarSeriesRelacionablesAsync(CancellationToken ct = default)
     {
         var series = await Cliente.GetFromJsonAsync<IReadOnlyList<SerieRelacionableDto>>(
@@ -102,7 +99,7 @@ public sealed class ServicioDeEmision(IHttpClientFactory fabrica)
             $"{string.Join(", ", s.Tipos.Select(NombreDeTipo))} · {s.Timbrados} CFDI", true))];
     }
 
-    /// <summary>Tasas de Configuración para capturar una factura básica: retenciones e ISH.</summary>
+    // Retenciones e ISH de Configuración, para la factura básica.
     public async Task<TasasDeCapturaDto> ObtenerTasasDeCapturaAsync(CancellationToken ct = default)
         => await Cliente.GetFromJsonAsync<TasasDeCapturaDto>("api/documentos/tasas-de-captura", ct)
            ?? new TasasDeCapturaDto(0m, 0m, 0m, 0m);

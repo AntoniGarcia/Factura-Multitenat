@@ -2,14 +2,7 @@
 @inject ServicioDeUsuarios Usuarios
 @inject ServicioDeSesion Sesion
 
-@*
-    El alta de usuario, sin marco: lo usan la página /usuarios/nuevo y DialogoDeUsuario. Cada
-    contenedor decide qué hacer al terminar (mostrar el mensaje, cerrar el modal) a través de
-    AlCrear y AlCancelar.
-
-    No lleva PageTitle ni TituloDePagina: TituloDePagina borra el título de la barra al
-    desmontarse, y dentro del modal dejaría sin título la lista de usuarios al cerrarlo.
-*@
+@* Sin TituloDePagina: al desmontarse dentro del modal borraría el título de la lista de usuarios. *@
 
 <PanelErrores Problema="_error" />
 
@@ -56,7 +49,7 @@
 </EditForm>
 
 @code {
-    /// <summary>Se invoca con la respuesta del servidor, que trae el mensaje para el titular.</summary>
+    // Recibe la respuesta del servidor, con el mensaje para el titular.
     [Parameter]
     public EventCallback<RespuestaCrearUsuario> AlCrear { get; set; }
 
@@ -73,7 +66,7 @@
     private DetalleProblema? _error;
     private bool _enviando;
 
-    // Arranca con la empresa activa marcada; con una sola empresa en la cuenta es la única.
+    // Arranca con la empresa activa marcada.
     protected override async Task OnInitializedAsync()
     {
         _empresas = (await Usuarios.ListarAsync()).Empresas;
@@ -95,8 +88,7 @@
 
         if (exito is null) return;
 
-        // La contraseña no se queda en memoria más de lo necesario: si el alta salió bien, la
-        // pantalla ya no la necesita para nada.
+        // La contraseña no se queda en memoria después del alta.
         _contrasena = string.Empty;
         await AlCrear.InvokeAsync(exito);
     }

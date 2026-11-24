@@ -237,7 +237,7 @@ public static class InfraestructuraModule
         // La configuración guardada por el operador se consulta en cada envío.
         servicios.AddScoped<IServicioDeCorreo, ServicioDeCorreoSmtp>();
 
-        // Los comprobantes salen por aquí: con el SMTP de la empresa si lo tiene, o con el anterior.
+        // Cifra la contraseña del SMTP de cada empresa, por el que salen sus comprobantes.
         servicios.AddSingleton<IProtectorDeContrasenaSmtp, ProtectorDeContrasenaSmtp>();
         servicios.AddScoped<IServicioDeCorreoDeEmpresa, ServicioDeCorreoDeEmpresa>();
 

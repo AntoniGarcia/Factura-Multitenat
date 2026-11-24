@@ -20,7 +20,7 @@ public sealed record DatosDeEmision(
 {
     public TimeZoneInfo? ZonaHoraria { get; init; }
 
-    /// <summary>La estimación de una factura de obra: su retención local resta del Total.</summary>
+    // Estimación de una factura de obra: su retención local resta del Total.
     public DatosObra? Obra { get; init; }
 }
 

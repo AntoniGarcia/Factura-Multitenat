@@ -48,9 +48,8 @@
     private bool? _activos;
     private Guid? _empresa;
 
-    // Comodidad visual: lo que el servidor rechazaría ni se ofrece. La protección real es la
-    // política de cada endpoint. La importación crea y actualiza: se ofrece con cualquiera de
-    // las dos y el servidor rechaza, renglón por renglón, lo que no se tenga.
+    // Lo que el servidor rechazaría ni se ofrece. La importación se ofrece con crear o modificar y
+    // el servidor revisa cada renglón.
     private bool _puedeCrear, _puedeModificar, _puedeDesactivar, _puedeEliminar;
 
     private IReadOnlyList<ColumnaDeTabla<ProductoEnListaDto>> _columnas = [];
@@ -146,7 +145,7 @@
         if (error is null) await RecargarAsync();
     }
 
-    /// <summary>Solo prospera si ningún concepto usó el producto; si no, el servidor pide desactivarlo.</summary>
+    // Si algún concepto usó el producto, el servidor pide desactivarlo.
     private async Task Eliminar(ProductoEnListaDto producto)
     {
         var confirmado = await Confirmacion.ConfirmarAsync(

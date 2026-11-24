@@ -13,8 +13,7 @@
 <PageTitle>Mi empresa</PageTitle>
 <TituloDePagina Texto="Mi empresa" />
 
-@* «/empresa/certificados» abre esta misma página en la pestaña de certificados: era la ruta de
-   la página que tenían antes, y la siguen usando los avisos de Inicio y del panel de actividad. *@
+@* /empresa/certificados abre esta página en la pestaña de certificados; la usan los avisos. *@
 <TarjetaFormulario Class="tarjeta-formulario-catalogo empresa-formulario">
 <MudTabs @bind-ActivePanelIndex="_pestana">
     <MudTabPanel Text="Datos de la empresa" Icon="@Icons.Material.Filled.Business" Visible="_datos">
@@ -41,8 +40,7 @@
                                   Class="cifra-tabular catalogo-campo-corto"
                                   HelperText="No editable; identifica a esta empresa." />
 
-                    @* :after es lo que dispara la vista previa mientras se escribe; sin él, el valor
-                       se enlaza pero nada recalcula la normalización. *@
+                    @* :after dispara la vista previa de la normalización mientras se escribe. *@
                     <MudTextField @bind-Value="_nombre"
                                   @bind-Value:after="ActualizarVistaPrevia"
                                   Label="Nombre o razón social"
@@ -167,7 +165,7 @@
 
     private int _pestana;
 
-    // Cada pestaña es una casilla de Mi empresa: solo se muestran las que el usuario tiene.
+    // Solo se muestran las pestañas cuya casilla tiene el usuario.
     private bool _datos, _certificados;
 
     private EmpresaDto? _empresa;
@@ -196,9 +194,8 @@
     /// </summary>
     private NombreFiscalNormalizado _vistaPrevia = NombreFiscal.Normalizar(string.Empty);
 
-    // Ir de /empresa a /empresa/certificados reutiliza esta misma instancia y, como la página no
-    // tiene parámetros, Blazor no vuelve a llamar a OnParametersSet: la pestaña se sigue por la
-    // ubicación.
+    // Ir de /empresa a /empresa/certificados reutiliza la instancia y no llama a OnParametersSet:
+    // la pestaña se sigue por la ubicación.
     private void ElegirPestanaPorRuta()
         => _pestana = !_datos || Navegacion.ToBaseRelativePath(Navegacion.Uri)
             .StartsWith("empresa/certificados", StringComparison.OrdinalIgnoreCase) && _certificados ? PestanaCertificados : 0;
@@ -244,8 +241,7 @@
 
     private void ActualizarVistaPrevia() => _vistaPrevia = NombreFiscal.Normalizar(_nombre);
 
-    // El diálogo guarda por su cuenta y no toca los datos de esta pantalla: no hay nada que
-    // recargar al cerrarlo.
+    // El diálogo guarda por su cuenta: no hay nada que recargar al cerrarlo.
     private Task AbrirNotariaAsync()
         => Dialogos.ShowAsync<DialogoDeNotaria>("Configuración de Notaría",
             new DialogOptions { MaxWidth = MaxWidth.Small, FullWidth = true });

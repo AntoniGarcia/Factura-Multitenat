@@ -3,7 +3,7 @@ using System.Xml.Linq;
 
 namespace Facturacion.Server.Modules.Documentos.Salidas;
 
-/// <summary>Complemento de impuestos locales: la retención de obra y el ISH.</summary>
+// Retención de obra e ISH.
 public static class GeneradorDeXmlImpuestosLocales
 {
     public static XElement Generar(IReadOnlyList<ImpuestoLocalCfdi> locales)

@@ -341,8 +341,7 @@
 
     private bool PuedeTimbrar => _integracionFiscal?.TimbradoDisponible == true;
 
-    // La casilla que cuenta es la del tipo de documento seleccionado: cancelar facturas no
-    // abre cancelar pagos. El servidor rechaza igual; esto solo evita ofrecer el botón.
+    // Cuenta la casilla del tipo seleccionado: cancelar facturas no abre cancelar pagos.
     private bool PuedeEn(string accion) => _detalleSeleccionado is { } d &&
         Sesion.TienePermiso(Permisos.De(Permisos.TipoDeDocumento(d.TipoDeComprobante, d.Variante), accion));
 
@@ -687,11 +686,7 @@
 
     // ── Timbrado desde la vista previa ──────────────────────────────────────────────────
 
-    /// <summary>
-    /// Timbra el borrador tal como quedó guardado, sin pasar por su formulario. Lo que el
-    /// formulario revisa antes de timbrar —cliente, conceptos, datos de obra o de comercio
-    /// exterior— lo vuelve a validar el servidor, y si algo falta el error sale en el panel.
-    /// </summary>
+    // Timbra el borrador tal como quedó guardado; si algo falta, el servidor lo dice en el panel.
     private async Task TimbrarSeleccionadoAsync()
     {
         if (_detalleSeleccionado is not { } detalle || _timbrando || !PuedeTimbrar) return;
@@ -712,8 +707,7 @@
 
         try
         {
-            // Clave nueva por cada clic real: el filtro de idempotencia del servidor es el que
-            // detiene un reintento de la misma petición, no esto.
+            // Clave nueva por cada clic real; el filtro de idempotencia del servidor detiene los reintentos.
             var (exito, error) = await Emision.TimbrarAsync(detalle.Id, Guid.NewGuid().ToString("N"));
 
             _error = error;

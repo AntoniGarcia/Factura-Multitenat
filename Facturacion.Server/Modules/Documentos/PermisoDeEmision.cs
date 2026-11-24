@@ -4,11 +4,7 @@ using Facturacion.Shared.Contratos;
 
 namespace Facturacion.Server.Modules.Documentos;
 
-/// <summary>
-/// Qué permiso exige cada acción sobre un comprobante. La política del endpoint solo sabe que se
-/// trata de «alguna factura» o «algún documento»; el tipo y la variante viven en el comprobante,
-/// así que la comprobación exacta se hace aquí.
-/// </summary>
+// La política del endpoint no conoce el tipo ni la variante; la comprobación exacta es aquí.
 public static class PermisoDeEmision
 {
     public static string Para(string tipoDeComprobante, string? variante, string accion)
@@ -24,10 +20,7 @@ public static class PermisoDeEmision
     public static ErrorNegocio? Exigir(IContextoEmpresa contexto, Comprobante comprobante, string accion)
         => Exigir(contexto, Para(comprobante.TipoDeComprobante, comprobante.Variante, accion));
 
-    /// <summary>
-    /// Editar un borrador: quien lo creó lo edita con Crear, porque el borrador nace vacío y la
-    /// captura se guarda después; el de otro usuario exige Modificar. Modificar sirve para los dos.
-    /// </summary>
+    // Quien creó el borrador lo edita con Crear; el de otro usuario exige Modificar.
     public static ErrorNegocio? ExigirEdicion(IContextoEmpresa contexto, Comprobante comprobante)
         => comprobante.CreadoPorUsuarioId == contexto.UsuarioId &&
            contexto.Tiene(Para(comprobante.TipoDeComprobante, comprobante.Variante, Permisos.Acciones.Crear))

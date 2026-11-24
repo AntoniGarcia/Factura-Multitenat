@@ -13,24 +13,14 @@ using MimeKit;
 
 namespace Facturacion.Server.Infra.Correo;
 
-/// <summary>
-/// Envío de los correos de una empresa: sus comprobantes. Los correos del sistema —registro,
-/// contraseñas, invitaciones— no pasan por aquí: usan <see cref="IServicioDeCorreo"/> directo.
-/// </summary>
+// Los comprobantes de la empresa; los correos del sistema usan IServicioDeCorreo.
 public interface IServicioDeCorreoDeEmpresa
 {
-    /// <summary>
-    /// Envía con el SMTP de la empresa activa, el único camino para sus comprobantes. Si no lo
-    /// tiene configurado, o si su servidor falla, lanza <see cref="FalloDeCorreoDeEmpresa"/>:
-    /// nunca se manda por el del SaaS.
-    /// </summary>
+    // Sin SMTP configurado, o si falla, lanza FalloDeCorreoDeEmpresa: nunca se usa el del SaaS.
     Task EnviarAsync(MensajeDeCorreo mensaje, CancellationToken ct);
 }
 
-/// <summary>
-/// El servidor de correo de la empresa rechazó o no completó el envío. <see cref="Exception.Message"/>
-/// ya está redactado para el usuario: no trae la respuesta cruda del servidor.
-/// </summary>
+// El mensaje ya está redactado para el usuario, sin la respuesta cruda del servidor.
 public sealed class FalloDeCorreoDeEmpresa(string codigo, string mensaje, Exception? causa = null)
     : Exception(mensaje, causa)
 {
@@ -43,10 +33,10 @@ public sealed class ServicioDeCorreoDeEmpresa(
     IProtectorDeContrasenaSmtp protector,
     ILogger<ServicioDeCorreoDeEmpresa> registro) : IServicioDeCorreoDeEmpresa
 {
-    /// <summary>Tope para conectar y para cada operación con el servidor de la empresa.</summary>
+    // Tope para conectar y para cada operación con el servidor de la empresa.
     private static readonly TimeSpan Limite = TimeSpan.FromSeconds(15);
 
-    /// <summary>Tiene lo necesario para conectar y firmar el remitente.</summary>
+    // Tiene lo necesario para conectar y firmar el remitente.
     public static bool EstaCompleto(CorreoDeEmpresa? config)
         => config is { Servidor.Length: > 0, Usuario.Length: > 0, ContrasenaCifrada.Length: > 0, RemitenteCorreo.Length: > 0 };
 
@@ -60,7 +50,7 @@ public sealed class ServicioDeCorreoDeEmpresa(
             throw new FalloDeCorreoDeEmpresa("smtp-sin-configurar",
                 "Esta empresa no tiene configurado su servidor de correo, y sin él no se envían comprobantes.");
 
-        // El nombre se vuelve a resolver en cada envío: el DNS pudo cambiar desde que se guardó.
+        // Se resuelve en cada envío: el DNS pudo cambiar desde que se guardó.
         var destino = await DestinoSmtp.ResolverAsync(servidor, ct);
         if (destino.EsFallo)
             throw new FalloDeCorreoDeEmpresa(destino.Error!.Codigo, destino.Error.Mensaje);
@@ -98,8 +88,7 @@ public sealed class ServicioDeCorreoDeEmpresa(
 
         try
         {
-            // Se conecta el socket a la IP ya validada y MailKit solo hace TLS sobre él. El
-            // nombre viaja para la validación del certificado, no para resolverse otra vez.
+            // Conecta a la IP ya validada; el nombre solo sirve para validar el certificado.
             await socket.ConnectAsync(new IPEndPoint(ip, puerto), limite.Token);
             await cliente.ConnectAsync(socket, servidor, puerto, seguridad, limite.Token);
             await cliente.AuthenticateAsync(usuario, contrasena, limite.Token);
@@ -131,8 +120,7 @@ public sealed class ServicioDeCorreoDeEmpresa(
         }
         catch (SmtpCommandException ex)
         {
-            // Sin la excepción completa: su mensaje puede traer la dirección rechazada, y el log
-            // no guarda direcciones de terceros.
+            // Sin la excepción completa: su mensaje puede traer la dirección rechazada.
             registro.LogWarning("El SMTP de la empresa rechazó el envío: {Codigo} {Estado}.",
                 ex.ErrorCode, (int)ex.StatusCode);
 

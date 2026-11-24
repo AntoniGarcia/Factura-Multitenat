@@ -13,8 +13,7 @@ public static class TimbradoEndpoints
     {
         var grupo = rutas.MapGroup("/api/documentos").WithTags("Documentos");
 
-        // Solo exige sesión: dice si el timbrado de la plataforma está disponible, sin datos
-        // de ninguna empresa, y Configuración lo muestra a quien no necesariamente timbra.
+        // Solo sesión: no trae datos de ninguna empresa y Configuración lo muestra a cualquiera.
         grupo.MapGet("/integracion-fiscal", ObtenerEstadoDeIntegracion)
             .RequireAuthorization();
 

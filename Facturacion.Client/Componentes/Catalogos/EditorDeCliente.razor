@@ -2,13 +2,7 @@
 @inject ServicioDeClientes Clientes
 @inject ServicioDeCatalogos Catalogos
 
-@*
-    El formulario del cliente, sin marco: la página que lo contiene pone sus botones y los liga
-    al formulario con IdDelFormulario; aquí solo vive lo que se captura.
-
-    Orden: lo que pide el CFDI, cómo contactarlo, a dónde se entrega y, al final y plegadas,
-    las preferencias que precargan la factura. Solo los datos fiscales son obligatorios.
-*@
+@* Solo los campos: los botones los pone la página que lo contiene (IdDelFormulario). *@
 
 <PanelErrores Problema="_error" />
 <AvisoCambiosSinGuardar HayCambios="TieneCambiosSinGuardar" />
@@ -67,12 +61,7 @@ else
 
         <div class="catalogo-rejilla">
             <div class="catalogo-campo-amplio">
-            @*
-                Se listan todos los regímenes, no solo los del tipo de persona: el catálogo
-                precargado no trae las banderas de física/moral —ClaveSatDto está congelado y
-                solo lleva clave y descripción— así que filtrar aquí sería adivinar. El
-                servidor sí lo sabe y lo rechaza con un mensaje que dice cuál es el problema.
-            *@
+            @* Todos los regímenes: el catálogo precargado no distingue física y moral; el servidor lo valida. *@
 <BuscadorCatalogo Catalogo="c_RegimenFiscal" Opciones="@Catalogos.Obtener("c_RegimenFiscal")" @bind-Clave="_regimenFiscal" Label="Régimen fiscal" Deshabilitado="@_esGenericoNacional" PuedeLimpiar="false" />
             </div>
             <div class="catalogo-campo-corto">
@@ -128,8 +117,7 @@ else
         }
         else
         {
-            @* Estado, municipio y código postal se guardan como claves del SAT: así la Carta Porte
-               puede precargar este domicilio como destino. *@
+            @* Claves del SAT para que la Carta Porte pueda precargar este domicilio como destino. *@
             <EditorDomicilioCartaPorte Valor="@DomicilioSat" ValorCambiado="AlCambiarDomicilioSat" Requerido="false" />
             <div class="rejilla-campos">
                 <MudTextField @bind-Value="_colonia" Label="Colonia" MaxLength="128" />
@@ -165,22 +153,22 @@ else
 @code {
     private const string NombrePublico = "PUBLICO EN GENERAL";
 
-    /// <summary>Null para crear; con valor, precarga ese cliente para editarlo.</summary>
+    // Null para crear; con valor, carga ese cliente para editarlo.
     [Parameter]
     public Guid? Id { get; set; }
 
-    /// <summary>Identificador del formulario, para que los botones del contenedor lo envíen.</summary>
+    // Para que los botones del contenedor envíen este formulario.
     [Parameter, EditorRequired]
     public string IdDelFormulario { get; set; } = string.Empty;
 
     [Parameter]
     public EventCallback AlGuardar { get; set; }
 
-    /// <summary>Mientras carga o guarda: el contenedor deshabilita su botón de guardar.</summary>
+    // El contenedor deshabilita su botón de guardar mientras tanto.
     [Parameter]
     public EventCallback<bool> OcupadoCambiado { get; set; }
 
-    /// <summary>La clave interna del cliente que se edita, para el título del contenedor.</summary>
+    // Para el título del contenedor.
     [Parameter]
     public EventCallback<int> ClaveCargada { get; set; }
 
@@ -240,8 +228,7 @@ else
     private ClaveSatDto? ResidenciaFiscalSeleccionada => string.IsNullOrWhiteSpace(_residenciaFiscal)
         ? null : new ClaveSatDto("c_Pais", _residenciaFiscal, _residenciaFiscal, true);
 
-    // Se carga una sola vez: avisar al contenedor lo vuelve a dibujar, y con OnParametersSet
-    // eso volvería a cargar el cliente sin fin.
+    // Una sola vez: avisar al contenedor lo redibuja, y con OnParametersSet cargaría sin fin.
     protected override async Task OnInitializedAsync()
     {
         _cargando = true;
@@ -284,10 +271,7 @@ else
 
     private void ActualizarVistaPrevia() => _vistaPrevia = NombreFiscal.Normalizar(_nombre);
 
-    /// <summary>
-    /// Al llegar al RFC de público en general se propone el nombre si el campo está vacío, y se
-    /// puede cambiar (AGENTS.md §11). Al salir de él, el nombre propuesto se quita.
-    /// </summary>
+    // Con el RFC de público en general propone el nombre si está vacío; se puede cambiar.
     private void AlCambiarRfc(string valor)
     {
         var eraGenerico = _esGenericoNacional;
@@ -302,11 +286,7 @@ else
         ActualizarVistaPrevia();
     }
 
-    /// <summary>
-    /// Régimen y uso del público en general se ponen solos y se bloquean. Fijarlos aquí no
-    /// sustituye la validación del servidor, que los comprueba igual: esto es para que el
-    /// capturista no tenga que saberlos de memoria.
-    /// </summary>
+    // Régimen y uso del público en general se ponen solos y se bloquean; el servidor los valida igual.
     private void AplicarReglasDeGenerico()
     {
         _esGenericoNacional = _rfc == Rfc.GenericoNacional;
@@ -323,8 +303,7 @@ else
         await OcupadoCambiado.InvokeAsync(true);
         _error = null;
 
-        // El domicilio nacional va con claves del SAT; el país se fija para que la Carta Porte
-        // lo reconozca como mexicano.
+        // Se fija el país para que la Carta Porte reconozca el domicilio como mexicano.
         if (!_esGenericoExtranjero)
             _pais = new[] { _calle, _estado, _municipio, _codigoPostal }.Any(x => x is not null) ? "MEX" : null;
 

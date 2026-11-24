@@ -74,10 +74,7 @@ public sealed record DocumentoPorPagarDto(
     string ObjetoImpDR,
     int DecimalesMoneda = 2);
 
-/// <summary>
-/// Sugerencia del buscador de facturas del pago. El saldo es orientativo: al agregarla se
-/// consulta otra vez con <see cref="DocumentoPorPagarDto"/>.
-/// </summary>
+// El saldo es orientativo: al agregar la factura se consulta otra vez.
 public sealed record FacturaPendienteDto(
     string? Serie,
     int Folio,

@@ -22,16 +22,14 @@ public static class ValidadorFiscalDeObra
             return ErrorNegocio.Regla("obra-operacion-no-disponible",
                 "Esta estimación solo se puede emitir como factura de ingreso sin exportación.");
 
-        // La primera deducción de obra pública viaja al complemento de impuestos locales, cuya
-        // tasa admite dos decimales; las demás deducciones solo restan del importe líquido.
+        // Va al complemento de impuestos locales, que admite dos decimales en la tasa.
         if (obra.TipoObra == TiposDeObra.Publica &&
             decimal.Round(obra.PorcentajeDeduccion1, 2) != obra.PorcentajeDeduccion1)
             return ErrorNegocio.Validacion("obra-retencion-local-decimales",
                 $"El porcentaje de {obra.NombreDeduccion1} admite solo dos decimales.");
 
-        // Retenciones y devoluciones del contrato se restan del pago, después del total, y no
-        // tocan el CFDI. La amortización sí: va como descuento de los conceptos (procedimiento de
-        // remanente), así que exige el anticipo relacionado; el saldo se revisa contra la base.
+        // La amortización va como descuento de los conceptos (remanente), así que exige el anticipo
+        // relacionado; retenciones y devoluciones no tocan el CFDI.
         if (obra.PorcentajeAmortizacion != 0 &&
             comprobante.Relacionados.Count(x => x.TipoRelacion == AmortizacionDeObra.TipoRelacionAnticipo) != 1)
             return ErrorNegocio.Regla("obra-amortizacion-sin-anticipo",

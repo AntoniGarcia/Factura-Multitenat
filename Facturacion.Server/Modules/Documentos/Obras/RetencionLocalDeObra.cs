@@ -4,14 +4,12 @@ using Facturacion.Shared.Obras;
 
 namespace Facturacion.Server.Modules.Documentos.Obras;
 
-/// <summary>
-/// Retención que va al complemento de impuestos locales: la primera deducción de una obra
-/// pública, con el nombre y la tasa capturados (0.50 en obra federal; 0.20 o 0.30 en algunas
-/// estatales y municipales). Las demás deducciones solo restan del importe líquido.
-/// </summary>
+/// Retención del complemento de impuestos locales: la primera deducción de obra pública
+/// (0.50 federal; 0.20 o 0.30 en algunos estados y municipios). Las demás deducciones solo
+/// restan del importe líquido.
 public static class RetencionLocalDeObra
 {
-    /// <param name="subTotal">Importe de los trabajos, ya en los decimales de la moneda.</param>
+    // subTotal: ya en los decimales de la moneda.
     public static ImpuestoLocalCfdi? Calcular(DatosObra? obra, decimal subTotal)
         => obra is { TipoObra: TiposDeObra.Publica } && obra.PorcentajeDeduccion1 != 0
             ? new(obra.NombreDeduccion1, obra.PorcentajeDeduccion1,

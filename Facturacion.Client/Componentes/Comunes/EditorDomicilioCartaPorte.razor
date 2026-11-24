@@ -28,7 +28,7 @@
     [Parameter] public EventCallback<DomicilioSatDto> ValorCambiado { get; set; }
     [Parameter] public bool Deshabilitado { get; set; }
 
-    /// <summary>Falso en el domicilio del cliente, que es opcional; en la Carta Porte sí se exige.</summary>
+    // Falso en el domicilio del cliente, que es opcional.
     [Parameter] public bool Requerido { get; set; } = true;
 
     private DomicilioSatDto? _ultimoValor;

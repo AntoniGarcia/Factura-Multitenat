@@ -2,7 +2,7 @@ namespace Facturacion.Server.Data.Entidades.Plataforma;
 
 /// <summary>
 /// Saldo de timbres de una cuenta. Hay exactamente un renglón por cuenta y lo comparten todas
-/// sus empresas (AGENTS.md §11): los timbres se compran y se gastan por cuenta.
+/// sus empresas: los timbres se compran y se gastan por cuenta.
 ///
 /// <para><b>Por qué existe si el saldo es la suma de los movimientos</b></para>
 /// La verdad contable son los <see cref="MovimientoTimbre"/>: este renglón es esa suma ya

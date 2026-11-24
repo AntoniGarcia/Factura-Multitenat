@@ -2,10 +2,7 @@ using MudBlazor;
 
 namespace Facturacion.Client.Layout;
 
-/// <summary>
-/// Traduce el nombre de ícono de <see cref="ElementoDeMenu"/> al ícono de MudBlazor. Lo usan el
-/// menú lateral y los selectores con tarjetas, para que una entrada se vea igual en los dos.
-/// </summary>
+// Lo usan el menú lateral y los selectores con tarjetas, para que una entrada se vea igual.
 public static class IconosDeMenu
 {
     public static string Obtener(string nombre) => nombre switch

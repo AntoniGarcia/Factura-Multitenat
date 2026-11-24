@@ -2,13 +2,10 @@ using System.Text;
 
 namespace Facturacion.Server.Modules.Plataforma;
 
-/// <summary>Lo común a los CSV con que se importan los catálogos de clientes y productos.</summary>
+// Común a los CSV de clientes y productos.
 internal static class LectorCsv
 {
-    /// <summary>
-    /// Parte un renglón de CSV respetando las comillas: un nombre como «ACME, SA» viene
-    /// entrecomillado y no debe partirse en dos columnas.
-    /// </summary>
+    // Respeta las comillas: «ACME, SA» entrecomillado no se parte en dos columnas.
     public static List<string> Partir(string linea)
     {
         var campos = new List<string>();
@@ -50,7 +47,7 @@ internal static class LectorCsv
         return campos;
     }
 
-    /// <summary>Lee la columna Activo: Sí, No y sus equivalentes que salen de otros sistemas.</summary>
+    // Sí, No y sus equivalentes de otros sistemas.
     public static bool TryLeerSiNo(string texto, out bool valor)
     {
         switch (texto.Trim().ToUpperInvariant())

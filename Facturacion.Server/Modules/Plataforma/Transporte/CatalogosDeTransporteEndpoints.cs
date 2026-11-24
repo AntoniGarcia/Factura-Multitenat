@@ -93,8 +93,8 @@ public static class CatalogosDeTransporteEndpoints
         await db.SaveChangesAsync(ct); return Results.Ok(ADto(figura));
     }
 
-    // Borrado físico, solo de lo que ningún traslado usó (AGENTS.md §11). Aquí basta la llave
-    // foránea de TrasladosCartaPorte: SQL Server rechaza el borrado de lo que ya se usó.
+    // Borrado físico solo de lo que ningún traslado usó; la llave foránea de
+    // TrasladosCartaPorte rechaza lo ya usado.
     private static async Task<IResult> EliminarVehiculo(Guid id, AppDbContext db, IServicioDeBitacora bitacora, HttpContext http, CancellationToken ct)
     {
         var vehiculo = await db.Vehiculos.FirstOrDefaultAsync(x => x.Id == id, ct);

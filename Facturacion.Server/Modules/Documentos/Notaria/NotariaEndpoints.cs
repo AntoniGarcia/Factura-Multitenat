@@ -25,8 +25,7 @@ public static class NotariaEndpoints
         grupoDocumentos.MapPut("/{comprobanteId:guid}/partes", GuardarPartes);
         grupoDocumentos.MapPost("/{comprobanteId:guid}/validar-xml", ValidarXml);
 
-        // Solo lectura para quien emite: los datos del notario se muestran en la factura, pero se
-        // editan desde Configuración, que pide otro permiso.
+        // Solo lectura para quien emite: los datos del notario se editan desde Configuración.
         rutas.MapGet("/api/notaria/notario", Obtener)
             .WithTags("Notaría")
             .RequireAuthorization(Permisos.Politicas.Notaria);

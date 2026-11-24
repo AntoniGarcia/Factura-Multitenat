@@ -153,13 +153,11 @@ public sealed class ServicioDeObras(
 
     private static DatosObraDto Calcular(Comprobante comprobante, DatosObra datos)
     {
-        // Subtotal, IVA y total son los del CFDI: la amortización es el descuento de los conceptos.
-        // Retenciones, devoluciones y deducciones se restan después, solo del importe líquido.
+        // Subtotal, IVA y total son los del CFDI; retenciones y deducciones solo restan del líquido.
         var importeTrabajos = comprobante.SubTotal;
         var amortizacion = comprobante.Descuento;
         var subtotal = importeTrabajos - amortizacion;
-        // Redondeado por impuesto igual que en el XML, para que la estimación lleve el IVA exacto
-        // del CFDI aunque los conceptos mezclen tasas o vengan exentos.
+        // Redondeado por impuesto como en el XML, aunque haya tasas mixtas o exentos.
         var iva = comprobante.Conceptos.SelectMany(x => x.Impuestos)
             .Where(x => !x.EsRetencion && x.Impuesto == "002")
             .Sum(x => Math.Round(x.Importe ?? 0m, 2, MidpointRounding.ToEven));

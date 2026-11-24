@@ -84,11 +84,9 @@ public sealed class ValidadorDeCliente(AppDbContext baseDeDatos, IServicioCatalo
         return null;
     }
 
-    /// <summary>
-    /// Reglas fijas de los dos genéricos. Para el nacional, régimen y uso son fijos; el nombre
-    /// puede ser otro (AGENTS.md §11, 28 de octubre de 2026): el SAT solo exige
-    /// PUBLICO EN GENERAL en la factura global, y eso lo revisa la emisión.
-    /// </summary>
+    /// Reglas fijas de los genéricos. En el nacional, régimen y uso son fijos y el nombre puede
+    /// ser otro: PUBLICO EN GENERAL solo se exige en la
+    /// factura global, y eso lo revisa la emisión.
     private static ErrorNegocio? ValidarGenerico(
         string rfc, PeticionGuardarCliente peticion, string nombreNormalizado)
     {

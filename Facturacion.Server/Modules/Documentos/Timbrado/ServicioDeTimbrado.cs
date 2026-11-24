@@ -74,7 +74,7 @@ public sealed class ServicioDeTimbrado(
                 "ningún timbre ni folio.");
         }
 
-        // También antes de apartar: sin permiso para este tipo de documento no se gasta nada.
+        // Antes de apartar: sin permiso para el tipo de documento no se gasta folio ni timbre.
         var clase = await baseDeDatos.Comprobantes
             .AsNoTracking()
             .Where(c => c.Id == comprobanteId)
@@ -169,7 +169,7 @@ public sealed class ServicioDeTimbrado(
                     concepto.Impuestos.Select(i => (i.Impuesto, i.EsRetencion))) is { } errorObjeto)
                 return ErrorNegocio.Validacion("objeto-impuesto-invalido", $"Renglón {concepto.Orden}: {errorObjeto}");
 
-        // Repite las reglas de guardado para los borradores que se guardaron antes de que existieran.
+        // Repite las reglas de guardado para borradores guardados antes de que existieran.
         if (comprobante.TipoDeComprobante is TiposDeComprobante.Ingreso or TiposDeComprobante.Egreso &&
             comprobante.Conceptos.OrderBy(c => c.Orden).FirstOrDefault(c => c.ValorUnitario <= 0) is { } sinPrecio)
             return ErrorNegocio.Validacion("precio-unitario-invalido",
@@ -326,9 +326,7 @@ public sealed class ServicioDeTimbrado(
         comprobante.Estatus = EstatusComprobante.Timbrando.ACadena();
         comprobante.ModificadoUtc = DateTime.UtcNow;
 
-        // Se registra al apartar y no solo al cerrar: si la llamada al PAC nunca vuelve, este
-        // renglón es lo único que dice quién mandó a timbrar el comprobante que la conciliación
-        // resuelva horas después.
+        // Se registra al apartar: si el PAC nunca responde, es lo único que dice quién mandó a timbrar.
         bitacora.Registrar(
             EntidadesDeBitacora.Comprobante, comprobante.Id.ToString(), AccionesDeBitacora.TimbradoIniciado,
             new { Estatus = estatusAnterior },

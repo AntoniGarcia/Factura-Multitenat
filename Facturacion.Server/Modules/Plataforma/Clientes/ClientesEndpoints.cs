@@ -17,7 +17,7 @@ namespace Facturacion.Server.Modules.Plataforma.Clientes;
 /// </summary>
 public static class ClientesEndpoints
 {
-    /// <summary>Cinco megabytes, como en productos: miles de clientes caben de sobra.</summary>
+    // Igual que en productos: miles de clientes caben de sobra.
     private const long TopeDeSubida = 5 * 1024 * 1024;
 
     public static void MapClientes(this IEndpointRouteBuilder rutas)
@@ -34,7 +34,7 @@ public static class ClientesEndpoints
         grupo.MapPost("/{id:guid}/activo", CambiarActivo).RequireAuthorization(Permisos.ClientesDesactivar);
         grupo.MapDelete("/{id:guid}", Eliminar).RequireAuthorization(Permisos.ClientesEliminar);
 
-        // Igual que en productos: analizar no toca la base y confirmar guarda lo que se vio.
+        // Analizar no toca la base; confirmar guarda lo que se vio.
         grupo.MapPost("/importar/analizar", AnalizarCsv)
             .RequireAuthorization(Permisos.Politicas.EditarClientes)
             .DisableAntiforgery()
@@ -52,8 +52,7 @@ public static class ClientesEndpoints
         return resultado.EsFallo ? resultado.Error!.AResultado(contexto) : Results.NoContent();
     }
 
-    // Sin «activos» se listan todos: así pide el Client el filtro «Todos». Con true por omisión,
-    // «Todos» mostraba solo los activos. Los buscadores de la emisión mandan true explícito.
+    // Sin «activos» se listan todos (filtro «Todos»); los buscadores de la emisión mandan true.
     private static async Task<IResult> Listar(
         ServicioDeClientes clientes, CancellationToken ct,
         string? texto = null, bool? activos = null, Guid? empresa = null,
@@ -106,10 +105,7 @@ public static class ClientesEndpoints
             : Results.Ok(resultado.Valor);
     }
 
-    /// <summary>
-    /// Analiza el CSV y devuelve la vista previa. No guarda nada. Cada renglón pasa por el mismo
-    /// validador del alta manual, para que no aparezcan errores nuevos al confirmar.
-    /// </summary>
+    // No guarda nada; usa el mismo validador del alta manual para que confirmar no traiga errores nuevos.
     private static async Task<IResult> AnalizarCsv(
         IFormFile archivo, ValidadorDeCliente validador, CancellationToken ct)
     {
@@ -141,7 +137,7 @@ public static class ClientesEndpoints
         return Results.Ok(await clientes.ImportarAsync(validos, ct));
     }
 
-    /// <summary>Encabezados y dos renglones de ejemplo, para no adivinar el formato.</summary>
+    // Encabezados y dos renglones de ejemplo.
     private static IResult PlantillaCsv()
     {
         var csv = new StringBuilder();
@@ -165,7 +161,7 @@ public static class ClientesEndpoints
 
         var csv = new StringBuilder();
 
-        // Las mismas columnas que se importan: el archivo que sale se corrige y vuelve a entrar.
+        // Las mismas columnas que se importan: el archivo exportado se corrige y vuelve a entrar.
         csv.AppendLine(string.Join(',',
             new[] { "Clave" }.Concat(LectorDeCsvDeClientes.Columnas).Append("Activo")));
 

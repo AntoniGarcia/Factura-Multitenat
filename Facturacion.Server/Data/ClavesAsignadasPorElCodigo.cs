@@ -7,22 +7,9 @@ using Microsoft.EntityFrameworkCore.Metadata.Conventions;
 
 namespace Facturacion.Server.Data;
 
-/// <summary>
-/// Declara que toda clave primaria <see cref="Guid"/> la asigna el código, no Entity Framework.
-///
-/// <para><b>Por qué</b></para>
-/// Todo el código asigna <c>Id = Guid.NewGuid()</c> al crear la entidad. Con la configuración
-/// por omisión —clave generada al agregar— Entity Framework interpreta que un renglón que ya
-/// trae clave existe en la base: si llega colgado de la colección de una entidad rastreada
-/// (los conceptos de un comprobante, las mercancías de un traslado) lo marca como modificado
-/// en vez de como alta. El resultado es un <c>UPDATE</c> que no afecta nada o, en las
-/// entidades de empresa, el rechazo del sellado. Con la clave declarada como asignada, un
-/// renglón nuevo es alta llegue como llegue.
-///
-/// <para><b>Qué queda fuera</b></para>
-/// <see cref="Usuario"/>: su modelo lo arma Identity. Las claves que no son <see cref="Guid"/>
-/// (la bitácora con identidad de SQL Server, la configuración del sistema) tampoco cambian.
-/// </summary>
+/// Toda clave Guid la asigna el código. Con la configuración por omisión, EF toma un renglón
+/// nuevo que ya trae clave como existente y lo marca modificado en vez de alta (UPDATE vacío o
+/// rechazo del sellado de empresa). Usuario queda fuera: su modelo lo arma Identity.
 internal sealed class ClavesAsignadasPorElCodigo : IModelFinalizingConvention
 {
     public void ProcessModelFinalizing(
@@ -38,12 +25,8 @@ internal sealed class ClavesAsignadasPorElCodigo : IModelFinalizingConvention
     }
 }
 
-/// <summary>
-/// La otra cara de <see cref="ClavesAsignadasPorElCodigo"/>: si nadie asigna la clave, Entity
-/// Framework ya no la genera y el renglón entraría con <see cref="Guid.Empty"/>. El primero
-/// pasaría y el segundo chocaría con la llave primaria, con un error que no dice qué entidad
-/// se olvidó. Esto falla antes, nombrándola.
-/// </summary>
+// Si nadie asignó la clave, falla antes del guardado y nombra la entidad, en lugar de chocar
+// con la llave primaria por Guid.Empty.
 internal sealed class AltaSinClaveInterceptor : SaveChangesInterceptor
 {
     public static AltaSinClaveInterceptor Instancia { get; } = new();

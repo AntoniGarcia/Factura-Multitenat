@@ -1,24 +1,9 @@
 @using Facturacion.Shared.Comun
 @using Facturacion.Shared.Plataforma
 
-@*
-    Los permisos de un usuario interno en la empresa activa: una pestaña por sección. En las
-    secciones con varios renglones (Emitir, Catálogos, Empresa) la navegación va a la izquierda,
-    y las casillas del módulo elegido a la derecha; en las de un solo
-    renglón (Documentos, Tienda) las casillas se muestran directo. Por permiso, nunca por rol:
-    el «Marcar todos» es solo ayuda de captura, no un permiso más.
-
-    Lo concedido por otra casilla (el listado por Emitir, eliminar en todo por Documentos) se ve
-    marcado y deshabilitado con el motivo: no se guarda, así que al quitar la casilla que lo
-    concede se va solo (Permisos.ConImplicitos).
-
-    Se pueden asignar los permisos de todos los módulos. Usar un complemento sigue
-    requiriendo la licencia correspondiente en la empresa activa.
-
-    Con Empresas, la última pestaña dice a cuáles entra el usuario. Los permisos son los mismos
-    en todas (AGENTS.md §11). Con una sola empresa en la cuenta no hay nada que elegir y la
-    pestaña no se muestra.
-*@
+@* Permisos de un usuario interno, una pestaña por sección. Lo concedido por otra casilla se ve
+   marcado y deshabilitado, y no se guarda. Los permisos son los mismos en todas sus empresas;
+   con una sola empresa no se muestra la pestaña Empresas. *@
 
 <MudButton Size="Size.Small" Variant="Variant.Outlined" ButtonType="ButtonType.Button"
            Disabled="@Deshabilitado" OnClick="CambiarSeleccionCompleta">
@@ -173,7 +158,7 @@
             ? elegido
             : elementos[0];
 
-    /// <summary>Las casillas del renglón que quedan concedidas, asignadas o por otra casilla.</summary>
+    // Las casillas concedidas del renglón, asignadas o por otra casilla.
     private int Efectivos(ElementoDePermisos elemento)
         => elemento.Subpermisos.Count(p => Value.Contains(p.Clave) || Permisos.ConcedidoPor(p.Clave, Value) is not null);
 
@@ -189,7 +174,7 @@
         _ => null
     };
 
-    // La descarga no tiene sentido sin el listado: marcarla lo marca, y quitar el listado la quita.
+    // La descarga no tiene sentido sin el listado: marcarla lo marca y quitar el listado la quita.
     private Task Cambiar(string clave, bool marcado)
     {
         var nuevo = new List<string>(Value);

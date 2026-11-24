@@ -222,8 +222,7 @@ public sealed class ServicioDeEmpresa(
         var configuracion = await baseDeDatos.ConfiguracionesEmpresa.FirstOrDefaultAsync(ct);
         var antes = configuracion is null ? null : AConfiguracionDto(configuracion);
 
-        // General e Impuestos viajan en la misma petición, pero son casillas distintas: se
-        // rechaza tocar la parte que no se tiene, en lugar de ignorarla en silencio.
+        // General e Impuestos son casillas distintas: se rechaza tocar la parte sin permiso, no se ignora.
         var actual = antes ?? peticion;
 
         if (!contexto.Tiene(Permisos.ConfiguracionImpuestos) && SoloImpuestos(peticion) != SoloImpuestos(actual))
@@ -260,12 +259,12 @@ public sealed class ServicioDeEmpresa(
         return peticion;
     }
 
-    /// <summary>La configuración sin la parte de General, para comparar solo los impuestos.</summary>
+    // Para comparar solo los impuestos.
     private static ConfiguracionEmpresaDto SoloImpuestos(ConfiguracionEmpresaDto c) => c with { DiasAvisoCaducidadCertificado = 0 };
 
     // ── Monedas ─────────────────────────────────────────────────────────────────────────
 
-    /// <summary>Tope de monedas por empresa: ninguna factura en más de un puñado de divisas.</summary>
+    // Tope de monedas por empresa.
     private const int TopeDeMonedas = 30;
 
     public async Task<MonedasDeEmpresaDto> ObtenerMonedasAsync(CancellationToken ct)
@@ -275,11 +274,9 @@ public sealed class ServicioDeEmpresa(
             .Select(m => m.Moneda)
             .ToListAsync(ct));
 
-    /// <summary>
-    /// Deja activas exactamente las monedas recibidas. El peso no se guarda: siempre está.
-    /// Quitar una no afecta a los documentos ya guardados, que conservan su moneda; un
-    /// borrador en esa moneda ya no se podrá volver a guardar hasta agregarla otra vez.
-    /// </summary>
+    /// El peso no se guarda: siempre está. Quitar una no afecta a los documentos guardados, que
+    /// conservan su moneda, pero un borrador en esa moneda ya no se guarda hasta agregarla
+    /// otra vez.
     public async Task<Resultado<MonedasDeEmpresaDto>> GuardarMonedasAsync(
         MonedasDeEmpresaDto peticion, CancellationToken ct)
     {
@@ -318,7 +315,7 @@ public sealed class ServicioDeEmpresa(
             guardada.ModificadaUtc = ahora;
         }
 
-        // EmpresaId lo pone el interceptor de sellado desde el claim, como en la configuración.
+        // EmpresaId lo pone el sellado desde el claim.
         foreach (var nueva in pedidas.Where(m => guardadas.All(g => g.Moneda != m)))
             baseDeDatos.MonedasDeEmpresa.Add(new MonedaDeEmpresa { Moneda = nueva, ModificadaUtc = ahora });
 
