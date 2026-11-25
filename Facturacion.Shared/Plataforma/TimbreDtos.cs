@@ -21,8 +21,7 @@ public sealed record PaqueteDto(
 /// <summary>Lo único que manda el cliente para comprar: cuál paquete.</summary>
 public sealed record PeticionDeCompra(Guid PaqueteId);
 
-/// <summary>Una compra, con los datos del paquete ya copiados.</summary>
-/// <param name="Empresa">Empresa que la solicitó, con el nombre que tenía al comprar.</param>
+// Empresa: la que la solicitó, con el nombre que tenía al comprar.
 public sealed record CompraDto(
     Guid Id,
     string NombrePaquete,

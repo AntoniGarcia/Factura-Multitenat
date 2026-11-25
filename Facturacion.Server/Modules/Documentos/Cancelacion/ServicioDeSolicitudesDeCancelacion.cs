@@ -7,22 +7,9 @@ using Microsoft.EntityFrameworkCore;
 
 namespace Facturacion.Server.Modules.Documentos.Cancelacion;
 
-/// <summary>
-/// La pantalla «Solicitudes de cancelación» de §30: qué se pidió cancelar, en qué quedó y qué
-/// dice el SAT hoy. Sin ella no hay forma de saber qué solicitudes siguen esperando al receptor.
-///
-/// <para><b>La verificación masiva reutiliza la individual</b></para>
-/// Cada comprobante se consulta con <see cref="ServicioDeCancelacion.ConsultarEstatusAsync"/>,
-/// la misma que usa el botón por renglón: una sola regla para decidir cuándo el SAT dio por
-/// cancelado o por rechazado algo, en vez de dos que se separen con el tiempo.
-///
-/// <para><b>Una llamada al SAT por comprobante, sin transacción</b></para>
-/// Cada consulta guarda en su propia escritura corta, y hay un tope por
-/// petición: con el SAT lento, cincuenta consultas seguidas dejarían al usuario viendo una
-/// pantalla congelada por minutos. Lo que no entra se revisa en la siguiente pasada, empezando
-/// por lo que lleva más tiempo sin consultarse.
-/// </para>
-/// </summary>
+/// Pantalla de solicitudes de cancelación: qué se pidió cancelar y qué dice hoy el SAT.
+/// La verificación masiva reutiliza ConsultarEstatusAsync, la misma del botón por renglón.
+/// Una consulta por comprobante, sin transacción y con tope por petición para no congelar la pantalla.
 public sealed class ServicioDeSolicitudesDeCancelacion(
     AppDbContext baseDeDatos,
     ServicioDeCancelacion cancelacion,
@@ -109,14 +96,13 @@ public sealed class ServicioDeSolicitudesDeCancelacion(
         return new PaginaDeSolicitudesDeCancelacion(elementos, total, abiertas);
     }
 
-    /// <summary>El botón «Verificar estatus SAT» de §30: consulta todas las solicitudes abiertas.</summary>
+    // El botón «Verificar estatus SAT»: consulta todas las solicitudes abiertas.
     public async Task<Resultado<ResultadoDeVerificacionMasivaDto>> VerificarAbiertasAsync(CancellationToken ct)
     {
         if (pac is null)
             return ErrorNegocio.Regla("pac-no-configurado", "No hay un proveedor de timbrado configurado.");
 
-        // Un comprobante con dos solicitudes abiertas se consulta una sola vez: el SAT responde
-        // por el comprobante, no por la solicitud.
+        // El SAT responde por comprobante, no por solicitud: cada comprobante se consulta una vez.
         var abiertas = (await baseDeDatos.SolicitudesCancelacion
                 .AsNoTracking()
                 .Where(s => EstadosAbiertos.Contains(s.Estado))
@@ -150,7 +136,7 @@ public sealed class ServicioDeSolicitudesDeCancelacion(
             }
             catch (Exception ex) when (ex is not OperationCanceledException)
             {
-                // Un comprobante que falla no detiene a los demás: se registra y se sigue.
+                // Un comprobante que falla no detiene a los demás.
                 registro.LogWarning(ex, "No se pudo verificar ante el SAT el comprobante {Comprobante}.",
                     pendiente.ComprobanteId);
                 fallidas++;

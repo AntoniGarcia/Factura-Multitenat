@@ -35,8 +35,7 @@
 }
 else if (_comprobante is null)
 {
-    @* Si no se pudo crear el borrador, PanelErrores ya dice por qué; «no se encontró» lo
-       contradiría. *@
+    @* Si no se pudo crear el borrador, PanelErrores ya dice por qué. *@
     @if (_error is null)
     {
         <p>No se encontró ese comprobante.</p>
@@ -70,16 +69,12 @@ else
             <section class="emision-seccion">
             <h2 class="seccion-titulo">General</h2>
             <div class="catalogo-rejilla catalogo-rejilla-tres">
-                <MudTextField T="string" Value="@NombreDeVariante" Label="Tipo de documento" ReadOnly="true" />
-
                 <MudSelect T="Guid?" Value="@(_serie?.Id)" ValueChanged="AlCambiarSerie" Label="Serie">
                     @foreach (var s in _seriesActivas)
                     {
                         <MudSelectItem T="Guid?" Value="@((Guid?)s.Id)">@s.Prefijo</MudSelectItem>
                     }
                 </MudSelect>
-
-                <MudTextField T="string" Value="@FolioMostrado" Label="Folio" ReadOnly="true" Class="cifra-tabular" />
 
                 <MudSelect T="string" @bind-Value="_moneda" @bind-Value:after="ActualizarVistaPreviaAsync" Label="Moneda">
                     @foreach (var m in _monedasDeCaptura)
@@ -95,28 +90,6 @@ else
                 <CampoMoneda Valor="@(_tipoCambio ?? 0)" ValorCambiado="async v => { _tipoCambio = v; await ActualizarVistaPreviaAsync(); }"
                               Label="Tipo de cambio" Deshabilitado="@(_moneda == "MXN")"
                               Requerido="@(_moneda != "MXN")" />
-            </div>
-            </section>
-
-            <section class="emision-seccion">
-            <h2 class="seccion-titulo">Datos del cliente</h2>
-            <div class="catalogo-rejilla catalogo-rejilla-tres">
-                <BuscadorDeCliente Valor="@_cliente" ValorCambiado="AlElegirClienteAsync" Requerido="true" />
-                <MudTextField T="string" Value="@(_cliente?.Rfc)" Label="R.F.C." ReadOnly="true" Class="cifra-tabular" />
-                @if (EsPublicoEnGeneral)
-                {
-                    @* Ventas sueltas a nombre de quien compra; el cliente del catálogo no cambia. *@
-                    <MudTextField @bind-Value="_receptorNombre" Label="Nombre" MaxLength="254" Immediate="true"
-                                  HelperText="@AyudaNombreReceptor" />
-                }
-                else
-                {
-                    <MudTextField T="string" Value="@(_cliente?.Nombre)" Label="Nombre" ReadOnly="true" />
-                }
-                <MudTextField T="string" Value="@(_cliente?.DomicilioFiscalCp)" Label="CP del cliente" ReadOnly="true" Class="cifra-tabular"
-                              HelperText="@(_cliente?.Rfc is "XAXX010101000" or "XEXX010101000" ? "El CFDI usará el CP de expedición." : null)" />
-                <MudTextField T="string" Value="@(_domicilioDelCliente ?? "—")" Label="Domicilio" ReadOnly="true"
-                              Class="catalogo-campo-amplio" />
 
 <BuscadorCatalogo Catalogo="c_MetodoPago" Opciones="@Catalogos.Obtener("c_MetodoPago")" @bind-Clave="_metodoPago" Label="Método de pago" PuedeLimpiar="true" />
 
@@ -124,6 +97,42 @@ else
 
 <BuscadorCatalogo Catalogo="c_UsoCFDI" Opciones="@Catalogos.Obtener("c_UsoCFDI")" @bind-Clave="_usoCfdi" Label="Uso de CFDI" PuedeLimpiar="false" />
             </div>
+            </section>
+
+            <section class="emision-seccion">
+            <h2 class="seccion-titulo">Datos del cliente</h2>
+            <div class="catalogo-rejilla catalogo-rejilla-tres">
+                <BuscadorDeCliente Valor="@_cliente" ValorCambiado="AlElegirClienteAsync" Requerido="true" />
+                @if (EsPublicoEnGeneral)
+                {
+                    @* Ventas sueltas a nombre de quien compra; el cliente del catálogo no cambia. *@
+                    <MudTextField @bind-Value="_receptorNombre" Label="Nombre del receptor" MaxLength="254" Immediate="true"
+                                  HelperText="@AyudaNombreReceptor" Class="catalogo-campo-amplio" />
+                }
+            </div>
+            @if (_cliente is not null)
+            {
+                <dl class="ficha-datos">
+                    <div><dt>RFC</dt><dd class="cifra-tabular">@_cliente.Rfc</dd></div>
+                    @if (!EsPublicoEnGeneral)
+                    {
+                        <div><dt>Nombre</dt><dd title="@_cliente.Nombre">@_cliente.Nombre</dd></div>
+                    }
+                    <div>
+                        <dt>C.P. fiscal</dt>
+                        <dd class="cifra-tabular">@_cliente.DomicilioFiscalCp</dd>
+                        @if (_cliente.Rfc is "XAXX010101000" or "XEXX010101000")
+                        {
+                            <dd class="ficha-datos-nota">El CFDI usará el CP de expedición.</dd>
+                        }
+                    </div>
+                    <div class="ficha-datos-amplio"><dt>Domicilio</dt><dd title="@_domicilioDelCliente">@(_domicilioDelCliente ?? "—")</dd></div>
+                </dl>
+            }
+            @if (AvisoInformacionGlobal is { } aviso)
+            {
+                <div class="aviso-informacion-global" role="status">@aviso</div>
+            }
             </section>
 
             <section class="emision-seccion">
@@ -196,13 +205,11 @@ else
                                              Label="Cantidad" Format="N2" Min="0.000001m" Immediate="true"
                                              Class="concepto-editor-cantidad cifra-tabular" />
 
-                            @* Solo Comercio Exterior lo lleva: ahí el SAT lo cruza con las mercancías. En
-                               los demás tipos no se captura ni se envía. *@
+                            @* Solo Comercio Exterior lo lleva, porque el SAT lo cruza con las mercancías. *@
                             @if (EsFacturaComercio)
                             {
                                 <MudTextField @bind-Value="renglon.NoIdentificacion"
-                                              Label="Identificador de mercancía" MaxLength="100"
-                                              HelperText="Se precarga con el ID interno del producto." />
+                                              Label="Identificador de mercancía" MaxLength="100" />
                             }
 
                             <MudNumericField T="decimal" Value="@renglon.ValorUnitario" ValueChanged="async v => { renglon.ValorUnitario = v; await ActualizarVistaPreviaAsync(); }"
@@ -451,10 +458,7 @@ else
     [Parameter]
     public Guid? Id { get; set; }
 
-    /// <summary>
-    /// La que se eligió en «Nuevo comprobante». Solo cuenta al crear el borrador: después manda
-    /// la que quedó guardada en el comprobante, que es la que el servidor hace respetar.
-    /// </summary>
+    // Solo cuenta al crear el borrador; después manda la variante guardada.
     [SupplyParameterFromQuery(Name = "variante")]
     public string? VarianteSolicitada { get; set; }
 
@@ -495,10 +499,7 @@ else
     private DatosDeComercioExteriorDeFactura? _datosComercio;
 
 
-    /// <summary>
-    /// El domicilio del catálogo en una línea, solo para consulta. El nacional guarda claves del
-    /// SAT; sus nombres se resuelven con el código postal.
-    /// </summary>
+    // Solo para consulta; los nombres del domicilio nacional se resuelven con el código postal.
     private async Task<string?> DomicilioDelClienteAsync(ClienteDto cliente)
     {
         string? estado = cliente.Estado, municipio = cliente.Municipio;
@@ -514,7 +515,7 @@ else
             }
             catch (HttpRequestException)
             {
-                // Sin los nombres se muestran las claves: el domicilio solo es informativo.
+                // Sin los nombres se muestran las claves.
             }
         }
 
@@ -544,20 +545,19 @@ else
 
     private bool EsEditable => _comprobante is { Estatus: "borrador" or "error" };
 
-    // Un borrador anterior a la columna Variante llega sin ella; la migración la llenó, pero si
-    // faltara se trata como básica, que es lo único que no activa ningún complemento.
+    // Sin variante se trata como básica, la única que no activa complementos.
     private string Variante => _comprobante?.Variante ?? VariantesDeFactura.Basica;
     private bool EsFacturaBasica => Variante == VariantesDeFactura.Basica;
     private bool EsFacturaNotarial => Variante == VariantesDeFactura.Notaria;
     private bool EsFacturaDeObra => Variante == VariantesDeFactura.Obra;
     private bool EsFacturaComercio => Variante == VariantesDeFactura.ComercioExterior;
 
-    private string NombreDeVariante => Variante switch
+    private string? NombreDeVariante => Variante switch
     {
-        VariantesDeFactura.Notaria => "Factura con complemento Notaría",
-        VariantesDeFactura.ComercioExterior => "Factura con complemento Comercio Exterior",
-        VariantesDeFactura.Obra => "Factura de obra",
-        _ => "Factura básica"
+        VariantesDeFactura.Notaria => "Notaría",
+        VariantesDeFactura.ComercioExterior => "Comercio exterior",
+        VariantesDeFactura.Obra => "Obra",
+        _ => null
     };
 
     private EstatusComprobante EstatusVisual
@@ -569,7 +569,7 @@ else
 
     private string? NombreDelReceptor => EsPublicoEnGeneral ? _receptorNombre : _cliente?.Nombre;
 
-    /// <summary>Avisa cómo quedará el nombre en el CFDI, igual que el alta de clientes.</summary>
+    // Cómo quedará el nombre en el CFDI, igual que en el alta de clientes.
     private string AyudaNombreReceptor
     {
         get
@@ -577,25 +577,34 @@ else
             var nombre = NombreFiscal.Normalizar(_receptorNombre);
             if (_globalPeriodicidad is not null && nombre.Normalizado != "PUBLICO EN GENERAL")
                 return "Con información global debe ser PUBLICO EN GENERAL.";
-            if (_globalPeriodicidad is null && nombre.Normalizado == "PUBLICO EN GENERAL")
-                return "A este nombre va la información global; si es venta suelta, escribe el nombre del comprador.";
             return nombre.Normalizado != nombre.Original && nombre.Normalizado.Length > 0
                 ? $"En el CFDI irá «{nombre.Normalizado}»."
                 : "Solo para esta factura; el cliente no cambia.";
         }
     }
 
+    // Se puede guardar así, pero no timbrar: el SAT pide la información global a ese nombre.
+    private string? AvisoInformacionGlobal =>
+        EsPublicoEnGeneral && _globalPeriodicidad is null &&
+        NombreFiscal.Normalizar(_receptorNombre).Normalizado == "PUBLICO EN GENERAL"
+            ? EsFacturaBasica
+                ? "A nombre de PUBLICO EN GENERAL el SAT pide la información global. Si juntas las ventas de un " +
+                  "periodo, llénala en la pestaña «Información global»; si es una venta suelta, escribe el nombre del comprador."
+                : "A nombre de PUBLICO EN GENERAL el SAT pide la información global, que este tipo de factura no lleva. " +
+                  "Escribe el nombre del comprador para poder timbrar."
+            : null;
+
     private bool PuedeAgregarRelacionado =>
         !string.IsNullOrWhiteSpace(_tipoRelacion) &&
         !string.IsNullOrWhiteSpace(_serieRelacionado) &&
         _folioRelacionado is > 0;
 
-    private string TituloDeLaPantalla => _comprobante switch
+    // El tipo de factura va en el título, no en un campo de solo lectura.
+    private string TituloDeLaPantalla => (_comprobante switch
     {
-        null => "Nueva factura",
         { Folio: { } folio, Serie: { } serie } => $"Factura {serie}-{folio}",
         _ => "Nueva factura"
-    };
+    }) + (NombreDeVariante is { } variante ? $" · {variante}" : "");
 
     private string FolioMostrado => _comprobante is { Folio: { } f, Serie: { } s } ? $"{s}-{f}" : "Se asigna al timbrar";
 
@@ -785,7 +794,7 @@ else
         renglon.Descripcion = DescripcionDeConcepto(producto);
         if (EsFacturaComercio && producto.IdInterno is { } idInterno) renglon.NoIdentificacion = idInterno;
         renglon.ObjetoImp = producto.ObjetoImp;
-        // El precio del catálogo está en pesos; en otra moneda se convierte con el tipo de cambio capturado.
+        // El precio del catálogo está en pesos; en otra moneda se convierte con el tipo de cambio.
         renglon.ValorUnitario = _moneda != "MXN" && _tipoCambio is > 0
             ? Math.Round(producto.ValorUnitario / _tipoCambio.Value, 6, MidpointRounding.AwayFromZero)
             : producto.ValorUnitario;
@@ -796,13 +805,10 @@ else
         await ActualizarVistaPreviaAsync();
     }
 
-    // Orden en que se muestran las casillas: IVA, ISR, IEPS.
+    // Orden de las casillas: IVA, ISR, IEPS.
     private static readonly string[] ClavesDeRetencion = ["002", "001", "003"];
 
-    /// <summary>
-    /// Las que el producto ya trae o que tienen tasa en Configuración. Una empresa que nunca
-    /// retiene ISR no ve esa casilla.
-    /// </summary>
+    // Las que el producto trae o tienen tasa en Configuración.
     private IReadOnlyList<string> RetencionesDisponibles(RenglonConcepto renglon)
         => EsFacturaBasica && EsEditable
             ? [.. ClavesDeRetencion.Where(c => ReglasDeObjetoImpuesto.PermiteImpuesto(renglon.ObjetoImp, c, true) &&
@@ -817,7 +823,7 @@ else
         _ => 0m
     };
 
-    // La misma regla que el servidor: la tasa del producto si la trae, si no la de Configuración.
+    // Como en el servidor: la tasa del producto si la trae; si no, la de Configuración.
     private string EtiquetaDeRetencion(RenglonConcepto renglon, string clave)
     {
         var tasa = renglon.TasasDeRetencionDelProducto.TryGetValue(clave, out var delProducto)
@@ -858,7 +864,7 @@ else
         await ActualizarVistaPreviaAsync();
     }
 
-    /// <summary>Nombre y descripción del producto, recortados al tope del SAT para el concepto.</summary>
+    // Recortados al tope del SAT para el concepto.
     private static string DescripcionDeConcepto(ProductoDto producto)
     {
         var texto = string.IsNullOrWhiteSpace(producto.Detalle)
@@ -1019,8 +1025,7 @@ else
         return true;
     }
 
-    // En obra el servidor pone en cada concepto el descuento de la amortización y la leyenda del
-    // anticipo; se copian a la captura para que el siguiente guardado no muestre los anteriores.
+    // En obra el servidor pone el descuento y la leyenda del anticipo; se copian a la captura.
     private void CopiarAmortizacion(ComprobanteDto guardado)
     {
         var conceptos = guardado.Conceptos.OrderBy(x => x.Orden).ToArray();
@@ -1070,9 +1075,9 @@ else
     {
         if (_comprobante is null || _preparandoVista) return;
 
-        // Con la pestaña de Comercio Exterior abierta se guarda también el complemento, que
-        // guarda primero la factura. MudTabs descarta las pestañas ocultas, así que fuera de
-        // ella cuenta lo que el complemento ya tenga guardado.
+        /// Con la pestaña de Comercio Exterior abierta se guarda también el complemento (que guarda
+        /// primero la factura). MudTabs descarta las pestañas ocultas: fuera de ella cuenta lo que
+        /// el complemento ya tenga guardado.
         var guardado = EsFacturaComercio && _datosComercio is { EstaVisible: true }
             ? await _datosComercio.GuardarDatosAsync()
             : await GuardarAsync();
@@ -1170,7 +1175,7 @@ else
         public string? ClaveUnidad { get; set; }
         public string? UnidadTexto { get; set; }
 
-        /// <summary>Del catálogo, solo para mostrar: no viajan al servidor ni al CFDI.</summary>
+        // Solo para mostrar: no viaja al servidor ni al CFDI.
         public string? ProductoNombre { get; set; }
         public string? ProductoIdInterno { get; set; }
 
@@ -1182,16 +1187,13 @@ else
         public decimal Descuento { get; set; }
         public IReadOnlyList<ImpuestoDeConceptoDto> Impuestos { get; set; } = [];
 
-        /// <summary>Claves de <c>c_Impuesto</c> con la casilla de retención marcada.</summary>
+        // Claves de c_Impuesto con la casilla de retención marcada.
         public HashSet<string> Retenciones { get; set; } = [];
 
         public bool AplicaIsh { get; set; }
         public DatosFiscalesDeConceptoDto? DatosFiscales { get; set; }
 
-        /// <summary>
-        /// Retenciones con las que llegó el renglón, del producto o del borrador guardado. Sirven
-        /// para mostrar la tasa y para no perder la casilla al desmarcarla.
-        /// </summary>
+        // Con las que llegó el renglón: muestran la tasa y no se pierden al desmarcar.
         public Dictionary<string, decimal> TasasDeRetencionDelProducto { get; set; } = [];
 
 
@@ -1218,7 +1220,7 @@ else
         }
     }
 
-    // Id del borrador que se creó al abrir la pantalla y todavía no se guardó nunca.
+    // Borrador creado al abrir la pantalla y que nunca se guardó.
     private Guid? _borradorSinGuardar;
     private string? _capturaGuardada;
 
@@ -1246,7 +1248,7 @@ else
 
     protected override void OnAfterRender(bool firstRender)
     {
-        // OnAfterRender y no OnInitialized: no se ejecuta durante el prerender.
+        // OnAfterRender: no se ejecuta durante el prerender.
         if (firstRender)
             _registroDeSalida = Navegacion.RegisterLocationChangingHandler(AlSalirAsync);
     }

@@ -3,18 +3,8 @@
 @inject ServicioDeEmpresa Empresa
 @inject ServicioDeSesion Sesion
 
-@*
-    Primer paso de «Nuevo comprobante»: elegir qué se va a capturar antes de abrir el formulario.
-    Cada tipo aparece solo si el usuario tiene su permiso de Emitir, y las facturas con
-    complemento además solo si la empresa tiene contratado el módulo; el servidor revisa las dos
-    cosas otra vez al crear el borrador.
-
-    La variante elegida viaja en la URL solo hasta crear el borrador; desde ahí queda guardada en
-    el comprobante y es la que decide las pestañas del formulario.
-
-    Navega por su cuenta en vez de devolver la ruta: quien lo abra no tiene que repetir el
-    cierre y la navegación.
-*@
+@* Cada tipo aparece si el usuario tiene su permiso y, en los complementos, si la empresa tiene
+   el módulo; el servidor lo revisa otra vez al crear el borrador. *@
 
 <MudDialog>
     <DialogContent>
@@ -86,8 +76,7 @@
 
     private void Ir(string ruta)
     {
-        // El proveedor de diálogos vive en MainLayout y sobrevive a la navegación: sin cerrar
-        // antes, el diálogo quedaría abierto encima del formulario.
+        // El proveedor de diálogos sobrevive a la navegación: sin cerrar, quedaría encima del formulario.
         Dialogo.Close();
         Navegacion.NavigateTo(ruta);
     }

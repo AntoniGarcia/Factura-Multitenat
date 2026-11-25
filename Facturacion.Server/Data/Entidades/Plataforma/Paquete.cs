@@ -2,7 +2,7 @@ using Facturacion.Shared.Plataforma;
 
 namespace Facturacion.Server.Data.Entidades.Plataforma;
 
-/// <summary>Oferta general si CuentaId es nulo; exclusiva de una cuenta si tiene valor. El servidor obtiene el precio a partir del identificador del paquete.</summary>
+// CuentaId nulo: oferta general; con valor, exclusiva de esa cuenta.
 public sealed class Paquete
 {
     public Guid Id { get; set; }

@@ -5,7 +5,6 @@ using Facturacion.Shared.Documentos;
 
 namespace Facturacion.Client.Servicios.Documentos;
 
-/// <summary>Envío de comprobantes por correo (B6).</summary>
 public sealed class ServicioDeEnvios(IHttpClientFactory fabrica)
 {
     private HttpClient Cliente => fabrica.CreateClient(ClientesHttp.Api);

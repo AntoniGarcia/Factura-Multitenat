@@ -10,7 +10,7 @@
 
 <PanelErrores Problema="_error" />
 
-@* El formulario sirve para crear y, con Modificar, para editar: sin ninguna de las dos no se muestra. *@
+@* Para crear, o con Modificar para editar. *@
 @if (_puedeCrear || _editando is not null)
 {
 <TarjetaFormulario Class="tarjeta-formulario-catalogo series-formulario">
@@ -91,7 +91,7 @@ else
                                 @(serie.Activa ? "Desactivar" : "Reactivar")
                             </MudButton>
                         }
-                        @* Una serie que ya entregó folios no se puede borrar; ni se ofrece. *@
+                        @* Una serie que ya entregó folios no se puede borrar. *@
                         @if (_puedeEliminar && serie.FolioActual < serie.FolioInicial)
                         {
                             <MudButton Size="Size.Small" Color="Color.Error" OnClick="() => Eliminar(serie)" Disabled="_guardando"
@@ -116,7 +116,7 @@ else
     private string _tipoComprobante = "I";
     private bool _activa = true;
 
-    // Comodidad visual: lo que el servidor rechazaría ni se ofrece.
+    // Lo que el servidor rechazaría ni se ofrece.
     private bool _puedeCrear, _puedeModificar, _puedeDesactivar, _puedeEliminar;
 
     private string DescripcionTipo(string clave)
@@ -163,7 +163,7 @@ else
         if (error is null) await RecargarAsync();
     }
 
-    /// <summary>Solo prospera si la serie no dio folios ni la usa un borrador; si no, el servidor pide desactivarla.</summary>
+    // Si dio folios o la usa un borrador, el servidor pide desactivarla.
     private async Task Eliminar(SerieDto serie)
     {
         var confirmado = await Confirmacion.ConfirmarAsync(

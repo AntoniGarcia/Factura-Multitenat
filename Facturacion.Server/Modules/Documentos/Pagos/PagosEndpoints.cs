@@ -14,7 +14,7 @@ public static class PagosEndpoints
             .WithTags("Documentos")
             .RequireAuthorization(Permisos.Politicas.Pagos);
 
-        // Se suman a la del grupo. Guardar decide en el servicio: Crear basta para el borrador propio.
+        // Se suma a la del grupo; Crear basta para el borrador propio.
         grupo.MapPost("/borradores", CrearBorrador).RequireAuthorization(Permisos.PagoCrear);
         grupo.MapGet("/{id:guid}", Obtener);
         grupo.MapPut("/{id:guid}", Guardar);

@@ -11,8 +11,7 @@ public static class FoliosEndpoints
     {
         var grupo = rutas.MapGroup("/api/series").WithTags("Series y folios");
 
-        // Por endpoint y no en el grupo: RequireAuthorization en el grupo se acumularía sobre
-        // TODOS sus hijos, y '/activas' terminaría exigiendo también un permiso de Series.
+        // Por endpoint: en el grupo, «/activas» terminaría exigiendo también un permiso de Series.
         grupo.MapGet("/activas", ListarActivas).RequireAuthorization();
 
         grupo.MapGet("/", Listar).RequireAuthorization(Permisos.Politicas.Series);

@@ -1,6 +1,5 @@
 using Facturacion.Server.Data;
 using Facturacion.Server.Data.Entidades.Documentos;
-using Facturacion.Server.Infra.Almacen;
 using Facturacion.Server.Infra.Bitacora;
 using Facturacion.Server.Infra.Tenencia;
 using Facturacion.Server.Modules.Documentos.Pac;
@@ -39,7 +38,6 @@ public sealed class ConciliacionDeTimbrados(
     IConfiguration configuracion,
     ILoggerFactory fabricaDeRegistros,
     IHttpContextAccessor accesor,
-    IAlmacenDeArchivos almacen,
     ILogger<ConciliacionDeTimbrados> registro) : BackgroundService
 {
     private static readonly TimeSpan Intervalo = TimeSpan.FromMinutes(5);
@@ -176,7 +174,6 @@ public sealed class ConciliacionDeTimbrados(
             baseDeDatos,
             new ServicioDeFolios(baseDeDatos, tenencia, bitacora),
             new ServicioDeTimbres(baseDeDatos, tenencia, bitacora),
-            almacen,
             bitacora,
             fabricaDeRegistros.CreateLogger<CierreDeTimbrado>());
 

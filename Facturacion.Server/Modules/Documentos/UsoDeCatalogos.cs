@@ -6,15 +6,12 @@ using Microsoft.EntityFrameworkCore;
 
 namespace Facturacion.Server.Modules.Documentos;
 
-/// <summary>
-/// Si algún comprobante usa un registro de catálogo, en cualquier estatus: un borrador también
-/// lo cuenta, porque borrar el registro lo dejaría apuntando a la nada. Clientes y productos
-/// son de la cuenta (AGENTS.md §11), así que se buscan en los comprobantes de todas sus
-/// empresas; las series siguen siendo de la empresa y les basta el filtro global.
-/// </summary>
+/// Si algún comprobante usa un registro, en cualquier estatus (un borrador también cuenta).
+/// Clientes y productos son de la cuenta y se buscan en todas sus empresas;
+/// las series son de la empresa y les basta el filtro global.
 public sealed class UsoDeCatalogos(AppDbContext baseDeDatos) : IUsoDeCatalogos
 {
-    // El destinatario de un traslado Carta Porte no es el receptor del comprobante: se busca aparte.
+    // El destinatario de un traslado no es el receptor del comprobante: se busca aparte.
     public async Task<bool> ClienteUsadoAsync(Guid clienteId, CancellationToken ct)
         => await ComprobantesDeLaCuenta().AnyAsync(c => c.ClienteId == clienteId, ct) ||
            await TrasladosDeLaCuenta().AnyAsync(t => t.ClienteDestinoId == clienteId, ct);
@@ -23,8 +20,7 @@ public sealed class UsoDeCatalogos(AppDbContext baseDeDatos) : IUsoDeCatalogos
         => await ComprobantesDeLaCuenta().AnyAsync(c => c.Conceptos.Any(x => x.ProductoId == productoId), ct) ||
            await TrasladosDeLaCuenta().AnyAsync(t => t.Mercancias.Any(x => x.ProductoId == productoId), ct);
 
-    // IgnoreQueryFilters justificado: el filtro global deja solo la empresa activa, y aquí
-    // hacen falta todas las de la cuenta del claim, ninguna más.
+    // IgnoreQueryFilters: hacen falta todas las empresas de la cuenta, no solo la activa.
     private IQueryable<Comprobante> ComprobantesDeLaCuenta()
     {
         var empresas = EmpresasDeLaCuenta();
@@ -37,7 +33,7 @@ public sealed class UsoDeCatalogos(AppDbContext baseDeDatos) : IUsoDeCatalogos
         return baseDeDatos.TrasladosCartaPorte.IgnoreQueryFilters().AsNoTracking().Where(t => empresas.Contains(t.EmpresaId));
     }
 
-    // Sin cuenta no hay a quién preguntar: responder «no se usa» permitiría borrar lo usado.
+    // Sin cuenta, responder «no se usa» permitiría borrar lo usado.
     private IQueryable<Guid> EmpresasDeLaCuenta()
     {
         var cuenta = baseDeDatos.CuentaActual

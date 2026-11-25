@@ -2,14 +2,8 @@ using System.Text.RegularExpressions;
 
 namespace Facturacion.Shared.Comun;
 
-/// <summary>
-/// Los permisos del sistema. La autorización es por permiso, nunca por rol.
-/// <para>
-/// El nombre de cada miembro es su clave en PascalCase: <c>FacturaCrear</c> es
-/// <c>factura_crear</c>. Se conserva porque <c>Contratos/IContextoEmpresa</c> lo usa en su
-/// comodidad tipada; el resto del código usa las constantes de <see cref="Permisos"/>.
-/// </para>
-/// </summary>
+// Clave de cada permiso en PascalCase (FacturaCrear = factura_crear). La usa el contrato
+// IContextoEmpresa; el resto del código usa las constantes de Permisos.
 public enum Permiso
 {
     DocumentosListado, DocumentosDescarga, DocumentosEliminar,
@@ -36,25 +30,17 @@ public enum Permiso
     Titular
 }
 
-/// <summary>Una casilla del selector: la clave que se guarda y lo que lee el titular.</summary>
+// Una casilla del selector: la clave que se guarda y lo que lee el titular.
 public sealed record Subpermiso(string Clave, string Etiqueta);
 
-/// <summary>
-/// Un renglón de la lista de una sección —un tipo de documento, un catálogo— con sus casillas.
-/// </summary>
-/// <param name="Licencia">
-/// Licencia de la empresa que hace falta para ofrecerlo (<see cref="LicenciasDePermiso"/>);
-/// nulo si no requiere ninguna.
-/// </param>
+// Un renglón de una sección (un tipo de documento o un catálogo) con sus casillas.
+// Licencia: la que debe tener la empresa para ofrecerlo; nulo si no requiere ninguna.
 public sealed record ElementoDePermisos(
     string Nombre, string Etiqueta, IReadOnlyList<Subpermiso> Subpermisos, string? Licencia = null);
 
-/// <summary>
-/// Una pestaña del selector. Con un solo elemento sus casillas se muestran directo, sin lista.
-/// </summary>
+// Una pestaña del selector; con un solo elemento sus casillas se muestran directo.
 public sealed record SeccionDePermisos(string Titulo, IReadOnlyList<ElementoDePermisos> Elementos);
 
-/// <summary>Las licencias de la empresa que condicionan un tipo de documento.</summary>
 public static class LicenciasDePermiso
 {
     public const string Notarios = "notarios";
@@ -62,20 +48,9 @@ public static class LicenciasDePermiso
     public const string Obras = "obras";
 }
 
-/// <summary>
-/// Las claves textuales de los permisos, tal como viajan en el token y como se guardan
-/// en la base. Existen para que nadie escriba la cadena a mano en una política o en un claim.
-///
-/// <para><b>Asignables y titular</b></para>
-/// Las de <see cref="Asignables"/> son casillas que el titular reparte entre los usuarios
-/// internos, por empresa. <see cref="Titular"/> no es una casilla: lo lleva en el token solo el
-/// usuario que registró la cuenta, nunca se guarda en la base y es lo único que abre Usuarios y
-/// el alta de empresas.
-///
-/// <para><b>Implícitos</b></para>
-/// Algunos permisos se conceden por tener otros (<see cref="ConImplicitos"/>) y no se guardan:
-/// así, al quitar el que los concede, se van solos. Se agregan al armar el token.
-/// </summary>
+/// Claves de los permisos tal como viajan en el token y se guardan en la base.
+/// Titular no es una casilla: solo lo lleva quien registró la cuenta y nunca se guarda.
+/// Los implícitos (ConImplicitos) tampoco se guardan; se agregan al armar el token.
 public static class Permisos
 {
     // ── Documentos ──────────────────────────────────────────────────────────────────────
@@ -165,7 +140,7 @@ public static class Permisos
 
     public const string Titular = "titular";
 
-    /// <summary>Los tipos de documento de Emitir, en el orden del selector.</summary>
+    // En el orden del selector.
     public static class Documentos
     {
         public const string Factura = "factura";
@@ -177,11 +152,10 @@ public static class Permisos
 
         public static IReadOnlyList<string> Todos { get; } = [Factura, Notaria, CartaPorte, ComercioExterior, Obra, Pago];
 
-        /// <summary>Los que se capturan en el formulario de factura: la básica y sus variantes.</summary>
+        // La básica y sus variantes: las que se capturan en el formulario de factura.
         public static IReadOnlyList<string> Facturas { get; } = [Factura, Notaria, ComercioExterior, Obra];
     }
 
-    /// <summary>Lo que se puede hacer con un documento o con un catálogo.</summary>
     public static class Acciones
     {
         public const string Crear = "crear";
@@ -192,13 +166,12 @@ public static class Permisos
         public const string Eliminar = "eliminar";
         public const string Desactivar = "desactivar";
 
-        /// <summary>En el orden en que se muestran las casillas de un documento.</summary>
+        // En el orden de las casillas.
         public static IReadOnlyList<string> DeDocumento { get; } = [Crear, Modificar, Cancelar, Timbrar, Enviar, Eliminar];
 
         public static IReadOnlyList<string> DeCatalogo { get; } = [Crear, Modificar, Desactivar, Eliminar];
     }
 
-    /// <summary>Los catálogos de la pestaña Catálogos.</summary>
     public static class Catalogos
     {
         public const string Clientes = "clientes";
@@ -208,7 +181,7 @@ public static class Permisos
         public const string Figuras = "figuras";
     }
 
-    /// <summary>La clave de una acción sobre un tipo de documento o un catálogo: <c>pago_cancelar</c>.</summary>
+    // De("pago", "cancelar") = pago_cancelar.
     public static string De(string elemento, string accion) => $"{elemento}_{accion}";
 
     private static readonly Dictionary<string, string> EtiquetasDeAccionDeDocumento = new()
@@ -238,7 +211,7 @@ public static class Permisos
         catalogo, etiqueta,
         [.. Acciones.DeCatalogo.Select(a => new Subpermiso(De(catalogo, a), EtiquetasDeAccionDeCatalogo[a]))]);
 
-    /// <summary>Las pestañas del selector, en el orden del menú.</summary>
+    // En el orden del menú.
     public static IReadOnlyList<SeccionDePermisos> Secciones { get; } =
     [
         new("Documentos",
@@ -288,34 +261,27 @@ public static class Permisos
         ])
     ];
 
-    /// <summary>Las casillas que se pueden asignar. Es la fuente de la semilla de la tabla Permisos.</summary>
+    // Fuente de la semilla de la tabla Permisos.
     public static IReadOnlyList<string> Asignables { get; } =
         [.. Secciones.SelectMany(s => s.Elementos).SelectMany(e => e.Subpermisos).Select(p => p.Clave)];
 
-    /// <summary>Todo lo que puede viajar en el token: las asignables más <see cref="Titular"/>.</summary>
+    // Las asignables más Titular.
     public static IReadOnlyList<string> Todos { get; } = [.. Asignables, Titular];
 
-    /// <summary>Cualquier casilla de Emitir, de cualquier tipo de documento.</summary>
     public static IReadOnlyList<string> DeEmision { get; } =
         [.. Documentos.Todos.SelectMany(t => Acciones.DeDocumento.Select(a => De(t, a)))];
 
-    /// <summary>Todas las casillas de un tipo de documento o de un catálogo.</summary>
     public static IReadOnlyList<string> DelElemento(string elemento)
         => [.. Secciones.SelectMany(s => s.Elementos).Where(e => e.Nombre == elemento)
                 .SelectMany(e => e.Subpermisos).Select(p => p.Clave)];
 
-    /// <summary>La misma acción en todos los tipos de documento: «cualquier <c>*_cancelar</c>».</summary>
+    // La misma acción en todos los tipos de documento.
     public static IReadOnlyList<string> DeAccion(string accion)
         => [.. Documentos.Todos.Select(t => De(t, accion))];
 
-    /// <summary>
-    /// Agrega los permisos que se conceden por tener otros:
-    /// <list type="bullet">
-    /// <item>cualquier casilla de Emitir da el listado y la descarga de Documentos;</item>
-    /// <item>la descarga da el listado;</item>
-    /// <item>eliminar borradores en Documentos da eliminar en todos los tipos de documento.</item>
-    /// </list>
-    /// </summary>
+    /// Agrega los implícitos: cualquier casilla de Emitir da el listado y la descarga,
+    /// la descarga da el listado, y eliminar borradores en Documentos da eliminar en
+    /// todos los tipos de documento.
     public static IReadOnlyList<string> ConImplicitos(IEnumerable<string> asignados)
     {
         var resultado = new HashSet<string>(asignados);
@@ -335,10 +301,7 @@ public static class Permisos
         return [.. resultado];
     }
 
-    /// <summary>
-    /// Por qué no se pueden guardar esas casillas para un usuario interno, o nulo si se puede.
-    /// La descarga sin el listado no tiene sentido: no habría dónde encontrar qué descargar.
-    /// </summary>
+    // Por qué no se pueden guardar esas casillas, o nulo. No se admite la descarga sin el listado.
     public static string? ErrorDeAsignacion(IReadOnlyCollection<string> permisos)
     {
         var invalido = permisos.FirstOrDefault(p => !EsAsignable(p));
@@ -350,10 +313,7 @@ public static class Permisos
             : null;
     }
 
-    /// <summary>
-    /// Por qué una casilla que no está asignada queda concedida de todos modos, o nulo si no lo
-    /// está. Es lo que el selector muestra junto a la casilla marcada y deshabilitada.
-    /// </summary>
+    // Por qué una casilla no asignada queda concedida (lo que muestra el selector), o nulo.
     public static string? ConcedidoPor(string clave, IReadOnlyCollection<string> asignados)
     {
         if (asignados.Contains(clave)) return null;
@@ -370,58 +330,50 @@ public static class Permisos
         return null;
     }
 
-    /// <summary>
-    /// Las políticas que se cumplen con <b>cualquiera</b> de varios permisos. Server y Client las
-    /// registran desde aquí para que digan lo mismo.
-    /// </summary>
+    // Políticas que se cumplen con cualquiera de varios permisos; Server y Client las registran desde aquí.
     public static class Politicas
     {
-        /// <summary>Crear cualquier tipo de documento: el botón «Nuevo» y el tablero.</summary>
+        // El botón «Nuevo» y el tablero.
         public const string Crear = "politica_crear";
 
-        /// <summary>Crear o editar una factura de cualquier variante; el servicio exige la variante exacta.</summary>
+        // El servicio exige además la variante exacta.
         public const string EditarFacturas = "politica_editar_facturas";
 
-        /// <summary>Crear o editar complementos de pago.</summary>
         public const string EditarPagos = "politica_editar_pagos";
 
-        /// <summary>Crear o editar traslados con Carta Porte.</summary>
         public const string EditarCartaPorte = "politica_editar_carta_porte";
 
-        /// <summary>Cualquier casilla de un tipo de documento: sus endpoints de consulta y captura.</summary>
+        // Cualquier casilla del tipo de documento: sus endpoints de consulta y captura.
         public const string Pagos = "politica_pagos";
         public const string CartaPorte = "politica_carta_porte";
         public const string Notaria = "politica_notaria";
         public const string ComercioExterior = "politica_comercio_exterior";
         public const string Obra = "politica_obra";
 
-        /// <summary>La acción en algún tipo de documento; el servicio exige la del tipo exacto.</summary>
+        // El servicio exige la del tipo exacto.
         public const string Timbrar = "politica_timbrar";
         public const string Cancelar = "politica_cancelar";
         public const string Enviar = "politica_enviar";
         public const string Eliminar = "politica_eliminar";
 
-        /// <summary>Consultar clientes y productos: quien emite o quien los administra.</summary>
+        // Quien emite o quien los administra.
         public const string LeerClientesYProductos = "politica_leer_clientes_productos";
 
-        /// <summary>Consultar vehículos y figuras: quien hace Carta Porte o quien los administra.</summary>
+        // Quien hace Carta Porte o quien los administra.
         public const string LeerTransporte = "politica_leer_transporte";
 
-        /// <summary>Abrir el formulario de un catálogo: quien crea o quien modifica.</summary>
+        // Quien crea o quien modifica.
         public const string EditarClientes = "politica_editar_clientes";
         public const string EditarProductos = "politica_editar_productos";
 
-        /// <summary>Administrar series y folios con cualquiera de sus casillas.</summary>
+        // Cualquier casilla de series y folios.
         public const string Series = "politica_series";
 
-        /// <summary>Mi empresa y Configuración con cualquiera de sus pestañas.</summary>
+        // Cualquier pestaña de Mi empresa o de Configuración.
         public const string MiEmpresa = "politica_mi_empresa";
         public const string Configuracion = "politica_configuracion";
 
-        /// <summary>
-        /// El perfil del notario. Se edita desde Datos de la empresa y desde su página propia,
-        /// que cuelga de Configuración: lo abre cualquiera de las dos casillas.
-        /// </summary>
+        // Se edita desde Datos de la empresa y desde Configuración: la abre cualquiera de las dos casillas.
         public const string PerfilDeNotaria = "politica_perfil_de_notaria";
 
         public static IReadOnlyDictionary<string, IReadOnlyList<string>> Compuestas { get; } =
@@ -455,10 +407,7 @@ public static class Permisos
             };
     }
 
-    /// <summary>
-    /// El tipo de documento de Emitir que corresponde a una variante de factura. La variante nula
-    /// es la factura básica, igual que en la emisión.
-    /// </summary>
+    // La variante nula es la factura básica.
     public static string TipoDeVarianteDeFactura(string? variante) => variante switch
     {
         Facturacion.Shared.Documentos.VariantesDeFactura.Notaria => Documentos.Notaria,
@@ -467,7 +416,7 @@ public static class Permisos
         _ => Documentos.Factura
     };
 
-    /// <summary>El tipo de documento de Emitir de un comprobante: factura (con su variante), traslado o pago.</summary>
+    // Factura (con su variante), traslado o pago.
     public static string TipoDeDocumento(string tipoDeComprobante, string? variante) => tipoDeComprobante switch
     {
         "P" => Documentos.Pago,
@@ -475,8 +424,7 @@ public static class Permisos
         _ => TipoDeVarianteDeFactura(variante)
     };
 
-    // FacturaCrear → factura_crear. Se deriva del nombre para no mantener a mano otra tabla
-    // de setenta renglones que solo usa la comodidad tipada del contrato.
+    // Se deriva del nombre (FacturaCrear → factura_crear) para no mantener otra tabla a mano.
     public static string ACadena(this Permiso permiso)
         => Regex.Replace(permiso.ToString(), "(?<!^)([A-Z])", "_$1").ToLowerInvariant();
 
@@ -498,9 +446,6 @@ public static class Permisos
             .Append((Clave: Titular, Etiqueta: "Titular de la cuenta"))
             .ToDictionary(x => x.Clave, x => x.Etiqueta);
 
-    /// <summary>
-    /// Etiqueta legible para listas y mensajes: «Complemento de pago: Cancelar». La descripción
-    /// larga de la tabla Permisos es para quien consulta la base.
-    /// </summary>
+    // Etiqueta para listas y mensajes: «Complemento de pago: Cancelar».
     public static string EtiquetaCorta(string clave) => Etiquetas.GetValueOrDefault(clave, clave);
 }

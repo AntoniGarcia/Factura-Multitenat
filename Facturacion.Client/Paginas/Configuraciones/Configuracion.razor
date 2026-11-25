@@ -227,8 +227,7 @@ else
             </section>
         </MudTabPanel>
 
-        @* Solo el titular da de alta empresas; el servidor lo exige igual y respeta el límite
-           de la cuenta. Tiene su propio botón: no es parte de «Guardar configuración». *@
+        @* Solo el titular; tiene su propio botón, aparte de «Guardar configuración». *@
         <MudTabPanel Text="Nueva empresa" Icon="@Icons.Material.Filled.DomainAdd" Visible="_titular">
             <FormularioDeNuevaEmpresa />
         </MudTabPanel>
@@ -267,11 +266,11 @@ else
 
     private string? _logo;
 
-    // Lo último que confirmó el servidor: contra esto se calcula qué cambió y a qué vuelve «Cancelar».
+    // Lo último que confirmó el servidor: base para saber qué cambió y a qué vuelve «Cancelar».
     private ConfiguracionEmpresaDto _configuracion = null!;
     private CorreoDeEmpresaDto _correo = null!;
 
-    // Las tasas se capturan en por ciento, como en el sistema anterior; viajan como fracción.
+    // Se capturan en por ciento y viajan como fracción.
     private decimal _ivaPct, _iepsPct, _retIvaPct, _retIsrPct, _retIepsPct, _ishPct;
     private int _diasAviso;
 
@@ -279,13 +278,12 @@ else
     private string? _servidor, _usuario, _contrasena, _remitenteNombre, _remitenteCorreo;
     private int _puerto;
 
-    // Cada pestaña es una casilla de Configuración: solo se muestran, y solo se cargan, las que
-    // el usuario tiene. El servidor rechaza igual tocar la parte que no tiene.
+    // Solo se muestran y cargan las pestañas cuya casilla tiene el usuario.
     private bool _general, _verCorreo, _impuestos, _verMonedas, _titular;
 
     private const int PestanaMonedas = 3, PestanaNuevaEmpresa = 4;
 
-    // Lo último que confirmó el servidor y lo capturado; el peso no está en ninguna de las dos.
+    // Lo confirmado y lo capturado; el peso no está en ninguna de las dos.
     private IReadOnlyList<string> _monedasGuardadas = [];
     private List<string> _monedasCapturadas = [];
     private string? _monedaPorAgregar;
@@ -454,8 +452,7 @@ else
         : !PareceCorreo(_remitenteCorreo.Trim()) ? "Escribe solo la dirección, como facturas@miempresa.com."
         : null;
 
-    // Los avisos aparecen al empezar a capturar o si ya hay uno guardado: una empresa que
-    // todavía no configura su correo no abre la pestaña llena de errores.
+    // Los avisos aparecen al empezar a capturar o si ya hay uno guardado.
     private bool CorreoEnUso => _correo is { Configurado: true } || CorreoCambio;
 
     private bool CorreoTieneErrores
@@ -520,8 +517,7 @@ else
 
         try
         {
-            // El correo primero: es el que puede fallar por el DNS, y así un error no deja las
-            // tasas guardadas a medias con un aviso que hable de otra pestaña.
+            // El correo primero: puede fallar por el DNS y así no deja las tasas guardadas a medias.
             if (CorreoCambio)
             {
                 var (correo, errorCorreo) = await Empresas.GuardarCorreoAsync(CorreoCapturado);

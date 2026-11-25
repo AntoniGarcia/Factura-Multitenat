@@ -256,6 +256,7 @@ public sealed class ServicioDeCancelacion(
 
         solicitud.CodigoRespuesta = respuesta.CodigoRespuesta;
         solicitud.MensajeRespuesta = respuesta.Mensaje;
+        solicitud.Acuse = respuesta.Acuse ?? solicitud.Acuse;
 
         switch (respuesta.Resultado)
         {
@@ -325,11 +326,7 @@ public sealed class ServicioDeCancelacion(
         await baseDeDatos.SaveChangesAsync(ct);
     }
 
-    /// <summary>
-    /// Se registra también la respuesta que deja todo en espera —del receptor o de la consulta
-    /// de estatus—, no solo la definitiva: es la que explica por qué el comprobante sigue en
-    /// <c>en_cancelacion</c> días después.
-    /// </summary>
+    // También registra la respuesta en espera: explica por qué sigue en en_cancelacion días después.
     private void RegistrarResolucion(Comprobante comprobante, SolicitudCancelacion solicitud, string estatusAnterior)
         => bitacora.Registrar(
             EntidadesDeBitacora.Comprobante, comprobante.Id.ToString(), AccionesDeBitacora.CancelacionResuelta,
@@ -429,8 +426,7 @@ public sealed class ServicioDeCancelacion(
 
         if (solicitud is not null)
         {
-            // Recortados a la columna: el texto lo pone el PAC y un cambio suyo no debe tumbar
-            // la consulta entera.
+            // Recortados a la columna: el texto lo pone el PAC y puede cambiar.
             solicitud.EstadoCfdiSat = Recortar(estatus.EstadoCfdi, 32);
             solicitud.EsCancelableSat = Recortar(estatus.EsCancelable, 64);
             solicitud.EstatusCancelacionSat = Recortar(estatus.EstatusCancelacion, 64);
@@ -439,8 +435,7 @@ public sealed class ServicioDeCancelacion(
 
         if (comprobante.Estatus == antes)
         {
-            // Sin cambio de estatus igual se guarda lo que dijo el SAT: la pantalla de
-            // solicitudes lo muestra con la hora de la consulta.
+            // Sin cambio de estatus igual se guarda: la pantalla de solicitudes muestra la hora de la consulta.
             if (solicitud is not null) await baseDeDatos.SaveChangesAsync(ct);
             return;
         }

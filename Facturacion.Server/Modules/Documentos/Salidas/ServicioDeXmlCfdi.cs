@@ -53,8 +53,7 @@ public sealed class ServicioDeXmlCfdi(
     ILogger<ServicioDeXmlCfdi> registro,
     RevisionDeDocumentos? revision = null)
 {
-    // XNamespace y no string: «espacio + "Nodo"» entre dos string solo concatena, y el nombre
-    // resultante —con los «:» de la URL— hace que XName reviente al buscar el nodo.
+    // XNamespace y no string: entre dos string «+» solo concatena y XName falla con los «:».
     private static readonly XNamespace EspacioNotarios = EsquemasSat.EspacioDeNombresNotariosPublicos;
     private static readonly XNamespace EspacioComercio = EsquemasSat.EspacioDeNombresComercioExterior20;
     private static readonly XNamespace EspacioImpuestosLocales = EsquemasSat.EspacioDeNombresImpuestosLocales;

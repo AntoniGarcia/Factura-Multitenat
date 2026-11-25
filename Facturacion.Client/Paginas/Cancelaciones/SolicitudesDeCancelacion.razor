@@ -4,13 +4,8 @@
 @using Facturacion.Shared.Documentos
 @inject ServicioDeCancelacion Cancelacion
 
-@*
-    «Solicitudes de cancelación» de §30. Una cancelación con aceptación del receptor no termina
-    al pulsar el botón: queda esperando días. Esta pantalla es donde se ve qué sigue abierto y
-    donde se le pregunta al SAT, de una pasada, en qué quedó cada una.
-
-    Lo que dice el SAT se muestra con la hora de la consulta: es una foto, no el estado en vivo.
-*@
+@* Una cancelación con aceptación del receptor tarda días. Lo que dice el SAT se muestra con la
+   hora de la consulta: es una foto, no el estado en vivo. *@
 
 <PageTitle>Solicitudes de cancelación</PageTitle>
 <TituloDePagina Texto="Solicitudes de cancelación" />
@@ -204,7 +199,7 @@
             ? string.IsNullOrEmpty(s.Serie) ? folio.ToString() : $"{s.Serie}-{folio}"
             : "—";
 
-    /// <summary>Lo que contestó el SAT de la cancelación; si no hay, el estado del CFDI.</summary>
+    // Lo que contestó el SAT de la cancelación; si no hay, el estado del CFDI.
     private static string EstatusSat(SolicitudDeCancelacionEnListaDto s)
         => s.EstatusCancelacionSat is { Length: > 0 } cancelacion ? cancelacion
             : s.EstadoCfdiSat ?? "Sin consultar";

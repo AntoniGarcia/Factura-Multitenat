@@ -9,11 +9,9 @@ using Microsoft.EntityFrameworkCore;
 
 namespace Facturacion.Server.Modules.Plataforma.Timbres;
 
-/// <summary>
-/// Reserva y devuelve timbres mediante procedimientos con operaciones atómicas sobre el saldo.
-/// La bolsa es de la cuenta: los procedimientos la encuentran a partir de la empresa activa,
-/// que queda en el movimiento como la que gastó. La transacción termina antes de llamar al PAC.
-/// </summary>
+/// Reserva y devuelve timbres con procedimientos atómicos sobre el saldo. La bolsa es de la
+/// cuenta; la empresa activa queda en el movimiento como la que gastó. La transacción termina
+/// antes de llamar al PAC.
 public sealed class ServicioDeTimbres(
     AppDbContext baseDeDatos,
     IContextoEmpresaInterno contexto,

@@ -68,10 +68,7 @@ public sealed record PeticionGuardarCliente(
     string? CodigoPostal,
     bool Activo);
 
-/// <summary>
-/// Un renglón del CSV de clientes ya analizado, igual que el de productos: trae el resultado de
-/// la validación antes de confirmar.
-/// </summary>
+// Renglón del CSV ya validado, igual que en productos.
 public sealed record RenglonDeImportacionDeCliente(
     int Numero,
     PeticionGuardarCliente? Cliente,

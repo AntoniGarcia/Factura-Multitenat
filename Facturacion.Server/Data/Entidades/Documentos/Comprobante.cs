@@ -30,10 +30,7 @@ public sealed class Comprobante : IEntidadDeEmpresa
     /// <summary>Clave de <c>c_TipoDeComprobante</c>: I, E, T, N o P.</summary>
     public required string TipoDeComprobante { get; set; }
 
-    /// <summary>
-    /// Una de <c>VariantesDeFactura</c>: básica, Notaría, Comercio Exterior u Obra. Se fija al
-    /// crear el borrador y no se edita. Nula en pagos y traslados.
-    /// </summary>
+    // Una de VariantesDeFactura; se fija al crear el borrador. Nula en pagos y traslados.
     public string? Variante { get; set; }
 
     /// <summary>Fecha de emisión. En UTC en la base; se muestra en el huso de la empresa.</summary>
@@ -121,16 +118,10 @@ public sealed class Comprobante : IEntidadDeEmpresa
 
     public decimal TotalImpuestosRetenidos { get; set; }
 
-    /// <summary>
-    /// Incluye los impuestos locales del complemento —el ISH suma, la retención de obra resta—,
-    /// como pide el Anexo 20: el SAT no los cuenta en los totales federales, pero sí en el Total.
-    /// </summary>
+    // Incluye los impuestos locales (el ISH suma, la retención de obra resta), como pide el Anexo 20.
     public decimal Total { get; set; }
 
-    /// <summary>
-    /// Impuesto sobre hospedaje, como fracción. Solo en factura básica y solo si algún concepto
-    /// lo aplica; si no, nula. Se captura en cada factura, precargada desde Configuración.
-    /// </summary>
+    // Fracción. Solo en factura básica y si algún concepto lo aplica; si no, nula.
     public decimal? TasaIsh { get; set; }
 
     // ── Resultado del timbrado ───────────────────────────────────────────────────────

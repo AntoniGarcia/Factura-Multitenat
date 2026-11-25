@@ -52,7 +52,7 @@ public sealed class ServicioDePagos(IHttpClientFactory fabrica)
         return await LeerAsync<DocumentoPorPagarDto>(respuesta, ct);
     }
 
-    /// <summary>Facturas PPD con saldo del cliente para el buscador; vacío si la consulta falla.</summary>
+    // Vacío si la consulta falla.
     public async Task<IReadOnlyList<FacturaPendienteDto>> BuscarPendientesAsync(
         Guid? clienteId, string? texto, CancellationToken ct = default)
     {

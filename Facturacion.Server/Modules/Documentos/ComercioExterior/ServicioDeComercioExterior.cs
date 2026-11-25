@@ -36,10 +36,7 @@ public sealed class ServicioDeComercioExterior(
             "El CFDI con Comercio Exterior 2.0 cumple el esquema SAT. No se envió al PAC ni se consumió un timbre.";
     }
 
-    /// <summary>
-    /// La unidad aduanera debe ser la UMT de la fracción (lo exige el validador fiscal), así que
-    /// se ofrece ya resuelta al elegir la fracción.
-    /// </summary>
+    // La unidad aduanera debe ser la UMT de la fracción, así que se ofrece ya resuelta.
     public async Task<Resultado<ClaveSatDto>> UnidadDeFraccionAsync(string fraccion, CancellationToken ct)
     {
         if (await ValidarLicenciaAsync(ct) is { } licencia) return licencia;

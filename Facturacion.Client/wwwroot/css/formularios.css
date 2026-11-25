@@ -1629,6 +1629,17 @@
     font-size: 0.875rem;
 }
 
+/* Público en general sin información global: se guarda, pero no se puede timbrar así. */
+.aviso-informacion-global {
+    margin-top: 0.75rem;
+    padding: 0.625rem 0.875rem;
+    background: rgba(var(--estado-advertencia-rgb), 0.08);
+    border-left: 3px solid var(--estado-advertencia);
+    border-radius: var(--radio);
+    color: var(--texto);
+    font-size: 0.875rem;
+}
+
 /*
   Lo que se le quitó al nombre para cumplir con CFDI 4.0. Se muestra antes de guardar, no
   después: el usuario tiene que poder decidir si eso sigue siendo su razón social.
@@ -2075,4 +2086,53 @@
 .importacion-vista .mud-table-root {
     border: 1px solid var(--borde);
     border-radius: var(--radio);
+}
+
+/* Datos del cliente en el formulario de emisión: etiqueta chica arriba y valor abajo,
+   en una franja, en lugar de campos de solo lectura. */
+.ficha-datos {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(9.5rem, 1fr));
+    gap: 0.5rem 1rem;
+    margin: 0.75rem 0 0;
+    padding: 0.625rem 0.75rem;
+    background: var(--fondo);
+    border: 1px solid var(--borde);
+    border-radius: var(--radio);
+}
+
+.ficha-datos > div {
+    min-width: 0;
+}
+
+.ficha-datos-amplio {
+    grid-column: span 2;
+}
+
+.ficha-datos dt {
+    color: var(--texto-suave);
+    font-size: 0.75rem;
+}
+
+.ficha-datos dd {
+    margin: 0.0625rem 0 0;
+    overflow: hidden;
+    color: var(--texto);
+    font-size: 0.875rem;
+    font-weight: 500;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.ficha-datos dd.ficha-datos-nota {
+    color: var(--texto-suave);
+    font-size: 0.75rem;
+    font-weight: 400;
+    white-space: normal;
+}
+
+@media (max-width: 48rem) {
+    .ficha-datos-amplio {
+        grid-column: auto;
+    }
 }

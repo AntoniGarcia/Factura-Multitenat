@@ -340,8 +340,7 @@ else
 
     private readonly List<Renglon> _renglones = [];
 
-    // Clase y no record: el abono se edita en su lugar. Reemplazar el renglón por una copia
-    // hacía que la tabla redibujara la fila y el campo perdiera el foco a media captura.
+    // Clase y no record: reemplazar el renglón por una copia hacía perder el foco a media captura.
     private sealed class Renglon
     {
         public required Guid IdDocumento { get; init; }
@@ -421,9 +420,9 @@ else
 
         if (EsNuevo && _pago is { } creado)
         {
-            // Todavía no se marca _borradorSinGuardar aquí: el handler de salida se registra
-            // en OnAfterRender, y si se marcara antes de este NavigateTo, la redirección
-            // interna dispararía el borrado del borrador que se acaba de crear.
+            /// No se marca _borradorSinGuardar todavía: el manejador de salida se registra en
+            /// OnAfterRender, y esta redirección interna borraría el borrador recién creado.
+            /// Se marca después de navegar.
             Navegacion.NavigateTo($"/pagos/{creado.Id}", replace: true);
             return;
         }
@@ -547,17 +546,14 @@ else
         SincronizarMonto();
     }
 
-    /// <summary>Los abonos mandan sobre el importe: el importe del pago es su suma en la moneda del pago.</summary>
+    // El importe del pago es la suma de los abonos.
     private void SincronizarMonto()
     {
         if (_renglones.Count == 0 || _renglones.Any(r => r.EquivalenciaDR is not > 0)) return;
         _monto = Math.Round(Repartido, DecimalesPago, MidpointRounding.AwayFromZero);
     }
 
-    /// <summary>
-    /// Al cambiar el importe del pago, el último renglón absorbe la diferencia, sin bajar de
-    /// cero ni pasar de su saldo. Con un solo renglón, su abono es el importe.
-    /// </summary>
+    // El último renglón absorbe la diferencia, sin bajar de cero ni pasar de su saldo.
     private void CambiarMonto(decimal monto)
     {
         _monto = monto;
@@ -585,7 +581,7 @@ else
 
         var serie = _serieBusqueda.Trim();
         var folio = _folioBusqueda;
-        // Quien escribe «A-125» en la serie y deja el folio vacío quiso decir las dos cosas.
+        // «A-125» en la serie con el folio vacío quiere decir las dos cosas.
         if (folio <= 0 && serie.LastIndexOf('-') is > 0 and var guion && int.TryParse(serie[(guion + 1)..], out var escrito))
         {
             folio = escrito;
@@ -627,7 +623,7 @@ else
         finally { _trabajando = false; }
     }
 
-    /// <summary>Lo que el servidor exige para timbrar. Antes de timbrar bloquea; al guardar solo avisa.</summary>
+    // Lo que el servidor exige para timbrar: antes de timbrar bloquea; al guardar solo avisa.
     private List<string> Faltantes()
     {
         var faltan = new List<string>();

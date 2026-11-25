@@ -281,9 +281,8 @@ public sealed class ServicioDeAutenticacion(
             ? preferida
             : empresas.Count == 1 ? empresas[0].Id : null;
 
-        // El titular no tiene renglones de permiso: lleva todos en cualquier empresa de su cuenta,
-        // también en la que acaba de dar de alta. Al usuario interno se le suman los implícitos,
-        // que no se guardan: el listado por emitir, eliminar en todo por Documentos, etc.
+        // El titular no tiene renglones de permiso: lleva todos en cualquier empresa de su cuenta.
+        // Al usuario interno se le suman los implícitos (Permisos.ConImplicitos), que no se guardan.
         IReadOnlyList<string> permisos = activa is not { } empresa
             ? []
             : usuario.EsTitular

@@ -9,22 +9,16 @@ internal sealed record ImpuestoMonetarioCfdi(ImpuestoConcepto Impuesto, decimal 
 internal sealed record ConceptoMonetarioCfdi(
     Concepto Concepto, decimal Importe, decimal Descuento, ImpuestoMonetarioCfdi[] Impuestos);
 
-/// <param name="Importe">Nulo en el grupo exento: el SAT lo resume solo con base, impuesto y factor.</param>
+// Importe nulo en el grupo exento: el SAT lo resume solo con base, impuesto y factor.
 internal sealed record TrasladoMonetarioCfdi(
     string Impuesto, string TipoFactor, decimal? TasaOCuota, decimal Base, decimal? Importe);
 
 internal sealed record RetencionMonetariaCfdi(string Impuesto, decimal Importe);
 
-/// <summary>Un renglón del complemento de impuestos locales.</summary>
-/// <param name="Tasa">
-/// Porcentaje, como lo piden <c>TasadeTraslado</c> y <c>TasadeRetencion</c>: 3.00 es el 3 %.
-/// </param>
+// Tasa en porcentaje, como TasadeTraslado y TasadeRetencion: 3.00 es el 3 %.
 public sealed record ImpuestoLocalCfdi(string Nombre, decimal Tasa, decimal Importe, bool EsRetencion);
 
-/// <param name="Locales">
-/// Fuera de los totales federales, pero dentro del <see cref="Total"/>: el Anexo 20 pide
-/// <c>Total = SubTotal − Descuento + traslados − retenciones</c>, federales y locales.
-/// </param>
+// Locales: fuera de los totales federales pero dentro del Total, como pide el Anexo 20.
 internal sealed record ProyeccionMonetariaCfdi(
     ConceptoMonetarioCfdi[] Conceptos,
     TrasladoMonetarioCfdi[] Traslados,
@@ -36,13 +30,10 @@ internal sealed record ProyeccionMonetariaCfdi(
     decimal TotalImpuestosRetenidos,
     decimal Total)
 {
-    /// <summary>El complemento de impuestos locales lleva dos decimales en tasas e importes.</summary>
+    // El complemento de impuestos locales lleva dos decimales en tasas e importes.
     public const int DecimalesLocales = 2;
 
-    /// <param name="obra">
-    /// La estimación de una factura de obra, que aporta su retención local. Nula en cualquier
-    /// otra factura; quien llama no puede omitirla en una de obra sin cambiar el Total.
-    /// </param>
+    // obra: solo en factura de obra; omitirla ahí cambia el Total.
     public static ProyeccionMonetariaCfdi Calcular(Comprobante comprobante, int decimales, DatosObra? obra)
     {
         decimal Redondear(decimal valor)
@@ -103,7 +94,7 @@ internal sealed record ProyeccionMonetariaCfdi(
            comprobante.TotalImpuestosRetenidos == TotalImpuestosRetenidos &&
            comprobante.Total == Total;
 
-    /// <summary>Copia los totales al comprobante. Es la única forma en que se escriben.</summary>
+    // Es la única forma en que se escriben los totales del comprobante.
     public void AplicarA(Comprobante comprobante)
     {
         comprobante.SubTotal = SubTotal;

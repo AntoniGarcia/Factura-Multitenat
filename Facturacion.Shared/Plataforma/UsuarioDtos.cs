@@ -1,14 +1,8 @@
 namespace Facturacion.Shared.Plataforma;
 
-/// <summary>
-/// Un usuario de la cuenta. Sus permisos son los mismos en todas las empresas a las que entra
-/// (AGENTS.md §11, 27 de octubre de 2026).
-/// </summary>
-/// <param name="CreadoPorAdministrador">
-/// Su contraseña la fijó un administrador y solo un administrador la cambia. La pantalla lo
-/// muestra para que quede claro de quién es cada acceso.
-/// </param>
-/// <param name="Empresas">Empresas de la cuenta a las que tiene acceso activo.</param>
+/// Mismos permisos en todas las empresas a las que entra.
+/// CreadoPorAdministrador: su contraseña la fija y la cambia un administrador.
+/// Empresas: a las que tiene acceso activo.
 public sealed record UsuarioDeLaCuentaDto(
     Guid UsuarioId,
     string Nombre,
@@ -20,17 +14,14 @@ public sealed record UsuarioDeLaCuentaDto(
     bool EsTitular,
     IReadOnlyList<Guid> Empresas);
 
-/// <summary>
-/// Una empresa activa de la cuenta, para elegir a cuáles entra un usuario.
-/// </summary>
+// Empresa activa de la cuenta, para elegir a cuáles entra un usuario.
 public sealed record EmpresaParaAccesoDto(
     Guid Id,
     string NombreFiscal,
     string Rfc,
     LicenciasDto Licencias);
 
-/// <param name="LimiteDeUsuarios">Cuántos usuarios activos admite la cuenta, contando al titular.</param>
-/// <param name="UsuariosEnLaCuenta">Cuántos ocupan lugar hoy, en todas las empresas de la cuenta.</param>
+// LimiteDeUsuarios cuenta al titular; UsuariosEnLaCuenta, los que ocupan lugar en toda la cuenta.
 public sealed record UsuariosDeLaCuentaDto(
     IReadOnlyList<UsuarioDeLaCuentaDto> Usuarios,
     int LimiteDeUsuarios,
@@ -46,8 +37,8 @@ public sealed record UsuariosDeLaCuentaDto(
 ///. El servidor no la devuelve nunca, ni siquiera al que la acaba de escribir.
 /// </para>
 /// <para>
-/// <c>Empresas</c> es la excepción a «el Client nunca envía una empresa» (AGENTS.md §11, 27 de
-/// octubre de 2026): no elige dónde se trabaja, dice a cuáles entrará el usuario, y el
+/// <c>Empresas</c> es la excepción a «el Client nunca envía una empresa»:
+/// no elige dónde se trabaja, dice a cuáles entrará el usuario, y el
 /// servidor rechaza cualquiera que no sea una empresa activa de la cuenta del titular.
 /// </para>
 /// </summary>
@@ -74,7 +65,7 @@ public sealed record PeticionActualizarUsuario(
 /// </summary>
 public sealed record PeticionCambiarContrasenaUsuario(string Contrasena);
 
-/// <summary>Permisos y empresas de un usuario. Ver <see cref="PeticionCrearUsuario"/> sobre <c>Empresas</c>.</summary>
+// Sobre Empresas, ver PeticionCrearUsuario.
 public sealed record PeticionActualizarPermisos(IReadOnlyList<string> Permisos, IReadOnlyList<Guid> Empresas);
 
 public sealed record PeticionCambiarActivoUsuario(bool Activo);

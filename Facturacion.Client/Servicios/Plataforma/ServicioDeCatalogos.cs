@@ -67,10 +67,7 @@ public sealed class ServicioDeCatalogos(IHttpClientFactory fabrica)
     public IReadOnlyList<ClaveSatDto> Obtener(string catalogo)
         => _cache.GetValueOrDefault(catalogo, []);
 
-    /// <summary>
-    /// Opciones de captura: el peso, que siempre está, y las monedas que la empresa agregó en
-    /// Configuración. No modifica el catálogo SAT ni los documentos guardados.
-    /// </summary>
+    // El peso, que siempre está, y las monedas que la empresa agregó en Configuración.
     public IReadOnlyList<ClaveSatDto> ObtenerMonedasDeCaptura(IEnumerable<string> deLaEmpresa)
     {
         var claves = new HashSet<string>(deLaEmpresa) { "MXN" };

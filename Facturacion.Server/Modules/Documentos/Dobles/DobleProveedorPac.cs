@@ -7,34 +7,10 @@ using Facturacion.Shared.Comun;
 
 namespace Facturacion.Server.Modules.Documentos.Dobles;
 
-/// <summary>
-/// PAC inventado para <c>Pac:Modo=Simulado</c>: deja probar de punta a punta —timbrado,
-/// PDF, correo, cancelación y su seguimiento— mientras el PAC real lo integra otra persona.
-/// Implementa <see cref="IProveedorPac"/> igual que lo hará el real, así que todo lo que se
-/// prueba aquí es el mismo código que correrá después.
-///
-/// <para><b>Qué hace</b></para>
-/// <list type="bullet">
-///   <item><description>
-///     Timbra siempre: agrega un <c>TimbreFiscalDigital</c> con UUID nuevo, sello del SAT al
-///     azar y la leyenda «sin validez fiscal», que el PDF muestra en el encabezado. La misma
-///     clave de idempotencia devuelve el mismo timbre, como un PAC de verdad.
-///   </description></item>
-///   <item><description>
-///     Cancela de inmediato lo que el SAT cancelaría sin aceptación (total de hasta $1,000,
-///     RFC genérico, pagos y traslados). Lo demás queda esperando al receptor, que acepta a
-///     los dos minutos —o rechaza, con <c>Pac:SimuladoReceptorRechaza=true</c>—; se ve al
-///     consultar el estatus.
-///   </description></item>
-/// </list>
-///
-/// <para><b>Por qué guarda su estado en un archivo</b></para>
-/// Si viviera solo en memoria, reiniciar el servidor olvidaría las cancelaciones en espera y
-/// la consulta devolvería el comprobante como vigente sin solicitud, que el sistema toma como
-/// cancelación que no prosperó. El archivo va en la carpeta temporal del sistema, lejos del
-/// almacén cifrado.
-/// </para>
-/// </summary>
+/// PAC inventado para Pac:Modo=Simulado, mientras otra persona integra el real.
+/// Timbra siempre (con leyenda «sin validez fiscal») y cancela como el SAT: sin aceptación
+/// hasta $1,000, RFC genérico, pagos y traslados; lo demás espera al receptor dos minutos.
+/// Guarda su estado en un archivo temporal para no perder las cancelaciones al reiniciar.
 [DobleDePrueba]
 public sealed class DobleProveedorPac : IProveedorPac
 {
@@ -43,7 +19,7 @@ public sealed class DobleProveedorPac : IProveedorPac
 
     private const string Leyenda = "Timbre simulado en desarrollo. Sin validez fiscal.";
 
-    /// <summary>El RFC genérico de pruebas del SAT: no suplanta a ningún PAC real.</summary>
+    // RFC genérico de pruebas del SAT: no suplanta a ningún PAC real.
     private const string RfcProveedor = "AAA010101AAA";
 
     private const string NoCertificadoSat = "00000000000000000000";
@@ -134,7 +110,7 @@ public sealed class DobleProveedorPac : IProveedorPac
             _estado.PorClave[claveIdempotencia] = timbre;
             _estado.PorUuid[uuid] = new Comprobante
             {
-                // Lo que el SAT cancela sin pedirle permiso al receptor, simplificado.
+                // Lo que el SAT cancela sin aceptación del receptor, simplificado.
                 SinAceptacion = total <= 1000m || rfcReceptor is "XAXX010101000" or "XEXX010101000"
             };
 
@@ -247,7 +223,7 @@ public sealed class DobleProveedorPac : IProveedorPac
         timbre.SelloSat,
         timbre.CadenaOriginal);
 
-    /// <summary>El SAT sella con la hora del centro del país, sin horario de verano desde 2022.</summary>
+    // El SAT sella con la hora del centro del país, sin horario de verano desde 2022.
     private static DateTime HoraDelCentro(DateTime utc)
     {
         try

@@ -7,10 +7,7 @@ using Microsoft.AspNetCore.Mvc;
 
 namespace Facturacion.Server.Modules.Plataforma.Productos;
 
-/// <summary>
-/// Catálogo de productos y servicios. Lo consulta quien emite —necesita elegir producto— o
-/// quien administra el catálogo; modificarlo pide <c>administrar_productos</c>.
-/// </summary>
+// Lo consulta quien emite o quien administra el catálogo; las altas y cambios piden sus casillas.
 public static class ProductosEndpoints
 {
     /// <summary>Un CSV de cinco mil productos no llega a esto; el tope acota el abuso.</summary>
@@ -30,10 +27,9 @@ public static class ProductosEndpoints
         grupo.MapPost("/{id:guid}/activo", CambiarActivo).RequireAuthorization(Permisos.ProductosDesactivar);
         grupo.MapDelete("/{id:guid}", Eliminar).RequireAuthorization(Permisos.ProductosEliminar);
 
-        // Analizar y confirmar van separados a propósito: el primero no toca la base, y es
-        // lo que permite enseñar la vista previa antes de que el usuario se comprometa. La
-        // importación crea y actualiza: entra con cualquiera de las dos y el servicio rechaza,
-        // renglón por renglón, lo que no se tenga.
+        /// Analizar no toca la base y permite la vista previa antes de confirmar.
+        /// La importación crea y actualiza: entra con cualquiera de los dos permisos y el servicio
+        /// rechaza, renglón por renglón, lo que no se tenga.
         grupo.MapPost("/importar/analizar", AnalizarCsv)
             .RequireAuthorization(Permisos.Politicas.EditarProductos)
             .DisableAntiforgery()
@@ -51,8 +47,7 @@ public static class ProductosEndpoints
         return resultado.EsFallo ? resultado.Error!.AResultado(contexto) : Results.NoContent();
     }
 
-    // Sin «activos» se listan todos: así pide el Client el filtro «Todos». Con true por omisión,
-    // «Todos» mostraba solo los activos. Los buscadores de la emisión mandan true explícito.
+    // Sin «activos» se listan todos (filtro «Todos»); los buscadores de la emisión mandan true.
     private static async Task<IResult> Listar(
         ServicioDeProductos productos, CancellationToken ct,
         string? texto = null, bool? activos = null, Guid? empresa = null,

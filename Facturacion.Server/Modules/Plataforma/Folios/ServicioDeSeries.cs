@@ -104,10 +104,7 @@ public sealed class ServicioDeSeries(
         return ADto(serie);
     }
 
-    /// <summary>
-    /// Desactivar o reactivar sin pasar por el formulario: así basta la casilla Desactivar, como
-    /// en los demás catálogos.
-    /// </summary>
+    // Sin pasar por el formulario: basta la casilla Desactivar, como en los demás catálogos.
     public async Task<Resultado<SerieDto>> CambiarActivaAsync(Guid id, bool activa, CancellationToken ct)
     {
         var serie = await baseDeDatos.Series.FirstOrDefaultAsync(s => s.Id == id, ct);
@@ -129,11 +126,8 @@ public sealed class ServicioDeSeries(
         return ADto(serie);
     }
 
-    /// <summary>
-    /// Borrado físico, solo de una serie que no ha dado ningún folio ni la usa ningún comprobante,
-    /// ni siquiera un borrador (AGENTS.md §11). Una serie con folios se desactiva: borrarla
-    /// dejaría sin explicación la numeración ya emitida.
-    /// </summary>
+    // Borrado físico solo si no ha dado folios ni la usa ningún comprobante, ni un borrador.
+    // Con folios se desactiva: borrarla dejaría sin explicación la numeración emitida.
     public async Task<Resultado> EliminarAsync(Guid id, CancellationToken ct)
     {
         var serie = await baseDeDatos.Series.FirstOrDefaultAsync(s => s.Id == id, ct);

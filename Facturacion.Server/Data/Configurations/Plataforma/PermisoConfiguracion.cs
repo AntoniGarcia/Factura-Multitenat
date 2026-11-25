@@ -21,7 +21,7 @@ public sealed class PermisoConfiguracion : IEntityTypeConfiguration<Permiso>
         constructor.Property(p => p.Clave).HasMaxLength(32);
         constructor.Property(p => p.Descripcion).HasMaxLength(128);
 
-        // Solo las asignables: «titular» no se guarda, lo pone el token a quien registró la cuenta.
+        // Solo las asignables: «titular» no se guarda, lo pone el token.
         constructor.HasData(ClavesPermiso.Asignables.Select(clave =>
             new Permiso { Clave = clave, Descripcion = ClavesPermiso.EtiquetaCorta(clave) }));
     }

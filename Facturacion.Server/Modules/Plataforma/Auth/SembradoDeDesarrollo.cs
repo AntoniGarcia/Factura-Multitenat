@@ -69,8 +69,7 @@ public static class SembradoDeDesarrollo
             Email = correo,
             EmailConfirmed = true,
             FechaAltaUtc = ahora,
-            // Como en el registro: quien abre la cuenta es su titular y lleva todos los permisos
-            // sin guardarlos.
+            // Como en el registro: es el titular y lleva todos los permisos sin guardarlos.
             EsTitular = true
         };
 

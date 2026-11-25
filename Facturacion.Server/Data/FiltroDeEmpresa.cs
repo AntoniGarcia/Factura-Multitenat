@@ -3,7 +3,7 @@ using Microsoft.EntityFrameworkCore;
 
 namespace Facturacion.Server.Data;
 
-/// <summary>Filtra las lecturas de entidades con empresa obligatoria u opcional, y las de cuenta. Identidad, pertenencias y catálogos comunes se controlan por separado. Sin empresa o cuenta activa no devuelve datos; las escrituras las valida SelladoDeEmpresaInterceptor.</summary>
+// Sin empresa o cuenta activa no devuelve nada; las escrituras las valida SelladoDeEmpresaInterceptor.
 public static class FiltroDeEmpresa
 {
     public static void AplicarFiltroDeEmpresa(this ModelBuilder constructor, AppDbContext contexto)

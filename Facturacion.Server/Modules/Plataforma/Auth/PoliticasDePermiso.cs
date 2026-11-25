@@ -18,8 +18,7 @@ public static class PoliticasDePermiso
                 .RequireAssertion(contexto =>
                     !contexto.User.HasClaim(c => c.Type == ClavesDeClaim.Operador)));
 
-        // Las que se cumplen con cualquiera de varios permisos: el listado lo abre quien emite
-        // cualquier documento, y los catálogos los consulta quien los usa para emitir.
+        // Las que se cumplen con cualquiera de varios permisos.
         foreach (var (nombre, claves) in Permisos.Politicas.Compuestas)
             constructor.AddPolicy(nombre, politica => politica
                 .RequireAuthenticatedUser()

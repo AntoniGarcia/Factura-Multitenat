@@ -130,9 +130,9 @@
 @code {
     [Parameter, EditorRequired] public Guid ComprobanteId { get; set; }
     [Parameter] public decimal ImporteTrabajos { get; set; }
-    /// <summary>IVA trasladado de los conceptos capturados; el servidor lo vuelve a sumar al guardar.</summary>
+    // El servidor lo vuelve a sumar al guardar.
     [Parameter] public decimal IvaConceptos { get; set; }
-    /// <summary>La factura relaciona exactamente un CFDI con tipo 07: solo entonces se amortiza.</summary>
+    // Solo se amortiza si la factura relaciona exactamente un CFDI con tipo 07.
     [Parameter] public bool AnticipoRelacionado { get; set; }
     [Parameter, EditorRequired] public Func<Task<bool>> GuardarFactura { get; set; } = null!;
     [Parameter] public EventCallback AlGuardar { get; set; }
@@ -143,8 +143,7 @@
     private ServicioParcialConstruccionDto? _servicioParcial;
     private decimal _porcentajeRetenciones;
     private decimal _porcentajeDevoluciones;
-    // Los nombres se asignan en OnParametersSetAsync, que restablece cada deducción. El segundo
-    // valor es la tasa que se precarga al marcarla: 2 al millar de la CMIC en ICIC.
+    // La tasa que se precarga al marcar cada deducción: 2 al millar de la CMIC en ICIC.
     private readonly List<DeduccionCaptura> _deducciones =
     [
         new("5 al millar", 0.5m),
@@ -173,8 +172,7 @@
             var retenciones = Porcentaje(importe, _porcentajeRetenciones);
             var devoluciones = Porcentaje(importe, _porcentajeDevoluciones);
             var subtotal = importe - amortizacion;
-            // IvaConceptos ya trae descontada la amortización guardada; mientras no se guarde la
-            // nueva, se estima escalando a la base que quedaría. Al guardar manda el servidor.
+            // Estimación hasta guardar: IvaConceptos ya trae descontada la amortización anterior.
             var aplicada = _resultado?.PorcentajeAmortizacion ?? 0;
             var iva = aplicada == porcentaje ? IvaConceptos
                 : aplicada >= 100 ? 0
@@ -240,8 +238,7 @@
         await CargarConciliacionAsync();
     }
 
-    // Obra pública marca la retención local (5 al millar, editable para tasas estatales o
-    // municipales); obra privada empieza sin deducciones.
+    // Obra pública marca la retención local (5 al millar, editable); la privada empieza sin deducciones.
     private void CambiarTipoObra(string? tipo)
     {
         _tipoObra = tipo;
@@ -316,9 +313,9 @@
         if (error is not null) _error = error;
     }
 
-    // La tabla conserva siempre las cuatro deducciones; una sin usar se guarda con 0 %, que es
-    // también lo que la deja fuera del cálculo y del PDF. Desmarcar no borra lo capturado, para
-    // que volver a marcarla lo recupere mientras no se guarde.
+    /// Siempre hay cuatro deducciones; una sin usar se guarda con 0 %, que la deja fuera del cálculo
+    /// y del PDF. Desmarcar no borra lo capturado, para recuperarlo al volver a marcar mientras no
+    /// se guarde.
     private sealed class DeduccionCaptura(string predeterminado, decimal sugerido)
     {
         public string Nombre { get; set; } = string.Empty;

@@ -21,7 +21,7 @@ public sealed class CompraTimbres : IEntidadDeCuenta
 
     public Guid CuentaId { get; set; }
 
-    /// <summary>Empresa que la solicitó. Es un dato, no tenencia.</summary>
+    // Empresa que la solicitó: es un dato, no tenencia.
     public Guid EmpresaId { get; set; }
 
     public Guid PaqueteId { get; set; }

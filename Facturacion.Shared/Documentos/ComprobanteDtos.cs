@@ -47,20 +47,12 @@ public sealed record ComprobanteDto(
     decimal? TasaIsh = null,
     IReadOnlyList<ImpuestoLocalDto>? ImpuestosLocales = null);
 
-/// <summary>Un renglón del complemento de impuestos locales: el ISH o la retención de obra.</summary>
-/// <param name="Tasa">Porcentaje: 3.00 es el 3 %.</param>
+// Impuesto local (ISH o retención de obra). Tasa en porcentaje: 3.00 es el 3 %.
 public sealed record ImpuestoLocalDto(string Nombre, decimal Tasa, decimal Importe, bool EsRetencion);
 
-/// <param name="ProductoId">Producto de catálogo del que se resolvió, si vino de ahí.</param>
-/// <param name="Impuestos">
-/// Los calculados del concepto. Al guardar no se leen: el servidor los vuelve a tomar del
-/// producto y, en factura básica, de <paramref name="Retenciones"/>.
-/// </param>
-/// <param name="Retenciones">
-/// Solo en factura básica: claves de <c>c_Impuesto</c> que el concepto retiene, según sus
-/// casillas. Nulo deja las retenciones del producto tal cual.
-/// </param>
-/// <param name="AplicaIsh">Solo en factura básica: el concepto paga impuesto sobre hospedaje.</param>
+/// Impuestos: al guardar no se leen; el servidor los toma del producto y de Retenciones.
+/// Retenciones: solo en factura básica, claves de c_Impuesto que retiene el concepto;
+/// nulo deja las del producto. AplicaIsh: solo en factura básica.
 public sealed record ConceptoDto(
     Guid? Id,
     int Orden,
@@ -84,11 +76,8 @@ public sealed record ConceptoDto(
     public DatosFiscalesDeConceptoDto? DatosFiscales { get; init; }
 }
 
-/// <summary>
-/// Tasas de Configuración, como fracción, para capturar una factura básica: las de retención
-/// deciden qué casillas muestra cada concepto —cero es que no aplica— y la de ISH precarga la
-/// tasa de la factura. La de IVA solo se muestra: cada concepto lleva el IVA de su producto.
-/// </summary>
+// Tasas de Configuración como fracción. Una retención en cero no muestra su casilla;
+// la de IVA solo se muestra, porque cada concepto lleva la de su producto.
 public sealed record TasasDeCapturaDto(decimal RetencionIva, decimal RetencionIsr, decimal RetencionIeps, decimal Ish);
 
 public sealed record ImpuestoDeConceptoDto(
@@ -104,21 +93,9 @@ public sealed record ComprobanteRelacionadoDto(
     string? Serie,
     int? Folio);
 
-/// <summary>
-/// Guarda el borrador completo de una sola vez: cabecera, conceptos y relacionados. No hay
-/// autoguardado por renglón —el capturista edita la rejilla entera y guarda al final, o al
-/// cambiar de pestaña— porque partir el guardado en llamadas por campo multiplicaría los
-/// viajes de red sin ganar nada: nada de esto se timbra hasta que el usuario pide "Generar
-/// factura".
-/// </summary>
-/// <param name="ReceptorNombre">
-/// Solo con el RFC XAXX010101000: el nombre de esta factura, que puede no ser el del cliente
-/// (ventas sueltas). Con cualquier otro RFC se ignora y va el del catálogo.
-/// </param>
-/// <param name="TasaIsh">
-/// Solo en factura básica con algún concepto que aplica ISH: la tasa de esta factura, como
-/// fracción. Se precarga desde Configuración y el capturista la puede cambiar.
-/// </param>
+/// Guarda el borrador completo de una vez; no hay autoguardado por renglón.
+/// ReceptorNombre: solo con XAXX010101000 (ventas sueltas); con otro RFC va el del catálogo.
+/// TasaIsh: fracción; solo en factura básica con algún concepto que aplica ISH.
 public sealed record PeticionGuardarBorrador(
     string TipoDeComprobante,
     Guid? SerieId,
@@ -146,11 +123,8 @@ public sealed record CfdiRelacionadoResueltoDto(
     string Serie,
     int Folio);
 
-/// <summary>
-/// Una serie con al menos un CFDI timbrado en la empresa: lo único que se puede relacionar.
-/// Incluye las series ya inactivas, porque sus comprobantes siguen vigentes.
-/// </summary>
-/// <param name="Tipos">Claves de <c>c_TipoDeComprobante</c> que tiene timbradas.</param>
+// Serie con al menos un CFDI timbrado; incluye las inactivas porque sus comprobantes siguen
+// vigentes. Tipos: claves de c_TipoDeComprobante que tiene timbradas.
 public sealed record SerieRelacionableDto(
     string Serie,
     IReadOnlyList<string> Tipos,

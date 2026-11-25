@@ -29,9 +29,9 @@ public sealed class ServicioDeCompras(
                 p.VigenciaMeses, p.CuentaId != null))
             .ToListAsync(ct);
 
-    // Una cuenta que nunca compró no tiene renglón de bolsa. Es un saldo de cero, no un
-    // error: la bolsa nace al acreditarse la primera compra. El filtro global la acota a la
-    // cuenta del claim.
+    /// Una cuenta que nunca compró no tiene bolsa: es saldo cero, no un error.
+    /// La bolsa nace al acreditarse la primera compra.
+    /// El filtro global la acota a la cuenta del claim.
     public async Task<SaldoTimbresDto> SaldoAsync(CancellationToken ct)
         => await baseDeDatos.BolsasTimbres
             .AsNoTracking()

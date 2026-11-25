@@ -59,15 +59,13 @@ public sealed class ServicioDeSalidasFiscales(
             return ErrorNegocio.Conflicto(
                 "comprobante-sin-cfdi", "El PDF fiscal solo está disponible después del timbrado.");
 
-        // Carta Porte usa su propio generador; el complemento de pagos tiene su propia sección
-        // en GeneradorDePdfCfdi, sin conceptos. Nómina sigue fuera del alcance.
+        // Carta Porte usa su propio generador y el pago su propia sección; nómina queda fuera.
         if (comprobante.TipoDeComprobante is not ("I" or "E" or "T" or "P"))
             return ErrorNegocio.Conflicto(
                 "pdf-no-disponible-para-tipo",
                 "La representación PDF para este tipo de comprobante todavía no está disponible.");
 
-        // La raíz de un pago va en XXX, sin decimales; sus importes viven en el complemento y
-        // se escriben con los de la moneda del pago, igual que en ServicioDeXmlCfdi.
+        // La raíz de un pago va en XXX; sus importes usan los decimales de la moneda del pago.
         var monedaDeImportes = comprobante.TipoDeComprobante == "P" && comprobante.Pagos.Count > 0
             ? comprobante.Pagos[0].MonedaP
             : comprobante.Moneda;
@@ -137,10 +135,18 @@ public sealed class ServicioDeSalidasFiscales(
                 "El XML de este CFDI no se pudo leer para generar el PDF. Avisa a soporte.");
         }
 
+        var obra = await baseDeDatos.DatosObra.AsNoTracking()
+            .FirstOrDefaultAsync(x => x.ComprobanteId == comprobanteId, ct);
+
         var contenido = generadorPdf.Generar(comprobante,
             new DatosDelPdf(fechaLocal, decimales, logo?.Contenido, Notaria: datosNotariales,
                 ComercioExterior: datosComercio, ImpuestosLocales: impuestosLocales,
-                LeyendaDelTimbre: leyenda) { ZonaHoraria = zona, ServicioParcial = servicioParcial });
+                LeyendaDelTimbre: leyenda)
+            {
+                ZonaHoraria = zona,
+                ServicioParcial = servicioParcial,
+                EstimacionObra = obra is null ? null : ServicioDeObras.Calcular(comprobante, obra)
+            });
 
         return new ArchivoFiscal(NombreDeArchivoFiscal.Construir(comprobante, zona, "pdf"), "application/pdf", contenido);
     }
@@ -174,10 +180,7 @@ public sealed class ServicioDeSalidasFiscales(
 
     private const string EspacioDeNombresTimbre = "http://www.sat.gob.mx/TimbreFiscalDigital";
 
-    /// <summary>
-    /// Del XML timbrado, no del comprobante: el PDF de un CFDI muestra lo que el SAT recibió. Los
-    /// XML de obra anteriores llamaban siempre «5 al millar» a su retención y se leen igual.
-    /// </summary>
+    // Del XML timbrado: el PDF muestra lo que recibió el SAT.
     private static IReadOnlyList<ImpuestoLocalCfdi> LeerImpuestosLocales(byte[] contenido)
     {
         using var lector = XmlReader.Create(new MemoryStream(contenido), new XmlReaderSettings
@@ -234,6 +237,19 @@ public sealed class ServicioDeSalidasFiscales(
             return ErrorNegocio.Conflicto(
                 "comprobante-sin-cfdi", "El XML fiscal solo está disponible después del timbrado.");
 
+        var zona = await huso.ObtenerAsync(ct);
+        var nombre = NombreDeArchivoFiscal.Construir(comprobante, zona, "xml");
+
+        var guardado = await baseDeDatos.XmlsDeComprobante
+            .AsNoTracking()
+            .Where(x => x.ComprobanteId == comprobanteId)
+            .Select(x => x.Xml)
+            .FirstOrDefaultAsync(ct);
+
+        if (guardado is not null)
+            return new ArchivoFiscal(nombre, "application/xml", System.Text.Encoding.UTF8.GetBytes(guardado));
+
+        // Timbrados antes de guardar el XML en la base que CopiaDeXmlTimbrados aún no copia.
         if (string.IsNullOrWhiteSpace(comprobante.RutaXml))
             return ErrorNegocio.NoEncontrado(
                 "xml-no-disponible",
@@ -244,10 +260,7 @@ public sealed class ServicioDeSalidasFiscales(
             var contenido = await almacen.LeerAsync(
                 comprobante.EmpresaId, CategoriasDeArchivo.XmlTimbrado, comprobante.RutaXml, ct);
 
-            var zona = await huso.ObtenerAsync(ct);
-
-            return new ArchivoFiscal(
-                NombreDeArchivoFiscal.Construir(comprobante, zona, "xml"), "application/xml", contenido);
+            return new ArchivoFiscal(nombre, "application/xml", contenido);
         }
         catch (FileNotFoundException ex)
         {
@@ -267,7 +280,7 @@ public sealed class ServicioDeSalidasFiscales(
         }
     }
 
-    /// <summary>El XML timbrado y su PDF juntos, con las mismas validaciones que cada uno por separado.</summary>
+    // XML timbrado y PDF juntos, con las mismas validaciones.
     public async Task<Resultado<ArchivoFiscal>> GenerarZipAsync(Guid comprobanteId, CancellationToken ct)
     {
         var xml = await ObtenerXmlAsync(comprobanteId, ct);

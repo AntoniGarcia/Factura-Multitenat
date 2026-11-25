@@ -38,10 +38,9 @@ public sealed record ProductoEnListaDto(
     bool Activo,
     string? IdInterno);
 
-/// <summary>Alta y edición. El código interno lo asigna el servidor.</summary>
-/// <param name="Descripcion">El nombre del producto; es lo que va al CFDI.</param>
-/// <param name="IdInterno">Código propio de la empresa; en Comercio Exterior precarga el NoIdentificacion del concepto.</param>
-/// <param name="Detalle">Descripción ampliada, opcional.</param>
+/// El código interno lo asigna el servidor. Descripcion es el nombre que va al CFDI.
+/// IdInterno: código propio; en Comercio Exterior precarga el NoIdentificacion.
+/// Detalle: descripción ampliada, opcional.
 public sealed record PeticionGuardarProducto(
     string ClaveProdServ,
     string ClaveUnidad,

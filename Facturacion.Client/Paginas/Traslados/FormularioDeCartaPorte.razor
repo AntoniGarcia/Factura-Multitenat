@@ -190,8 +190,7 @@
                                     <MudButton Size="Size.Small" Color="Color.Error" OnClick="@(() => _mercancias.Remove(renglon))">Quitar producto</MudButton>
                                 }
                             </div>
-                            @* Del catálogo solo se toman ID interno y nombre para mostrarlos, y la
-                               descripción y el peso si están vacíos. Las claves del SAT se eligen aparte. *@
+                            @* Del catálogo se toman ID y nombre, y la descripción y el peso si están vacíos. *@
                             <div class="rejilla-formulario">
                                 @if (EsEditable)
                                 {
@@ -217,8 +216,7 @@
                                                   ValorCambiado="v => renglon.Unidad = v" Deshabilitado="@(!EsEditable)" Requerido="true" />
                                 <MudTextField T="string" Label="Unidad propia (opcional)" @bind-Value="renglon.UnidadPropia" Immediate="true" Disabled="@(!EsEditable)" MaxLength="20" />
                             </div>
-                            @* El SAT pide «largo/alto/ancho» más la unidad, en enteros de hasta tres cifras:
-                               30/40/30cm. Se captura por partes y se arma al guardar. *@
+                            @* El SAT pide «largo/alto/ancho» con unidad, enteros de hasta tres cifras (30/40/30cm). *@
                             <div class="rejilla-formulario carta-porte-dimensiones" role="group" aria-label="Dimensiones del empaque, opcionales">
                                 <MudNumericField T="int?" Label="Largo" @bind-Value="renglon.Largo" Immediate="true" Min="1" Max="999" Disabled="@(!EsEditable)"
                                                  Error="@renglon.DimensionesIncompletas" ErrorText="Captura largo, alto y ancho, o ninguno." />
@@ -592,8 +590,7 @@
         _clienteDestinoId = seleccionado?.Id;
         if (seleccionado is null) return;
 
-        // Se precarga lo que el cliente tenga capturado y el resto se completa aquí. Un domicilio
-        // anterior al cambio a claves del SAT trae el estado escrito a mano: ese no se precarga.
+        // Un domicilio anterior a las claves del SAT trae el estado escrito a mano: ese no se precarga.
         var cliente = await Clientes.ObtenerAsync(seleccionado.Id);
         if (cliente is null || cliente.Pais is not (null or "MEX")) return;
 
@@ -804,10 +801,7 @@
         public bool DimensionesIncompletas
             => new[] { Largo, Alto, Ancho }.Count(x => x is not null) is 1 or 2;
 
-        /// <summary>
-        /// El texto que viaja al servidor. Incompletas se mandan tal cual para que el servidor las
-        /// rechace con su mensaje, en lugar de perder en silencio lo capturado.
-        /// </summary>
+        // Incompletas se mandan tal cual para que el servidor las rechace con su mensaje.
         public string Dimensiones
         {
             get => Largo is null && Alto is null && Ancho is null

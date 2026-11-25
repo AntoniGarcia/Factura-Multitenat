@@ -4,10 +4,7 @@ using Facturacion.Shared.Plataforma;
 
 namespace Facturacion.Client.Servicios.Plataforma;
 
-/// <summary>
-/// Llama a <c>/api/usuarios</c>. La empresa activa va en el token; las únicas empresas que
-/// viajan son las elegidas para el acceso del usuario (AGENTS.md §11).
-/// </summary>
+// La empresa activa va en el token; solo viajan las elegidas para el acceso.
 public sealed class ServicioDeUsuarios(IHttpClientFactory fabrica)
 {
     private HttpClient Cliente => fabrica.CreateClient(ClientesHttp.Api);

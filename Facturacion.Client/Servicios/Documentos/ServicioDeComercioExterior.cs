@@ -48,7 +48,7 @@ public sealed class ServicioDeComercioExterior(IHttpClientFactory fabrica)
             : (null, await respuesta.LeerProblemaAsync(ct));
     }
 
-    /// <summary>Unidad aduanera (UMT) de la fracción; nula si el catálogo no la trae.</summary>
+    // Nula si el catálogo no trae la UMT de la fracción.
     public async Task<ClaveSatDto?> UnidadDeFraccionAsync(string fraccion, CancellationToken ct = default)
     {
         using var respuesta = await Cliente.GetAsync(

@@ -51,7 +51,7 @@ public static class EmisionEndpoints
 
     }
 
-    // Cuerpo opcional: sin él se crea una factura básica, como antes de que existieran las variantes.
+    // Sin cuerpo se crea una factura básica.
     private static async Task<IResult> CrearBorrador(
         PeticionCrearBorrador? peticion, ServicioDeEmision emision, HttpContext http, CancellationToken ct)
     {
@@ -131,27 +131,6 @@ public static class EmisionEndpoints
         return resultado.EsFallo ? resultado.Error!.AResultado(http) : Results.NoContent();
     }
 
-    /*
-    // Filtro por boloque de archivos de un cliente
-    private static async Task<IResult> Listar(
-    ServicioDeEmision emision, HttpContext http, CancellationToken ct,
-    string? texto = null, string? estatus = null,
-    Guid[]? clienteIds = null, string? tipoComprobante = null,
-    DateTime? desdeUtc = null, DateTime? hastaUtc = null,
-    int pagina = 0, int tamano = 25, string? orden = null, bool descendente = false)
-{
-    if (!TryEstatus(estatus, out var estatusFiltro))
-        return ErrorNegocio
-            .Validacion("estatus-desconocido", $"«{estatus}» no es un estatus de comprobante.")
-            .AResultado(http);
-
-    var tamanoEfectivo = Math.Clamp(tamano, 1, 100);
-    var paginaEfectiva = Math.Max(pagina, 0);
-
-    return Results.Ok(await emision.ListarAsync(
-        texto, estatusFiltro, clienteIds, tipoComprobante,
-        desdeUtc, hastaUtc, paginaEfectiva, tamanoEfectivo, orden, descendente, ct));
-    */
     private static async Task<IResult> Listar(
         ServicioDeEmision emision, HttpContext http, CancellationToken ct,
         string? texto = null, string? estatus = null,

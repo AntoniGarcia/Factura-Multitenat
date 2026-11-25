@@ -11,9 +11,7 @@
 <TituloDePagina Texto="Transporte" />
 <PanelErrores Problema="_error" />
 
-@* La consulta la abre quien hace Carta Porte o administra el catálogo; alta, edición y baja,
-   solo administrar_vehiculos y administrar_figuras. Ocultarlas es comodidad: el servidor las
-   rechaza igual. *@
+@* Alta, edición y baja según las casillas de vehículos y figuras; el servidor las exige igual. *@
 <TarjetaFormulario Ancha="true" RutaVolver="/" Class="tarjeta-formulario-catalogo transporte-catalogo">
     <MudTabs>
         <MudTabPanel Text="Vehículos">
@@ -147,7 +145,7 @@
     private async Task RecargarFiguras()=>_figuras=await Transporte.FigurasAsync(_filtroFiguras)??[];
     private async Task CambiarVehiculo(VehiculoDto x) { var (_,error)=await Transporte.CambiarActivoVehiculoAsync(x.Id,!x.Activo);_error=error;if(error is null)await RecargarVehiculos(); }
     private async Task CambiarFigura(FiguraTransporteDto x) { var (_,error)=await Transporte.CambiarActivoFiguraAsync(x.Id,!x.Activo);_error=error;if(error is null)await RecargarFiguras(); }
-    // Solo prospera si ningún traslado lo usó; si no, el servidor pide desactivarlo.
+    // Si algún traslado lo usó, el servidor pide desactivarlo.
     private async Task EliminarVehiculo(VehiculoDto x) { if (!await ConfirmarEliminacion("vehículo", x.Descripcion)) return; _error=await Transporte.EliminarVehiculoAsync(x.Id); if(_error is null)await RecargarVehiculos(); }
     private async Task EliminarFigura(FiguraTransporteDto x) { if (!await ConfirmarEliminacion("figura de transporte", x.Nombre)) return; _error=await Transporte.EliminarFiguraAsync(x.Id); if(_error is null)await RecargarFiguras(); }
     private Task<bool> ConfirmarEliminacion(string queEs, string nombre) => Confirmacion.ConfirmarAsync($"Eliminar {queEs}", $"«{nombre}» se borrará de forma definitiva. Solo es posible si ningún traslado lo usa.", "Eliminar");

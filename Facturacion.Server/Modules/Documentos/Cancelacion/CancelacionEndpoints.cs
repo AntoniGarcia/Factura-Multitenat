@@ -37,10 +37,7 @@ public static class CancelacionEndpoints
         return resultado.EsFallo ? resultado.Error!.AResultado(http) : Results.Ok(resultado.Valor);
     }
 
-    /// <summary>
-    /// Sin <c>Idempotency-Key</c>: repetirla no cambia nada que la primera no haya cambiado, solo
-    /// vuelve a preguntar al SAT.
-    /// </summary>
+    // Sin Idempotency-Key: repetirla solo vuelve a preguntar al SAT.
     private static async Task<IResult> VerificarAbiertas(
         ServicioDeSolicitudesDeCancelacion solicitudes, HttpContext http, CancellationToken ct)
     {

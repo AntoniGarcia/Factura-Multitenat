@@ -137,10 +137,7 @@ public sealed class ServicioDePagos(
             await baseDeDatos.SatMonedas.Where(x => x.Clave == factura.Moneda).Select(x => x.Decimales).SingleAsync(ct));
     }
 
-    /// <summary>
-    /// Sugerencias del buscador de facturas del pago: PPD timbradas del cliente que todavía
-    /// deben algo. Solo orienta; al agregar la factura se vuelve a consultar con todas las reglas.
-    /// </summary>
+    // PPD timbradas del cliente con saldo. Solo orienta: al agregar se valida con todas las reglas.
     public async Task<IReadOnlyList<FacturaPendienteDto>> BuscarPendientesAsync(
         Guid? clienteId, string? texto, CancellationToken ct)
     {
@@ -267,7 +264,7 @@ public sealed class ServicioDePagos(
             (x.ImpPagado, x.EquivalenciaDR, x.DecimalesMoneda, x.Factura.Moneda == peticion.MonedaP))))
             return ErrorNegocio.Validacion("pago-no-cuadra", "El monto recibido no coincide con los abonos convertidos a la moneda del pago.");
 
-        // Mismo criterio que en ServicioDeEmision: sin guardado previo, el registro es un alta.
+        // Sin guardado previo, el registro es un alta.
         var antes = comprobante.ModificadoUtc is null ? null : ADto(comprobante, comprobante.Pagos.FirstOrDefault());
 
         AplicarCabecera(comprobante, receptor);
@@ -341,14 +338,13 @@ public sealed class ServicioDePagos(
         if (comprobante is null)
             return ErrorNegocio.NoEncontrado("comprobante-no-encontrado", "Ese comprobante no existe.");
 
-        // Mismo criterio que en ServicioDeEmision: solo se descarta lo que nunca se intentó timbrar.
+        // Solo se descarta lo que nunca se intentó timbrar.
         if (comprobante.Estatus != EstatusComprobante.Borrador.ACadena())
             return ErrorNegocio.Conflicto(
                 "comprobante-no-es-borrador",
                 "Solo se puede descartar un comprobante que nunca se intentó timbrar.");
 
-        // Y el mismo criterio de ServicioDeEmision para la bitácora: un borrador que nunca se
-        // guardó no llevaba datos fiscales que dejar registrados.
+        // Un borrador que nunca se guardó no se anota en la bitácora.
         if (comprobante.ModificadoUtc is not null)
             bitacora.Registrar(
                 EntidadesDeBitacora.Comprobante, comprobante.Id.ToString(), AccionesDeBitacora.BorradorDescartado,

@@ -7,11 +7,7 @@
 @inject ServicioDeCatalogos Catalogos
 @inject NavigationManager Navegacion
 
-@*
-    Alta de empresa, sin marco: la usan /empresa/nueva —a donde llega el titular que todavía no
-    tiene ninguna, sin menú ni Configuración a la mano— y la pestaña «Nueva empresa» de
-    Configuración.
-*@
+@* Lo usan /empresa/nueva (titular sin empresas) y la pestaña «Nueva empresa» de Configuración. *@
 
 <PanelErrores Problema="_error" />
 
@@ -39,9 +35,7 @@
         </MudSelect>
     </div>
 
-@* El nombre se normaliza en el servidor —mayúsculas, sin acentos, sin régimen de
-       capital— porque el SAT exige que coincida con la constancia. Se avisa
-       antes de guardar para que nadie crea que el sistema le cambió el nombre por su cuenta. *@
+@* El servidor normaliza el nombre como en la constancia; se avisa antes de guardar. *@
     <p class="seccion-ayuda">
         El nombre se guarda como lo pide el SAT: en mayúsculas, sin acentos y sin el régimen de
         capital («S.A. de C.V.» y equivalentes se quitan).
@@ -58,10 +52,7 @@
 <ActualizadorDeCatalogos AlCambiar="@(() => { })" />
 
 @code {
-    /// <summary>
-    /// Los husos de México. La lista completa de Windows son más de cien entradas y ninguna
-    /// empresa emisora de CFDI está fuera de estas cuatro.
-    /// </summary>
+    // Los husos de México: ninguna empresa emisora de CFDI está fuera de estos.
     private static readonly (string Id, string Etiqueta)[] Husos =
     [
         ("Central Standard Time (Mexico)", "Centro (CDMX, Guadalajara, Monterrey)"),
@@ -100,8 +91,7 @@
             return;
         }
 
-        // El token trae las empresas y la activa: sin pedir uno nuevo, la que se acaba de
-        // crear no existe para el resto de la aplicación. Cambiar a ella hace las dos cosas.
+        // La empresa nueva no existe para la aplicación hasta pedir un token con ella como activa.
         _error = await Sesion.CambiarEmpresaAsync(empresa!.Id);
         _guardando = false;
 

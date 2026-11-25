@@ -1,7 +1,7 @@
 namespace Facturacion.Server.Data.Entidades.Plataforma;
 
 /// <summary>
-/// Producto o servicio del catálogo de la cuenta, que comparten sus empresas (AGENTS.md §11).
+/// Producto o servicio del catálogo de la cuenta, que comparten sus empresas.
 /// Es la plantilla de un concepto del CFDI: al facturar se copian estos datos al comprobante y
 /// ahí se congelan.
 ///
@@ -18,13 +18,10 @@ public sealed class Producto : IEntidadDeCuenta
 
     public Cuenta Cuenta { get; set; } = null!;
 
-    /// <summary>
-    /// Empresa desde la que se dio de alta. Es un dato para filtrar el catálogo, no tenencia:
-    /// todas las empresas de la cuenta lo ven y lo usan. Nulo si no quedó registro.
-    /// </summary>
+    // Empresa desde la que se dio de alta: sirve para filtrar, no es tenencia.
     public Guid? EmpresaAltaId { get; set; }
 
-    /// <summary>Consecutivo por cuenta, como la clave de cliente: los capturistas la usan para buscar.</summary>
+    // Consecutivo por cuenta; los capturistas lo usan para buscar.
     public int CodigoInterno { get; set; }
 
     /// <summary>Clave de <c>c_ClaveProdServ</c>. Obligatoria en CFDI 4.0.</summary>
@@ -36,19 +33,13 @@ public sealed class Producto : IEntidadDeCuenta
     /// <summary>Unidad tal como la lee el receptor en el PDF.</summary>
     public required string UnidadTexto { get; set; }
 
-    /// <summary>
-    /// El nombre del producto («Nombre del producto» en pantalla). Es lo que va al CFDI como
-    /// <c>Descripcion</c> del concepto, por eso conserva ese nombre aquí.
-    /// </summary>
+    // «Nombre del producto» en pantalla; conserva este nombre porque va al CFDI como Descripcion.
     public required string Descripcion { get; set; }
 
-    /// <summary>
-    /// Código propio de la empresa, como un SKU («ID interno» en pantalla). No es único: precarga
-    /// el <c>NoIdentificacion</c> del concepto, que el SAT limita a 100 caracteres sin «|».
-    /// </summary>
+    // «ID interno» en pantalla. No es único; precarga el NoIdentificacion (100 caracteres, sin «|»).
     public string? IdInterno { get; set; }
 
-    /// <summary>Descripción ampliada del producto («Descripción» en pantalla). Opcional.</summary>
+    // «Descripción» en pantalla.
     public string? Detalle { get; set; }
 
     /// <summary>Precio de venta. Seis decimales de cálculo, dos de presentación.</summary>
@@ -74,7 +65,7 @@ public sealed class ProductoImpuesto : IEntidadDeCuenta
 {
     public Guid Id { get; set; }
 
-    /// <summary>Permite aplicar el filtro global y validar la cuenta también al consultar impuestos sin cargar el producto.</summary>
+    // Para filtrar por cuenta al consultar impuestos sin cargar el producto.
     public Guid CuentaId { get; set; }
 
     public Guid ProductoId { get; set; }

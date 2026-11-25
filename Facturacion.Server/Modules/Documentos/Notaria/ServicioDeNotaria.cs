@@ -399,9 +399,8 @@ public sealed class ServicioDeNotaria(
                 $"{etiqueta}-notarial-invalido",
                 $"Captura {(enCopropiedad ? "uno o más" : "una sola")} persona(s) {etiqueta}(as) sin RFC repetido.");
 
-        // El XSD distingue: DatosUnEnajenante exige apellido paterno y CURP, así que un vendedor
-        // único es persona física; en copropiedad (DatosEnajenanteCopSC) los dos son opcionales y
-        // el RFC puede ser de persona moral.
+        /// Según el XSD, un vendedor único es persona física (apellido paterno y CURP); en
+        /// copropiedad son opcionales y el RFC puede ser de persona moral.
         var codigo = $"{etiqueta}-notarial-invalido";
         foreach (var parte in partes.OrderBy(x => x.Orden))
         {

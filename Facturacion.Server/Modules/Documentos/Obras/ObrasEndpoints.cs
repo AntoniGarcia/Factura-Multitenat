@@ -14,12 +14,6 @@ public static class ObrasEndpoints
         grupo.MapGet("/{comprobanteId:guid}", Obtener);
         grupo.MapPut("/{comprobanteId:guid}", Guardar);
         grupo.MapGet("/{comprobanteId:guid}/conciliacion-fiscal", ConciliacionFiscal);
-
-        // Fuera del grupo: se abre desde el listado, así que basta con poder descargar documentos.
-        // Cualquier casilla de obra ya trae la descarga entre sus permisos implícitos.
-        rutas.MapGet("/api/obras/comprobantes/{comprobanteId:guid}/estimacion.pdf", EstimacionPdf)
-            .WithTags("Constructoras")
-            .RequireAuthorization(Permisos.DocumentosDescarga);
     }
 
     private static async Task<IResult> Obtener(Guid comprobanteId, ServicioDeObras obras,
@@ -42,14 +36,5 @@ public static class ObrasEndpoints
     {
         var resultado = await obras.ConciliarFiscalmenteAsync(comprobanteId, ct);
         return resultado.EsFallo ? resultado.Error!.AResultado(contexto) : Results.Ok(resultado.Valor);
-    }
-
-    private static async Task<IResult> EstimacionPdf(Guid comprobanteId,
-        ServicioDePdfEstimacionObra pdf, HttpContext contexto, CancellationToken ct)
-    {
-        var resultado = await pdf.GenerarAsync(comprobanteId, ct);
-        return resultado.EsFallo
-            ? resultado.Error!.AResultado(contexto)
-            : Results.File(resultado.Valor!, "application/pdf", $"estimacion-obra-{comprobanteId:N}.pdf");
     }
 }

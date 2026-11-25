@@ -489,3 +489,19 @@ transporte»).
   `traceId` solo importa en los errores inesperados.
 - Hoy el registro solo se escribe en la consola, que en IIS no se conserva. Guardarlo en un
   archivo dentro de la carpeta privada queda pendiente y por decidir.
+
+**24 de noviembre de 2026 — XML timbrado en la base y público en general** (modifica §4 «Datos
+y transporte» y las entradas del 28 y 29 de octubre sobre público en general).
+
+- El XML timbrado se guarda en claro en la base (`XmlsDeComprobante`), en la misma transacción
+  que marca el comprobante como timbrado, y el acuse de cancelación en
+  `SolicitudesCancelacion.Acuse`. Ya no va al almacén de archivos. No se cifra: se entrega al
+  cliente, y cifrarlo lo ataría a la llave de Data Protection durante los cinco años que hay que
+  conservarlo.
+- Los timbrados anteriores conservan su archivo como respaldo; al arrancar, el servidor los copia
+  a la base. Logo y CSD siguen cifrados en el almacén, fuera de `wwwroot`. Todo se sirve por
+  endpoint autorizado.
+- Con el RFC `XAXX010101000` y el nombre exacto `PUBLICO EN GENERAL`, ya normalizado, el SAT exige
+  información global (CFDI40130). El borrador se guarda sin ella y el formulario avisa: llenarla si
+  se juntan las ventas de un periodo, o escribir el nombre del comprador si es una venta suelta.
+  El servidor la exige antes de apartar folio. Con otro nombre es venta suelta y no la lleva.

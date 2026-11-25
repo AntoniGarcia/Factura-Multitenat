@@ -60,16 +60,12 @@ public static class MenuPrincipal
         public const string Tienda = "Tienda";
     }
 
-    /// <summary>
-    /// Los catálogos de la empresa. Están aparte porque los leen dos lugares —el submenú lateral y
-    /// el selector de catálogos de Inicio— y una ruta nueva no debe tener que agregarse dos veces.
-    /// Va antes de <see cref="Elementos"/>: los inicializadores estáticos corren en orden.
-    /// </summary>
+    // Lo leen el submenú lateral y el selector de Inicio. Va antes de Elementos: los inicializadores
+    // estáticos corren en orden.
     public static IReadOnlyList<ElementoDeMenu> Catalogos { get; } =
     [
-        // Cada uno conserva su propio permiso: Clientes y Productos los ve quien emite o quien
-        // los administra; Series, quien tiene alguna casilla de Series; Transporte, quien hace Carta Porte
-        // o administra vehículos y figuras.
+        // Clientes y Productos: quien emite o los administra. Series: cualquier casilla de Series.
+        // Transporte: quien hace Carta Porte o administra vehículos y figuras.
         new("/clientes", "Clientes", "groups", Permisos.Politicas.LeerClientesYProductos,
             Descripcion: "Receptores de tus comprobantes"),
         new("/productos", "Productos", "inventory", Permisos.Politicas.LeerClientesYProductos,
@@ -89,15 +85,12 @@ public static class MenuPrincipal
         // hermanas obligaba a elegir entre dos puertas al mismo cuarto antes de saber
         // cuál de las dos se quería.
         new("/documentos", "Documentos", "description", Permisos.DocumentosListado),
-        // Aparte de Documentos porque es otro permiso y otro trabajo: dar seguimiento a lo que
-        // sigue esperando la respuesta del receptor o del SAT (§30).
         ElementoDeMenu.Submenu("Catálogos", "catalogo", Catalogos),
 
-        // ── Mi Administración: se configura una vez y se revisa de vez en cuando ───────────────       
+        // ── Administración ──────────────────────────────────────────────────────────────
         new("/empresa/usuarios", "Usuarios", "people", Permisos.Titular, Grupos.Administracion),
 
-        // ── Tienda: cuenta, gente y datos del SAT ───────────────────────────────
+        // ── Tienda ──────────────────────────────────────────────────────────────────────
         new("/timbres", "Timbres", "confirmation_number", Permisos.ComprarTimbres, Grupos.Tienda),
-        // new("/admin/catalogos-sat", "Catálogos del SAT", "inventory_2", Permiso: null, Grupos.Administracion)
     ];
 }

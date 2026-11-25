@@ -28,8 +28,7 @@ public sealed class ServicioEmpresaEmisora(
             empresa.RegimenFiscal,
             empresa.CodigoPostalExpedicion,
             empresa.ZonaHoraria,
-            // Es el Reply-To de los correos del CFDI: la respuesta del cliente va a la empresa,
-            // no al buzón del SaaS.
+            // Reply-To de los correos del CFDI: la respuesta del cliente va a la empresa.
             empresa.CorreoContacto);
     }
 

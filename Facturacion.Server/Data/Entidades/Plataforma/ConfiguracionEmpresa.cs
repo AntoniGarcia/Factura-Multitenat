@@ -11,7 +11,7 @@ public sealed class ConfiguracionEmpresa : IEntidadDeEmpresa
     /// <summary>Tasa de IVA trasladado por omisión, como fracción: 0.160000 es 16 %.</summary>
     public decimal TasaIvaPorDefecto { get; set; }
 
-    /// <summary>Tasa de IEPS trasladado por omisión, como fracción. Cero si la empresa no lo cobra.</summary>
+    // Fracción; cero si la empresa no cobra IEPS.
     public decimal TasaIepsPorDefecto { get; set; }
 
     /// <summary>Retención de IVA por omisión, como fracción. Cero si la empresa no retiene.</summary>
@@ -20,14 +20,10 @@ public sealed class ConfiguracionEmpresa : IEntidadDeEmpresa
     /// <summary>Retención de ISR por omisión, como fracción. Cero si la empresa no retiene.</summary>
     public decimal TasaRetencionIsrPorDefecto { get; set; }
 
-    /// <summary>Retención de IEPS por omisión, como fracción. Cero si la empresa no retiene.</summary>
+    // Fracción; cero si la empresa no retiene IEPS.
     public decimal TasaRetencionIepsPorDefecto { get; set; }
 
-    /// <summary>
-    /// Impuesto sobre hospedaje por omisión, como fracción. Es local: solo puede viajar en el
-    /// complemento de impuestos locales, y hoy ningún comprobante lo aplica. Se guarda para el
-    /// documento que lo necesite.
-    /// </summary>
+    // Impuesto sobre hospedaje, como fracción: precarga la tasa de la factura básica.
     public decimal TasaIshPorDefecto { get; set; }
 
     /// <summary>Con cuántos días de anticipación avisar que el certificado va a caducar.</summary>

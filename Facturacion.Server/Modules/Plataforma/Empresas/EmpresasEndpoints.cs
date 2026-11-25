@@ -26,17 +26,14 @@ public static class EmpresasEndpoints
         grupo.MapGet("/", Obtener).RequireAuthorization();
         grupo.MapPut("/", Guardar).RequireAuthorization(Permisos.EmpresaDatos);
 
-        // Solo exige sesión: quien acaba de registrarse todavía no tiene empresa activa, y
-        // es justo la primera la que viene a crear. El servicio exige que sea el titular
-        // (ver ServicioDeEmpresa.CrearAsync).
+        // Solo sesión: quien acaba de registrarse aún no tiene empresa activa. El servicio exige ser titular.
         grupo.MapPost("/", Crear).RequireAuthorization();
 
-        // Leerla solo exige sesión: son las tasas sugeridas que también usa el formulario de
-        // producto. Guardarla exige General o Impuestos; el servicio revisa qué parte cambió.
+        // Leer solo exige sesión (el formulario de producto usa las tasas); guardar lo revisa el servicio.
         grupo.MapGet("/configuracion", ObtenerConfiguracion).RequireAuthorization();
         grupo.MapPut("/configuracion", GuardarConfiguracion).RequireAuthorization(Permisos.Politicas.Configuracion);
 
-        // Leerlas solo exige sesión: las necesitan los formularios de factura y de pago.
+        // Leerlas solo exige sesión: las usan los formularios de factura y de pago.
         grupo.MapGet("/monedas", ObtenerMonedas).RequireAuthorization();
         grupo.MapPut("/monedas", GuardarMonedas).RequireAuthorization(Permisos.ConfiguracionMonedas);
 

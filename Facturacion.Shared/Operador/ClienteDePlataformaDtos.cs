@@ -40,11 +40,7 @@ public sealed record UsuarioDeCuentaDto(
     bool Activo,
     DateTime FechaAltaUtc);
 
-/// <summary>
-/// La ficha de una cuenta contratante: sus datos, sus empresas, su bolsa de timbres y sus
-/// paquetes exclusivos, que son de la cuenta. Los usuarios con acceso y las compras de cada
-/// empresa se ven en la ficha de esa empresa, no mezclados aquí.
-/// </summary>
+// Los usuarios y las compras se ven en la ficha de cada empresa, no aquí.
 public sealed record DetalleDeCuentaDto(
     CuentaEnListaDto Cuenta,
     IReadOnlyList<EmpresaDeCuentaDto> Empresas,
@@ -53,17 +49,14 @@ public sealed record DetalleDeCuentaDto(
     IReadOnlyList<PaquetePersonalizadoDto> PaquetesPersonalizados,
     string? NombreTitular = null);
 
-/// <summary>
-/// Cuántos usuarios activos y cuántas empresas admite la cuenta, y cuántos usa. Un usuario
-/// cuenta una sola vez aunque entre a varias empresas.
-/// </summary>
+// Un usuario cuenta una sola vez aunque entre a varias empresas.
 public sealed record LimitesDeCuentaDto(
     int LimiteDeUsuarios,
     int UsuariosActivos,
     int LimiteDeEmpresas,
     int Empresas);
 
-/// <summary>Nuevos límites de una cuenta. No pueden quedar por debajo de lo que ya usa.</summary>
+// No pueden quedar por debajo de lo que ya usa la cuenta.
 public sealed record PeticionCambiarLimitesDeCuenta(
     [property: System.ComponentModel.DataAnnotations.Range(1, 999)] int LimiteDeUsuarios,
     [property: System.ComponentModel.DataAnnotations.Range(1, 999)] int LimiteDeEmpresas);

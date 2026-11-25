@@ -9,8 +9,7 @@
             <Found Context="routeData">
                 <AuthorizeRouteView RouteData="@routeData" DefaultLayout="@typeof(MainLayout)">
                     <NotAuthorized Context="estado">
-                        @* Sin sesión, a iniciar sesión; con sesión, le falta el permiso. El panel
-                           del operador es otra puerta y conserva su propio acceso. *@
+                        @* Con sesión pero sin permiso: aviso. El panel del operador conserva su propio acceso. *@
                         @if (estado.User.Identity?.IsAuthenticated == true && !EsPanelDeOperador)
                         {
                             <AvisoSinPermiso />

@@ -32,7 +32,7 @@
                       MuestraSelectorEnLista="false" Deshabilitado="@(EsEmisor || BloquearPais)" />
     @if (EsEmisor)
     {
-        @* El domicilio del emisor es mexicano: el código postal sale de c_CodigoPostal y llena estado y municipio. *@
+        @* Domicilio mexicano: el código postal llena estado y municipio. *@
         <BuscadorCatalogo @key="Valor.CodigoPostal" Catalogo="c_CodigoPostal" Label="Código postal" Valor="@CodigoPostalSeleccionado"
                           ValorCambiado="AlElegirCodigoPostalAsync" BusquedaPersonalizada="BuscarCodigosPostalesAsync"
                           MostrarSoloClave="true" MuestraSelectorEnLista="false" />

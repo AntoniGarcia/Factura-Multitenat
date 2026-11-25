@@ -5,12 +5,9 @@ using Facturacion.Shared.Comun;
 
 namespace Facturacion.Server.Modules.Documentos.Obras;
 
-/// <summary>
-/// Amortización del anticipo por el procedimiento de remanente del Apéndice 6 del Anexo 20: la
-/// factura relaciona el anticipo con tipo 07, cada concepto lleva como descuento su parte del
-/// anticipo y la leyenda «CFDI por remanente de un anticipo», y el IVA se calcula sobre lo que
-/// queda. Así el subtotal, el IVA y el total de la estimación son los del CFDI.
-/// </summary>
+/// Amortización del anticipo por remanente (Apéndice 6 del Anexo 20): relaciona el anticipo
+/// con tipo 07, cada concepto lleva su parte como descuento y el IVA se calcula sobre el resto.
+/// Así subtotal, IVA y total de la estimación son los del CFDI.
 public static class AmortizacionDeObra
 {
     public const string Leyenda = "CFDI por remanente de un anticipo";
@@ -19,21 +16,14 @@ public static class AmortizacionDeObra
     private const string Separador = " — ";
     private const int LargoMaximoDeDescripcion = 1000;
 
-    /// <summary>
-    /// El porcentaje se aplica renglón por renglón, no sobre el subtotal: lo que suman los
-    /// descuentos es la amortización exacta que lleva el XML.
-    /// </summary>
+    // Renglón por renglón: la suma de descuentos es la amortización exacta del XML.
     public static decimal DescuentoDe(decimal importe, decimal porcentaje)
         => Math.Round(importe * porcentaje / 100m, MotorDeImpuestos.Decimales, MotorDeImpuestos.ModoDeRedondeo);
 
     public static bool TieneLeyenda(string descripcion)
         => descripcion.EndsWith(Separador + Leyenda, StringComparison.Ordinal);
 
-    /// <summary>
-    /// Reescribe descuento, leyenda e impuestos de cada concepto con el porcentaje de
-    /// amortización de la obra y recalcula los totales, con su retención local. Sin estimación
-    /// guardada, o con 0 %, deja los conceptos sin descuento y sin leyenda.
-    /// </summary>
+    // Sin estimación guardada, o con 0 %, deja los conceptos sin descuento ni leyenda.
     public static ErrorNegocio? Aplicar(Comprobante comprobante, DatosObra? obra, int decimalesMoneda)
     {
         var porcentaje = obra?.PorcentajeAmortizacion ?? 0m;
@@ -75,7 +65,7 @@ public static class AmortizacionDeObra
 
     }
 
-    /// <summary>Los conceptos guardados ¿reflejan el porcentaje de amortización de la obra?</summary>
+    // ¿Los conceptos guardados reflejan el porcentaje de amortización?
     public static bool EstaAplicada(Comprobante comprobante, decimal porcentaje)
         => comprobante.Conceptos.All(x =>
             x.Descuento == DescuentoDe(x.Importe, porcentaje) && TieneLeyenda(x.Descripcion) == (porcentaje != 0));

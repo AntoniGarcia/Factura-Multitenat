@@ -248,8 +248,7 @@ else
             <span class="panel-nota">Atajos de la empresa activa</span>
         </header>
         <div class="tablero-accesos">
-            @* Nuevo documento y Catálogos abren un selector en vez de navegar: son botones, no
-               enlaces, para que se activen con Enter y con Espacio como cualquier acción. *@
+            @* Botones y no enlaces: abren un selector y se activan con Enter y Espacio. *@
             <SiTienePermiso Permiso="@Permisos.Politicas.Crear">
                 <button type="button" class="tablero-acceso tablero-acceso-principal" @onclick="AbrirNuevoDocumentoAsync">
                     <MudIcon Icon="@Icons.Material.Filled.AddCircle" Size="Size.Small" />

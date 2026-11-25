@@ -11,12 +11,9 @@ using QuestPDF.Infrastructure;
 
 namespace Facturacion.Server.Modules.Documentos.Salidas;
 
-/// <summary>Lo que el PDF necesita y no está dentro del comprobante.</summary>
-/// <param name="Logo">Logo de la empresa, ya descifrado del almacén. Nulo si no tiene.</param>
-/// <param name="LeyendaDelTimbre">
-/// El atributo <c>Leyenda</c> del timbre fiscal: lo que el SAT o el PAC quieren que lea quien
-/// recibe el comprobante. Con el PAC simulado dice que no tiene validez fiscal.
-/// </param>
+/// Lo que el PDF necesita y no está en el comprobante. Logo: ya descifrado; nulo si no hay.
+/// LeyendaDelTimbre: el atributo Leyenda del timbre fiscal; con el PAC simulado dice que no
+/// tiene validez fiscal.
 public sealed record DatosDelPdf(
     DateTime FechaLocal,
     int Decimales,
@@ -29,6 +26,10 @@ public sealed record DatosDelPdf(
 {
     public TimeZoneInfo? ZonaHoraria { get; init; }
     public Facturacion.Shared.Obras.ServicioParcialConstruccionDto? ServicioParcial { get; init; }
+
+    // No viene del XML: las deducciones de obra no están en el CFDI. Se congelan al timbrar
+    // porque la pestaña Obra solo se edita en borrador.
+    public Facturacion.Shared.Obras.DatosObraDto? EstimacionObra { get; init; }
 }
 
 /// <summary>
@@ -59,9 +60,8 @@ public sealed class GeneradorDePdfCfdi
 
     public IDocument Construir(Comprobante comprobante, DatosDelPdf datos)
     {
-        // El QR lleva el total tal como está en el XML. En un pago la raíz dice Total="0" con
-        // moneda XXX; los decimales de la moneda del pago lo volverían «0.00» y el SAT no
-        // encontraría el comprobante.
+        // El QR lleva el total como está en el XML: en un pago es «0» (moneda XXX), y con decimales
+        // el SAT no encontraría el comprobante.
         var qr = datos.EsBorrador ? null : Qr(comprobante, comprobante.TipoDeComprobante == "P" ? 0 : datos.Decimales);
 
         return Document.Create(documento =>
@@ -182,6 +182,8 @@ public sealed class GeneradorDePdfCfdi
             {
                 columna.Item().Element(e => Conceptos(e, c, datos.Decimales));
                 columna.Item().Element(e => Totales(e, c, datos.Decimales, datos.ImpuestosLocales ?? []));
+                if (datos.EstimacionObra is { } estimacion && DeduccionesDeObra(estimacion) is { Count: > 0 } deducciones)
+                    columna.Item().PaddingTop(10).Element(e => CalculoDeEstimacion(e, c, estimacion, deducciones, datos.Decimales));
                 if (datos.Notaria is { } notaria)
                     columna.Item().PaddingTop(10).Element(e => SeccionNotarial(e, notaria, datos.Decimales));
             }
@@ -442,6 +444,48 @@ public sealed class GeneradorDePdfCfdi
             });
         });
 
+    // ── Factura de obra: del total del CFDI al importe líquido ──────────────────────────
+
+    // Lo que se resta del total y no está en el CFDI. En obra pública la primera deducción ya va
+    // como impuesto local retenido, así que no se repite.
+    private static IReadOnlyList<(string Etiqueta, decimal Importe)> DeduccionesDeObra(
+        Facturacion.Shared.Obras.DatosObraDto estimacion)
+    {
+        var renglones = new List<(string, decimal)>();
+        if (estimacion.Retenciones != 0)
+            renglones.Add(($"Retenciones ({Cifra(estimacion.PorcentajeRetenciones ?? 0, 2)} %)", estimacion.Retenciones));
+        if (estimacion.Devoluciones != 0)
+            renglones.Add(($"Devoluciones ({Cifra(estimacion.PorcentajeDevoluciones ?? 0, 2)} %)", estimacion.Devoluciones));
+        var omitirPrimera = estimacion.TipoObra == Facturacion.Shared.Obras.TiposDeObra.Publica;
+        foreach (var (deduccion, indice) in estimacion.Deducciones.Select((d, i) => (d, i)))
+            if (deduccion.Porcentaje != 0 && !(omitirPrimera && indice == 0))
+                renglones.Add(($"{deduccion.Nombre} ({Cifra(deduccion.Porcentaje, 2)} %)", deduccion.Importe));
+        return renglones;
+    }
+
+    private static void CalculoDeEstimacion(IContainer contenedor, Comprobante c,
+        Facturacion.Shared.Obras.DatosObraDto estimacion, IReadOnlyList<(string Etiqueta, decimal Importe)> deducciones,
+        int decimales)
+        => contenedor.PreventPageBreak().Column(columna =>
+        {
+            columna.Item().Element(e => EstiloDeComprobante.Seccion(e, "Cálculo de la estimación"));
+            columna.Item().Row(fila =>
+            {
+                fila.RelativeItem().PaddingTop(4).PaddingRight(12).Text(
+                    "Informativo: no forma parte del CFDI. Son las deducciones del contrato que se restan del " +
+                    "total de la factura para llegar al importe que se paga.").FontSize(7).Light();
+                fila.ConstantItem(230).PaddingTop(4).PaddingHorizontal(4).Column(calculo =>
+                {
+                    calculo.Item().Element(e => Dato(e, $"Total del CFDI {c.Moneda}", Cifra(c.Total, decimales), anchoDelValor: 63));
+                    foreach (var (etiqueta, importe) in deducciones)
+                        calculo.Item().PaddingTop(3).Element(e => Dato(e, etiqueta, "−" + Cifra(importe, decimales), anchoDelValor: 63));
+                    calculo.Item().PaddingTop(4).BorderTop(0.5f).BorderColor(EstiloDeComprobante.Borde).PaddingTop(3)
+                        .Element(e => Dato(e, "Importe líquido estimado", Cifra(estimacion.ImporteLiquido, decimales),
+                            negrita: true, anchoDelValor: 66));
+                });
+            });
+        });
+
     // ── Pie: QR, sellos y cadena original ───────────────────────────────────────────────
 
     private static void Pie(IContainer contenedor, Comprobante c, byte[]? qr)
@@ -538,10 +582,7 @@ public sealed class GeneradorDePdfCfdi
 
     // ── Complemento de pago ─────────────────────────────────────────────────────────────
 
-    /// <summary>
-    /// Más angosto que el de los totales: en los datos del pago caben tres pares por renglón,
-    /// y con el ancho normal las etiquetas se parten en dos líneas.
-    /// </summary>
+    // Más angosto que el de totales: caben tres pares por renglón sin partir las etiquetas.
     private const float AnchoDeValorDelPago = 90;
 
     private static void ComplementoDePago(IContainer contenedor, List<Pago> pagos, int decimales, TimeZoneInfo zona)
@@ -553,8 +594,7 @@ public sealed class GeneradorDePdfCfdi
                 {
                     bloque.Item().Element(e => EstiloDeComprobante.Seccion(e, "DATOS DEL PAGO"));
 
-                    // Tres pares etiqueta-valor por renglón: sin separación, el valor de una
-                    // columna queda pegado a la etiqueta de la siguiente.
+                    // Sin separación, el valor de una columna queda pegado a la etiqueta de la siguiente.
                     bloque.Item().PaddingTop(3).Row(fila =>
                     {
                         fila.Spacing(16);
@@ -572,7 +612,7 @@ public sealed class GeneradorDePdfCfdi
                         fila.RelativeItem().Element(e => Dato(e, "No. de operación", pago.NumOperacion ?? "—", anchoDelValor: AnchoDeValorDelPago));
                     });
 
-                    // Los datos bancarios son opcionales en el complemento: solo se muestran si vienen capturados.
+                    // Los datos bancarios son opcionales: solo se muestran si vienen capturados.
                     if (pago.CtaOrdenante is not null || pago.CtaBeneficiario is not null)
                     {
                         bloque.Item().PaddingTop(2).Row(fila =>
@@ -680,8 +720,7 @@ public sealed class GeneradorDePdfCfdi
 
                 if (doc.Impuestos.Count == 0) continue;
 
-                // Misma idea que en Conceptos: el desglose de impuestos de este documento pagado,
-                // proporcional a lo abonado en este pago (no al total de la factura original).
+                // Desglose proporcional a lo abonado en este pago, no al total de la factura.
                 tabla.Cell().ColumnSpan(6).PaddingLeft(15).PaddingBottom(3).Table(sub =>
                 {
                     sub.ColumnsDefinition(columnas =>

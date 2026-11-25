@@ -233,8 +233,7 @@ public sealed class ImportadorCatalogosCartaPorte(AppDbContext baseDeDatos)
         texto is "cconfigautotransporte" or "ctipopermiso" or "cfiguratransporte" or "cclaveprodservcp"
             or "cclaveprodserv" or "csubtiporem";
 
-    // Unas hojas dicen «FechaInicioVigencia» y otras «Fecha de inicio de vigencia»: ya
-    // normalizado, el «de» intermedio impide buscar «fechainicio» como un solo bloque.
+    // Unas hojas dicen «FechaInicioVigencia» y otras «Fecha de inicio de vigencia».
     private static bool EsEncabezadoDeInicio(string texto) =>
         texto.StartsWith("fecha", StringComparison.Ordinal) && texto.Contains("inicio", StringComparison.Ordinal);
 

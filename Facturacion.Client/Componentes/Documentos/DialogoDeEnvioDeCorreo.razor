@@ -123,10 +123,7 @@
     private bool _incluirXml = true;
     private bool _copiaALaEmpresa;
 
-    /// <summary>
-    /// Solo separa y limpia. Qué es un correo válido lo decide el servidor; aquí basta con no
-    /// dejar enviar lo que obviamente va a rechazar.
-    /// </summary>
+    // Solo separa y limpia; qué es un correo válido lo decide el servidor.
     private IReadOnlyList<string> Destinatarios
         => _para.Split([',', ';'], StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
 
@@ -174,8 +171,7 @@
 
             _error = error;
 
-            // Un fallo del servidor de correo también queda en el historial: se recarga para
-            // que el usuario vea el intento, sin tocar lo que ya escribió.
+            // Un fallo también queda en el historial: se recarga sin tocar lo que el usuario escribió.
             var (propuesta, _) = await Envios.ObtenerPropuestaAsync(ComprobanteId);
             if (propuesta is not null) _propuesta = propuesta;
         }

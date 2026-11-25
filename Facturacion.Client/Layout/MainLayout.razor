@@ -125,10 +125,8 @@
             </div>
         </nav>
 
-        @* En móvil el menú lateral no sale. Lo diario va a un toque —Inicio, Documentos y el
-           selector de Catálogos, el mismo de Inicio— y lo demás en «Más». «Más» se arma desde
-           MenuPrincipal, así que lo que se agregue al menú de escritorio aparece aquí sin tocar
-           esta barra. Si «Más» tendría una sola entrada, esa entrada va directo. *@
+        @* En móvil: Inicio, Documentos y Catálogos a un toque; lo demás en «Más», armado desde
+           MenuPrincipal. Si «Más» tendría una sola entrada, va directo. *@
         <nav class="menu-inferior" aria-label="Secciones principales">
             <ul>
                 @foreach (var elemento in FijosDeMovil)
@@ -317,9 +315,7 @@
             ? hijos.Any(EsVisible)
             : elemento.Permiso is null || Sesion.TienePermiso(elemento.Permiso);
 
-    // Submenús desplegados, por etiqueta. El usuario los abre y cierra a mano; además, llegar a
-    // una de sus rutas —por un enlace o un marcador— abre el que la contiene, para que la
-    // entrada activa nunca quede escondida.
+    // Llegar a una ruta de un submenú lo abre, para que la entrada activa no quede escondida.
     private readonly HashSet<string> _submenusAbiertos = [];
 
     private void AlternarSubmenu(ElementoDeMenu submenu)
@@ -357,11 +353,8 @@
     private IEnumerable<ElementoDeMenu> FijosDeMovil
         => MenuPrincipal.Elementos.Where(e => RutasFijasDeMovil.Contains(e.Ruta) && EsVisible(e));
 
-    /// <summary>
-    /// Todo lo visible que no va fijo en la barra, con el grupo bajo el que se muestra. El
-    /// submenú de Catálogos se excluye porque tiene su propio botón; cualquier otro submenú se
-    /// aplana en sus hijos, que conservan el grupo del padre.
-    /// </summary>
+    // Lo visible que no va fijo en la barra. Catálogos tiene su propio botón; otros submenús se
+    // aplanan y sus hijos conservan el grupo del padre.
     private IReadOnlyList<(string? Grupo, ElementoDeMenu Elemento)> SecundariosDeMovil
         => [.. MenuPrincipal.Elementos
             .Where(e => !RutasFijasDeMovil.Contains(e.Ruta) && !ReferenceEquals(e.Hijos, MenuPrincipal.Catalogos) && EsVisible(e))

@@ -19,10 +19,10 @@ public sealed class Cuenta
 
     public bool Activa { get; set; } = true;
 
-    /// <summary>Usuarios con acceso activo, contando al titular. Lo fija el operador.</summary>
+    // Usuarios con acceso activo, contando al titular. Lo fija el operador.
     public int LimiteDeUsuarios { get; set; } = UsuariosPorOmision;
 
-    /// <summary>Empresas que puede dar de alta el titular, activas o no. Lo fija el operador.</summary>
+    // Empresas que puede dar de alta el titular, activas o no. Lo fija el operador.
     public int LimiteDeEmpresas { get; set; } = EmpresasPorOmision;
 
     public DateTime FechaAltaUtc { get; set; }

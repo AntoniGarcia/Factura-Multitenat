@@ -52,7 +52,7 @@ public sealed class ServicioDeClientes(IHttpClientFactory fabrica, ServicioDeDes
         return await LeerAsync<ClienteDto>(respuesta, ct);
     }
 
-    /// <summary>Borra un cliente que nunca se usó. El servidor rechaza al que ya tiene comprobantes.</summary>
+    // El servidor rechaza al cliente que ya tiene comprobantes.
     public async Task<DetalleProblema?> EliminarAsync(Guid id, CancellationToken ct = default)
     {
         using var respuesta = await Cliente.DeleteAsync($"api/clientes/{id}", ct);
@@ -62,7 +62,7 @@ public sealed class ServicioDeClientes(IHttpClientFactory fabrica, ServicioDeDes
             : await respuesta.LeerProblemaAsync(ct);
     }
 
-    /// <summary>Sube el CSV y devuelve la vista previa. No guarda nada todavía.</summary>
+    // No guarda nada todavía.
     public async Task<(VistaPreviaDeImportacionDeClientes? Exito, DetalleProblema? Error)> AnalizarCsvAsync(
         Stream archivo, string nombre, CancellationToken ct = default)
     {

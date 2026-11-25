@@ -12,8 +12,7 @@ public sealed class MonedaDeEmpresaConfiguracion : IEntityTypeConfiguration<Mone
 
         constructor.HasKey(m => new { m.EmpresaId, m.Moneda });
 
-        // Sin llave foránea al catálogo: una recarga del SAT no debe chocar con la configuración.
-        // El servicio valida la clave contra el catálogo vigente al guardar.
+        // Sin llave foránea al catálogo, para que una recarga del SAT no choque; el servicio valida la clave.
         constructor.Property(m => m.Moneda).HasMaxLength(3).IsUnicode(false);
 
         constructor.HasOne(m => m.Empresa)

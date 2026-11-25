@@ -37,8 +37,7 @@ public sealed class ServicioDeCorreoSmtp(
         if (!string.IsNullOrWhiteSpace(mensaje.ResponderA))
             correo.ReplyToList.Add(mensaje.ResponderA);
 
-        // Los MemoryStream quedan vivos hasta después de SendMailAsync: Attachment no copia
-        // el contenido, lo lee al enviar.
+        // Los MemoryStream viven hasta después de SendMailAsync: Attachment lee el contenido al enviar.
         var flujos = new List<MemoryStream>();
 
         foreach (var adjunto in mensaje.Adjuntos ?? [])
@@ -64,7 +63,7 @@ public sealed class ServicioDeCorreoSmtp(
         }
     }
 
-    /// <summary>Solo el dominio: el log no guarda direcciones completas de terceros.</summary>
+    // Solo el dominio: el log no guarda direcciones completas de terceros.
     private static string DominioDe(string destinatario)
     {
         var separador = destinatario.LastIndexOf('@');

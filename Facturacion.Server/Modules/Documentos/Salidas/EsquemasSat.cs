@@ -34,11 +34,9 @@ public sealed class OpcionesDeEsquemasSat
 /// </summary>
 public sealed class ResolutorDeEsquemasSat(string raiz) : XmlResolver
 {
-    /// <summary>
-    /// El primer archivo que no se encontró. <c>XmlSchemaSet</c> se traga la excepción de un
-    /// <c>xs:import</c> que no resuelve y la degrada a advertencia; lo que llega después es un
-    /// «tipo no declarado» que no dice qué archivo falta. Se guarda aquí para poder relanzarla.
-    /// </summary>
+    /// XmlSchemaSet degrada a advertencia un xs:import que no resuelve y luego falla con
+    /// «tipo no declarado» sin decir qué archivo falta. Se guarda aquí para relanzarla con
+    /// el nombre del archivo.
     public FileNotFoundException? Faltante { get; private set; }
 
     public override object? GetEntity(Uri absoluteUri, string? role, Type? ofObjectToReturn)
@@ -133,7 +131,7 @@ public sealed class EsquemasSat
 
     public XmlSchemaSet EsquemaCfdiImpuestosLocales => _esquemaCfdiImpuestosLocales.Value;
 
-    /// <summary>Esquema de CFDI 4.0 con el complemento de pagos 2.0.</summary>
+    // CFDI 4.0 con el complemento de pagos 2.0.
     public XmlSchemaSet EsquemaCfdiPagos => _esquemaCfdiPagos.Value;
     public XmlSchemaSet EsquemaServiciosParciales => _esquemaServiciosParciales.Value;
 
@@ -283,8 +281,7 @@ public sealed class EsquemasSat
             throw resolutor.Faltante;
         }
 
-        // Un import faltante cuyos tipos nadie usa compila igual, pero el conjunto ya no es
-        // el que publicó el SAT.
+        // Un import faltante cuyos tipos nadie usa compila igual, pero ya no es el conjunto del SAT.
         if (resolutor.Faltante is not null) throw resolutor.Faltante;
     }
 

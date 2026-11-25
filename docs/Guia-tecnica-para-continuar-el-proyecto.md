@@ -277,9 +277,9 @@ Las 93 incluyen 91 del modelo de aplicación/Identity, __EFMigrationsHistory y s
 
 Los datos fiscales se copian en el documento para preservar su historia. Un concepto guarda descripción, cantidad, precio, descuento e impuestos usados en esa operación; no necesita consultar el precio actual del producto para reconstruir una factura anterior. Guardar conceptos no crea automáticamente productos de catálogo.
 
-Comprobantes.RutaXml referencia un archivo del almacén privado. AlmacenDeArchivos.GuardarAsync cifra contenido y produce una ruta relativa dentro de una carpeta de empresa/categoría; LeerAsync valida la ruta y utiliza el propósito correcto para descifrar. Un endpoint autorizado transmite los bytes al usuario. El archivo no se expone como un enlace público bajo wwwroot.
+Desde el 24 de noviembre de 2026 el XML timbrado se guarda en claro en XmlsDeComprobante, en la misma transacción que marca el comprobante como timbrado, y el acuse de cancelación en SolicitudesCancelacion.Acuse. Los timbrados anteriores tenían el XML en el almacén (Comprobantes.RutaXml); CopiaDeXmlTimbrados los copia a la base al arrancar y el archivo se conserva como respaldo. Para esos archivos, AlmacenDeArchivos.GuardarAsync cifra contenido y produce una ruta relativa dentro de una carpeta de empresa/categoría; LeerAsync valida la ruta y utiliza el propósito correcto para descifrar. Un endpoint autorizado transmite los bytes al usuario. El archivo no se expone como un enlace público bajo wwwroot.
 
-Hay excepciones importantes: IntentosTimbrado guarda el XML enviado para recuperar una operación; los intentos del proveedor conservan su emisión; CertificadosProveedor guarda CER y KEY cifrados en columnas binarias. Por eso es incorrecto afirmar que ningún XML o certificado se almacena en SQL. Los PDF se generan con sus servicios y no tienen una tabla universal que guarde cada descarga.
+Hay excepciones importantes: IntentosTimbrado guarda el XML enviado para recuperar una operación; los intentos del proveedor conservan su emisión; CertificadosProveedor guarda CER y KEY cifrados en columnas binarias. Junto con XmlsDeComprobante, es incorrecto afirmar que ningún XML o certificado se almacena en SQL. Los PDF se generan con sus servicios y no tienen una tabla universal que guarde cada descarga.
 
 DatosComercioExterior.Contenido usa JSON para representar datos anidados del complemento. Permite conservar su estructura sin una tabla por propiedad. El costo es que una consulta SQL sobre campos internos resulta menos sencilla, especialmente en SQL 2014. La validación tipada se realiza en el servidor; el texto JSON por sí solo no asegura reglas fiscales.
 
@@ -348,7 +348,7 @@ ServicioDeObras.Calcular distingue trabajos, amortización, subtotal, IVA, total
 
 Ejemplo probado: trabajos 200,000; amortización 30 % = 60,000; subtotal 140,000; IVA 22,400; total comercial 162,400. Deducciones de 1,000, 2,000, 400 y 600 dejan líquido 158,400. La retención local de 1,000 produce total fiscal 161,400 en ese caso; líquido y total fiscal no representan la misma magnitud.
 
-Para modificar obra, revisar ServicioDeObras, AmortizacionDeObra, RetencionLocalDeObra, conciliación fiscal y el PDF de estimación. No cambiar solo el resumen lateral. Los porcentajes deben responder al contrato real; este ejemplo no define por sí solo qué deducción aplica jurídicamente a cualquier obra.
+Para modificar obra, revisar ServicioDeObras, AmortizacionDeObra, RetencionLocalDeObra, y la conciliación fiscal. El PDF de estimación se retiró el 24 de noviembre de 2026; en su lugar, el PDF de la factura de obra lleva el bloque informativo «Cálculo de la estimación», que va del total del CFDI al importe líquido con el mismo ServicioDeObras.Calcular de la pestaña Obra. En obra pública omite la primera deducción porque ya va como impuesto local. No cambiar solo el resumen lateral. Los porcentajes deben responder al contrato real; este ejemplo no define por sí solo qué deducción aplica jurídicamente a cualquier obra.
 
 ### Saldos y proporcionalidad de pagos
 
@@ -402,7 +402,7 @@ El CSD identifica al emisor y contiene material para sellar. Las credenciales de
 
 ### Generación del PDF
 
-GeneradorDePdfCfdi.Generar devuelve bytes y Construir arma el documento QuestPDF. Encabezado, Receptor, Conceptos, Totales y Pie son métodos que distribuyen su presentación. También hay secciones para Notaría, Comercio Exterior y pagos. Carta Porte y estimación de obra tienen generadores especializados.
+GeneradorDePdfCfdi.Generar devuelve bytes y Construir arma el documento QuestPDF. Encabezado, Receptor, Conceptos, Totales y Pie son métodos que distribuyen su presentación. También hay secciones para Notaría, Comercio Exterior y pagos. Carta Porte tiene un generador especializado. La factura de obra agrega el bloque «Cálculo de la estimación» con DatosDelPdf.EstimacionObra, que no sale del XML sino de DatosObra, congelado al timbrar.
 
 Un cambio visual del PDF normalmente se realiza en el generador y sus datos de entrada. Si el dato no se carga, modificar el diseño no lo inventa. Si cambia una regla de importe, debe modificarse el cálculo autorizado antes de mostrar el número con otra etiqueta.
 

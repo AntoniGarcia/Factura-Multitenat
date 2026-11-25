@@ -69,14 +69,13 @@ public static class DocumentosModule
         servicios.AddScoped<ValidadorFiscalCartaPorte>();
         servicios.AddScoped<ValidadorFiscalDeComercioExterior>();
         servicios.AddScoped<GeneradorDeXmlComercioExterior>();
-        servicios.AddScoped<GeneradorDePdfEstimacionObra>();
-        servicios.AddScoped<ServicioDePdfEstimacionObra>();
 
         servicios.AgregarPac(configuracion, entorno);
 
         // Saca de 'timbrando' a los comprobantes cuya llamada al PAC nunca volvió. Sin esto,
         // un corte de red deja facturas en un limbo del que nadie las saca.
         servicios.AddHostedService<ConciliacionDeTimbrados>();
+        servicios.AddHostedService<CopiaDeXmlTimbrados>();
 
         // Recoge los borradores que deja atrás abrir «Nueva factura» y cerrar la pantalla.
         servicios.AddHostedService<BarridoDeBorradoresHuerfanos>();
@@ -117,10 +116,8 @@ public static class DocumentosModule
                 throw new InvalidOperationException(
                     "'Pac:Modo=Simulado' solo se permite en Development: produce timbres inventados.");
 
-            // Los dos juntos: sin PAC real tampoco hay quién valide el sello, y sin el doble del
-            // CSD no se podría timbrar en una empresa que todavía no carga su certificado.
-            // Registrado después de PlataformaModule, el del CSD sustituye al real; la
-            // verificación de contratos lo reporta al arrancar.
+            // Los dos juntos: sin PAC real no hay quién valide el sello. Registrado después de
+            // PlataformaModule, el CSD simulado sustituye al real; la verificación de contratos lo avisa.
             servicios.AddSingleton<IProveedorPac, Dobles.DobleProveedorPac>();
             servicios.AddSingleton<IProveedorCsdParaTimbrado, Dobles.DobleProveedorCsdParaTimbrado>();
 

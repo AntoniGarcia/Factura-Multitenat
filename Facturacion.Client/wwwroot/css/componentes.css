@@ -284,9 +284,10 @@
     border-radius: var(--radio);
 }
 
+/* Tres por fila: estatus, tipo y cliente arriba; periodo y fechas abajo. */
 .documentos-filtros .filtros-documentos {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(10rem, 1fr));
+    grid-template-columns: repeat(3, minmax(0, 1fr));
     margin-bottom: 0;
 }
 
@@ -462,6 +463,7 @@
 
     .documentos-filtros .documentos-filtros-adicionales.filtros-abiertos {
         display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(10rem, 1fr));
         padding-top: 0.5rem;
     }
 

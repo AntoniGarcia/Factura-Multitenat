@@ -54,8 +54,7 @@
     private bool? _activos;
     private Guid? _empresa;
 
-    // Comodidad visual: lo que el servidor rechazaría ni se ofrece. La protección real es la
-    // política de cada endpoint.
+    // Lo que el servidor rechazaría ni se ofrece; la protección real es la política del endpoint.
     private bool _puedeCrear, _puedeModificar, _puedeDesactivar, _puedeEliminar;
 
     private IReadOnlyList<ColumnaDeTabla<ClienteEnListaDto>> _columnas = [];
@@ -157,7 +156,7 @@
         if (error is null) await RecargarAsync();
     }
 
-    /// <summary>Solo prospera si ningún comprobante usó al cliente; si no, el servidor pide desactivarlo.</summary>
+    // Si algún comprobante usó al cliente, el servidor pide desactivarlo.
     private async Task Eliminar(ClienteEnListaDto cliente)
     {
         if (_trabajando) return;

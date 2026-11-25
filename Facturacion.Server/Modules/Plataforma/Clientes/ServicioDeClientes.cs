@@ -8,7 +8,7 @@ using Microsoft.EntityFrameworkCore;
 
 namespace Facturacion.Server.Modules.Plataforma.Clientes;
 
-/// <summary>Administra los clientes de la cuenta, que comparten todas sus empresas, y expone sus datos al módulo de emisión. EF aplica el filtro de cuenta.</summary>
+// Clientes de la cuenta, compartidos por sus empresas; EF aplica el filtro de cuenta.
 public sealed class ServicioDeClientes(
     AppDbContext baseDeDatos,
     ValidadorDeCliente validador,
@@ -52,8 +52,8 @@ public sealed class ServicioDeClientes(
     {
         var consulta = baseDeDatos.Clientes.AsNoTracking();
 
-    // Filtro informativo por la empresa que lo dio de alta. El identificador viene del
-    // navegador, pero el filtro global ya acota a la cuenta: uno ajeno no devuelve nada.
+    // Filtro informativo por la empresa de alta: el filtro global ya acota a la cuenta, así que
+    // una empresa ajena no devuelve nada.
         if (empresaAlta is { } empresa)
             consulta = consulta.Where(c => c.EmpresaAltaId == empresa);
 
@@ -225,14 +225,10 @@ public sealed class ServicioDeClientes(
         return ADto(cliente);
     }
 
-    /// <summary>
-    /// Borrado físico, solo de un cliente que ningún comprobante usó, ni siquiera un borrador
-    /// (AGENTS.md §11). El que ya se usó se desactiva.
-    /// </summary>
+    // Borrado físico solo si ningún comprobante, ni un borrador, lo usó; si no, se desactiva.
     public async Task<Resultado> EliminarAsync(Guid id, CancellationToken ct)
     {
-        // El bloqueo choca con el de ObtenerParaTimbradoAsync: un documento que se guarda al mismo
-        // tiempo espera, o hace esperar al borrado, y nunca queda apuntando a un cliente borrado.
+        // Choca con el bloqueo de ObtenerParaTimbradoAsync: nada queda apuntando a un cliente borrado.
         await using var transaccion = await baseDeDatos.Database.BeginTransactionAsync(System.Data.IsolationLevel.Serializable, ct);
 
         var cliente = await baseDeDatos.Clientes
@@ -256,12 +252,9 @@ public sealed class ServicioDeClientes(
         return Resultado.Exito();
     }
 
-    /// <summary>
-    /// Guarda los renglones válidos de una importación ya revisada. Un RFC que ya existe en la
-    /// cuenta se actualiza; los genéricos, que se repiten, se reconocen además por el nombre.
-    /// Un campo vacío en el CSV no borra lo que el cliente ya tiene, y el domicilio de entrega,
-    /// que no viaja en el archivo, se conserva.
-    /// </summary>
+    /// Un RFC que ya existe en la cuenta se actualiza; los genéricos se reconocen además por el
+    /// nombre. Un campo vacío en el CSV no borra lo que el cliente ya tiene, y el domicilio de
+    /// entrega se conserva.
     public async Task<ResultadoDeImportacionDeClientes> ImportarAsync(
         IReadOnlyList<RenglonDeImportacionDeCliente> renglones, CancellationToken ct)
     {

@@ -22,7 +22,7 @@ public sealed class MovimientoTimbre : IEntidadDeCuenta
 
     public Guid CuentaId { get; set; }
 
-    /// <summary>Empresa que lo originó: la que compró o la que timbró. Es un dato, no tenencia.</summary>
+    // Empresa que lo originó (la que compró o timbró): es un dato, no tenencia.
     public Guid EmpresaId { get; set; }
 
     /// <summary>Uno de <see cref="TiposDeMovimientoTimbre"/>.</summary>
