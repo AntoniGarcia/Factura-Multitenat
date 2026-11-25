@@ -27,13 +27,14 @@ public static class AmortizacionDeObra
     public static ErrorNegocio? Aplicar(Comprobante comprobante, DatosObra? obra, int decimalesMoneda)
     {
         var porcentaje = obra?.PorcentajeAmortizacion ?? 0m;
+        var llevaLeyenda = porcentaje != 0 && comprobante.Relacionados.Any(x => x.TipoRelacion == TipoRelacionAnticipo);
         var conceptos = comprobante.Conceptos.OrderBy(x => x.Orden).ToArray();
         for (var i = 0; i < conceptos.Length; i++)
         {
             var descripcion = TieneLeyenda(conceptos[i].Descripcion)
                 ? conceptos[i].Descripcion[..^(Separador.Length + Leyenda.Length)]
                 : conceptos[i].Descripcion;
-            if (porcentaje != 0) descripcion += Separador + Leyenda;
+            if (llevaLeyenda) descripcion += Separador + Leyenda;
             if (descripcion.Length > LargoMaximoDeDescripcion)
                 return ErrorNegocio.Validacion("obra-leyenda-anticipo",
                     $"La descripción del renglón {i + 1} no deja espacio para la leyenda «{Leyenda}». " +
@@ -67,6 +68,9 @@ public static class AmortizacionDeObra
 
     // ¿Los conceptos guardados reflejan el porcentaje de amortización?
     public static bool EstaAplicada(Comprobante comprobante, decimal porcentaje)
-        => comprobante.Conceptos.All(x =>
-            x.Descuento == DescuentoDe(x.Importe, porcentaje) && TieneLeyenda(x.Descripcion) == (porcentaje != 0));
+    {
+        var llevaLeyenda = porcentaje != 0 && comprobante.Relacionados.Any(x => x.TipoRelacion == TipoRelacionAnticipo);
+        return comprobante.Conceptos.All(x =>
+            x.Descuento == DescuentoDe(x.Importe, porcentaje) && TieneLeyenda(x.Descripcion) == llevaLeyenda);
+    }
 }

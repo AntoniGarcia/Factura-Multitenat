@@ -20,9 +20,12 @@ public static class AnticipoDeObra
             .Where(x => x.TipoRelacion == AmortizacionDeObra.TipoRelacionAnticipo)
             .Select(x => x.UuidRelacionado)
             .ToArray();
-        if (relacionados.Length != 1)
-            return ErrorNegocio.Regla("obra-amortizacion-sin-anticipo",
-                "Para amortizar, relaciona en «CFDI relacionados» un solo anticipo con tipo 07 y guarda la factura.");
+        // Si no hay CFDI relacionado con tipo 07 se permite amortizar libremente en la estimación;
+        // si se relaciona uno, se valida su vigencia y saldo disponible.
+        if (relacionados.Length == 0) return null;
+        if (relacionados.Length > 1)
+            return ErrorNegocio.Regla("obra-amortizacion-varios-anticipos",
+                "Solo puedes relacionar un anticipo con tipo 07 por factura de obra.");
 
         var uuid = relacionados[0];
         var anticipo = await baseDeDatos.Comprobantes.AsNoTracking()

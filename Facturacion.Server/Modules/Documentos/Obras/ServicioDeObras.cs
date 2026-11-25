@@ -127,6 +127,8 @@ public sealed class ServicioDeObras(
             return anticipo;
 
         var despues = Calcular(comprobante, datos);
+        if (despues.SubtotalEstimacion < 0)
+            return ErrorNegocio.Validacion("obra-subtotal-negativo", "La amortización y las retenciones superan el importe de los trabajos más devoluciones.");
         if (despues.ImporteLiquido < 0)
             return ErrorNegocio.Validacion("obra-liquido-negativo", "Las deducciones superan el total de la estimación.");
 
@@ -152,16 +154,20 @@ public sealed class ServicioDeObras(
         => Math.Round(baseDeCalculo * tasa / 100m, 6, MidpointRounding.ToEven);
 
     // También lo usa el PDF de la factura, para que el papel dé lo mismo que la pestaña Obra.
-    internal static DatosObraDto Calcular(Comprobante comprobante, DatosObra datos)
+    public static DatosObraDto Calcular(Comprobante comprobante, DatosObra datos)
     {
-        // Subtotal, IVA y total son los del CFDI; retenciones y deducciones solo restan del líquido.
+        // Regla de estimación de obra:
+        // Subtotal = Importe de los trabajos - Amortización del anticipo - Retenciones + Devoluciones
+        // IVA = tasa efectiva de IVA del comprobante aplicada al Subtotal
+        // Total = Subtotal + IVA
+        // Importe líquido = Total - Deducciones (5 al millar, 1% OBS, ICIC, ÚNETE, etc.)
         var importeTrabajos = comprobante.SubTotal;
-        var amortizacion = comprobante.Descuento;
-        var subtotal = importeTrabajos - amortizacion;
-        // Redondeado por impuesto como en el XML, aunque haya tasas mixtas o exentos.
-        var iva = comprobante.Conceptos.SelectMany(x => x.Impuestos)
-            .Where(x => !x.EsRetencion && x.Impuesto == "002")
-            .Sum(x => Math.Round(x.Importe ?? 0m, 2, MidpointRounding.ToEven));
+        var amortizacion = comprobante.Descuento != 0
+            ? comprobante.Descuento
+            : Porcentaje(importeTrabajos, datos.PorcentajeAmortizacion);
+        var subtotal = importeTrabajos - amortizacion - datos.Retenciones + datos.Devoluciones;
+        var tasaIva = TasaEfectivaDeIva(comprobante);
+        var iva = Math.Round(subtotal * tasaIva, 2, MidpointRounding.ToEven);
         var total = subtotal + iva;
         DeduccionDeObraDto[] deducciones =
         [
@@ -173,7 +179,24 @@ public sealed class ServicioDeObras(
         return new DatosObraDto(importeTrabajos, datos.PorcentajeAmortizacion, amortizacion,
             datos.PorcentajeRetenciones, datos.Retenciones, datos.PorcentajeDevoluciones,
             datos.Devoluciones, subtotal, iva, total,
-            deducciones, total - datos.Retenciones - datos.Devoluciones - deducciones.Sum(x => x.Importe),
+            deducciones, total - deducciones.Sum(x => x.Importe),
             datos.TipoObra) { ServicioParcial = ServicioParcialConstruccion.Leer(datos.ServicioParcialJson) };
+    }
+
+    internal static decimal TasaEfectivaDeIva(Comprobante comprobante)
+    {
+        var baseTotal = comprobante.Conceptos.Sum(c => c.Importe);
+        if (baseTotal <= 0) return 0m;
+
+        decimal sumaPonderada = 0m;
+        foreach (var concepto in comprobante.Conceptos)
+        {
+            var tasaConcepto = concepto.Impuestos
+                .Where(i => !i.EsRetencion && i.Impuesto == "002" && i.TipoFactor == "Tasa")
+                .Sum(i => i.TasaOCuota ?? 0m);
+            sumaPonderada += concepto.Importe * tasaConcepto;
+        }
+
+        return sumaPonderada / baseTotal;
     }
 }

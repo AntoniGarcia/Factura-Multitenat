@@ -29,23 +29,24 @@
 </section>
 
 <section class="emision-seccion">
-    <h2 class="seccion-titulo">Amortización del anticipo</h2>
+    <h2 class="seccion-titulo">Amortización del anticipo, retenciones y devoluciones</h2>
     <div class="obra-rejilla">
         <MudNumericField T="decimal" @bind-Value="_porcentajeAmortizacion" Immediate="true" Label="Amortización del anticipo (%)"
-                         Min="0" Max="100" Format="N2" Class="cifra-tabular" Disabled="@(!AnticipoRelacionado)" />
+                         Min="0" Max="100" Format="N2" Class="cifra-tabular" />
+        <MudNumericField T="decimal" @bind-Value="_porcentajeRetenciones" Immediate="true" Label="Retenciones (%)"
+                         Min="0" Max="100" Format="N2" Class="cifra-tabular" />
+        <MudNumericField T="decimal" @bind-Value="_porcentajeDevoluciones" Immediate="true" Label="Devoluciones (%)"
+                         Min="0" Max="100" Format="N2" Class="cifra-tabular" />
     </div>
     <p class="seccion-ayuda">
+        Al importe de los trabajos se le resta la amortización del anticipo y las retenciones, y se le suman las devoluciones para obtener el subtotal antes de IVA.
         @if (AnticipoRelacionado)
         {
-            @:Se resta como descuento de cada concepto antes del IVA y agrega a su descripción la leyenda «CFDI por remanente de un anticipo», como pide el SAT. No puede pasar del saldo del anticipo.
+            @: Con el anticipo tipo 07 relacionado, se valida contra su saldo y se agrega la leyenda SAT en los conceptos.
         }
         else
         {
-            @:Para habilitarla, agrega en «CFDI relacionados» el anticipo con tipo 07 — Aplicación de anticipo.
-            @if (_porcentajeAmortizacion != 0)
-            {
-                @: Sin anticipo relacionado, al guardar se quitará la amortización.
-            }
+            @: Opcional: si cuentas con un CFDI de anticipo, puedes relacionarlo con tipo 07 en «CFDI relacionados».
         }
     </p>
 </section>
@@ -62,15 +63,8 @@
 <section class="emision-seccion">
     <h2 class="seccion-titulo">Deducciones del pago</h2>
     <p class="seccion-ayuda">
-        Se restan del total del CFDI para llegar al importe líquido; no cambian la factura. Marca las que
-        aplica el contrato: las demás no salen en el cálculo ni en la estimación.
+        Se calculan sobre el importe de los trabajos y se restan del total para obtener el importe líquido. Marca las que aplica el contrato.
     </p>
-    <div class="obra-rejilla">
-        <MudNumericField T="decimal" @bind-Value="_porcentajeRetenciones" Immediate="true" Label="Retenciones (%)"
-                         Min="0" Max="100" Format="N2" Class="cifra-tabular" />
-        <MudNumericField T="decimal" @bind-Value="_porcentajeDevoluciones" Immediate="true" Label="Devoluciones (%)"
-                         Min="0" Max="100" Format="N2" Class="cifra-tabular" />
-    </div>
     @foreach (var deduccion in _deducciones)
     {
         <div class="obra-deduccion-bloque">
@@ -94,27 +88,22 @@
         <h2 class="seccion-titulo">Cálculo preliminar</h2>
         <p class="seccion-ayuda">Estimación sobre conceptos guardados; no sustituye el total fiscal del CFDI.</p>
         <dl class="obra-desglose">
-            <div><dt>Importe de trabajos</dt><dd class="cifra-tabular">@vista.ImporteTrabajos.ToString("N2")</dd></div>
-            @if (vista.Amortizacion != 0)
-            {
-                <div><dt>Amortización del anticipo</dt><dd class="cifra-tabular">−@vista.Amortizacion.ToString("N2")</dd></div>
-            }
-            <div><dt>Subtotal de la estimación</dt><dd class="cifra-tabular">@vista.SubtotalEstimacion.ToString("N2")</dd></div>
-            <div><dt>IVA de los conceptos</dt><dd class="cifra-tabular">@vista.IvaEstimado.ToString("N2")</dd></div>
-            <div><dt>Total de la estimación</dt><dd class="cifra-tabular">@vista.TotalEstimacion.ToString("N2")</dd></div>
-            @if (vista.Retenciones != 0)
-            {
-                <div><dt>Retenciones</dt><dd class="cifra-tabular">−@vista.Retenciones.ToString("N2")</dd></div>
-            }
-            @if (vista.Devoluciones != 0)
-            {
-                <div><dt>Devoluciones</dt><dd class="cifra-tabular">−@vista.Devoluciones.ToString("N2")</dd></div>
-            }
+            <div><dt>Importe de los trabajos</dt><dd class="cifra-tabular">@vista.ImporteTrabajos.ToString("N2")</dd></div>
+            <div><dt>Amortización del anticipo</dt><dd class="cifra-tabular">@(vista.Amortizacion != 0 ? "−" : "")@vista.Amortizacion.ToString("N2")</dd></div>
+            <div><dt>Retenciones</dt><dd class="cifra-tabular">@(vista.Retenciones != 0 ? "−" : "")@vista.Retenciones.ToString("N2")</dd></div>
+            <div><dt>Devoluciones</dt><dd class="cifra-tabular">@(vista.Devoluciones != 0 ? "+" : "")@vista.Devoluciones.ToString("N2")</dd></div>
+            <div><dt>Subtotal</dt><dd class="cifra-tabular">@vista.SubtotalEstimacion.ToString("N2")</dd></div>
+            <div><dt>IVA</dt><dd class="cifra-tabular">@vista.IvaEstimado.ToString("N2")</dd></div>
+            <div><dt>Total</dt><dd class="cifra-tabular">@vista.TotalEstimacion.ToString("N2")</dd></div>
             @foreach (var deduccion in vista.Deducciones.Where(x => x.Porcentaje != 0))
             {
                 <div><dt>@deduccion.Nombre</dt><dd class="cifra-tabular">−@deduccion.Importe.ToString("N2")</dd></div>
             }
-            <div class="obra-liquido"><dt>Importe líquido estimado</dt><dd class="cifra-tabular">@vista.ImporteLiquido.ToString("N2")</dd></div>
+            @if (vista.Deducciones.Any(x => x.Porcentaje != 0))
+            {
+                <div><dt>Total deducciones</dt><dd class="cifra-tabular">−@vista.Deducciones.Sum(x => x.Importe).ToString("N2")</dd></div>
+            }
+            <div class="obra-liquido"><dt>Importe líquido</dt><dd class="cifra-tabular">@vista.ImporteLiquido.ToString("N2")</dd></div>
         </dl>
     </section>
 }
@@ -138,7 +127,7 @@
     [Parameter] public EventCallback AlGuardar { get; set; }
 
     private decimal _porcentajeAmortizacion;
-    private decimal AmortizacionAEnviar => AnticipoRelacionado ? _porcentajeAmortizacion : 0;
+    private decimal AmortizacionAEnviar => _porcentajeAmortizacion;
     private string? _tipoObra;
     private ServicioParcialConstruccionDto? _servicioParcial;
     private decimal _porcentajeRetenciones;
@@ -171,19 +160,19 @@
             var amortizacion = Porcentaje(importe, porcentaje);
             var retenciones = Porcentaje(importe, _porcentajeRetenciones);
             var devoluciones = Porcentaje(importe, _porcentajeDevoluciones);
-            var subtotal = importe - amortizacion;
-            // Estimación hasta guardar: IvaConceptos ya trae descontada la amortización anterior.
+            var subtotal = importe - amortizacion - retenciones + devoluciones;
+            // Tasa efectiva de IVA deducida de los conceptos guardados, aplicada sobre el subtotal.
             var aplicada = _resultado?.PorcentajeAmortizacion ?? 0;
-            var iva = aplicada == porcentaje ? IvaConceptos
-                : aplicada >= 100 ? 0
-                : Math.Round(IvaConceptos / (1 - aplicada / 100m) * (1 - porcentaje / 100m), 2, MidpointRounding.ToEven);
+            var baseActualIva = importe * (1m - aplicada / 100m);
+            var tasaIva = baseActualIva > 0 ? IvaConceptos / baseActualIva : 0m;
+            var iva = subtotal > 0 ? Math.Round(subtotal * tasaIva, 2, MidpointRounding.ToEven) : 0m;
             var total = subtotal + iva;
             var deducciones = _deducciones.Select(x => new DeduccionDeObraDto(
                 x.NombreAEnviar, x.PorcentajeAEnviar, Porcentaje(importe, x.PorcentajeAEnviar))).ToArray();
             return new DatosObraDto(importe, porcentaje, amortizacion,
                 _porcentajeRetenciones, retenciones, _porcentajeDevoluciones, devoluciones,
                 subtotal, iva, total, deducciones,
-                total - retenciones - devoluciones - deducciones.Sum(x => x.Importe), _tipoObra);
+                total - deducciones.Sum(x => x.Importe), _tipoObra);
         }
     }
 

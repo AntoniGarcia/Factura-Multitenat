@@ -181,9 +181,10 @@ public sealed class GeneradorDePdfCfdi
             else
             {
                 columna.Item().Element(e => Conceptos(e, c, datos.Decimales));
-                columna.Item().Element(e => Totales(e, c, datos.Decimales, datos.ImpuestosLocales ?? []));
-                if (datos.EstimacionObra is { } estimacion && DeduccionesDeObra(estimacion) is { Count: > 0 } deducciones)
-                    columna.Item().PaddingTop(10).Element(e => CalculoDeEstimacion(e, c, estimacion, deducciones, datos.Decimales));
+                if (datos.EstimacionObra is { } estimacion)
+                    columna.Item().Element(e => TotalesDeObra(e, c, estimacion, datos.Decimales));
+                else
+                    columna.Item().Element(e => Totales(e, c, datos.Decimales, datos.ImpuestosLocales ?? []));
                 if (datos.Notaria is { } notaria)
                     columna.Item().PaddingTop(10).Element(e => SeccionNotarial(e, notaria, datos.Decimales));
             }
@@ -384,107 +385,126 @@ public sealed class GeneradorDePdfCfdi
     }
 
     private static void Totales(IContainer contenedor, Comprobante c, int decimales, IReadOnlyList<ImpuestoLocalCfdi> locales)
-        => contenedor.PreventPageBreak().Row(fila =>
+        => contenedor.PreventPageBreak().PaddingTop(6).BorderTop(0.5f).BorderColor(EstiloDeComprobante.Borde).Column(bloque =>
         {
-            fila.RelativeItem().PaddingTop(12).PaddingRight(12).Column(pago =>
+            bloque.Item().PaddingTop(4).Row(fila =>
             {
-                pago.Item().Row(datosPago =>
+                fila.RelativeItem().PaddingTop(4).PaddingRight(12).Element(e => ColumnaMetodoDePago(e, c));
+                fila.ConstantItem(210).PaddingTop(2).PaddingHorizontal(4).Column(totales =>
                 {
-                    datosPago.RelativeItem().PaddingRight(8).Column(metodos =>
+                    totales.Item().Element(e => Dato(e, "SUBTOTAL:", Cifra(c.SubTotal, decimales), negrita: true, anchoDelValor: 76));
+                    if (c.Descuento > 0)
+                        totales.Item().PaddingTop(2).Element(e => Dato(e, "DESCUENTO:", Cifra(c.Descuento, decimales), negrita: true, anchoDelValor: 76));
+                    foreach (var retencion in new[] { false, true })
                     {
-                        var metodo = c.MetodoPago switch
-                        {
-                            "PUE" => "PUE · Pago en una sola exhibición",
-                            "PPD" => "PPD · Pago en parcialidades o diferido",
-                            _ => c.MetodoPago ?? "-"
-                        };
-                        metodos.Item().Element(e => EtiquetaYValor(e, "Método de pago", metodo, 72));
-                        metodos.Item().PaddingTop(3).Element(e => EtiquetaYValor(e, "Forma de pago", c.FormaPago ?? "-", 72));
-                    });
-                    datosPago.ConstantItem(99).Table(moneda =>
-                    {
-                        moneda.ColumnsDefinition(x => { x.ConstantColumn(36); x.RelativeColumn(); });
-                        moneda.Cell().Text("Moneda").Bold();
-                        moneda.Cell().Text("T.C.").Bold();
-                        moneda.Cell().Text(c.Moneda);
-                        moneda.Cell().Text(c.TipoCambio is { } tc ? Cifra(tc, 6) : c.Moneda == "MXN" ? "1" : "-");
-                    });
+                        var total = retencion ? c.TotalImpuestosRetenidos : c.TotalImpuestosTrasladados;
+                        if (total <= 0) continue;
+                        var grupos = c.Conceptos.SelectMany(x => x.Impuestos)
+                            .Where(x => x.EsRetencion == retencion && x.Importe is not null)
+                            .GroupBy(x => (x.Impuesto, x.TipoFactor, x.TasaOCuota)).ToArray();
+                        if (grupos.Length > 0 && decimal.Round(grupos.Sum(g => g.Sum(x => x.Importe!.Value)), decimales) == decimal.Round(total, decimales))
+                            foreach (var grupo in grupos)
+                                totales.Item().PaddingTop(2).Element(e => Dato(e,
+                                    NombreDeImpuesto(grupo.Key.Impuesto, retencion) + (grupo.Key.TasaOCuota is { } tasa && grupo.Key.TipoFactor == "Tasa" ? $" {tasa * 100:0.##} %:" : ":"),
+                                    Cifra(grupo.Sum(x => x.Importe!.Value), decimales), negrita: true, anchoDelValor: 76));
+                        else
+                            totales.Item().PaddingTop(2).Element(e => Dato(e, retencion ? "IMPUESTOS RETENIDOS:" : "IMPUESTOS TRASLADADOS:",
+                                Cifra(total, decimales), negrita: true, anchoDelValor: 76));
+                    }
+                    foreach (var local in locales)
+                        totales.Item().PaddingTop(2).Element(e => Dato(e,
+                            $"{local.Nombre} ({Cifra(local.Tasa, 2)} %):",
+                            (local.EsRetencion ? "−" : "") + Cifra(local.Importe, 2), negrita: true, anchoDelValor: 76));
                 });
-                if (!string.IsNullOrWhiteSpace(c.CondicionesDePago))
-                    pago.Item().PaddingTop(5).Text($"Condiciones de pago: {c.CondicionesDePago}");
             });
-            fila.ConstantItem(AnchoUnitario + AnchoImporte).BorderLeft(0.4f)
-                .BorderColor(EstiloDeComprobante.Borde).PaddingTop(4).PaddingHorizontal(4).Column(totales =>
+            bloque.Item().PaddingTop(6).Element(e => FranjaCantidadConLetraYTotal(e, c.Moneda, $"TOTAL {c.Moneda}:", c.Total, decimales));
+        });
+
+    // ── Factura de obra: desglose completo de estimación hasta importe líquido ──────────
+
+    private static void TotalesDeObra(IContainer contenedor, Comprobante c,
+        Facturacion.Shared.Obras.DatosObraDto estimacion, int decimales)
+        => contenedor.PreventPageBreak().PaddingTop(6).BorderTop(0.5f).BorderColor(EstiloDeComprobante.Borde).Column(bloque =>
+        {
+            var deduccionesActivas = estimacion.Deducciones.Where(d => d.Porcentaje != 0).ToArray();
+            var totalDeducciones = deduccionesActivas.Sum(d => d.Importe);
+            var etiquetaIva = EtiquetaDeIvaDeObra(c);
+
+            bloque.Item().PaddingTop(4).Row(fila =>
             {
-                totales.Item().Element(e => Dato(e, "SUBTOTAL", Cifra(c.SubTotal, decimales), anchoDelValor: 63));
-                totales.Item().PaddingTop(3).Element(e => Dato(e, "DESCUENTO", Cifra(c.Descuento, decimales), anchoDelValor: 63));
-                foreach (var retencion in new[] { false, true })
+                fila.RelativeItem().PaddingTop(4).PaddingRight(12).Element(e => ColumnaMetodoDePago(e, c));
+                fila.ConstantItem(230).PaddingTop(2).PaddingHorizontal(4).Column(totales =>
                 {
-                    var total = retencion ? c.TotalImpuestosRetenidos : c.TotalImpuestosTrasladados;
-                    if (total <= 0) continue;
-                    var grupos = c.Conceptos.SelectMany(x => x.Impuestos)
-                        .Where(x => x.EsRetencion == retencion && x.Importe is not null)
-                        .GroupBy(x => (x.Impuesto, x.TipoFactor, x.TasaOCuota)).ToArray();
-                    if (grupos.Length > 0 && decimal.Round(grupos.Sum(g => g.Sum(x => x.Importe!.Value)), decimales) == decimal.Round(total, decimales))
-                        foreach (var grupo in grupos)
-                            totales.Item().PaddingTop(3).Element(e => Dato(e,
-                                NombreDeImpuesto(grupo.Key.Impuesto, retencion) + (grupo.Key.TasaOCuota is { } tasa && grupo.Key.TipoFactor == "Tasa" ? $" {tasa * 100:0.##} %" : ""),
-                                Cifra(grupo.Sum(x => x.Importe!.Value), decimales), anchoDelValor: 63));
-                    else
-                        totales.Item().PaddingTop(3).Element(e => Dato(e, retencion ? "Impuestos retenidos" : "Impuestos trasladados",
-                            Cifra(total, decimales), anchoDelValor: 63));
-                }
-                foreach (var local in locales)
-                    totales.Item().PaddingTop(3).Element(e => Dato(e,
-                        $"{local.Nombre} ({Cifra(local.Tasa, 2)} %){(local.EsRetencion ? " retenido" : "")} · impuesto local",
-                        (local.EsRetencion ? "−" : "") + Cifra(local.Importe, 2), anchoDelValor: 63));
-                totales.Item().PaddingTop(8).Background(EstiloDeComprobante.Azul).Padding(5)
-                    .DefaultTextStyle(t => t.FontColor(EstiloDeComprobante.Blanco))
-                    .Element(e => Dato(e, $"TOTAL {c.Moneda}", Cifra(c.Total, decimales), negrita: true, anchoDelValor: 66));
+                    totales.Item().Element(e => Dato(e, "IMPORTE DE LOS TRABAJOS:", Cifra(estimacion.ImporteTrabajos, decimales), negrita: true, anchoDelValor: 76));
+                    totales.Item().PaddingTop(2).Element(e => Dato(e, "AMORTIZACIÓN DEL ANTICIPO:", Cifra(estimacion.Amortizacion, decimales), negrita: true, anchoDelValor: 76));
+                    totales.Item().PaddingTop(2).Element(e => Dato(e, "RETENCIONES:", Cifra(estimacion.Retenciones, decimales), negrita: true, anchoDelValor: 76));
+                    totales.Item().PaddingTop(2).Element(e => Dato(e, "DEVOLUCIONES:", Cifra(estimacion.Devoluciones, decimales), negrita: true, anchoDelValor: 76));
+                    totales.Item().PaddingTop(2).Element(e => Dato(e, "SUBTOTAL:", Cifra(estimacion.SubtotalEstimacion, decimales), negrita: true, anchoDelValor: 76));
+                    totales.Item().PaddingTop(2).Element(e => Dato(e, etiquetaIva, Cifra(estimacion.IvaEstimado, decimales), negrita: true, anchoDelValor: 76));
+                    totales.Item().PaddingTop(2).Element(e => Dato(e, "TOTAL:", Cifra(estimacion.TotalEstimacion, decimales), negrita: true, anchoDelValor: 76));
+                    foreach (var deduccion in deduccionesActivas)
+                        totales.Item().PaddingTop(2).Element(e => Dato(e, deduccion.Nombre, Cifra(deduccion.Importe, decimales), negrita: true, anchoDelValor: 76));
+                    totales.Item().PaddingTop(2).Element(e => Dato(e, "TOTAL DEDUCCIONES:", Cifra(totalDeducciones, decimales), negrita: true, anchoDelValor: 76));
+                });
+            });
+            bloque.Item().PaddingTop(6).Element(e => FranjaCantidadConLetraYTotal(e, c.Moneda, "IMPORTE LÍQUIDO:", estimacion.ImporteLiquido, decimales));
+        });
+
+    private static void ColumnaMetodoDePago(IContainer contenedor, Comprobante c)
+        => contenedor.Column(pago =>
+        {
+            var metodo = c.MetodoPago switch
+            {
+                "PUE" => "PUE PAGO EN UNA SOLA EXHIBICIÓN",
+                "PPD" => "PPD PAGO EN PARCIALIDADES O DIFERIDO",
+                _ => c.MetodoPago ?? "-"
+            };
+            pago.Item().Element(e => EtiquetaAzulYValor(e, "Método de Pago", metodo));
+            pago.Item().PaddingTop(5).Element(e => EtiquetaAzulYValor(e, "Forma de Pago", c.FormaPago ?? "-"));
+            if (c.Moneda != "MXN" || c.TipoCambio is not null)
+                pago.Item().PaddingTop(5).Element(e => EtiquetaAzulYValor(e, "Moneda / T.C.",
+                    $"{c.Moneda} · {(c.TipoCambio is { } tc ? Cifra(tc, 6) : "1")}"));
+            if (!string.IsNullOrWhiteSpace(c.CondicionesDePago))
+                pago.Item().PaddingTop(5).Text($"Condiciones de pago: {c.CondicionesDePago}").FontSize(7.5f);
+        });
+
+    private static void EtiquetaAzulYValor(IContainer contenedor, string etiqueta, string valor)
+        => contenedor.Row(fila =>
+        {
+            fila.ConstantItem(82).Background(EstiloDeComprobante.Azul).PaddingVertical(3).PaddingHorizontal(5)
+                .Text(etiqueta).Bold().FontSize(7.5f).FontColor(EstiloDeComprobante.Blanco);
+            fila.RelativeItem().PaddingLeft(6).AlignMiddle().Text(valor).FontSize(7.5f);
+        });
+
+    private static void FranjaCantidadConLetraYTotal(
+        IContainer contenedor, string moneda, string etiquetaTotal, decimal importeTotal, int decimales)
+        => contenedor.BorderTop(0.5f).BorderColor(EstiloDeComprobante.Borde).PaddingTop(3).Row(fila =>
+        {
+            fila.RelativeItem().PaddingRight(8).Row(letra =>
+            {
+                letra.ConstantItem(82).Background(EstiloDeComprobante.Azul).PaddingVertical(4).PaddingHorizontal(5)
+                    .AlignMiddle().Text("Cantidad con letra").Bold().FontSize(7.5f).FontColor(EstiloDeComprobante.Blanco);
+                letra.RelativeItem().PaddingLeft(6).AlignMiddle()
+                    .Text(ImporteEnLetra.Convertir(importeTotal, moneda)).FontSize(7.5f);
+            });
+            fila.ConstantItem(230).Row(total =>
+            {
+                total.RelativeItem().Background(EstiloDeComprobante.Azul).PaddingVertical(4).PaddingHorizontal(6)
+                    .AlignMiddle().AlignRight().Text(etiquetaTotal).Bold().FontSize(8.5f).FontColor(EstiloDeComprobante.Blanco);
+                total.ConstantItem(80).PaddingLeft(4).AlignMiddle().AlignRight()
+                    .Text(Cifra(importeTotal, decimales)).Bold().FontSize(9);
             });
         });
 
-    // ── Factura de obra: del total del CFDI al importe líquido ──────────────────────────
-
-    // Lo que se resta del total y no está en el CFDI. En obra pública la primera deducción ya va
-    // como impuesto local retenido, así que no se repite.
-    private static IReadOnlyList<(string Etiqueta, decimal Importe)> DeduccionesDeObra(
-        Facturacion.Shared.Obras.DatosObraDto estimacion)
+    private static string EtiquetaDeIvaDeObra(Comprobante c)
     {
-        var renglones = new List<(string, decimal)>();
-        if (estimacion.Retenciones != 0)
-            renglones.Add(($"Retenciones ({Cifra(estimacion.PorcentajeRetenciones ?? 0, 2)} %)", estimacion.Retenciones));
-        if (estimacion.Devoluciones != 0)
-            renglones.Add(($"Devoluciones ({Cifra(estimacion.PorcentajeDevoluciones ?? 0, 2)} %)", estimacion.Devoluciones));
-        var omitirPrimera = estimacion.TipoObra == Facturacion.Shared.Obras.TiposDeObra.Publica;
-        foreach (var (deduccion, indice) in estimacion.Deducciones.Select((d, i) => (d, i)))
-            if (deduccion.Porcentaje != 0 && !(omitirPrimera && indice == 0))
-                renglones.Add(($"{deduccion.Nombre} ({Cifra(deduccion.Porcentaje, 2)} %)", deduccion.Importe));
-        return renglones;
+        var tasas = c.Conceptos.SelectMany(x => x.Impuestos)
+            .Where(x => !x.EsRetencion && x.Impuesto == "002" && x.TipoFactor == "Tasa" && x.TasaOCuota is not null)
+            .Select(x => x.TasaOCuota!.Value)
+            .Distinct()
+            .ToArray();
+        return tasas.Length == 1 ? $"IVA {tasas[0] * 100:0.##} %:" : "IVA:";
     }
-
-    private static void CalculoDeEstimacion(IContainer contenedor, Comprobante c,
-        Facturacion.Shared.Obras.DatosObraDto estimacion, IReadOnlyList<(string Etiqueta, decimal Importe)> deducciones,
-        int decimales)
-        => contenedor.PreventPageBreak().Column(columna =>
-        {
-            columna.Item().Element(e => EstiloDeComprobante.Seccion(e, "Cálculo de la estimación"));
-            columna.Item().Row(fila =>
-            {
-                fila.RelativeItem().PaddingTop(4).PaddingRight(12).Text(
-                    "Informativo: no forma parte del CFDI. Son las deducciones del contrato que se restan del " +
-                    "total de la factura para llegar al importe que se paga.").FontSize(7).Light();
-                fila.ConstantItem(230).PaddingTop(4).PaddingHorizontal(4).Column(calculo =>
-                {
-                    calculo.Item().Element(e => Dato(e, $"Total del CFDI {c.Moneda}", Cifra(c.Total, decimales), anchoDelValor: 63));
-                    foreach (var (etiqueta, importe) in deducciones)
-                        calculo.Item().PaddingTop(3).Element(e => Dato(e, etiqueta, "−" + Cifra(importe, decimales), anchoDelValor: 63));
-                    calculo.Item().PaddingTop(4).BorderTop(0.5f).BorderColor(EstiloDeComprobante.Borde).PaddingTop(3)
-                        .Element(e => Dato(e, "Importe líquido estimado", Cifra(estimacion.ImporteLiquido, decimales),
-                            negrita: true, anchoDelValor: 66));
-                });
-            });
-        });
 
     // ── Pie: QR, sellos y cadena original ───────────────────────────────────────────────
 

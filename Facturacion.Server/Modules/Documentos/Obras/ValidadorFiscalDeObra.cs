@@ -28,12 +28,11 @@ public static class ValidadorFiscalDeObra
             return ErrorNegocio.Validacion("obra-retencion-local-decimales",
                 $"El porcentaje de {obra.NombreDeduccion1} admite solo dos decimales.");
 
-        // La amortización va como descuento de los conceptos (remanente), así que exige el anticipo
-        // relacionado; retenciones y devoluciones no tocan el CFDI.
+        // Si se relacionan anticipos con tipo 07, solo puede haber uno por factura.
         if (obra.PorcentajeAmortizacion != 0 &&
-            comprobante.Relacionados.Count(x => x.TipoRelacion == AmortizacionDeObra.TipoRelacionAnticipo) != 1)
-            return ErrorNegocio.Regla("obra-amortizacion-sin-anticipo",
-                "Para amortizar, relaciona en «CFDI relacionados» un solo anticipo con tipo 07 o deja la amortización en 0.");
+            comprobante.Relacionados.Count(x => x.TipoRelacion == AmortizacionDeObra.TipoRelacionAnticipo) > 1)
+            return ErrorNegocio.Regla("obra-amortizacion-varios-anticipos",
+                "Solo puedes relacionar un anticipo con tipo 07 por factura de obra.");
 
         if (comprobante.Conceptos.Count == 0)
             return ErrorNegocio.Validacion("obra-sin-trabajos",
