@@ -1,6 +1,6 @@
 # Sistema de facturación multiempresa
 
-Proyecto desarrollado desde cero por **Luis Antonio Serrano García** durante mi residencia profesional en **Marpa IT**, para atender los requerimientos de facturación de la empresa.
+Proyecto desarrollado desde cero por **Luis Antonio Serrano García en colaboracion con Deker Chavez Arce** durante mi residencia profesional en **Marpa IT**, para atender los requerimientos de facturación de la empresa.
 
 **Estado:** en desarrollo y revisión. La integración con un PAC real continúa pendiente de validación de punta a punta.
 
