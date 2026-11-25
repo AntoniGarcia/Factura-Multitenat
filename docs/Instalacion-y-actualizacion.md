@@ -37,6 +37,9 @@ Procedimiento:
 2. Publicar la aplicación que incorpora el módulo y el registro del script aprobado.
 3. Conservar `cnf` y agregar únicamente el archivo privado de autorización temporal.
 4. Entrar al módulo, comprobar el servidor y la base que muestra y cargar el SQL.
+   La sección **Estado de la base** dice si existe el historial de EF, qué migraciones
+   de esta versión faltan en él y qué tablas, columnas, índices o llaves no coinciden
+   con el modelo. Solo lee: no pausa el sistema ni cambia nada.
 5. Pulsar **Revisar script**, confirmar el respaldo y escribir de nuevo la contraseña.
 6. Ejecutar fuera del horario de captura. Esperar **completada**, la preparación SAT
    y comprobar los documentos antes de permitir el uso habitual.

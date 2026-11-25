@@ -32,6 +32,31 @@
         actualizarBotonRevision();
         if (ejecutando) seguimiento = setTimeout(actualizar, 2000);
     }
+    function mostrarEsquema(esquema) {
+        const lista = el('estado-diferencias');
+        lista.replaceChildren();
+        if (!esquema || esquema.error) {
+            el('estado-historial').textContent = esquema?.error || 'No se pudo leer el estado de la base.';
+            el('estado-estructura').textContent = '';
+            return;
+        }
+        const pendientes = esquema.migracionesPendientes || [];
+        el('estado-historial').textContent = !esquema.historialEf
+            ? 'La base no tiene historial de migraciones de EF (__EFMigrationsHistory). Su estado se juzga solo por la estructura.'
+            : `Historial de EF: ${esquema.migracionesRegistradas} migraciones registradas; la última es ${esquema.ultimaMigracion || 'ninguna'}. `
+              + (pendientes.length ? `Faltan en el historial: ${pendientes.join(', ')}.` : 'No falta ninguna de esta versión.');
+        const diferencias = esquema.diferencias || [];
+        el('estado-estructura').textContent = diferencias.length
+            ? `La estructura no coincide con esta versión (${diferencias.length} diferencias):`
+            : 'La estructura coincide con esta versión.';
+        const maximo = 30;
+        for (const texto of diferencias.slice(0, maximo)) {
+            const item = document.createElement('li'); item.textContent = texto; lista.append(item);
+        }
+        if (diferencias.length > maximo) {
+            const item = document.createElement('li'); item.textContent = `…y ${diferencias.length - maximo} más.`; lista.append(item);
+        }
+    }
     async function actualizar() {
         clearTimeout(seguimiento);
         puedeActualizar = false;
@@ -46,6 +71,7 @@
                 const item = document.createElement('li'); item.textContent = requisito;
                 el('requisitos-faltantes').append(item);
             }
+            mostrarEsquema(datos.esquema);
             ejecutando = false;
             actualizarBotonRevision();
             mostrar(datos.ultimoIntento);

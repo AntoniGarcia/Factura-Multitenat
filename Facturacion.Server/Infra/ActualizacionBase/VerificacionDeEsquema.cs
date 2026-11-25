@@ -1,11 +1,43 @@
 using Microsoft.EntityFrameworkCore;
 using Facturacion.Server.Data;
+using Facturacion.Shared.Mantenimiento;
 
 namespace Facturacion.Server.Infra.ActualizacionBase;
 
 public static class VerificacionDeEsquema
 {
     public static async Task<bool> CoincideAsync(AppDbContext db, CancellationToken ct)
+        => (await DiferenciasAsync(db, ct)).Count == 0;
+
+    // Solo lee: decide por la estructura y, si existe, por el historial de EF. Una base creada
+    // en SSMS puede tener la estructura completa sin historial.
+    public static async Task<EstadoDeEsquemaDto> LeerEstadoAsync(AppDbContext db, CancellationToken ct)
+    {
+        var diferencias = await DiferenciasAsync(db, ct);
+        var conexion = db.Database.GetDbConnection();
+        await db.Database.OpenConnectionAsync(ct);
+        List<string>? registradas = null;
+        try
+        {
+            await using var comando = conexion.CreateCommand();
+            comando.CommandText = """
+                IF OBJECT_ID(N'dbo.__EFMigrationsHistory', N'U') IS NOT NULL
+                    SELECT [MigrationId] FROM [dbo].[__EFMigrationsHistory] ORDER BY [MigrationId];
+                """;
+            await using var lector = await comando.ExecuteReaderAsync(ct);
+            if (lector.FieldCount > 0)
+            {
+                registradas = [];
+                while (await lector.ReadAsync(ct)) registradas.Add(lector.GetString(0));
+            }
+        }
+        finally { await db.Database.CloseConnectionAsync(); }
+
+        var pendientes = registradas is null ? [] : db.Database.GetMigrations().Except(registradas).ToArray();
+        return new(registradas is not null, registradas?.Count ?? 0, registradas?.LastOrDefault(), pendientes, diferencias);
+    }
+
+    public static async Task<IReadOnlyList<string>> DiferenciasAsync(AppDbContext db, CancellationToken ct)
     {
         var modelo = db.Model.GetRelationalModel();
         var columnas = new Dictionary<(string Tabla, string Columna), (string Tipo, bool Nulo)>();
@@ -56,20 +88,35 @@ public static class VerificacionDeEsquema
             while (await lector.ReadAsync(ct)) llaves.Add((lector.GetString(0), lector.GetString(1)));
         }
         finally { await db.Database.CloseConnectionAsync(); }
+        var diferencias = new List<string>();
         foreach (var tabla in modelo.Tables)
         {
+            // Una tabla ausente se informa una vez, no columna por columna.
+            if (!columnas.Keys.Any(x => x.Tabla == tabla.Name))
+            {
+                diferencias.Add($"Falta la tabla {tabla.Name}.");
+                continue;
+            }
             foreach (var columna in tabla.Columns)
-                if (!columnas.TryGetValue((tabla.Name, columna.Name), out var actual)
-                    || actual.Tipo != NormalizarTipo(columna.StoreType) || actual.Nulo != columna.IsNullable) return false;
+            {
+                if (!columnas.TryGetValue((tabla.Name, columna.Name), out var actual))
+                    diferencias.Add($"Falta la columna {tabla.Name}.{columna.Name}.");
+                else if (actual.Tipo != NormalizarTipo(columna.StoreType) || actual.Nulo != columna.IsNullable)
+                    diferencias.Add($"La columna {tabla.Name}.{columna.Name} es {actual.Tipo}{(actual.Nulo ? " null" : "")}; " +
+                        $"se espera {NormalizarTipo(columna.StoreType)}{(columna.IsNullable ? " null" : "")}.");
+            }
             if (tabla.PrimaryKey is { } primaria && (!indices.TryGetValue((tabla.Name, primaria.Name), out var pk)
-                || !pk.Unico || !pk.Columnas.SequenceEqual(primaria.Columns.Select(x => x.Name)))) return false;
+                || !pk.Unico || !pk.Columnas.SequenceEqual(primaria.Columns.Select(x => x.Name))))
+                diferencias.Add($"La llave primaria {primaria.Name} falta o no coincide.");
             foreach (var indice in tabla.Indexes)
                 if (!indices.TryGetValue((tabla.Name, indice.Name), out var actual)
-                    || actual.Unico != indice.IsUnique || !actual.Columnas.SequenceEqual(indice.Columns.Select(x => x.Name))) return false;
+                    || actual.Unico != indice.IsUnique || !actual.Columnas.SequenceEqual(indice.Columns.Select(x => x.Name)))
+                    diferencias.Add($"El índice {indice.Name} de {tabla.Name} falta o no coincide.");
             foreach (var llave in tabla.ForeignKeyConstraints)
-                if (!llaves.Contains((tabla.Name, llave.Name))) return false;
+                if (!llaves.Contains((tabla.Name, llave.Name)))
+                    diferencias.Add($"Falta la llave foránea {llave.Name}.");
         }
-        return true;
+        return diferencias;
     }
 
     public static string NormalizarTipo(string tipo) => tipo.Replace(" ", "").ToLowerInvariant()

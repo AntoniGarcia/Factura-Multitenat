@@ -2,5 +2,9 @@
   {
     "Nombre": "Actualización completa con índices para SQL Server 2014",
     "Sha256": "74BB3E2DBA11B9213BDE3263EDCAE038CA859B2252C77CD8F36CB7B4A2DD9291"
+  },
+  {
+    "Nombre": "Actualización del 25 de noviembre, con o sin historial de EF",
+    "Sha256": "D65581EB991AAE7FDF052A8E37C6252F0E668298E259590EA5AB74D517CF1BDC"
   }
 ]

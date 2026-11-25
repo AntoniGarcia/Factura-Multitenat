@@ -103,7 +103,22 @@ public sealed class ActualizadorDeBase : BackgroundService
         ];
         var faltantes = requisitos.Where((_, i) => lector.GetInt32(i + 3) != 1).ToArray();
         return new(lector.GetString(0), lector.GetString(1), lector.GetString(2), faltantes.Length == 0,
-            Permitidos.Select(x => x.Nombre).ToArray(), Estado) { RequisitosFaltantes = faltantes };
+            Permitidos.Select(x => x.Nombre).ToArray(), Estado)
+        { RequisitosFaltantes = faltantes, Esquema = await LeerEsquemaAsync(ct) };
+    }
+
+    private async Task<EstadoDeEsquemaDto> LeerEsquemaAsync(CancellationToken ct)
+    {
+        try
+        {
+            await using var ambito = _ambitos.CreateAsyncScope();
+            return await VerificacionDeEsquema.LeerEstadoAsync(ambito.ServiceProvider.GetRequiredService<AppDbContext>(), ct);
+        }
+        catch (Exception e) when (e is SqlException or InvalidOperationException)
+        {
+            _registro.LogWarning("No se pudo leer el estado del esquema: {Tipo}, código SQL {Numero}", e.GetType().Name, (e as SqlException)?.Number);
+            return new(false, 0, null, [], []) { Error = "No se pudo leer la estructura de la base; el detalle quedó en el registro." };
+        }
     }
 
     public async Task<EstadoActualizacionBaseDto> PrepararAsync(byte[] contenido, Guid operador, CancellationToken ct)
