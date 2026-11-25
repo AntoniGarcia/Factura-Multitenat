@@ -91,7 +91,7 @@ else
                               Label="Tipo de cambio" Deshabilitado="@(_moneda == "MXN")"
                               Requerido="@(_moneda != "MXN")" />
 
-<BuscadorCatalogo Catalogo="c_MetodoPago" Opciones="@Catalogos.Obtener("c_MetodoPago")" @bind-Clave="_metodoPago" Label="Método de pago" PuedeLimpiar="true" />
+<BuscadorCatalogo Catalogo="c_MetodoPago" Opciones="@Catalogos.Obtener("c_MetodoPago")" Clave="@_metodoPago" ClaveChanged="AlCambiarMetodoPago" Label="Método de pago" PuedeLimpiar="true" />
 
 <BuscadorCatalogo Catalogo="c_FormaPago" Opciones="@Catalogos.Obtener("c_FormaPago")" @bind-Clave="_formaPago" Label="Forma de pago" PuedeLimpiar="true" />
 
@@ -772,8 +772,15 @@ else
         _domicilioDelCliente = await DomicilioDelClienteAsync(completo);
 
         _usoCfdi = completo.UsoCfdiPreferido;
-        _metodoPago = completo.MetodoPagoPreferido;
         _formaPago = completo.FormaPagoPreferida;
+        AlCambiarMetodoPago(completo.MetodoPagoPreferido);
+    }
+
+    // CFDI40105: PPD solo admite la forma 99; el servidor rechaza cualquier otra.
+    private void AlCambiarMetodoPago(string? clave)
+    {
+        _metodoPago = clave;
+        if (clave == "PPD") _formaPago = "99";
     }
 
     private async Task AlElegirProductoAsync(int indice, ProductoEnListaDto? seleccion)

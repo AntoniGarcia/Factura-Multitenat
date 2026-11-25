@@ -108,6 +108,19 @@ public sealed class ValidadorDeCliente(AppDbContext baseDeDatos, IServicioCatalo
             return ErrorNegocio.Validacion("extranjero-sin-residencia",
                 "Para el RFC XEXX010101000 hay que capturar el país de residencia fiscal.");
 
+        // CFDI40152 y CFDI40159.
+        if (peticion.ResidenciaFiscal.Trim().Equals("MEX", StringComparison.OrdinalIgnoreCase))
+            return ErrorNegocio.Validacion("extranjero-residencia-mex",
+                "Para el RFC XEXX010101000 la residencia fiscal no puede ser México.");
+
+        if (peticion.RegimenFiscal != "616")
+            return ErrorNegocio.Validacion("generico-regimen",
+                "Para el RFC XEXX010101000 el régimen tiene que ser 616, Sin obligaciones fiscales.");
+
+        if (!string.IsNullOrWhiteSpace(peticion.UsoCfdiPreferido) && peticion.UsoCfdiPreferido != "S01")
+            return ErrorNegocio.Validacion("generico-uso",
+                "Para el RFC XEXX010101000 el uso de CFDI tiene que ser S01, Sin efectos fiscales.");
+
         return null;
     }
 

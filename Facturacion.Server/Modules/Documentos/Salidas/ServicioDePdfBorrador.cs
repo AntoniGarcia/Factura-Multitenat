@@ -124,6 +124,9 @@ public sealed class ServicioDePdfBorrador(
             .Include(x => x.Inmuebles)
             .Include(x => x.Partes)
             .FirstOrDefaultAsync(x => x.ComprobanteId == comprobanteId, ct);
+        if (comprobante.Variante == VariantesDeFactura.Notaria && datosNotaria is null)
+            return ErrorNegocio.Regla("notaria-sin-datos",
+                "Guarda los datos notariales antes de generar la vista previa de la factura.");
         if (datosNotaria is not null && comercioPdf is not null)
             return ErrorNegocio.Regla("complementos-incompatibles",
                 "No se puede combinar Notaría con Comercio Exterior en la misma factura.");

@@ -132,7 +132,8 @@ public sealed class GeneradorDeXmlCfdi
             new XAttribute("RegimenFiscalReceptor", comprobante.ReceptorRegimenFiscal),
             new XAttribute("UsoCFDI", comprobante.ReceptorUsoCfdi),
             Opcional("ResidenciaFiscal", comprobante.ReceptorResidenciaFiscal),
-            Opcional("NumRegIdTrib", comprobante.ReceptorNumRegIdTrib)));
+            // CFDI40155: solo con Comercio Exterior, que va siempre con exportación 02.
+            Opcional("NumRegIdTrib", comprobante.Exportacion == "02" ? comprobante.ReceptorNumRegIdTrib : null)));
 
         raiz.Add(new XElement(Cfdi + "Conceptos", conceptos.Select(c =>
         {

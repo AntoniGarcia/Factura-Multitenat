@@ -513,7 +513,10 @@ public sealed class ServicioDePagos(
         comprobante.ReceptorRfc = receptor.Rfc;
         comprobante.ReceptorNombre = receptor.Nombre;
         comprobante.ReceptorRegimenFiscal = receptor.RegimenFiscal;
-        comprobante.ReceptorDomicilioFiscal = receptor.DomicilioFiscalCp;
+        // CFDI40149: con RFC genérico, el domicilio fiscal del receptor es el lugar de expedición.
+        comprobante.ReceptorDomicilioFiscal = Rfc.EsGenerico(receptor.Rfc)
+            ? comprobante.LugarExpedicion
+            : receptor.DomicilioFiscalCp;
         comprobante.ReceptorUsoCfdi = UsosDeCfdi.PagosDeCfdi;
 
         // La raíz de un CFDI de pago declara cero en todo: el dinero está en el complemento.

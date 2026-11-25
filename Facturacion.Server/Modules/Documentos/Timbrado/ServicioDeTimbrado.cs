@@ -55,6 +55,8 @@ public sealed class ServicioDeTimbrado(
     ServicioDePagos pagos,
     ServicioDeNotasCredito notasCredito,
     ILogger<ServicioDeTimbrado> registro,
+    IServicioCatalogosSat catalogos,
+    HusoDeEmpresa huso,
     IProveedorPac? pac = null)
 {
     /// <summary>Esperas entre reintentos. Crecientes: si el PAC va lento, insistir rápido lo empeora.</summary>
@@ -185,6 +187,11 @@ public sealed class ServicioDeTimbrado(
             ReglaDeInformacionGlobal.Validar(comprobante.ReceptorRfc, comprobante.ReceptorNombre, comprobante.GlobalPeriodicidad) is { } sinGlobal)
             return sinGlobal;
 
+        if (comprobante.TipoDeComprobante == TiposDeComprobante.Ingreso &&
+            await ReglasFiscalesDeFactura.ValidarAsync(comprobante, catalogos,
+                TimeZoneInfo.ConvertTimeFromUtc(DateTime.UtcNow, await huso.ObtenerAsync(ct)).Year, ct) is { } reglaFiscal)
+            return reglaFiscal;
+
         // Refresca la fecha de emisión al momento de timbrar para evitar rechazos CFDI40101 (>72 h)
         // en borradores creados días antes.
         comprobante.FechaEmisionUtc = DateTime.UtcNow;
@@ -250,6 +257,12 @@ public sealed class ServicioDeTimbrado(
             .Include(x => x.Inmuebles)
             .Include(x => x.Partes)
             .FirstOrDefaultAsync(x => x.ComprobanteId == comprobanteId, ct);
+
+        // Sin esta revisión, una factura notarial sin datos seguiría el camino de la factura
+        // normal y se timbraría sin el complemento.
+        if (comprobante.Variante == VariantesDeFactura.Notaria && datosNotaria is null)
+            return ErrorNegocio.Regla("notaria-sin-datos",
+                "Guarda los datos notariales antes de timbrar. No se reservó folio ni timbre.");
 
         if (datosNotaria is not null)
         {

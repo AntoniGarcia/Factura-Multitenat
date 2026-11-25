@@ -22,7 +22,8 @@ public sealed class ServicioDeEmision(
     IServicioProductos productos,
     IServicioFolios folios,
     IServicioCatalogosSat catalogos,
-    IServicioDeBitacora bitacora)
+    IServicioDeBitacora bitacora,
+    HusoDeEmpresa huso)
 {
     /// <summary>Único tipo de comprobante de esta fase: factura de ingreso estándar.</summary>
     private const string TipoFactura = "I";
@@ -269,6 +270,11 @@ public sealed class ServicioDeEmision(
         var antes = comprobante.ModificadoUtc is null ? null : ADto(comprobante);
 
         AplicarCabecera(comprobante, peticion, receptor.Valor, nombreReceptor);
+        // Se revisa sobre la cabecera ya aplicada; si falla no se guarda nada.
+        if (comprobante.TipoDeComprobante == TiposDeComprobante.Ingreso &&
+            await ReglasFiscalesDeFactura.ValidarAsync(comprobante, catalogos,
+                TimeZoneInfo.ConvertTimeFromUtc(DateTime.UtcNow, await huso.ObtenerAsync(ct)).Year, ct) is { } reglaFiscal)
+            return reglaFiscal;
         AplicarConceptos(comprobante, conceptosResueltos.Valor, calculado.Valor);
         AplicarRelacionados(comprobante, peticion.Relacionados);
         comprobante.TasaIsh = tasaIsh.Valor;
