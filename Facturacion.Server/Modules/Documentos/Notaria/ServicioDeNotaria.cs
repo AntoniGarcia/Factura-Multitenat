@@ -19,8 +19,10 @@ public sealed class ServicioDeNotaria(
     IServicioDeBitacora bitacora,
     ServicioDeXmlCfdi xml)
 {
+    // Alineado con notariospublicos.xsd: mes/día válidos, sexo H/M/X y primera letra/vocal válidas.
     private static readonly Regex PatronCurp = new(
-        "^[A-Z]{4}\\d{6}[HM][A-Z]{5}[A-Z0-9]\\d$", RegexOptions.CultureInvariant);
+        "^[A-ZÑ][AEIOUX][A-Z]{2}\\d{2}(0[1-9]|1[0-2])(0[1-9]|[12]\\d|3[01])[HMX][A-Z]{5}[A-Z0-9]\\d$",
+        RegexOptions.CultureInvariant);
 
     private static readonly HashSet<string> TiposDeInmueble = ["01", "02", "03", "04", "05"];
 
@@ -51,9 +53,9 @@ public sealed class ServicioDeNotaria(
         var estado = (peticion.Estado ?? string.Empty).Trim().ToUpperInvariant();
         var adscripcion = Recortar(peticion.Adscripcion);
 
-        if (!PatronCurp.IsMatch(curp) || peticion.NumeroNotaria is < 1 or > 999)
+        if (!PatronCurp.IsMatch(curp) || peticion.NumeroNotaria is < 1 or > 999 || adscripcion?.Contains('|') == true)
             return ErrorNegocio.Validacion(
-                "notario-invalido", "La CURP debe tener 18 caracteres válidos y el número de notaría va de 1 a 999.");
+                "notario-invalido", "La CURP debe tener 18 caracteres válidos, el número de notaría va de 1 a 999 y la adscripción no puede contener «|».");
 
         var estadoValido = await baseDeDatos.SatEstados
             .AsNoTracking()
@@ -368,10 +370,10 @@ public sealed class ServicioDeNotaria(
     }
 
     private static bool EnRango(string? valor, int maximo)
-        => !string.IsNullOrWhiteSpace(valor) && valor.Trim().Length <= maximo;
+        => !string.IsNullOrWhiteSpace(valor) && valor.Trim().Length <= maximo && !valor.Contains('|');
 
     private static bool EnRangoOpcional(string? valor, int maximo)
-        => string.IsNullOrWhiteSpace(valor) || valor.Trim().Length <= maximo;
+        => string.IsNullOrWhiteSpace(valor) || (valor.Trim().Length <= maximo && !valor.Contains('|'));
 
     private static ErrorNegocio? ValidarPartes(PeticionGuardarPartesNotariales peticion)
     {

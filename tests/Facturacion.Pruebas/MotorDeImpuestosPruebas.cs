@@ -369,4 +369,19 @@ public sealed class MotorDeImpuestosPruebas
     public void Tasa_negativa_es_error()
         => Assert.Equal("tasa-negativa", ClaveDeError(
             Comprobante(Concepto(1, 100m, 0, Traslado(-0.16m)))));
+
+    [Fact]
+    public void Factor_cuota_usa_cantidad_como_base_e_importe_exacto_a_seis_decimales()
+    {
+        var cuota = new ImpuestoDeConcepto("003", TiposDeFactor.Cuota, 2.345678m, EsRetencion: false);
+        var r = Calcular(Comprobante(Concepto(1.500000m, 100m, 0, cuota)));
+
+        Assert.Equal(1.500000m, r.Conceptos[0].Impuestos[0].Base);
+        Assert.Equal(Math.Round(1.5m * 2.345678m, 6, MidpointRounding.ToEven), r.Conceptos[0].Impuestos[0].Importe);
+    }
+
+    [Fact]
+    public void Total_negativo_por_retenciones_es_error()
+        => Assert.Equal("total-negativo", ClaveDeError(
+            Comprobante(Concepto(1, 100m, 0, Retencion(Isr, 1.50m)))));
 }

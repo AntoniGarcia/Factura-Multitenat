@@ -4,7 +4,7 @@
                   Label="@Label"
                   Value="@Valor"
                   ValueChanged="@(v => ValorCambiado.InvokeAsync(v))"
-                  Format="N2"
+                  Format="@Formato"
                   Culture="@CulturaEsMx"
                   Class="cifra-tabular campo-moneda"
                   Immediate="true"
@@ -38,4 +38,7 @@
 
     [Parameter]
     public bool Deshabilitado { get; set; }
+
+    [Parameter]
+    public string Formato { get; set; } = "N2";
 }

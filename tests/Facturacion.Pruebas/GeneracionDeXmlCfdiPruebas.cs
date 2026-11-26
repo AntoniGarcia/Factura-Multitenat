@@ -284,4 +284,42 @@ public sealed class GeneracionDeXmlCfdiPruebas
     [Fact]
     public void Pesos_no_escribe_tipo_de_cambio()
         => Assert.Null(Generar(Comprobante(Concepto(1, 100m, 0, Traslado(100m, 0.16m, 16m)))).Attribute("TipoCambio"));
+
+    /// <summary>
+    /// CFDI40176 / CFDI40179: si Importe=10.004 (10.00) y Descuento=0.006 (0.01), la Base en el XML
+    /// debe ser 9.99 (= Importe - Descuento) y el impuesto debe derivarse de esa base proyectada
+    /// (9.99 × 1.60 = 15.98), nunca 16.00 fuera de tolerancia SAT.
+    /// </summary>
+    [Fact]
+    public void Base_e_impuesto_en_xml_se_proyectan_sin_desfase_de_un_centavo()
+    {
+        var concepto = Concepto(1, 10.004000m, 0.006000m, Traslado(9.998000m, 1.600000m, 15.996800m));
+        var raiz = Generar(Comprobante(concepto));
+
+        var nodoConcepto = raiz.Element(Cfdi + "Conceptos")!.Element(Cfdi + "Concepto")!;
+        var traslado = nodoConcepto.Element(Cfdi + "Impuestos")!.Element(Cfdi + "Traslados")!.Element(Cfdi + "Traslado")!;
+
+        Assert.Equal(10.00m, Attr(nodoConcepto, "Importe"));
+        Assert.Equal(0.01m, Attr(nodoConcepto, "Descuento"));
+        Assert.Equal(9.99m, Attr(traslado, "Base"));
+        Assert.Equal(15.98m, Attr(traslado, "Importe"));
+        Assert.Equal(25.97m, Attr(raiz, "Total"));
+    }
+
+    [Fact]
+    public void Residencia_fiscal_solo_se_escribe_en_exportacion_02()
+    {
+        var sinExportacion = Comprobante(Concepto(1, 100m, 0, Traslado(100m, 0.16m, 16m)));
+        sinExportacion.ReceptorResidenciaFiscal = "USA";
+        sinExportacion.ReceptorNumRegIdTrib = "123456789";
+
+        var receptorSin = Generar(sinExportacion).Element(Cfdi + "Receptor")!;
+        Assert.Null(receptorSin.Attribute("ResidenciaFiscal"));
+        Assert.Null(receptorSin.Attribute("NumRegIdTrib"));
+
+        sinExportacion.Exportacion = "02";
+        var receptorCon = Generar(sinExportacion).Element(Cfdi + "Receptor")!;
+        Assert.Equal("USA", receptorCon.Attribute("ResidenciaFiscal")?.Value);
+        Assert.Equal("123456789", receptorCon.Attribute("NumRegIdTrib")?.Value);
+    }
 }

@@ -131,8 +131,8 @@ public sealed class GeneradorDeXmlCfdi
             new XAttribute("DomicilioFiscalReceptor", comprobante.ReceptorDomicilioFiscal),
             new XAttribute("RegimenFiscalReceptor", comprobante.ReceptorRegimenFiscal),
             new XAttribute("UsoCFDI", comprobante.ReceptorUsoCfdi),
-            Opcional("ResidenciaFiscal", comprobante.ReceptorResidenciaFiscal),
-            // CFDI40155: solo con Comercio Exterior, que va siempre con exportación 02.
+            // CFDI40151 y CFDI40155: ResidenciaFiscal y NumRegIdTrib solo van con Comercio Exterior (exportación 02).
+            Opcional("ResidenciaFiscal", comprobante.Exportacion == "02" ? comprobante.ReceptorResidenciaFiscal : null),
             Opcional("NumRegIdTrib", comprobante.Exportacion == "02" ? comprobante.ReceptorNumRegIdTrib : null)));
 
         raiz.Add(new XElement(Cfdi + "Conceptos", conceptos.Select(c =>
@@ -162,7 +162,7 @@ public sealed class GeneradorDeXmlCfdi
                 {
                     impuestos.Add(new XElement(Cfdi + "Traslados", trasladosDelConcepto.Select(i =>
                         new XElement(Cfdi + "Traslado",
-                            new XAttribute("Base", Moneda(i.Base, d)),
+                            new XAttribute("Base", i.Impuesto.TipoFactor == "Cuota" ? ValorUnitario(i.Base, d) : Moneda(i.Base, d)),
                             new XAttribute("Impuesto", i.Impuesto.Impuesto),
                             new XAttribute("TipoFactor", i.Impuesto.TipoFactor),
                             // Exento: sin tasa y sin importe. El XSD los marca opcionales
@@ -175,7 +175,7 @@ public sealed class GeneradorDeXmlCfdi
                 {
                     impuestos.Add(new XElement(Cfdi + "Retenciones", retencionesDelConcepto.Select(i =>
                         new XElement(Cfdi + "Retencion",
-                            new XAttribute("Base", Moneda(i.Base, d)),
+                            new XAttribute("Base", i.Impuesto.TipoFactor == "Cuota" ? ValorUnitario(i.Base, d) : Moneda(i.Base, d)),
                             new XAttribute("Impuesto", i.Impuesto.Impuesto),
                             new XAttribute("TipoFactor", i.Impuesto.TipoFactor),
                             new XAttribute("TasaOCuota", Moneda(i.Impuesto.TasaOCuota!.Value, DecimalesDeTasa)),
@@ -220,7 +220,7 @@ public sealed class GeneradorDeXmlCfdi
             {
                 impuestos.Add(new XElement(Cfdi + "Traslados", traslados.Select(t =>
                     new XElement(Cfdi + "Traslado",
-                        new XAttribute("Base", Moneda(t.Base, d)),
+                        new XAttribute("Base", t.TipoFactor == "Cuota" ? ValorUnitario(t.Base, d) : Moneda(t.Base, d)),
                         new XAttribute("Impuesto", t.Impuesto),
                         new XAttribute("TipoFactor", t.TipoFactor),
                         t.TasaOCuota is { } tt ? new XAttribute("TasaOCuota", Moneda(tt, DecimalesDeTasa)) : null,

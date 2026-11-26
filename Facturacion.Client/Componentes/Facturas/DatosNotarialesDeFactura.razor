@@ -50,11 +50,11 @@ else
         </div>
         <div class="notaria-rejilla">
             <CampoMoneda Valor="@_subtotalOperacion" ValorCambiado="v => _subtotalOperacion = v"
-                         Label="Subtotal de la operación" Requerido="true" Deshabilitado="@(!Editable)" />
+                         Label="Subtotal de la operación" Formato="0.00####" Requerido="true" Deshabilitado="@(!Editable)" />
             <CampoMoneda Valor="@_ivaOperacion" ValorCambiado="v => _ivaOperacion = v"
-                         Label="IVA de la operación" Requerido="true" Deshabilitado="@(!Editable)" />
+                         Label="IVA de la operación" Formato="0.00####" Requerido="true" Deshabilitado="@(!Editable)" />
             <CampoMoneda Valor="@_montoOperacion" ValorCambiado="v => _montoOperacion = v"
-                         Label="Monto de la operación" Requerido="true" Deshabilitado="@(!Editable)" />
+                         Label="Monto de la operación" Formato="0.00####" Requerido="true" Deshabilitado="@(!Editable)" />
         </div>
         <p class="seccion-ayuda">El monto debe ser igual al subtotal más el IVA.</p>
     </section>

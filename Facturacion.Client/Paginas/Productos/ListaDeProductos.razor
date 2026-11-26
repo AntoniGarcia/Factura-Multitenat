@@ -72,7 +72,7 @@
                                         </div>, ClaveOrden: "descripcion"),
         new("Clave SAT", p => @<span class="cifra-tabular">@p.ClaveProdServ</span>, Tabular: true),
         new("Precio", p => @<div class="catalogo-celda-precio">
-                               <strong class="cifra-tabular">@p.ValorUnitario.ToString("N2")</strong>
+                               <strong class="cifra-tabular">@p.ValorUnitario.ToString("#,##0.00####")</strong>
                                <span>@(p.PesoKg is { } peso ? $"{peso:N3} kg" : "Sin peso")</span>
                            </div>, ClaveOrden: "precio", Tabular: true),
         new("Estado", p => @<span class="indicador-estado indicador-estado-@(p.Activo ? "timbrada" : "borrador")">

@@ -203,15 +203,17 @@ public sealed class ServicioDeComercioExterior(
     private static bool ValorValido(decimal? valor)
         => valor is null || valor is >= 0 and <= 999999999999m && decimal.Round(valor.Value, 6) == valor.Value;
 
-    private static bool Largo(string? texto, int maximo) => texto is null || texto.Length <= maximo;
+    private static bool Largo(string? texto, int maximo, int minimo = 0)
+        => string.IsNullOrEmpty(texto) || (texto.Length >= minimo && texto.Length <= maximo && !texto.Contains('|'));
 
     private static bool ValidarLongitudes(DatosComercioExteriorDto datos)
-        => Largo(datos.ResidenciaFiscal, 3) && Largo(datos.NumeroRegistroTributario, 40) &&
-           Largo(datos.ClavePedimento, 2) && Largo(datos.NumeroCertificadoOrigen, 40) &&
+        => Largo(datos.ResidenciaFiscal, 3) && Largo(datos.NumeroRegistroTributario, 40, minimo: 6) &&
+           Largo(datos.ClavePedimento, 2) && Largo(datos.NumeroCertificadoOrigen, 40, minimo: 6) &&
            Largo(datos.NumeroExportadorConfiable, 50) &&
            Largo(datos.Observaciones, 300) && Largo(datos.CurpEmisor, 18) &&
            Largo(datos.Incoterm, 10) &&
-           DomicilioValido(datos.DomicilioEmisor) && DomicilioValido(datos.DomicilioReceptor);
+           DomicilioValido(datos.DomicilioEmisor, esReceptor: false) &&
+           DomicilioValido(datos.DomicilioReceptor, esReceptor: true);
 
     private static bool MercanciaValida(MercanciaComercioExteriorDto m)
         => m.OrdenConcepto > 0 && Largo(m.ClaveProdServConcepto, 8) &&
@@ -221,8 +223,10 @@ public sealed class ServicioDeComercioExterior(
            ValorValido(m.CantidadAduana) && ValorValido(m.ValorUnitarioAduana) &&
            ValorValido(m.ValorDolares);
 
-    private static bool DomicilioValido(DomicilioComercioExteriorDto d)
-        => Largo(d.Calle, 150) && Largo(d.NumeroExterior, 55) && Largo(d.NumeroInterior, 55) &&
+    // ComercioExterior20.xsd: Calle max 100; en Receptor, Estado max 30 y CodigoPostal max 12.
+    private static bool DomicilioValido(DomicilioComercioExteriorDto d, bool esReceptor)
+        => Largo(d.Calle, 100) && Largo(d.NumeroExterior, 55) && Largo(d.NumeroInterior, 55) &&
            Largo(d.Colonia, 120) && Largo(d.Localidad, 120) && Largo(d.Referencia, 120) &&
-           Largo(d.Municipio, 120) && Largo(d.Estado, 120) && Largo(d.Pais, 3) && Largo(d.CodigoPostal, 30);
+           Largo(d.Municipio, 120) && Largo(d.Estado, esReceptor ? 30 : 3) &&
+           Largo(d.Pais, 3) && Largo(d.CodigoPostal, esReceptor ? 12 : 5);
 }

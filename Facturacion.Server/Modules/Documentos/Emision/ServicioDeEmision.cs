@@ -270,13 +270,13 @@ public sealed class ServicioDeEmision(
         var antes = comprobante.ModificadoUtc is null ? null : ADto(comprobante);
 
         AplicarCabecera(comprobante, peticion, receptor.Valor, nombreReceptor);
-        // Se revisa sobre la cabecera ya aplicada; si falla no se guarda nada.
+        AplicarConceptos(comprobante, conceptosResueltos.Valor, calculado.Valor);
+        AplicarRelacionados(comprobante, peticion.Relacionados);
+        // Se revisa sobre la cabecera y relacionados ya aplicados; si falla no se guarda nada.
         if (comprobante.TipoDeComprobante == TiposDeComprobante.Ingreso &&
             await ReglasFiscalesDeFactura.ValidarAsync(comprobante, catalogos,
                 TimeZoneInfo.ConvertTimeFromUtc(DateTime.UtcNow, await huso.ObtenerAsync(ct)).Year, ct) is { } reglaFiscal)
             return reglaFiscal;
-        AplicarConceptos(comprobante, conceptosResueltos.Valor, calculado.Valor);
-        AplicarRelacionados(comprobante, peticion.Relacionados);
         comprobante.TasaIsh = tasaIsh.Valor;
         var obra = await ObtenerDatosDeObraAsync(comprobante, ct);
         if (AplicarAmortizacionDeObra(comprobante, obra, decimalesMoneda.Value) is { } errorObra)

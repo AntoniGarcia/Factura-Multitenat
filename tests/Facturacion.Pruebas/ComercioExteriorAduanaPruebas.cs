@@ -121,6 +121,20 @@ public sealed class ComercioExteriorAduanaPruebas
         Assert.Equal("100.000000", (string?)mercancia.Attribute("ValorUnitarioAduana"));
     }
 
+    [Fact]
+    public void Rechaza_conceptos_sin_mercancia_correspondiente()
+    {
+        var documento = Documento();
+        documento.Conceptos.Add(new()
+        {
+            Orden = 2, NoIdentificacion = "REV-2", ClaveProdServ = "43222600", ClaveUnidad = "H87",
+            Descripcion = "Segundo equipo", Cantidad = 1, ValorUnitario = 10, Importe = 10, ObjetoImp = "02"
+        });
+        var resultado = Generador.GenerarElemento(documento, Datos());
+        Assert.True(resultado.EsFallo);
+        Assert.Equal("comercio-mercancias-faltantes", resultado.Error!.Codigo);
+    }
+
     [Theory]
     [InlineData("EUMA840107HHGSRN04")]
     [InlineData("EUMA840107XHGSRN04")]

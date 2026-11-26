@@ -39,14 +39,30 @@ internal sealed record ProyeccionMonetariaCfdi(
         decimal Redondear(decimal valor)
             => Math.Round(valor, decimales, MotorDeImpuestos.ModoDeRedondeo);
 
+        // Base e importe del impuesto salen de los importes ya proyectados del concepto para evitar
+        // diferencias de un centavo (CFDI40176/40179/40185) al pasar de 6 decimales a los de la moneda.
         var conceptos = comprobante.Conceptos
             .OrderBy(x => x.Orden)
-            .Select(x => new ConceptoMonetarioCfdi(
-                x,
-                Redondear(x.Importe),
-                Redondear(x.Descuento),
-                [.. x.Impuestos.Select(i => new ImpuestoMonetarioCfdi(
-                    i, Redondear(i.Base), i.Importe is { } importe ? Redondear(importe) : null))]))
+            .Select(x =>
+            {
+                var importeConcepto = Redondear(x.Importe);
+                var descuentoConcepto = Redondear(x.Descuento);
+                var baseGravable = importeConcepto - descuentoConcepto;
+                return new ConceptoMonetarioCfdi(
+                    x,
+                    importeConcepto,
+                    descuentoConcepto,
+                    [.. x.Impuestos.Select(i =>
+                    {
+                        var baseImpuesto = i.TipoFactor == TiposDeFactor.Cuota ? x.Cantidad : baseGravable;
+                        decimal? importeImpuesto = i.TipoFactor == TiposDeFactor.Exento
+                            ? null
+                            : i.TasaOCuota is { } tasa
+                                ? Redondear(baseImpuesto * tasa)
+                                : i.Importe is { } imp ? Redondear(imp) : null;
+                        return new ImpuestoMonetarioCfdi(i, baseImpuesto, importeImpuesto);
+                    })]);
+            })
             .ToArray();
 
         var impuestos = conceptos.SelectMany(x => x.Impuestos).ToArray();

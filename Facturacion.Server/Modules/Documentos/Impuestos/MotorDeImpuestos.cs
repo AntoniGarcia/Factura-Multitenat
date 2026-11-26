@@ -34,6 +34,10 @@ public static class MotorDeImpuestos
         var totalRetenidos = Redondear(retenciones.Sum(r => r.Importe));
 
         var total = Redondear(subTotal - descuento + totalTrasladados - totalRetenidos);
+        if (total < 0)
+            return ErrorNegocio.Validacion(
+                "total-negativo",
+                "El total del comprobante no puede ser negativo; revisa descuentos y retenciones.");
 
         return new ComprobanteCalculado(
             subTotal, descuento, totalTrasladados, totalRetenidos, total,
@@ -47,16 +51,21 @@ public static class MotorDeImpuestos
         var baseGravable = Redondear(importe - descuento);
 
         var impuestos = concepto.Impuestos
-            .Select(i => new ImpuestoCalculado(
-                i.Impuesto,
-                i.TipoFactor,
-                i.TasaOCuota,
-                baseGravable,
-                // El exento se queda sin importe a propósito; ver el resumen de la clase.
-                i.TipoFactor == TiposDeFactor.Exento
-                    ? null
-                    : Redondear(baseGravable * i.TasaOCuota!.Value),
-                i.EsRetencion))
+            .Select(i =>
+            {
+                // En factor Cuota (ej. IEPS por unidad) la base fiscal del SAT es la cantidad, no el importe.
+                var baseImpuesto = i.TipoFactor == TiposDeFactor.Cuota ? concepto.Cantidad : baseGravable;
+                return new ImpuestoCalculado(
+                    i.Impuesto,
+                    i.TipoFactor,
+                    i.TasaOCuota,
+                    baseImpuesto,
+                    // El exento se queda sin importe a propósito; ver el resumen de la clase.
+                    i.TipoFactor == TiposDeFactor.Exento
+                        ? null
+                        : Redondear(baseImpuesto * i.TasaOCuota!.Value),
+                    i.EsRetencion);
+            })
             .ToArray();
 
         return new ConceptoCalculado(importe, descuento, baseGravable, impuestos);

@@ -62,7 +62,10 @@ public static class FacturaNetaParaPago
             foreach (var i in c.Impuestos)
             {
                 var importe = i.Importe is null ? (decimal?)null : i.Importe.Value -
-                    creditos.SelectMany(n => n.Impuestos).Sum(n => n.Importe ?? 0m);
+                    creditos.SelectMany(n => n.Impuestos)
+                        .Where(n => n.Impuesto == i.Impuesto && n.TipoFactor == i.TipoFactor &&
+                            n.TasaOCuota == i.TasaOCuota && n.EsRetencion == i.EsRetencion)
+                        .Sum(n => n.Importe ?? 0m);
                 if (importe < 0) return Inconsistente();
                 concepto.Impuestos.Add(new()
                 {

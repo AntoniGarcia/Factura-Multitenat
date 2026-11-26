@@ -56,6 +56,11 @@ public sealed class GeneradorDeXmlComercioExterior(EsquemasSat esquemas)
         var conceptos = comprobante.Conceptos.ToDictionary(x => x.Orden);
         if (comprobante.Conceptos.Any(c => string.IsNullOrWhiteSpace(c.NoIdentificacion)))
             return ErrorNegocio.Validacion("comercio-identificador-invalido", "Todos los conceptos necesitan identificador para Comercio Exterior.");
+        // CCE144 y CCE157: cada concepto del CFDI debe corresponder a una mercancía declarada.
+        var ordenesMercancias = mercancias.Select(m => m.OrdenConcepto).ToHashSet();
+        if (comprobante.Conceptos.Any(c => !ordenesMercancias.Contains(c.Orden)))
+            return ErrorNegocio.Validacion("comercio-mercancias-faltantes",
+                "Cada concepto de la factura debe tener su mercancía declarada en Comercio Exterior (CCE144).");
         var identificadores = new HashSet<(string Identificador, string? Fraccion)>();
         foreach (var mercancia in mercancias)
         {

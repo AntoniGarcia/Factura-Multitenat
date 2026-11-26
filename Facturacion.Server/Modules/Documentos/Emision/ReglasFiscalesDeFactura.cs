@@ -13,12 +13,37 @@ internal static class ReglasFiscalesDeFactura
     private static readonly string[] MesesBimestrales = ["13", "14", "15", "16", "17", "18"];
 
     public static async Task<ErrorNegocio?> ValidarAsync(
-        Comprobante factura, IServicioCatalogosSat catalogos, int anioLocal, CancellationToken ct)
+        Comprobante factura, IServicioCatalogosSat catalogos, int anioLocal, CancellationToken ct,
+        bool paraEmision = false)
     {
+        // CFDI40103 y CFDI40121: una factura de ingreso requiere método y forma de pago antes de emitir.
+        if (paraEmision && string.IsNullOrWhiteSpace(factura.MetodoPago))
+            return ErrorNegocio.Validacion("metodo-pago-requerido",
+                "Selecciona el método de pago (PUE o PPD) antes de timbrar.");
+        if (paraEmision && string.IsNullOrWhiteSpace(factura.FormaPago))
+            return ErrorNegocio.Validacion("forma-pago-requerida",
+                "Selecciona la forma de pago antes de timbrar.");
+
         // CFDI40105
         if (factura.MetodoPago == "PPD" && factura.FormaPago != "99")
             return ErrorNegocio.Validacion("ppd-requiere-forma-99",
                 "Con método de pago PPD (en parcialidades o diferido) la forma de pago es 99, Por definir.");
+
+        // CFDI40122
+        if (factura.MetodoPago == "PUE" && factura.FormaPago == "99")
+            return ErrorNegocio.Validacion("pue-prohibe-forma-99",
+                "Con método de pago PUE (pago en una sola exhibición) la forma de pago no puede ser 99, Por definir.");
+
+        // CFDI40140: no repetir el mismo UUID bajo el mismo tipo de relación.
+        if (factura.Relacionados.Count > 1 &&
+            factura.Relacionados.Select(r => (r.TipoRelacion, r.UuidRelacionado)).Distinct().Count() != factura.Relacionados.Count)
+            return ErrorNegocio.Validacion("relacionado-duplicado",
+                "No repitas el mismo CFDI relacionado con el mismo tipo de relación.");
+
+        // CFDI40176 y CFDI40182: en el XSD de CFDI 4.0 Base tiene minInclusive="0.000001".
+        if (paraEmision && factura.Conceptos.Any(c => c.Impuestos.Any(i => i.Base <= 0)))
+            return ErrorNegocio.Validacion("impuesto-base-cero",
+                "Un concepto con impuestos no puede quedar con base cero (descuento igual al importe). Ajusta el descuento o marca el concepto como no objeto de impuesto.");
 
         // CFDI40159 y CFDI40152. El catálogo de clientes ya lo exige; esto cubre clientes dados de alta antes.
         if (factura.ReceptorRfc is Rfc.GenericoNacional or Rfc.GenericoExtranjero && factura.ReceptorRegimenFiscal != "616")

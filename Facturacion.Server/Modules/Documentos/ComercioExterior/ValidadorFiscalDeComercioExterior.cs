@@ -67,8 +67,9 @@ public sealed class ValidadorFiscalDeComercioExterior(AppDbContext db)
                     return ErrorNegocio.Validacion("comercio-fraccion-no-vigente", "La fracción arancelaria no está vigente para la fecha del comprobante.");
                 if (string.IsNullOrWhiteSpace(fraccion.UnidadMedida))
                     return ErrorNegocio.Regla("comercio-catalogo-sin-umt", "Actualiza el catálogo de fracciones arancelarias para cargar su UMT.");
-                var unidad = mercancia.UnidadAduana ?? (completo ? concepto.UnidadTexto : null);
-                if (unidad is not null && unidad != fraccion.UnidadMedida)
+                // Compara solo la clave de c_UnidadAduana contra la UMT numérica de la fracción;
+                // UnidadTexto del concepto es texto libre y no es clave de catálogo aduanero.
+                if (mercancia.UnidadAduana is { Length: > 0 } unidadAduana && unidadAduana != fraccion.UnidadMedida)
                     return ErrorNegocio.Validacion("comercio-unidad-fraccion-inconsistente", "La unidad aduanera debe coincidir con la UMT de la fracción arancelaria.");
             }
             if (mercancia.UnidadAduana is { Length: > 0 } aduana &&

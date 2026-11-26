@@ -44,7 +44,9 @@ public sealed class ServicioDeTrasladosCartaPorte(
         if (validacion.EsFallo) return validacion.Error!;
 
         var emisor = await empresaEmisora.ObtenerParaTimbradoAsync(ct);
-        var (salidaUtc, llegadaUtc) = await AFechasUtcAsync(peticion, ct);
+        var fechas = await AFechasUtcAsync(peticion, ct);
+        if (fechas.EsFallo) return fechas.Error!;
+        var (salidaUtc, llegadaUtc) = fechas.Valor;
         var comprobante = NuevoComprobante(emisor, contexto.UsuarioActual ?? Guid.Empty);
         comprobante.Observaciones = Recortar(peticion.Observaciones);
         var traslado = NuevoTraslado(peticion, comprobante, salidaUtc, llegadaUtc, validacion.Valor);
@@ -124,14 +126,17 @@ public sealed class ServicioDeTrasladosCartaPorte(
         if (PermisoDeEmision.ExigirEdicion(contexto, traslado.Comprobante) is { } sinPermiso)
             return sinPermiso;
 
-        if (traslado.Comprobante.Estatus != EstatusComprobante.Borrador.ACadena())
-            return ErrorNegocio.Conflicto("traslado-no-editable", "Solo se puede editar un traslado en borrador.");
+        if (traslado.Comprobante.Estatus is not ("borrador" or "error"))
+            return ErrorNegocio.Conflicto("traslado-no-editable", "Solo se puede editar un traslado en borrador o con error.");
 
         var validacion = await ValidarAsync(peticion, ct);
         if (validacion.EsFallo) return validacion.Error!;
 
+        var fechas = await AFechasUtcAsync(peticion, ct);
+        if (fechas.EsFallo) return fechas.Error!;
+
         var antes = ParaBitacora(traslado);
-        var (salidaUtc, llegadaUtc) = await AFechasUtcAsync(peticion, ct);
+        var (salidaUtc, llegadaUtc) = fechas.Valor;
         traslado.VehiculoId = peticion.VehiculoId;
         traslado.FiguraTransporteId = peticion.FiguraTransporteId;
         traslado.ClienteDestinoId = peticion.ClienteDestinoId;
@@ -272,13 +277,26 @@ public sealed class ServicioDeTrasladosCartaPorte(
         return new RecursosDeTransporte(vehiculo, figura, destinatario, fiscal.Valor);
     }
 
-    private async Task<(DateTime SalidaUtc, DateTime LlegadaUtc)> AFechasUtcAsync(
+    private async Task<Resultado<(DateTime SalidaUtc, DateTime LlegadaUtc)>> AFechasUtcAsync(
         PeticionGuardarTrasladoCartaPorte peticion, CancellationToken ct)
     {
         var zona = await huso.ObtenerAsync(ct);
-        return (
-            TimeZoneInfo.ConvertTimeToUtc(DateTime.SpecifyKind(peticion.FechaSalidaLocal, DateTimeKind.Unspecified), zona),
-            TimeZoneInfo.ConvertTimeToUtc(DateTime.SpecifyKind(peticion.FechaLlegadaLocal, DateTimeKind.Unspecified), zona));
+        var salidaLocal = DateTime.SpecifyKind(peticion.FechaSalidaLocal, DateTimeKind.Unspecified);
+        var llegadaLocal = DateTime.SpecifyKind(peticion.FechaLlegadaLocal, DateTimeKind.Unspecified);
+        if (zona.IsInvalidTime(salidaLocal) || zona.IsInvalidTime(llegadaLocal))
+            return ErrorNegocio.Validacion("fecha-traslado-invalida",
+                "La fecha y hora de salida o llegada no existen en el horario de la empresa (cambio de horario de verano). Ajusta la hora.");
+        try
+        {
+            return (
+                TimeZoneInfo.ConvertTimeToUtc(salidaLocal, zona),
+                TimeZoneInfo.ConvertTimeToUtc(llegadaLocal, zona));
+        }
+        catch (ArgumentException)
+        {
+            return ErrorNegocio.Validacion("fecha-traslado-invalida",
+                "La fecha y hora de salida o llegada están fuera del rango permitido.");
+        }
     }
 
     private static Comprobante NuevoComprobante(EmisorFiscalDto emisor, Guid usuarioId) => new()

@@ -189,7 +189,8 @@ public sealed class ServicioDeTimbrado(
 
         if (comprobante.TipoDeComprobante == TiposDeComprobante.Ingreso &&
             await ReglasFiscalesDeFactura.ValidarAsync(comprobante, catalogos,
-                TimeZoneInfo.ConvertTimeFromUtc(DateTime.UtcNow, await huso.ObtenerAsync(ct)).Year, ct) is { } reglaFiscal)
+                TimeZoneInfo.ConvertTimeFromUtc(DateTime.UtcNow, await huso.ObtenerAsync(ct)).Year, ct,
+                paraEmision: true) is { } reglaFiscal)
             return reglaFiscal;
 
         // Refresca la fecha de emisión al momento de timbrar para evitar rechazos CFDI40101 (>72 h)
@@ -208,8 +209,11 @@ public sealed class ServicioDeTimbrado(
             if (decimalesMoneda is null)
                 return ErrorNegocio.Validacion("moneda-desconocida",
                     "La moneda de la factura no está en el catálogo del SAT.");
-            if (!ProyeccionMonetariaCfdi.Calcular(comprobante, decimalesMoneda.Value, obra)
-                    .CoincideCon(comprobante))
+            var proyeccion = ProyeccionMonetariaCfdi.Calcular(comprobante, decimalesMoneda.Value, obra);
+            if (proyeccion.Conceptos.Any(c => c.Impuestos.Any(i => i.Base <= 0)))
+                return ErrorNegocio.Validacion("impuesto-base-cero",
+                    "Al redondear a los decimales de la moneda, un concepto con impuestos queda con base cero (CFDI40176). Ajusta el descuento o el importe.");
+            if (!proyeccion.CoincideCon(comprobante))
                 return ErrorNegocio.Regla("totales-del-borrador-desactualizados",
                     "Los totales guardados no coinciden con el XML en los decimales de la moneda. Guarda de nuevo el borrador antes de timbrarlo; no se consumió folio ni timbre.");
         }

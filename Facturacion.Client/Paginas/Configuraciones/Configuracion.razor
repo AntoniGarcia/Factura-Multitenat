@@ -150,9 +150,9 @@ else
             <section class="formulario-catalogo-seccion formulario-catalogo-seccion-ancha" aria-labelledby="cliente-config-traslados">
             <h2 id="cliente-config-traslados" class="seccion-titulo">Impuestos trasladados</h2>
             <div class="catalogo-rejilla catalogo-rejilla-dos">
-                <MudNumericField @bind-Value="_ivaPct" Label="IVA %" Min="0M" Max="100M" Step="1M" Format="N2"
+                <MudNumericField @bind-Value="_ivaPct" Label="IVA %" Min="0M" Max="100M" Step="1M" Format="0.00####"
                                  Class="cifra-tabular" />
-                <MudNumericField @bind-Value="_iepsPct" Label="IEPS %" Min="0M" Max="100M" Format="N2"
+                <MudNumericField @bind-Value="_iepsPct" Label="IEPS %" Min="0M" Max="100M" Format="0.00####"
                                  Class="cifra-tabular" />
             </div>
             </section>
@@ -161,11 +161,11 @@ else
             <h2 id="cliente-config-retenciones" class="seccion-titulo">Impuestos retenidos</h2>
             <p class="seccion-ayuda">Usa cero si no aplica.</p>
             <div class="catalogo-rejilla catalogo-rejilla-tres">
-                <MudNumericField @bind-Value="_retIvaPct" Label="IVA %" Min="0M" Max="100M" Format="N2"
+                <MudNumericField @bind-Value="_retIvaPct" Label="IVA %" Min="0M" Max="100M" Format="0.00####"
                                  Class="cifra-tabular" />
-                <MudNumericField @bind-Value="_retIsrPct" Label="ISR %" Min="0M" Max="100M" Format="N2"
+                <MudNumericField @bind-Value="_retIsrPct" Label="ISR %" Min="0M" Max="100M" Format="0.00####"
                                  Class="cifra-tabular" />
-                <MudNumericField @bind-Value="_retIepsPct" Label="IEPS %" Min="0M" Max="100M" Format="N2"
+                <MudNumericField @bind-Value="_retIepsPct" Label="IEPS %" Min="0M" Max="100M" Format="0.00####"
                                  Class="cifra-tabular" />
             </div>
             </section>

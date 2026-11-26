@@ -87,9 +87,10 @@ else
                     }
                 </MudSelect>
 
-                <CampoMoneda Valor="@(_tipoCambio ?? 0)" ValorCambiado="async v => { _tipoCambio = v; await ActualizarVistaPreviaAsync(); }"
-                              Label="Tipo de cambio" Deshabilitado="@(_moneda == "MXN")"
-                              Requerido="@(_moneda != "MXN")" />
+                <MudNumericField T="decimal?" Value="@_tipoCambio" ValueChanged="async v => { _tipoCambio = v; await ActualizarVistaPreviaAsync(); }"
+                                 Label="Tipo de cambio" Format="0.00####" Min="0.000001m" Immediate="true"
+                                 Disabled="@(_moneda == "MXN")" Required="@(_moneda != "MXN")"
+                                 Class="cifra-tabular" />
 
 <BuscadorCatalogo Catalogo="c_MetodoPago" Opciones="@Catalogos.Obtener("c_MetodoPago")" Clave="@_metodoPago" ClaveChanged="AlCambiarMetodoPago" Label="Método de pago" PuedeLimpiar="true" />
 
@@ -202,7 +203,7 @@ else
                                           HelperText="Así sale en la factura. Se precarga con el nombre y la descripción del producto." />
 
                             <MudNumericField T="decimal" Value="@renglon.Cantidad" ValueChanged="async v => { renglon.Cantidad = v; await ActualizarVistaPreviaAsync(); }"
-                                             Label="Cantidad" Format="N2" Min="0.000001m" Immediate="true"
+                                             Label="Cantidad" Format="0.######" Min="0.000001m" Immediate="true"
                                              Class="concepto-editor-cantidad cifra-tabular" />
 
                             @* Solo Comercio Exterior lo lleva, porque el SAT lo cruza con las mercancías. *@
@@ -213,17 +214,17 @@ else
                             }
 
                             <MudNumericField T="decimal" Value="@renglon.ValorUnitario" ValueChanged="async v => { renglon.ValorUnitario = v; await ActualizarVistaPreviaAsync(); }"
-                                             Label="Precio unitario" Format="N2" Min="0" Max="999999999999.999999m" Immediate="true"
+                                             Label="Precio unitario" Format="0.00####" Min="0" Max="999999999999.999999m" Immediate="true"
                                              Class="concepto-editor-precio cifra-tabular" />
 
                             <MudNumericField T="decimal" Value="@renglon.Descuento" ValueChanged="async v => { renglon.Descuento = v; await ActualizarVistaPreviaAsync(); }"
-                                             Label="Descuento" Format="N2" Min="0" Immediate="true" ReadOnly="EsFacturaDeObra"
+                                             Label="Descuento" Format="0.00####" Min="0" Immediate="true" ReadOnly="EsFacturaDeObra"
                                              HelperText="@(EsFacturaDeObra ? "Amortización del anticipo, desde la pestaña Obra" : null)"
                                              Class="concepto-editor-descuento cifra-tabular" />
 
                             <div class="concepto-editor-dato concepto-editor-importe">
                                 <span>Importe</span>
-                                <strong class="cifra-tabular">@(renglon.ImporteSeguro?.ToString("N2") ?? "—")</strong>
+                                <strong class="cifra-tabular">@(renglon.ImporteSeguro?.ToString("#,##0.00####") ?? "—")</strong>
                             </div>
 
                             @if (EsFacturaBasica && renglon.AplicaIsh)
@@ -391,11 +392,11 @@ else
                     <Virtualize Items="@ConceptosSeleccionados" Context="concepto" ItemSize="88">
                         <div class="emision-resumen-producto" role="listitem" @key="concepto">
                             <strong title="@concepto.Descripcion">@concepto.Descripcion</strong>
-                            <span class="cifra-tabular">@concepto.Cantidad.ToString("0.######") × @concepto.ValorUnitario.ToString("N2")</span>
-                            <span class="cifra-tabular">@(concepto.ImporteSeguro?.ToString("N2") ?? "—")</span>
+                            <span class="cifra-tabular">@concepto.Cantidad.ToString("0.######") × @concepto.ValorUnitario.ToString("#,##0.00####")</span>
+                            <span class="cifra-tabular">@(concepto.ImporteSeguro?.ToString("#,##0.00####") ?? "—")</span>
                             @if (concepto.Descuento != 0)
                             {
-                                <small>Descuento: <span class="cifra-tabular">−@concepto.Descuento.ToString("N2")</span></small>
+                                <small>Descuento: <span class="cifra-tabular">−@concepto.Descuento.ToString("#,##0.00####")</span></small>
                             }
                         </div>
                     </Virtualize>
