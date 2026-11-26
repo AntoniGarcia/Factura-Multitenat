@@ -42,12 +42,6 @@
 
                 <MudCheckBox T="bool" @bind-Value="_incluirXml" Label="Incluir archivo XML" />
 
-                @if (propuesta.CorreoDeLaEmpresa is { } correoDeLaEmpresa)
-                {
-                    <MudCheckBox T="bool" @bind-Value="_copiaALaEmpresa"
-                                 Label="@($"Enviar copia oculta a {correoDeLaEmpresa}")" />
-                }
-
                 <section aria-labelledby="titulo-adjuntos">
                     <h3 id="titulo-adjuntos" class="dialogo-envio-subtitulo">Adjuntos</h3>
                     <ul class="dialogo-envio-adjuntos">
@@ -121,7 +115,6 @@
     private string _asunto = string.Empty;
     private string _mensaje = string.Empty;
     private bool _incluirXml = true;
-    private bool _copiaALaEmpresa;
 
     // Solo separa y limpia; qué es un correo válido lo decide el servidor.
     private IReadOnlyList<string> Destinatarios
@@ -161,7 +154,7 @@
         {
             var (envio, error) = await Envios.EnviarAsync(ComprobanteId, new PeticionDeEnvio(
                 Destinatarios, _asunto, string.IsNullOrWhiteSpace(_mensaje) ? null : _mensaje,
-                _incluirXml, _copiaALaEmpresa));
+                _incluirXml, CopiaALaEmpresa: false));
 
             if (envio is not null)
             {
