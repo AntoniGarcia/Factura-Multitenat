@@ -704,7 +704,8 @@
             };
 
             var referencia = await Dialogos.ShowAsync<DialogoDeCancelacion>(
-                "Cancelar comprobante", parametros);
+                "Cancelar comprobante", parametros,
+                new DialogOptions { MaxWidth = MaxWidth.Small, FullWidth = true });
 
             var resultado = await referencia.Result;
 

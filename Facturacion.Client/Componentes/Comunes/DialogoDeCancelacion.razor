@@ -15,6 +15,7 @@
         <MudSelect T="string"
                    Label="Motivo de cancelación"
                    @bind-Value="_motivo"
+                   FullWidth="true"
                    Required="true">
             @foreach (var (clave, texto) in MotivosDisponibles)
             {

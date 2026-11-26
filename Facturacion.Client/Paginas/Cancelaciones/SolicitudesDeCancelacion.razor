@@ -26,7 +26,7 @@
     </MudButton>
 </div>
 
-<section class="documentos-filtros" aria-label="Filtros de solicitudes">
+<section class="documentos-filtros solicitudes-filtros" aria-label="Filtros de solicitudes">
     <div class="filtros-documentos">
         <MudTextField T="string"
                       Label="Buscar"
@@ -37,7 +37,7 @@
                       Clearable="true"
                       Placeholder="RFC, nombre o folio…" />
 
-        <MudSelect T="string" Label="Mostrar" Value="_filtro" ValueChanged="AlFiltrar">
+        <MudSelect T="string" Label="Mostrar" Value="_filtro" ValueChanged="AlFiltrar" FullWidth="true">
             <MudSelectItem T="string" Value="@FiltrosDeSolicitudes.Abiertas">Abiertas</MudSelectItem>
             <MudSelectItem T="string" Value="@FiltrosDeSolicitudes.Todas">Todas</MudSelectItem>
             <MudSelectItem T="string" Value="@("cancelada")">Canceladas</MudSelectItem>

@@ -296,6 +296,15 @@
     max-width: none;
 }
 
+/* Solicitudes de cancelación solo tiene búsqueda y selector de estado; ocupa el ancho completo. */
+.documentos-filtros.solicitudes-filtros {
+    grid-template-columns: minmax(0, 1fr);
+}
+
+.documentos-filtros.solicitudes-filtros .filtros-documentos {
+    grid-template-columns: minmax(16rem, 2fr) minmax(15rem, 1fr);
+}
+
 .documentos-busqueda {
     display: flex;
     align-items: flex-end;
@@ -444,6 +453,10 @@
     .documentos-filtros {
         grid-template-columns: minmax(0, 1fr);
         gap: 0.375rem;
+    }
+
+    .documentos-filtros.solicitudes-filtros .filtros-documentos {
+        grid-template-columns: minmax(0, 1fr);
     }
 
     .documentos-alternar-filtros {
