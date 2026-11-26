@@ -1,4 +1,5 @@
 using Facturacion.Server.Data.Entidades.Documentos;
+using Facturacion.Server.Modules.Documentos.Salidas;
 using Facturacion.Shared.Comun;
 using Facturacion.Shared.Obras;
 
@@ -11,22 +12,25 @@ public static class ValidadorFiscalDeObra
         if (ServicioParcialConstruccion.Leer(obra.ServicioParcialJson) is { } parcial)
         {
             if (ServicioParcialConstruccion.Validar(parcial) is { } error) return error;
-            if (comprobante.TotalImpuestosTrasladados != 0)
-                return ErrorNegocio.Validacion("servicio-parcial-iva", "El servicio parcial con estímulo de vivienda no debe trasladar IVA. Revisa los conceptos.");
+            if (comprobante.TotalImpuestosTrasladados != 0 ||
+                comprobante.Conceptos.SelectMany(c => c.Impuestos).Any(i => i.Impuesto == "002" && i.TipoFactor != "Exento"))
+                return ErrorNegocio.Validacion("servicio-parcial-iva", "El servicio parcial con estímulo de vivienda requiere IVA exento (sin tasa trasladada). Revisa los conceptos.");
         }
-        if (obra.TipoObra is not (TiposDeObra.Publica or TiposDeObra.Privada))
-            return ErrorNegocio.Validacion("obra-tipo-invalido",
-                "Indica si el contrato es de obra pública o privada.");
 
         if (comprobante.TipoDeComprobante != "I" || comprobante.Exportacion != "01")
             return ErrorNegocio.Regla("obra-operacion-no-disponible",
                 "Esta estimación solo se puede emitir como factura de ingreso sin exportación.");
 
-        // Va al complemento de impuestos locales, que admite dos decimales en la tasa.
-        if (obra.TipoObra == TiposDeObra.Publica &&
-            decimal.Round(obra.PorcentajeDeduccion1, 2) != obra.PorcentajeDeduccion1)
-            return ErrorNegocio.Validacion("obra-retencion-local-decimales",
-                $"El porcentaje de {obra.NombreDeduccion1} admite solo dos decimales.");
+        // La primera deducción va al complemento de impuestos locales, que admite dos decimales en la tasa y no permite "|".
+        if (obra.PorcentajeDeduccion1 != 0)
+        {
+            if (decimal.Round(obra.PorcentajeDeduccion1, 2) != obra.PorcentajeDeduccion1)
+                return ErrorNegocio.Validacion("obra-retencion-local-decimales",
+                    $"El porcentaje de {obra.NombreDeduccion1} admite solo dos decimales.");
+            if (obra.NombreDeduccion1.Contains('|'))
+                return ErrorNegocio.Validacion("obra-retencion-local-nombre",
+                    "El nombre de la deducción no puede contener el carácter «|».");
+        }
 
         // Si se relacionan anticipos con tipo 07, solo puede haber uno por factura.
         if (obra.PorcentajeAmortizacion != 0 &&
@@ -57,21 +61,20 @@ public static class ValidadorFiscalDeObra
             return ErrorNegocio.Regla("obra-solo-iva",
                 "Los conceptos de una factura de obra solo pueden llevar IVA trasladado, por tasa o exento.");
 
-        // El XML redondea cada concepto antes de sumar; comparar solo el total persistido
-        // a seis decimales podría aprobar una diferencia de un centavo en el documento final.
-        var subtotalFiscal = comprobante.Conceptos.Sum(c => Redondear(c.Importe));
-        var descuentoFiscal = comprobante.Conceptos.Sum(c => Redondear(c.Descuento));
-        var ivaFiscal = impuestos.Sum(i => Redondear(i.Importe ?? 0));
-        var retencionLocal = RetencionLocalDeObra.Calcular(obra, subtotalFiscal)?.Importe ?? 0m;
-        if (subtotalFiscal != Redondear(comprobante.SubTotal) ||
-            subtotalFiscal - descuentoFiscal + ivaFiscal - retencionLocal != Redondear(comprobante.Total))
+        // El XML proyecta cada concepto antes de sumar; usamos exactamente la misma proyección
+        // para que nunca haya diferencias de un centavo entre el borrador y el CFDI final.
+        var proyeccion = ProyeccionMonetariaCfdi.Calcular(comprobante, 2, obra);
+        if (proyeccion.Conceptos.Any(c => c.Impuestos.Length > 0 && c.Importe - c.Descuento <= 0))
+            return ErrorNegocio.Validacion("obra-base-cero",
+                "Un concepto con impuestos no puede quedar con base cero tras la amortización (CFDI40176).");
 
+        if (proyeccion.Total < 0)
+            return ErrorNegocio.Validacion("obra-total-negativo",
+                "El total fiscal del CFDI no puede ser negativo.");
+        if (!proyeccion.CoincideCon(comprobante))
             return ErrorNegocio.Regla("obra-total-no-coincide",
                 "El total guardado difiere del que saldría en el XML al redondear cada concepto. Revisa los importes de la factura antes de emitir.");
 
         return null;
     }
-
-    private static decimal Redondear(decimal valor)
-        => Math.Round(valor, 2, MidpointRounding.ToEven);
 }

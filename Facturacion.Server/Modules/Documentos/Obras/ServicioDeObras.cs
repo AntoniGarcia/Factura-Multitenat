@@ -3,6 +3,7 @@ using Facturacion.Server.Data.Entidades.Documentos;
 using Facturacion.Server.Infra.Bitacora;
 using Facturacion.Server.Infra.Tenencia;
 using Facturacion.Server.Modules.Documentos.Emision;
+using Facturacion.Server.Modules.Documentos.Impuestos;
 using Facturacion.Shared.Comun;
 using Facturacion.Shared.Documentos;
 using Facturacion.Shared.Obras;
@@ -73,8 +74,6 @@ public sealed class ServicioDeObras(
             return sinPermiso;
         if (comprobante.SubTotal <= 0)
             return ErrorNegocio.Validacion("obra-sin-trabajos", "Guarda primero los conceptos de la factura.");
-        if (peticion.TipoObra is not (TiposDeObra.Publica or TiposDeObra.Privada))
-            return ErrorNegocio.Validacion("obra-tipo-invalido", "Indica si el contrato es de obra pública o privada.");
         if (peticion.ServicioParcial is { } parcial)
         {
             if (ServicioParcialConstruccion.Validar(parcial) is { } errorParcial) return errorParcial;
@@ -86,8 +85,17 @@ public sealed class ServicioDeObras(
             !TasaValida(peticion.PorcentajeAmortizacion) ||
             !TasaValida(peticion.PorcentajeRetenciones) || !TasaValida(peticion.PorcentajeDevoluciones) ||
             peticion.Deducciones.Any(x => !TasaValida(x.Porcentaje) ||
-                string.IsNullOrWhiteSpace(x.Nombre) || x.Nombre.Trim().Length > 60))
-            return ErrorNegocio.Validacion("obra-datos-invalidos", "Revisa porcentajes, importes y nombres de las cuatro deducciones.");
+                string.IsNullOrWhiteSpace(x.Nombre) || x.Nombre.Trim().Length > 60 || x.Nombre.Contains('|')))
+            return ErrorNegocio.Validacion("obra-datos-invalidos", "Revisa porcentajes, importes y nombres de las cuatro deducciones (sin el carácter «|»).");
+
+        if (peticion.Deducciones[0].Porcentaje != 0 &&
+            decimal.Round(peticion.Deducciones[0].Porcentaje, 2) != peticion.Deducciones[0].Porcentaje)
+            return ErrorNegocio.Validacion("obra-retencion-local-decimales",
+                $"El porcentaje de {peticion.Deducciones[0].Nombre.Trim()} admite solo dos decimales por regla del complemento de impuestos locales.");
+
+        if (peticion.PorcentajeAmortizacion == 100m && comprobante.Conceptos.Any(c => c.Impuestos.Count > 0))
+            return ErrorNegocio.Validacion("obra-amortizacion-total",
+                "La amortización no puede ser del 100 % en conceptos con impuestos porque deja la base fiscal en cero (CFDI40176).");
 
         var retenciones = Porcentaje(comprobante.SubTotal, peticion.PorcentajeRetenciones);
         var devoluciones = Porcentaje(comprobante.SubTotal, peticion.PorcentajeDevoluciones);
@@ -105,7 +113,7 @@ public sealed class ServicioDeObras(
             baseDeDatos.DatosObra.Add(datos);
         }
 
-        datos.TipoObra = peticion.TipoObra;
+        datos.TipoObra = null;
         datos.ServicioParcialJson = peticion.ServicioParcial is null ? null : JsonSerializer.Serialize(peticion.ServicioParcial);
         datos.PorcentajeAmortizacion = peticion.PorcentajeAmortizacion;
         datos.PorcentajeRetenciones = peticion.PorcentajeRetenciones;
@@ -127,6 +135,8 @@ public sealed class ServicioDeObras(
             return anticipo;
 
         var despues = Calcular(comprobante, datos);
+        if (comprobante.Total < 0)
+            return ErrorNegocio.Validacion("obra-total-negativo", "El total fiscal del CFDI no puede ser negativo.");
         if (despues.SubtotalEstimacion < 0)
             return ErrorNegocio.Validacion("obra-subtotal-negativo", "La amortización y las retenciones superan el importe de los trabajos más devoluciones.");
         if (despues.ImporteLiquido < 0)
@@ -167,7 +177,7 @@ public sealed class ServicioDeObras(
             : Porcentaje(importeTrabajos, datos.PorcentajeAmortizacion);
         var subtotal = importeTrabajos - amortizacion - datos.Retenciones + datos.Devoluciones;
         var tasaIva = TasaEfectivaDeIva(comprobante);
-        var iva = Math.Round(subtotal * tasaIva, 2, MidpointRounding.ToEven);
+        var iva = Math.Round(subtotal * tasaIva, MotorDeImpuestos.Decimales, MotorDeImpuestos.ModoDeRedondeo);
         var total = subtotal + iva;
         DeduccionDeObraDto[] deducciones =
         [

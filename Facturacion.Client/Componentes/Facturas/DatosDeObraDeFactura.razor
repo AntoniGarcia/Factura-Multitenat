@@ -16,13 +16,9 @@
     }
 
     <div class="obra-rejilla">
-        <MudSelect T="string" Value="_tipoObra" ValueChanged="CambiarTipoObra" Label="Tipo de obra" Required="true">
-            <MudSelectItem T="string" Value="@TiposDeObra.Publica">Obra pública</MudSelectItem>
-            <MudSelectItem T="string" Value="@TiposDeObra.Privada">Obra privada</MudSelectItem>
-        </MudSelect>
-        <MudTextField T="string" Value="@(ImporteTrabajos > 0 ? ImporteTrabajos.ToString("N2") : "Guarda los conceptos")"
+        <MudTextField T="string" Value="@(ImporteTrabajos > 0 ? ImporteTrabajos.ToString("#,##0.00####") : "Guarda los conceptos")"
                       Label="Importe de los trabajos" ReadOnly="true" Class="cifra-tabular" />
-        <MudTextField T="string" Value="@(ImporteTrabajos > 0 ? IvaConceptos.ToString("N2") : "Guarda los conceptos")"
+        <MudTextField T="string" Value="@(ImporteTrabajos > 0 ? IvaConceptos.ToString("#,##0.00####") : "Guarda los conceptos")"
                       Label="IVA de los conceptos" ReadOnly="true" Class="cifra-tabular"
                       HelperText="Suma del IVA de cada concepto, como sale en el CFDI." />
     </div>
@@ -32,11 +28,11 @@
     <h2 class="seccion-titulo">Amortización del anticipo, retenciones y devoluciones</h2>
     <div class="obra-rejilla">
         <MudNumericField T="decimal" @bind-Value="_porcentajeAmortizacion" Immediate="true" Label="Amortización del anticipo (%)"
-                         Min="0" Max="100" Format="N2" Class="cifra-tabular" />
+                         Min="0" Max="100" Format="0.00##" Class="cifra-tabular" />
         <MudNumericField T="decimal" @bind-Value="_porcentajeRetenciones" Immediate="true" Label="Retenciones (%)"
-                         Min="0" Max="100" Format="N2" Class="cifra-tabular" />
+                         Min="0" Max="100" Format="0.00##" Class="cifra-tabular" />
         <MudNumericField T="decimal" @bind-Value="_porcentajeDevoluciones" Immediate="true" Label="Devoluciones (%)"
-                         Min="0" Max="100" Format="N2" Class="cifra-tabular" />
+                         Min="0" Max="100" Format="0.00##" Class="cifra-tabular" />
     </div>
     <p class="seccion-ayuda">
         Al importe de los trabajos se le resta la amortización del anticipo y las retenciones, y se le suman las devoluciones para obtener el subtotal antes de IVA.
@@ -75,7 +71,7 @@
                 <div class="obra-deduccion">
                     <MudTextField @bind-Value="deduccion.Nombre" Label="Concepto" MaxLength="60" Required="true" />
                     <MudNumericField T="decimal" @bind-Value="deduccion.Porcentaje" Immediate="true" Label="Porcentaje (%)"
-                                     Min="0" Max="100" Step="0.1m" Format="N2" Class="cifra-tabular" />
+                                     Min="0" Max="100" Step="0.1m" Format="0.00##" Class="cifra-tabular" />
                 </div>
             }
         </div>
@@ -88,22 +84,22 @@
         <h2 class="seccion-titulo">Cálculo preliminar</h2>
         <p class="seccion-ayuda">Estimación sobre conceptos guardados; no sustituye el total fiscal del CFDI.</p>
         <dl class="obra-desglose">
-            <div><dt>Importe de los trabajos</dt><dd class="cifra-tabular">@vista.ImporteTrabajos.ToString("N2")</dd></div>
-            <div><dt>Amortización del anticipo</dt><dd class="cifra-tabular">@(vista.Amortizacion != 0 ? "−" : "")@vista.Amortizacion.ToString("N2")</dd></div>
-            <div><dt>Retenciones</dt><dd class="cifra-tabular">@(vista.Retenciones != 0 ? "−" : "")@vista.Retenciones.ToString("N2")</dd></div>
-            <div><dt>Devoluciones</dt><dd class="cifra-tabular">@(vista.Devoluciones != 0 ? "+" : "")@vista.Devoluciones.ToString("N2")</dd></div>
-            <div><dt>Subtotal</dt><dd class="cifra-tabular">@vista.SubtotalEstimacion.ToString("N2")</dd></div>
-            <div><dt>IVA</dt><dd class="cifra-tabular">@vista.IvaEstimado.ToString("N2")</dd></div>
-            <div><dt>Total</dt><dd class="cifra-tabular">@vista.TotalEstimacion.ToString("N2")</dd></div>
+            <div><dt>Importe de los trabajos</dt><dd class="cifra-tabular">@vista.ImporteTrabajos.ToString("#,##0.00####")</dd></div>
+            <div><dt>Amortización del anticipo</dt><dd class="cifra-tabular">@(vista.Amortizacion != 0 ? "−" : "")@vista.Amortizacion.ToString("#,##0.00####")</dd></div>
+            <div><dt>Retenciones</dt><dd class="cifra-tabular">@(vista.Retenciones != 0 ? "−" : "")@vista.Retenciones.ToString("#,##0.00####")</dd></div>
+            <div><dt>Devoluciones</dt><dd class="cifra-tabular">@(vista.Devoluciones != 0 ? "+" : "")@vista.Devoluciones.ToString("#,##0.00####")</dd></div>
+            <div><dt>Subtotal</dt><dd class="cifra-tabular">@vista.SubtotalEstimacion.ToString("#,##0.00####")</dd></div>
+            <div><dt>IVA</dt><dd class="cifra-tabular">@vista.IvaEstimado.ToString("#,##0.00####")</dd></div>
+            <div><dt>Total</dt><dd class="cifra-tabular">@vista.TotalEstimacion.ToString("#,##0.00####")</dd></div>
             @foreach (var deduccion in vista.Deducciones.Where(x => x.Porcentaje != 0))
             {
-                <div><dt>@deduccion.Nombre</dt><dd class="cifra-tabular">−@deduccion.Importe.ToString("N2")</dd></div>
+                <div><dt>@deduccion.Nombre</dt><dd class="cifra-tabular">−@deduccion.Importe.ToString("#,##0.00####")</dd></div>
             }
             @if (vista.Deducciones.Any(x => x.Porcentaje != 0))
             {
-                <div><dt>Total deducciones</dt><dd class="cifra-tabular">−@vista.Deducciones.Sum(x => x.Importe).ToString("N2")</dd></div>
+                <div><dt>Total deducciones</dt><dd class="cifra-tabular">−@vista.Deducciones.Sum(x => x.Importe).ToString("#,##0.00####")</dd></div>
             }
-            <div class="obra-liquido"><dt>Importe líquido</dt><dd class="cifra-tabular">@vista.ImporteLiquido.ToString("N2")</dd></div>
+            <div class="obra-liquido"><dt>Importe líquido</dt><dd class="cifra-tabular">@vista.ImporteLiquido.ToString("#,##0.00####")</dd></div>
         </dl>
     </section>
 }
@@ -128,7 +124,6 @@
 
     private decimal _porcentajeAmortizacion;
     private decimal AmortizacionAEnviar => _porcentajeAmortizacion;
-    private string? _tipoObra;
     private ServicioParcialConstruccionDto? _servicioParcial;
     private decimal _porcentajeRetenciones;
     private decimal _porcentajeDevoluciones;
@@ -161,18 +156,18 @@
             var retenciones = Porcentaje(importe, _porcentajeRetenciones);
             var devoluciones = Porcentaje(importe, _porcentajeDevoluciones);
             var subtotal = importe - amortizacion - retenciones + devoluciones;
-            // Tasa efectiva de IVA deducida de los conceptos guardados, aplicada sobre el subtotal.
+            // Tasa efectiva de IVA deducida de los conceptos guardados, aplicada sobre el subtotal a 6 decimales.
             var aplicada = _resultado?.PorcentajeAmortizacion ?? 0;
             var baseActualIva = importe * (1m - aplicada / 100m);
             var tasaIva = baseActualIva > 0 ? IvaConceptos / baseActualIva : 0m;
-            var iva = subtotal > 0 ? Math.Round(subtotal * tasaIva, 2, MidpointRounding.ToEven) : 0m;
+            var iva = subtotal > 0 ? Math.Round(subtotal * tasaIva, 6, MidpointRounding.ToEven) : 0m;
             var total = subtotal + iva;
             var deducciones = _deducciones.Select(x => new DeduccionDeObraDto(
                 x.NombreAEnviar, x.PorcentajeAEnviar, Porcentaje(importe, x.PorcentajeAEnviar))).ToArray();
             return new DatosObraDto(importe, porcentaje, amortizacion,
                 _porcentajeRetenciones, retenciones, _porcentajeDevoluciones, devoluciones,
                 subtotal, iva, total, deducciones,
-                total - deducciones.Sum(x => x.Importe), _tipoObra);
+                total - deducciones.Sum(x => x.Importe), null);
         }
     }
 
@@ -181,7 +176,6 @@
 
     private bool CoincideConGuardado(decimal importe)
         => _resultado is { } datos && datos.ImporteTrabajos == importe &&
-           datos.TipoObra == _tipoObra &&
            datos.ServicioParcial == _servicioParcial &&
            datos.PorcentajeAmortizacion == AmortizacionAEnviar &&
            datos.PorcentajeRetenciones == _porcentajeRetenciones &&
@@ -198,7 +192,6 @@
         _idCargado = ComprobanteId;
         _resultado = null;
         _conciliacion = null;
-        _tipoObra = null;
         _servicioParcial = null;
         _porcentajeAmortizacion = 0;
         _porcentajeRetenciones = 0;
@@ -210,7 +203,6 @@
         _error = error;
         if (datos is null) return;
         _resultado = datos;
-        _tipoObra = datos.TipoObra;
         _servicioParcial = datos.ServicioParcial;
         _porcentajeAmortizacion = datos.PorcentajeAmortizacion;
         _porcentajeRetenciones = datos.PorcentajeRetenciones ?? 0;
@@ -227,20 +219,6 @@
         await CargarConciliacionAsync();
     }
 
-    // Obra pública marca la retención local (5 al millar, editable); la privada empieza sin deducciones.
-    private void CambiarTipoObra(string? tipo)
-    {
-        _tipoObra = tipo;
-        if (tipo == TiposDeObra.Publica)
-            Marcar(_deducciones[0], true);
-        else if (tipo == TiposDeObra.Privada)
-            foreach (var deduccion in _deducciones)
-            {
-                deduccion.Aplica = false;
-                deduccion.Porcentaje = 0;
-            }
-    }
-
     private static void Marcar(DeduccionCaptura deduccion, bool aplica)
     {
         deduccion.Aplica = aplica;
@@ -253,14 +231,6 @@
     private async Task<bool> GuardarDatosAsync()
     {
         if (_guardando) return false;
-        if (_tipoObra is not (TiposDeObra.Publica or TiposDeObra.Privada))
-        {
-            _error = new DetalleProblema("urn:facturacion:error:obra-tipo-invalido",
-                "Selecciona el tipo de obra", 400,
-                "Indica si el contrato corresponde a obra pública o privada.",
-                null, string.Empty, null);
-            return false;
-        }
         if (_deducciones.FirstOrDefault(x => x.Aplica && x.Porcentaje == 0) is { } sinPorcentaje)
         {
             _error = new DetalleProblema("urn:facturacion:error:obra-deduccion-sin-porcentaje",
@@ -277,7 +247,7 @@
             if (!await GuardarFactura()) return false;
             var peticion = new PeticionGuardarDatosObra(AmortizacionAEnviar, _porcentajeRetenciones,
                 _porcentajeDevoluciones,
-                [.. _deducciones.Select(x => new PeticionDeduccionDeObra(x.NombreAEnviar, x.PorcentajeAEnviar))], _tipoObra) { ServicioParcial = _servicioParcial };
+                [.. _deducciones.Select(x => new PeticionDeduccionDeObra(x.NombreAEnviar, x.PorcentajeAEnviar))], null) { ServicioParcial = _servicioParcial };
             var (datos, error) = await Obras.GuardarAsync(ComprobanteId, peticion);
             _resultado = datos;
             if (datos is not null) _datosAnterioresSinTasa = false;

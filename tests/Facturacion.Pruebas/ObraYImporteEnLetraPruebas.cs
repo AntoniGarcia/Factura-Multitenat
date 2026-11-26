@@ -29,7 +29,7 @@ public sealed class ObraYImporteEnLetraPruebas
         {
             Id = Guid.NewGuid(),
             ComprobanteId = comprobante.Id,
-            TipoObra = TiposDeObra.Publica,
+            TipoObra = null,
             PorcentajeAmortizacion = 0m,
             PorcentajeRetenciones = 0m,
             Retenciones = 0m,
@@ -66,7 +66,7 @@ public sealed class ObraYImporteEnLetraPruebas
         {
             Id = Guid.NewGuid(),
             ComprobanteId = comprobante.Id,
-            TipoObra = TiposDeObra.Publica,
+            TipoObra = null,
             PorcentajeAmortizacion = 10m,
             PorcentajeRetenciones = 5m,
             Retenciones = 15_000m,
@@ -104,6 +104,42 @@ public sealed class ObraYImporteEnLetraPruebas
         var pdf = new GeneradorDePdfCfdi().Generar(comprobante, new DatosDelPdf(
             new DateTime(2026, 11, 25, 12, 0, 0), 2, null, EsBorrador: true) { EstimacionObra = calculado });
         Assert.True(pdf.Length > 1000);
+    }
+
+    [Fact]
+    public void Calculo_de_obra_conserva_seis_decimales_y_funciona_sin_tipo_de_obra()
+    {
+        var comprobante = ComprobanteDeObra(100.123456m);
+        var datos = new DatosObra
+        {
+            Id = Guid.NewGuid(),
+            ComprobanteId = comprobante.Id,
+            TipoObra = null,
+            PorcentajeAmortizacion = 12.5m,
+            PorcentajeRetenciones = 2.25m,
+            Retenciones = Math.Round(100.123456m * 2.25m / 100m, 6, MidpointRounding.ToEven),
+            PorcentajeDevoluciones = 1.125m,
+            Devoluciones = Math.Round(100.123456m * 1.125m / 100m, 6, MidpointRounding.ToEven),
+            NombreDeduccion1 = "5 al millar",
+            PorcentajeDeduccion1 = 0.50m,
+            NombreDeduccion2 = "1% OBS",
+            PorcentajeDeduccion2 = 0m,
+            NombreDeduccion3 = "ICIC",
+            PorcentajeDeduccion3 = 0m,
+            NombreDeduccion4 = "ÚNETE",
+            PorcentajeDeduccion4 = 0m
+        };
+
+        var errorAplicar = AmortizacionDeObra.Aplicar(comprobante, datos, decimalesMoneda: 2);
+        Assert.Null(errorAplicar);
+        Assert.Null(ValidadorFiscalDeObra.Validar(comprobante, datos));
+
+        var calculado = ServicioDeObras.Calcular(comprobante, datos);
+        // Sin redondeo prematuro de IVA a 2 decimales
+        var esperadoIva = Math.Round(calculado.SubtotalEstimacion * 0.16m, 6, MidpointRounding.ToEven);
+        Assert.Equal(esperadoIva, calculado.IvaEstimado);
+        Assert.Equal(calculado.SubtotalEstimacion + esperadoIva, calculado.TotalEstimacion);
+        Assert.NotNull(RetencionLocalDeObra.Calcular(datos, comprobante.SubTotal));
     }
 
     private static Comprobante ComprobanteDeObra(decimal importe)
