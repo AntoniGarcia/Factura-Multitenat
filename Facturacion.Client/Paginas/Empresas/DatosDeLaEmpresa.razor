@@ -15,7 +15,7 @@
 
 @* /empresa/certificados abre esta página en la pestaña de certificados; la usan los avisos. *@
 <TarjetaFormulario Class="tarjeta-formulario-catalogo empresa-formulario">
-<MudTabs @bind-ActivePanelIndex="_pestana">
+<MudTabs @bind-ActivePanelIndex="_pestana" KeepPanelsAlive="true">
     <MudTabPanel Text="Datos de la empresa" Icon="@Icons.Material.Filled.Business" Visible="_datos">
         <PanelErrores Problema="_error" />
 

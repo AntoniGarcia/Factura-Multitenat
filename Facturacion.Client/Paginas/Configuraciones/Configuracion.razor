@@ -4,6 +4,7 @@
 @inject IServicioDeConfirmacion Confirmacion
 @inject ServicioDeSesion Sesion
 @inject ServicioDeCatalogos Catalogos
+@inject ISnackbar Avisos
 @using Facturacion.Client.Componentes.Empresas
 @using Facturacion.Shared.Contratos
 
@@ -21,7 +22,7 @@
 }
 else
 {
-    <MudTabs @bind-ActivePanelIndex="_pestana">
+    <MudTabs @bind-ActivePanelIndex="_pestana" KeepPanelsAlive="true">
 
         <MudTabPanel Text="General" Icon="@Icons.Material.Filled.Tune" Visible="_general">
             <div class="formulario-catalogo-secciones">
@@ -134,17 +135,11 @@ else
             <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="ProbarSmtp" Disabled="@(_probandoSmtp || _guardando)">
                 @(_probandoSmtp ? "Comprobando…" : "Probar conexión")
             </MudButton>
-            @if (_avisoSmtp is not null)
-            {
-                <p class="mensaje-exito" role="status">@_avisoSmtp</p>
-            }
             </section>
         </MudTabPanel>
 
         <MudTabPanel Text="Impuestos" Icon="@Icons.Material.Filled.Percent" Visible="_impuestos">
-            <p class="seccion-ayuda">
-                Tasas sugeridas para productos. Cada factura usa los impuestos guardados en sus conceptos.
-            </p>
+            <p class="seccion-ayuda">Tasas predeterminadas para nuevos productos.</p>
 
             <div class="formulario-catalogo-secciones">
             <section class="formulario-catalogo-seccion formulario-catalogo-seccion-ancha" aria-labelledby="cliente-config-traslados">
@@ -159,7 +154,6 @@ else
 
             <section class="formulario-catalogo-seccion formulario-catalogo-seccion-ancha" aria-labelledby="cliente-config-retenciones">
             <h2 id="cliente-config-retenciones" class="seccion-titulo">Impuestos retenidos</h2>
-            <p class="seccion-ayuda">Usa cero si no aplica.</p>
             <div class="catalogo-rejilla catalogo-rejilla-tres">
                 <MudNumericField @bind-Value="_retIvaPct" Label="IVA %" Min="0M" Max="100M" Format="0.00####"
                                  Class="cifra-tabular" />
@@ -172,9 +166,6 @@ else
 
             <section class="formulario-catalogo-seccion formulario-catalogo-seccion-ancha" aria-labelledby="cliente-config-locales">
             <h2 id="cliente-config-locales" class="seccion-titulo">Impuestos locales</h2>
-            <p class="seccion-ayuda">
-                Su aplicación depende del documento.
-            </p>
             <div class="rejilla-campos">
                 <MudNumericField @bind-Value="_ishPct" Label="ISH %" Min="0M" Max="100M" Format="N2"
                                  Class="cifra-tabular" HelperText="Impuesto sobre hospedaje." />
@@ -261,7 +252,6 @@ else
     private DetalleProblema? _error;
     private string? _errorLogo;
     private bool _probandoSmtp;
-    private string? _avisoSmtp;
     private int _versionSmtp;
 
     private string? _logo;
@@ -290,7 +280,6 @@ else
 
     private void LimpiarPruebaSmtp()
     {
-        _avisoSmtp = null;
         _versionSmtp++;
     }
 
@@ -298,14 +287,14 @@ else
     {
         if (_probandoSmtp || _guardando) return;
         _probandoSmtp = true;
-        _avisoSmtp = null;
         _error = null;
         var version = _versionSmtp;
         try
         {
             _error = await Empresas.ProbarCorreoAsync(CorreoCapturado);
             if (_error is null && version == _versionSmtp)
-                _avisoSmtp = "Conexión y autenticación correctas. No se guardaron cambios ni se envió correo.";
+                Avisos.Add("Conexión correcta (no se guardaron cambios ni se envió correo).",
+                    Severity.Success, o => { o.VisibleStateDuration = 4000; o.ShowCloseIcon = true; });
         }
         finally { _probandoSmtp = false; }
     }

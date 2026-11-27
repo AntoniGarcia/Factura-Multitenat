@@ -39,9 +39,6 @@ else
 
     <section class="emision-seccion">
         <h2 class="seccion-titulo">Datos de la operación</h2>
-        <p class="seccion-ayuda">
-            Datos del instrumento y de la operación inmobiliaria.
-        </p>
         <div class="notaria-rejilla notaria-rejilla-dos">
             <MudNumericField T="int" @bind-Value="_numeroInstrumento" Label="Número de instrumento notarial"
                              Min="1" Max="999999" Required="true" Disabled="@(!Editable)" />
@@ -56,14 +53,13 @@ else
             <CampoMoneda Valor="@_montoOperacion" ValorCambiado="v => _montoOperacion = v"
                          Label="Monto de la operación" Formato="0.00####" Requerido="true" Deshabilitado="@(!Editable)" />
         </div>
-        <p class="seccion-ayuda">El monto debe ser igual al subtotal más el IVA.</p>
+        <p class="seccion-ayuda">Monto = subtotal + IVA.</p>
     </section>
 
     <section class="emision-seccion">
         <div class="notaria-encabezado">
             <div>
                 <h2 class="seccion-titulo">Inmuebles</h2>
-                <p class="seccion-ayuda">Agrega todos los inmuebles que formen parte del mismo instrumento.</p>
             </div>
             <MudButton Variant="Variant.Text" StartIcon="@Icons.Material.Filled.Add" OnClick="AgregarInmueble"
                        Disabled="@(!Editable)">

@@ -42,7 +42,7 @@ else if (_pago is null)
 }
 else
 {
-    <MudTabs Elevation="0" ApplyEffectsToContainer="true" Class="pestanas-pago">
+    <MudTabs Elevation="0" ApplyEffectsToContainer="true" KeepPanelsAlive="true" Class="pestanas-pago">
         <MudTabPanel Text="General">
             <details class="seccion-formulario pago-sustitucion" open="@(!string.IsNullOrWhiteSpace(_uuidSustituido))">
                 <summary>Sustitución de un pago <span class="seccion-ayuda">Opcional</span></summary>

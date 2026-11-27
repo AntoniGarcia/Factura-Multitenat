@@ -64,7 +64,7 @@ else
 {
     <div class="emision-layout">
     <div class="emision-captura">
-    <MudTabs Class="emision-pestanas">
+    <MudTabs Class="emision-pestanas" KeepPanelsAlive="true">
         <MudTabPanel Text="Detalle y conceptos">
             <section class="emision-seccion">
             <h2 class="seccion-titulo">General</h2>
@@ -138,9 +138,6 @@ else
 
             <section class="emision-seccion">
             <h2 class="seccion-titulo">Conceptos</h2>
-            <p class="seccion-ayuda">
-                Selecciona un producto y ajusta la cantidad y el descuento.
-            </p>
 
             <div class="lista-conceptos">
                 @for (var i = 0; i < _renglones.Count; i++)
@@ -199,8 +196,7 @@ else
                             </div>
 
                             <MudTextField @bind-Value="renglon.Descripcion" Label="Descripción" MaxLength="1000"
-                                          Lines="2" Class="concepto-editor-descripcion"
-                                          HelperText="Así sale en la factura. Se precarga con el nombre y la descripción del producto." />
+                                          Lines="2" Class="concepto-editor-descripcion" />
 
                             <MudNumericField T="decimal" Value="@renglon.Cantidad" ValueChanged="async v => { renglon.Cantidad = v; await ActualizarVistaPreviaAsync(); }"
                                              Label="Cantidad" Format="0.######" Min="0.000001m" Immediate="true"
@@ -271,7 +267,7 @@ else
         </MudTabPanel>
 
         <MudTabPanel Text="CFDI relacionados">
-            <p class="seccion-ayuda">Opcional: solo si esta factura corrige, sustituye o se relaciona con otra ya timbrada.</p>
+            <p class="seccion-ayuda">Opcional: relaciona esta factura con otro CFDI ya timbrado.</p>
 
             <div class="rejilla-campos">
 <BuscadorCatalogo Catalogo="c_TipoRelacion" Opciones="@Catalogos.Obtener("c_TipoRelacion")" @bind-Clave="_tipoRelacion" Label="Tipo de relación" PuedeLimpiar="true" />

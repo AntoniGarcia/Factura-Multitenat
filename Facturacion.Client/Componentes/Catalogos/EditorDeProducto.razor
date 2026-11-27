@@ -42,9 +42,6 @@ else
 
                 <section class="formulario-catalogo-seccion formulario-catalogo-seccion-ancha">
                 <h2 class="seccion-titulo">Claves del SAT</h2>
-                <p class="seccion-ayuda">
-                    Busca por clave o descripción y selecciona una opción del catálogo.
-                </p>
 
                 <div class="catalogo-rejilla catalogo-rejilla-dos">
                     <div>
@@ -103,10 +100,6 @@ else
                 }
                 else
                 {
-                    <p class="seccion-ayuda">
-                        Usa un atajo y revisa el desglose fiscal.
-                    </p>
-
                     <div class="atajos-iva">
                         @foreach (var atajo in Atajos.Where(_ => ReglasDeObjetoImpuesto.PermiteImpuesto(_objetoImp, "002", false)))
                         {

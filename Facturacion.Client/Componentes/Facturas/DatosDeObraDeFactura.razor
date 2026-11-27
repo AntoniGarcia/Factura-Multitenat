@@ -35,15 +35,8 @@
                          Min="0" Max="100" Format="0.00##" Class="cifra-tabular" />
     </div>
     <p class="seccion-ayuda">
-        Al importe de los trabajos se le resta la amortización del anticipo y las retenciones, y se le suman las devoluciones para obtener el subtotal antes de IVA.
-        @if (AnticipoRelacionado)
-        {
-            @: Con el anticipo tipo 07 relacionado, se valida contra su saldo y se agrega la leyenda SAT en los conceptos.
-        }
-        else
-        {
-            @: Opcional: si cuentas con un CFDI de anticipo, puedes relacionarlo con tipo 07 en «CFDI relacionados».
-        }
+        Subtotal = trabajos − amortización − retenciones + devoluciones.
+        @(AnticipoRelacionado ? "Con anticipo 07 relacionado se valida su saldo." : "Anticipo tipo 07 opcional en CFDI relacionados.")
     </p>
 </section>
 
@@ -58,9 +51,7 @@
 
 <section class="emision-seccion">
     <h2 class="seccion-titulo">Deducciones del pago</h2>
-    <p class="seccion-ayuda">
-        Se calculan sobre el importe de los trabajos y se restan del total para obtener el importe líquido. Marca las que aplica el contrato.
-    </p>
+    <p class="seccion-ayuda">Se calculan sobre el importe de los trabajos y se restan del total.</p>
     @foreach (var deduccion in _deducciones)
     {
         <div class="obra-deduccion-bloque">
@@ -105,7 +96,6 @@
 }
 
 <div class="tarjeta-formulario-acciones">
-    <span class="catalogo-acciones-ayuda">Revisa la amortización y las deducciones antes de guardar.</span>
     <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="GuardarAsync" Disabled="@(_guardando || (_datosAnterioresSinTasa && !_aceptaRecalculo))">
         @(_guardando ? "Guardando…" : "Guardar cálculo de obra")
     </MudButton>
