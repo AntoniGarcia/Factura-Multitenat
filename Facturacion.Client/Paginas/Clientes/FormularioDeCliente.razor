@@ -8,7 +8,8 @@
 <TituloDePagina Texto="@(EsNuevo ? "Nuevo cliente" : $"Cliente {_claveInterna}")" />
 
 <TarjetaFormulario RutaVolver="/clientes" Class="tarjeta-formulario-catalogo">
-    <EditorDeCliente Id="Id"
+    <EditorDeCliente @ref="_editor"
+                     Id="Id"
                      IdDelFormulario="formulario-cliente"
                      AlGuardar="@(() => Navegacion.NavigateTo("/clientes"))"
                      OcupadoCambiado="o => _ocupado = o"
@@ -17,8 +18,8 @@
     <div class="tarjeta-formulario-acciones">
         <span class="catalogo-acciones-ayuda">Los datos fiscales se validan al guardar.</span>
         <MudButton Variant="Variant.Text" OnClick="@(() => Navegacion.NavigateTo("/clientes"))">Cancelar</MudButton>
-        <MudButton ButtonType="ButtonType.Submit" form="formulario-cliente"
-                   Variant="Variant.Filled" Color="Color.Primary" Disabled="_ocupado">
+        <MudButton Variant="Variant.Filled" Color="Color.Primary" Disabled="_ocupado"
+                   OnClick="@(() => _editor?.GuardarAsync() ?? Task.CompletedTask)">
             Guardar cliente
         </MudButton>
     </div>
@@ -28,6 +29,7 @@
     [Parameter]
     public Guid? Id { get; set; }
 
+    private EditorDeCliente? _editor;
     private bool EsNuevo => Id is null;
     private bool _ocupado = true;
     private int _claveInterna;

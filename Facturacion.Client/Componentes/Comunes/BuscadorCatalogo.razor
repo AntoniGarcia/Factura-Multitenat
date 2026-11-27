@@ -144,7 +144,11 @@
             System.Globalization.CompareOptions.IgnoreCase | System.Globalization.CompareOptions.IgnoreNonSpace) >= 0;
 
     private string Formatear(ClaveSatDto? clave)
-        => clave is null ? string.Empty : MostrarSoloClave ? clave.Clave : $"{clave.Clave} — {clave.Descripcion}";
+        => clave is null
+            ? string.Empty
+            : (MostrarSoloClave || string.IsNullOrWhiteSpace(clave.Descripcion) || string.Equals(clave.Clave, clave.Descripcion, StringComparison.OrdinalIgnoreCase))
+                ? clave.Clave
+                : $"{clave.Clave} — {clave.Descripcion}";
 
     private Task AlCambiarTextoAsync(string texto)
         => TextoCambiado.HasDelegate ? TextoCambiado.InvokeAsync(texto) : Task.CompletedTask;

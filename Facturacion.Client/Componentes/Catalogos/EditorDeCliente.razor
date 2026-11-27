@@ -298,32 +298,43 @@ else
         _usoCfdi = "S01";
     }
 
-    private async Task GuardarAsync()
+    private bool _guardando;
+
+    public async Task GuardarAsync()
     {
+        if (_guardando || _cargando) return;
+        _guardando = true;
         await OcupadoCambiado.InvokeAsync(true);
         _error = null;
 
-        // Se fija el país para que la Carta Porte reconozca el domicilio como mexicano.
-        if (!_esGenericoExtranjero)
-            _pais = new[] { _calle, _estado, _municipio, _codigoPostal }.Any(x => x is not null) ? "MEX" : null;
-
-        var peticion = new PeticionGuardarCliente(
-            _rfc, _nombre, _regimenFiscal, _domicilioFiscalCp,
-            _residenciaFiscal, _numRegIdTrib, _usoCfdi, _metodoPago, _formaPago,
-            _telefono, _correo, _calle, _numeroExterior, _numeroInterior, _colonia,
-            _localidad, _referencia, _municipio, _estado, _pais, _codigoPostal, _activo);
-
-        var (exito, error) = EsNuevo
-            ? await Clientes.CrearAsync(peticion)
-            : await Clientes.ActualizarAsync(Id!.Value, peticion);
-
-        await OcupadoCambiado.InvokeAsync(false);
-        _error = error;
-
-        if (error is null && exito is not null)
+        try
         {
-            _capturaGuardada = CapturaActual();
-            await AlGuardar.InvokeAsync();
+            // Se fija el país para que la Carta Porte reconozca el domicilio como mexicano.
+            if (!_esGenericoExtranjero)
+                _pais = new[] { _calle, _estado, _municipio, _codigoPostal }.Any(x => x is not null) ? "MEX" : null;
+
+            var peticion = new PeticionGuardarCliente(
+                _rfc, _nombre, _regimenFiscal, _domicilioFiscalCp,
+                _residenciaFiscal, _numRegIdTrib, _usoCfdi, _metodoPago, _formaPago,
+                _telefono, _correo, _calle, _numeroExterior, _numeroInterior, _colonia,
+                _localidad, _referencia, _municipio, _estado, _pais, _codigoPostal, _activo);
+
+            var (exito, error) = EsNuevo
+                ? await Clientes.CrearAsync(peticion)
+                : await Clientes.ActualizarAsync(Id!.Value, peticion);
+
+            _error = error;
+
+            if (error is null && exito is not null)
+            {
+                _capturaGuardada = CapturaActual();
+                await AlGuardar.InvokeAsync();
+            }
+        }
+        finally
+        {
+            _guardando = false;
+            await OcupadoCambiado.InvokeAsync(false);
         }
     }
 }

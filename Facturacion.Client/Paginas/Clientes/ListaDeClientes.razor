@@ -88,7 +88,7 @@
     private ColumnaDeTabla<ClienteEnListaDto> Acciones => new("", c => @<div class="acciones-renglon">
                           @if (_puedeModificar)
                           {
-                              <MudButton Size="Size.Small" Disabled="@_trabajando" OnClick="@(() => Navegacion.NavigateTo($"/clientes/{c.Id}"))">Editar</MudButton>
+                              <MudButton Size="Size.Small" Disabled="@_trabajando" Href="@($"/clientes/{c.Id}")">Editar</MudButton>
                           }
                           @if (_puedeDesactivar)
                           {

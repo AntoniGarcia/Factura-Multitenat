@@ -1,3 +1,4 @@
+using System.Text.RegularExpressions;
 using Facturacion.Server.Data;
 using Facturacion.Shared.Comun;
 using Facturacion.Shared.Contratos;
@@ -22,7 +23,7 @@ public sealed class ValidadorDeCliente(AppDbContext baseDeDatos, IServicioCatalo
 
         // Los genéricos traen sus propias reglas fijas y no pasan por las demás.
         if (Shared.Comun.Rfc.EsGenerico(rfcNormalizado))
-            return ValidarGenerico(rfcNormalizado, peticion, nombreNormalizado);
+            return await ValidarGenericoAsync(rfcNormalizado, peticion, ct);
 
         var regimen = await baseDeDatos.SatRegimenesFiscales
             .AsNoTracking()
@@ -87,8 +88,8 @@ public sealed class ValidadorDeCliente(AppDbContext baseDeDatos, IServicioCatalo
     /// Reglas fijas de los genéricos. En el nacional, régimen y uso son fijos y el nombre puede
     /// ser otro: PUBLICO EN GENERAL solo se exige en la
     /// factura global, y eso lo revisa la emisión.
-    private static ErrorNegocio? ValidarGenerico(
-        string rfc, PeticionGuardarCliente peticion, string nombreNormalizado)
+    private async Task<ErrorNegocio?> ValidarGenericoAsync(
+        string rfc, PeticionGuardarCliente peticion, CancellationToken ct)
     {
         if (rfc == Shared.Comun.Rfc.GenericoNacional)
         {
@@ -108,8 +109,9 @@ public sealed class ValidadorDeCliente(AppDbContext baseDeDatos, IServicioCatalo
             return ErrorNegocio.Validacion("extranjero-sin-residencia",
                 "Para el RFC XEXX010101000 hay que capturar el país de residencia fiscal.");
 
+        var clavePais = peticion.ResidenciaFiscal.Trim().ToUpperInvariant();
         // CFDI40152 y CFDI40159.
-        if (peticion.ResidenciaFiscal.Trim().Equals("MEX", StringComparison.OrdinalIgnoreCase))
+        if (clavePais == "MEX")
             return ErrorNegocio.Validacion("extranjero-residencia-mex",
                 "Para el RFC XEXX010101000 la residencia fiscal no puede ser México.");
 
@@ -120,6 +122,32 @@ public sealed class ValidadorDeCliente(AppDbContext baseDeDatos, IServicioCatalo
         if (!string.IsNullOrWhiteSpace(peticion.UsoCfdiPreferido) && peticion.UsoCfdiPreferido != "S01")
             return ErrorNegocio.Validacion("generico-uso",
                 "Para el RFC XEXX010101000 el uso de CFDI tiene que ser S01, Sin efectos fiscales.");
+
+        var pais = await baseDeDatos.SatPaises.AsNoTracking()
+            .FirstOrDefaultAsync(p => p.Clave == clavePais && p.Vigente, ct);
+        if (pais is null)
+            return ErrorNegocio.Validacion("extranjero-pais-invalido",
+                $"El país de residencia fiscal {clavePais} no está vigente en el catálogo del SAT.");
+
+        if (!string.IsNullOrWhiteSpace(peticion.NumRegIdTrib) &&
+            string.IsNullOrWhiteSpace(pais.ValidacionRegistroTributario) &&
+            !string.IsNullOrWhiteSpace(pais.FormatoRegistroTributario))
+        {
+            var registro = peticion.NumRegIdTrib.Trim();
+            var coincide = false;
+            try
+            {
+                coincide = Regex.IsMatch(registro, "\\A(?:" + pais.FormatoRegistroTributario + ")\\z",
+                    RegexOptions.CultureInvariant, TimeSpan.FromMilliseconds(100));
+            }
+            catch (Exception ex) when (ex is ArgumentException or RegexMatchTimeoutException)
+            {
+                coincide = true;
+            }
+            if (!coincide)
+                return ErrorNegocio.Validacion("extranjero-registro-tributario-invalido",
+                    $"El registro tributario no cumple el formato del SAT para {pais.Descripcion} ({clavePais}).");
+        }
 
         return null;
     }

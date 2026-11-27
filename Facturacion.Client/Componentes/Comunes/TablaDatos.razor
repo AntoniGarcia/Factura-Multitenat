@@ -17,6 +17,7 @@
           Height="@Height"
           FixedHeader="@AlturaFija"
           FixedFooter="@AlturaFija"
+          CurrentPage="@_pagina"
           RowsPerPage="@TamanoPagina">
     <HeaderContent>
         @foreach (var columna in Columnas)
@@ -182,10 +183,12 @@
     }
 
     /// <summary>Salta a la página elegida en el paginador. MudPagination cuenta desde 1; MudTable desde 0.</summary>
-    private Task IrAPaginaAsync(int pagina)
+    private async Task IrAPaginaAsync(int pagina)
     {
-        _tabla?.NavigateTo(pagina - 1);
-        return Task.CompletedTask;
+        if (_tabla is null) return;
+        _pagina = Math.Max(0, pagina - 1);
+        await InvokeAsync(StateHasChanged);
+        await _tabla.ReloadServerData();
     }
 
     /// <summary>Cambia cuántas filas se ven por página; MudTable recarga la página desde el servidor.</summary>

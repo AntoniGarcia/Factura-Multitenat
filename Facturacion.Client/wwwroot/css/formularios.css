@@ -622,11 +622,10 @@
 }
 
 .pago-formulario .tarjeta-formulario-acciones {
-    position: sticky;
-    bottom: 0;
-    z-index: 4;
     flex-wrap: wrap;
-    padding: 0.875rem 0;
+    margin-top: 1rem;
+    padding-top: 0.875rem;
+    border-top: 1px solid var(--borde);
     background: var(--superficie);
 }
 

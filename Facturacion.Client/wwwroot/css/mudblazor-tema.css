@@ -121,6 +121,37 @@
     color: var(--acento-texto);
 }
 
+/* Contraste seguro en hover y foco para todos los botones en los 3 temas. */
+.mud-button-filled.mud-button-filled-primary:is(:hover, :focus-visible):not(:disabled) {
+    background-color: var(--acento);
+    color: var(--texto-inverso);
+    filter: brightness(1.08);
+}
+
+.mud-button-filled.mud-button-filled-error:is(:hover, :focus-visible):not(:disabled) {
+    background-color: var(--estado-error);
+    color: var(--texto-inverso);
+    filter: brightness(1.08);
+}
+
+.mud-button-outlined:is(:hover, :focus-visible):not(:disabled),
+.mud-button-text:is(:hover, :focus-visible):not(:disabled) {
+    background-color: var(--acento-suave);
+    color: var(--texto);
+}
+
+.mud-button-outlined-primary:is(:hover, :focus-visible):not(:disabled),
+.mud-button-text-primary:is(:hover, :focus-visible):not(:disabled) {
+    background-color: var(--acento-suave);
+    color: var(--acento-texto);
+}
+
+.mud-button-outlined-error:is(:hover, :focus-visible):not(:disabled),
+.mud-button-text-error:is(:hover, :focus-visible):not(:disabled) {
+    background-color: rgba(var(--estado-error-rgb), 0.1);
+    color: var(--estado-error);
+}
+
 /* Selección legible en desplegables y autocompletados de ambos paneles. */
 .mud-popover .mud-list-item {
     --mud-palette-primary-hover: var(--opcion-seleccionada-fondo);
