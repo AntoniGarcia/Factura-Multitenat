@@ -1,27 +1,26 @@
 @using Facturacion.Shared.Operador
 
-<MudDialog>
+<MudDialog Class="dialogo-cuenta-operador">
     <DialogContent>
         <p class="seccion-ayuda">
-            Define cuántos usuarios activos y cuántas empresas puede tener <strong>@NombreCuenta</strong>.
-            El titular cuenta como usuario. El cambio queda registrado en la bitácora.
+            Límites para <strong>@NombreCuenta</strong> (el titular cuenta como usuario).
         </p>
 
-        <section class="operador-dialogo-bloque" aria-labelledby="cuenta-limites">
-        <h2 id="cuenta-limites" class="seccion-titulo">Límites</h2>
+        <section class="formulario-catalogo-seccion formulario-catalogo-seccion-ancha" aria-labelledby="cuenta-limites">
+        <h2 id="cuenta-limites" class="seccion-titulo">Capacidad de la cuenta</h2>
         <div class="operador-dialogo-campos operador-dialogo-campos-dos">
             <MudNumericField T="int" @bind-Value="_usuarios" Label="Usuarios activos"
-                             Min="@Math.Max(1, Limites.UsuariosActivos)" Max="999"
-                             HelperText="@($"Usa {Limites.UsuariosActivos} ahora")" />
+                             Min="@Math.Max(1, Limites.UsuariosActivos)" Max="999" Class="cifra-tabular"
+                             HelperText="@($"En uso: {Limites.UsuariosActivos}")" />
             <MudNumericField T="int" @bind-Value="_empresas" Label="Empresas"
-                             Min="@Math.Max(1, Limites.Empresas)" Max="999"
-                             HelperText="@($"Tiene {Limites.Empresas} ahora")" />
+                             Min="@Math.Max(1, Limites.Empresas)" Max="999" Class="cifra-tabular"
+                             HelperText="@($"En uso: {Limites.Empresas}")" />
         </div>
         </section>
 
     </DialogContent>
     <DialogActions>
-        <MudButton OnClick="Cancelar">Cancelar</MudButton>
+        <MudButton Variant="Variant.Text" OnClick="Cancelar">Cancelar</MudButton>
         <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="Guardar">
             Guardar límites
         </MudButton>

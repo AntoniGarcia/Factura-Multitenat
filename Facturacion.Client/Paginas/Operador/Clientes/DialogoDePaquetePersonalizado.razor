@@ -3,10 +3,10 @@
 @using Facturacion.Shared.Plataforma
 @using Facturacion.Client.Componentes.Operador
 
-<MudDialog>
+<MudDialog Class="dialogo-cuenta-operador">
     <DialogContent>
         <p class="seccion-ayuda">
-            Exclusivo para <strong>@NombreCuenta</strong> y todas sus empresas. La compra queda pendiente hasta confirmar el pago.
+            Paquete exclusivo para <strong>@NombreCuenta</strong>.
         </p>
 
         <div class="formulario-catalogo-secciones">
@@ -21,7 +21,6 @@
                              Adornment="Adornment.End" AdornmentText="timbres" />
         </div>
         <ClavesSatDelPaquete @bind-ClaveProdServ="_claveProdServ" @bind-ClaveUnidad="_claveUnidad" />
-        <p class="seccion-ayuda">Se precargan al preparar la factura.</p>
         </section>
 
         <section class="formulario-catalogo-seccion formulario-catalogo-seccion-ancha" aria-labelledby="paquete-exclusivo-precio">
@@ -44,6 +43,10 @@
             <dl class="resumen-desglose-iva">
                 <div><dt>Subtotal</dt><dd>@Subtotal.ToString("C2")</dd></div>
                 <div><dt>IVA 16%</dt><dd>@Iva.ToString("C2")</dd></div>
+                @if (_cantidad is > 0)
+                {
+                    <div><dt>Precio por timbre</dt><dd class="cifra-tabular">@PrecioPorTimbre.ToString("C4")</dd></div>
+                }
                 <div class="resumen-desglose-total"><dt>Total</dt><dd>@_precioTotal.ToString("C2")</dd></div>
             </dl>
         }
@@ -79,6 +82,7 @@
 
     private decimal Subtotal => Math.Round(_precioTotal / 1.16m, 6, MidpointRounding.AwayFromZero);
     private decimal Iva => _precioTotal - Subtotal;
+    private decimal PrecioPorTimbre => _cantidad is > 0 ? Math.Round(_precioTotal / _cantidad.Value, 4, MidpointRounding.AwayFromZero) : 0m;
 
     protected override void OnInitialized()
     {

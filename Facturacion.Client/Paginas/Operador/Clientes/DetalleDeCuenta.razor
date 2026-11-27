@@ -11,6 +11,7 @@
 @inject IServicioDeConfirmacion Confirmacion
 @inject IDialogService Dialogos
 @inject ServicioDeSesionDeOperador Sesion
+@inject NavigationManager Navegacion
 
 <PageTitle>@(_detalle?.Cuenta.Nombre ?? "Ficha de cuenta") · Panel del operador</PageTitle>
 <TituloDePagina Texto="@(_detalle?.Cuenta.Nombre ?? "Ficha de cuenta")" />
@@ -30,19 +31,30 @@ else if (_detalle is null)
 }
 else
 {
-    <a href="/operador/cuentas" class="ficha-operador-volver">
-        <MudIcon Icon="@Icons.Material.Filled.ArrowBack" Size="Size.Small" />
-        Volver a clientes
-    </a>
+    <nav class="ficha-migas" aria-label="Navegación">
+        <a href="/operador/cuentas" class="ficha-operador-volver">
+            <MudIcon Icon="@Icons.Material.Filled.ArrowBack" Size="Size.Small" />
+            Cuentas
+        </a>
+        <span aria-hidden="true">/</span>
+        <span>@_detalle.Cuenta.Nombre</span>
+    </nav>
 
     <section class="ficha-cuenta-resumen" aria-label="Resumen de la cuenta">
         <div class="ficha-cuenta-identidad">
             <div class="ficha-cuenta-contacto">
                 <div class="ficha-cuenta-meta">
                     <span class="indicador-estado indicador-estado-@(_detalle.Cuenta.Activa ? "timbrada" : "borrador")">
-                        @(_detalle.Cuenta.Activa ? "Cuenta activa" : "Cuenta inactiva")
+                        @(_detalle.Cuenta.Activa ? "Activa" : "Inactiva")
                     </span>
-                    <span>Cliente desde @_detalle.Cuenta.FechaAltaUtc.ToLocalTime().ToString("dd MMM yyyy")</span>
+                    <span>Alta @_detalle.Cuenta.FechaAltaUtc.ToLocalTime().ToString("dd MMM yyyy")</span>
+                    @if (!string.IsNullOrWhiteSpace(_detalle.NombreTitular))
+                    {
+                        <span class="ficha-titular-dato">
+                            <MudIcon Icon="@Icons.Material.Filled.Person" Size="Size.Small" />
+                            Titular: <strong>@_detalle.NombreTitular</strong>
+                        </span>
+                    }
                 </div>
                 <span class="ficha-cuenta-etiqueta">Correo de contacto</span>
                 <a href="@($"mailto:{_detalle.Cuenta.CorreoContacto}")">@_detalle.Cuenta.CorreoContacto</a>
@@ -55,7 +67,7 @@ else
                                StartIcon="@Icons.Material.Filled.Tune"
                                Disabled="@_trabajando"
                                OnClick="EditarLimites">
-                        Editar límites
+                        Límites
                     </MudButton>
                 }
                 @if (Sesion.TienePermiso(PoliticasDelPanel.EditarContactoCuentas))
@@ -64,40 +76,41 @@ else
                                StartIcon="@Icons.Material.Filled.Edit"
                                Disabled="@_trabajando"
                                OnClick="EditarCorreoDeContacto">
-                        Editar contacto
+                        Contacto
                     </MudButton>
-                }
-                else if (PuedeCambiarContrasenaDelTitular)
-                {
-                    <MudButton Variant="Variant.Outlined" Disabled="@_trabajando"
-                               OnClick="CambiarContrasenaDelTitular">Cambiar contraseña del titular</MudButton>
                 }
             </div>
         </div>
 
         <dl class="ficha-cuenta-metricas">
-            <div>
-                <dt>Empresas</dt>
+            <div class="ficha-metrica-tarjeta">
+                <dt><MudIcon Icon="@Icons.Material.Filled.Apartment" Size="Size.Small" /> Empresas</dt>
                 <dd class="cifra-tabular">
-                    @_detalle.Limites.Empresas.ToString("N0") de @_detalle.Limites.LimiteDeEmpresas.ToString("N0")
+                    @_detalle.Limites.Empresas.ToString("N0") <span class="ficha-metrica-tope">/ @_detalle.Limites.LimiteDeEmpresas.ToString("N0")</span>
                 </dd>
+                <div class="ficha-metrica-barra" aria-hidden="true">
+                    <span style="width: @PorcentajeUso(_detalle.Limites.Empresas, _detalle.Limites.LimiteDeEmpresas)%"></span>
+                </div>
             </div>
-            <div>
-                <dt>Usuarios activos</dt>
+            <div class="ficha-metrica-tarjeta">
+                <dt><MudIcon Icon="@Icons.Material.Filled.Group" Size="Size.Small" /> Usuarios activos</dt>
                 <dd class="cifra-tabular">
-                    @_detalle.Limites.UsuariosActivos.ToString("N0") de @_detalle.Limites.LimiteDeUsuarios.ToString("N0")
+                    @_detalle.Limites.UsuariosActivos.ToString("N0") <span class="ficha-metrica-tope">/ @_detalle.Limites.LimiteDeUsuarios.ToString("N0")</span>
                 </dd>
+                <div class="ficha-metrica-barra" aria-hidden="true">
+                    <span style="width: @PorcentajeUso(_detalle.Limites.UsuariosActivos, _detalle.Limites.LimiteDeUsuarios)%"></span>
+                </div>
             </div>
-            <div>
-                <dt>Timbres disponibles</dt>
+            <div class="ficha-metrica-tarjeta">
+                <dt><MudIcon Icon="@Icons.Material.Filled.ConfirmationNumber" Size="Size.Small" /> Timbres disponibles</dt>
                 <dd class="cifra-tabular">@_detalle.Cuenta.TimbresDisponibles.ToString("N0")</dd>
             </div>
-            <div>
-                <dt>Timbres reservados</dt>
+            <div class="ficha-metrica-tarjeta">
+                <dt><MudIcon Icon="@Icons.Material.Filled.HourglassTop" Size="Size.Small" /> Timbres reservados</dt>
                 <dd class="cifra-tabular">@_detalle.TimbresReservados.ToString("N0")</dd>
             </div>
-            <div>
-                <dt>Membresía</dt>
+            <div class="ficha-metrica-tarjeta">
+                <dt><MudIcon Icon="@Icons.Material.Filled.CardMembership" Size="Size.Small" /> Membresía</dt>
                 <dd>
                     <span class="indicador-estado indicador-estado-@EstiloDeMembresia(_detalle.Cuenta)">
                         @TextoDeMembresia()
@@ -140,14 +153,12 @@ else
 
     <MudTabs Elevation="0"
              ApplyEffectsToContainer="true"
+             KeepPanelsAlive="true"
              Class="pestanas-ficha-operador">
-        <MudTabPanel Text="@($"Empresas ({_detalle.Empresas.Count})")">
+        <MudTabPanel Text="@($"Empresas ({_detalle.Empresas.Count})")" Icon="@Icons.Material.Filled.Apartment">
             <div class="pestana-ficha-contenido">
                 <div class="cabecera-seccion-ficha">
-                    <div>
-                        <h2>Empresas emisoras</h2>
-                        <p>Identidad fiscal y estado de cada empresa. El saldo de timbres es de la cuenta.</p>
-                    </div>
+                    <h2>Empresas emisoras</h2>
                 </div>
 
                 <MudTable T="EmpresaDeCuentaDto"
@@ -156,7 +167,8 @@ else
                           Hover="true"
                           Elevation="0"
                           Breakpoint="Breakpoint.Sm"
-                          Class="tabla-ficha-operador">
+                          OnRowClick="AlSeleccionarEmpresa"
+                          Class="tabla-ficha-operador filas-previsualizables">
                     <HeaderContent>
                         <MudTh>RFC</MudTh>
                         <MudTh>Nombre fiscal</MudTh>
@@ -189,8 +201,8 @@ else
                             <a href="@($"/operador/cuentas/{Id}/empresas/{context.Id}")"
                                class="accion-ir-ficha"
                                aria-label="@($"Abrir la empresa {context.NombreFiscal}")">
-                                <span>Ver detalle</span>
-                                <MudIcon Icon="@Icons.Material.Filled.ArrowForward" Size="Size.Small" />
+                                <span>Abrir</span>
+                                <MudIcon Icon="@Icons.Material.Filled.ChevronRight" Size="Size.Small" />
                             </a>
                         </MudTd>
                     </RowTemplate>
@@ -203,12 +215,12 @@ else
             </div>
         </MudTabPanel>
 
-        <MudTabPanel Text="@($"Paquetes exclusivos ({_detalle.PaquetesPersonalizados.Count})")">
+        <MudTabPanel Text="@($"Paquetes exclusivos ({_detalle.PaquetesPersonalizados.Count})")" Icon="@Icons.Material.Filled.Inventory2">
             <div class="pestana-ficha-contenido">
                 <div class="cabecera-seccion-ficha">
                     <div>
                         <h2>Paquetes exclusivos</h2>
-                        <p>Solo los ve esta cuenta, y cualquiera de sus empresas puede comprarlos.</p>
+                        <p>Visibles solo para las empresas de esta cuenta.</p>
                     </div>
                     @if (Sesion.TienePermiso(PoliticasDelPanel.CrearPaquetesExclusivos))
                     {
@@ -229,6 +241,7 @@ else
                     <HeaderContent>
                         <MudTh>Paquete</MudTh>
                         <MudTh class="cifra-tabular">Timbres</MudTh>
+                        <MudTh class="cifra-tabular">Por timbre</MudTh>
                         <MudTh class="cifra-tabular">Total con IVA</MudTh>
                         <MudTh>Vigencia</MudTh>
                         <MudTh>Estado</MudTh>
@@ -243,6 +256,9 @@ else
                             }
                         </MudTd>
                         <MudTd DataLabel="Timbres" Class="cifra-tabular">@context.CantidadTimbres.ToString("N0")</MudTd>
+                        <MudTd DataLabel="Por timbre" Class="cifra-tabular">
+                            @((context.CantidadTimbres > 0 ? context.PrecioTotal / context.CantidadTimbres : 0m).ToString("C4"))
+                        </MudTd>
                         <MudTd DataLabel="Total con IVA" Class="cifra-tabular">@context.PrecioTotal.ToString("C2")</MudTd>
                         <MudTd DataLabel="Vigencia">@context.VigenciaMeses meses</MudTd>
                         <MudTd DataLabel="Estado">
@@ -281,13 +297,10 @@ else
             </div>
         </MudTabPanel>
 
-        <MudTabPanel Text="@($"Membresía ({_membresias.Count})")">
+        <MudTabPanel Text="@($"Membresía ({_membresias.Count})")" Icon="@Icons.Material.Filled.CardMembership">
             <div class="pestana-ficha-contenido">
                 <div class="cabecera-seccion-ficha">
-                    <div>
-                        <h2>Historial de membresía</h2>
-                        <p>Vigencia actual y periodos registrados para esta cuenta.</p>
-                    </div>
+                    <h2>Historial de membresía</h2>
                     @if (Sesion.TienePermiso(PoliticasDelPanel.GestionarMembresias))
                     {
                         <MudButton Variant="Variant.Filled"
@@ -378,6 +391,15 @@ else
     private int EmpresasConPendientes =>
         _detalle?.Empresas.Count(empresa => empresa.ComprasPendientes > 0) ?? 0;
 
+    private void AlSeleccionarEmpresa(TableRowClickEventArgs<EmpresaDeCuentaDto> evento)
+    {
+        if (evento.Item is { } empresa)
+            Navegacion.NavigateTo($"/operador/cuentas/{Id}/empresas/{empresa.Id}");
+    }
+
+    private static int PorcentajeUso(int actual, int limite)
+        => limite <= 0 ? 0 : Math.Clamp((int)Math.Round(actual * 100.0 / limite), 0, 100);
+
     protected override async Task OnParametersSetAsync()
     {
         _cargando = true;
@@ -397,11 +419,11 @@ else
 
         var parametros = new DialogParameters<DialogoDeMembresia>
         {
-            { x => x.Mensaje, $"Membresía de «{_detalle.Cuenta.Nombre}». " +
-                              "Si ya tenía una activa, quedará sustituida por esta." }
+            { x => x.Mensaje, $"Membresía de «{_detalle.Cuenta.Nombre}» (reemplaza la activa si existe)." }
         };
 
-        var referencia = await Dialogos.ShowAsync<DialogoDeMembresia>("Registrar membresía", parametros);
+        var referencia = await Dialogos.ShowAsync<DialogoDeMembresia>("Registrar membresía", parametros,
+            new DialogOptions { MaxWidth = MaxWidth.Small, FullWidth = true });
         var resultado = await referencia.Result;
 
         if (resultado is not { Canceled: false, Data: ValueTuple<DateTime, DateTime> rango }) return;
@@ -449,7 +471,8 @@ else
             { x => x.Limites, _detalle.Limites }
         };
 
-        var referencia = await Dialogos.ShowAsync<DialogoDeLimitesDeCuenta>("Editar límites", parametros);
+        var referencia = await Dialogos.ShowAsync<DialogoDeLimitesDeCuenta>("Editar límites", parametros,
+            new DialogOptions { MaxWidth = MaxWidth.Small, FullWidth = true });
         var resultado = await referencia.Result;
 
         if (resultado is not { Canceled: false, Data: PeticionCambiarLimitesDeCuenta peticion }) return;
@@ -473,7 +496,8 @@ else
             { x => x.NombreCuenta, _detalle.Cuenta.Nombre }
         };
 
-        var referencia = await Dialogos.ShowAsync<DialogoDePaquetePersonalizado>("Crear paquete exclusivo", parametros);
+        var referencia = await Dialogos.ShowAsync<DialogoDePaquetePersonalizado>("Crear paquete exclusivo", parametros,
+            new DialogOptions { MaxWidth = MaxWidth.Medium, FullWidth = true });
         var resultado = await referencia.Result;
 
         if (resultado is not { Canceled: false, Data: PeticionGuardarPaquetePersonalizado peticion }) return;
@@ -495,7 +519,8 @@ else
             { x => x.Paquete, paquete }
         };
 
-        var referencia = await Dialogos.ShowAsync<DialogoDePaquetePersonalizado>("Editar paquete exclusivo", parametros);
+        var referencia = await Dialogos.ShowAsync<DialogoDePaquetePersonalizado>("Editar paquete exclusivo", parametros,
+            new DialogOptions { MaxWidth = MaxWidth.Medium, FullWidth = true });
         var resultado = await referencia.Result;
 
         if (resultado is not { Canceled: false, Data: PeticionGuardarPaquetePersonalizado peticion }) return;
@@ -578,14 +603,14 @@ else
 
         var parametros = new DialogParameters<DialogoDeCambioDeCorreo>
         {
-            { x => x.Mensaje, $"Correo de contacto de «{_detalle.Cuenta.Nombre}». " +
-                              "No cambia el acceso de ningún usuario." },
+            { x => x.Mensaje, $"Correo de contacto de «{_detalle.Cuenta.Nombre}»." },
             { x => x.TextoConfirmar, "Guardar correo" },
             { x => x.CorreoActual, _detalle.Cuenta.CorreoContacto },
             { x => x.PermiteCambiarContrasena, PuedeCambiarContrasenaDelTitular }
         };
 
-        var referencia = await Dialogos.ShowAsync<DialogoDeCambioDeCorreo>("Editar correo de contacto", parametros);
+        var referencia = await Dialogos.ShowAsync<DialogoDeCambioDeCorreo>("Editar correo de contacto", parametros,
+            new DialogOptions { MaxWidth = MaxWidth.Small, FullWidth = true });
         var resultado = await referencia.Result;
 
         if (resultado is { Canceled: false, Data: true })

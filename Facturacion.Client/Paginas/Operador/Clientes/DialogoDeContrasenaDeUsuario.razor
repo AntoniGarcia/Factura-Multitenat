@@ -1,28 +1,29 @@
 @using MudBlazor
 
-<MudDialog>
+<MudDialog Class="dialogo-cuenta-operador">
     <DialogContent>
-        <p class="dialogo-cancelacion-aviso">
-            La nueva contraseña cerrará las sesiones de <strong>@NombreUsuario</strong>.
-            Compártela por un medio seguro.
+        <p class="seccion-ayuda">
+            Al guardar se cerrarán las sesiones activas de <strong>@NombreUsuario</strong>.
         </p>
 
-        <div class="rejilla-campos">
-            <MudTextField @bind-Value="_nueva" Label="Contraseña nueva para el usuario"
+        <section class="formulario-catalogo-seccion formulario-catalogo-seccion-ancha">
+        <div class="operador-dialogo-campos operador-dialogo-campos-dos">
+            <MudTextField @bind-Value="_nueva" Label="Contraseña nueva"
                           InputType="@(_ver ? InputType.Text : InputType.Password)"
                           Adornment="Adornment.End"
                           AdornmentIcon="@(_ver ? Icons.Material.Filled.VisibilityOff : Icons.Material.Filled.Visibility)"
                           OnAdornmentClick="@(() => _ver = !_ver)"
                           Immediate="true" MaxLength="128"
-                          HelperText="Al menos 12 caracteres." />
+                          HelperText="Mínimo 12 caracteres." />
 
-            <MudTextField @bind-Value="_confirmacion" Label="Repetir contraseña"
+            <MudTextField @bind-Value="_confirmacion" Label="Confirmar contraseña"
                           InputType="InputType.Password" Immediate="true" MaxLength="128"
                           Error="@(_confirmacion.Length > 0 && _nueva != _confirmacion)" ErrorText="Las contraseñas no coinciden." />
         </div>
+        </section>
     </DialogContent>
     <DialogActions>
-        <MudButton OnClick="@(() => Dialogo.Cancel())">Cancelar</MudButton>
+        <MudButton Variant="Variant.Text" OnClick="@(() => Dialogo.Cancel())">Cancelar</MudButton>
         <MudButton Variant="Variant.Filled" Color="Color.Error" Disabled="@(!SePuedeConfirmar)"
                    OnClick="Confirmar">
             Restablecer

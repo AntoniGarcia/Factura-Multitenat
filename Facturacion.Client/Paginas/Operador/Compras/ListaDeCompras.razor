@@ -13,7 +13,7 @@
 
 <PageTitle>Compras y facturas</PageTitle>
 <TituloDePagina Texto="Compras y facturas" />
-<p class="seccion-ayuda">Confirma los pagos recibidos para abonar timbres a la cuenta. En las compras pagadas puedes preparar y revisar su factura.</p>
+<p class="seccion-ayuda">Confirma pagos para abonar timbres y prepara su factura.</p>
 
 <PanelErrores Problema="_error" />
 
@@ -72,6 +72,9 @@
         public const string Cancelada = "cancelada";
     }
 
+    [SupplyParameterFromQuery(Name = "estado")]
+    public string? EstadoEnRuta { get; set; }
+
     private TablaDatos<CompraDeOperadorDto>? _tabla;
     private DetalleProblema? _error;
     private string? _aviso;
@@ -79,14 +82,27 @@
     private bool _trabajando;
     private Guid? _previsualizando;
 
-    // Arranca en lo pendiente, que es a lo que se entra a esta pantalla; para eso existe el
-    // índice filtrado por ese estado en la base.
+    // Arranca en lo pendiente, que es a lo que se entra a esta pantalla; salvo que venga ?estado= en la URL.
     private string? _estado = Estados.Pendiente;
     private string _texto = string.Empty;
 
     private IReadOnlyList<ColumnaDeTabla<CompraDeOperadorDto>> _columnas = [];
 
-    protected override void OnInitialized() => _columnas =
+    protected override void OnInitialized()
+    {
+        if (!string.IsNullOrWhiteSpace(EstadoEnRuta))
+        {
+            _estado = EstadoEnRuta.Trim().ToLowerInvariant() switch
+            {
+                Estados.Pagada => Estados.Pagada,
+                Estados.Cancelada => Estados.Cancelada,
+                Estados.Pendiente => Estados.Pendiente,
+                "todas" => null,
+                _ => _estado
+            };
+        }
+
+        _columnas =
     [
         new("Fecha", c => @<span class="cifra-tabular">@c.CreadaUtc.ToLocalTime().ToString("dd/MM/yyyy HH:mm")</span>),
         new("Empresa", c => @<div>
@@ -141,6 +157,7 @@
                           }
                       </div>)
     ];
+    }
 
     private async Task<ResultadoDePagina<CompraDeOperadorDto>> CargarAsync(
         PeticionDePagina peticion, CancellationToken ct)

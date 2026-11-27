@@ -7,45 +7,60 @@
 @inject ServicioDeClientesDePlataforma Clientes
 @inject NavigationManager Navegacion
 
-<PageTitle>Clientes</PageTitle>
-<TituloDePagina Texto="Clientes" />
+<PageTitle>Cuentas</PageTitle>
+<TituloDePagina Texto="Cuentas" />
 
-<div class="filtros-documentos">
-    <MudTextField T="string" Value="_texto" ValueChanged="AlBuscar" Label="Buscar"
+<section class="cuentas-barra-filtros" aria-label="Buscar cuentas">
+    <MudTextField T="string" Value="_texto" ValueChanged="AlBuscar" Label="Buscar cuenta"
                   Placeholder="Cuenta, correo, empresa o RFC" Immediate="false" DebounceInterval="300"
+                  Clearable="true" Variant="Variant.Outlined" Margin="Margin.Dense"
                   Adornment="Adornment.Start" AdornmentIcon="@Icons.Material.Filled.Search" />
-</div>
+    @if (_totalCuentas is { } total)
+    {
+        <span class="cuentas-conteo cifra-tabular">@total @(total == 1 ? "cuenta" : "cuentas")</span>
+    }
+</section>
 
-<TablaDatos T="CuentaEnListaDto"
-            @ref="_tabla"
-            Columnas="_columnas"
-            CargarPagina="CargarAsync"
-            TextoEntidad="cuentas"
-            TextoSinDatos="No hay cuentas que coincidan."
-            AlHacerClic="IrALaFichaDeCuenta" />
+<div class="cuentas-tabla-contenedor">
+    <TablaDatos T="CuentaEnListaDto"
+                @ref="_tabla"
+                Columnas="_columnas"
+                CargarPagina="CargarAsync"
+                TextoEntidad="cuentas"
+                TextoSinDatos="No hay cuentas que coincidan."
+                AlHacerClic="IrALaFichaDeCuenta" />
+</div>
 
 @code {
     private TablaDatos<CuentaEnListaDto>? _tabla;
     private string _texto = string.Empty;
+    private int? _totalCuentas;
 
     private IReadOnlyList<ColumnaDeTabla<CuentaEnListaDto>> _columnas = [];
 
     protected override void OnInitialized() => _columnas =
     [
-        new("Cuenta", c => @<div>
-                                <div class="lista-cuenta-nombre">@c.Nombre @IndicadorDePendientes(c)</div>
+        new("Cuenta", c => @<div class="cuenta-celda-identidad">
+                                <div class="lista-cuenta-nombre">
+                                    <strong>@c.Nombre</strong>
+                                    @IndicadorDePendientes(c)
+                                </div>
                                 <div class="texto-secundario">@c.CorreoContacto</div>
                             </div>),
         new("Empresas", c => @<span class="cifra-tabular">@c.Empresas</span>, Tabular: true),
         new("Usuarios", c => @<span class="cifra-tabular">@c.Usuarios</span>, Tabular: true),
-        new("Timbres", c => @<span class="cifra-tabular">@c.TimbresDisponibles.ToString("N0")</span>, Tabular: true),
+        new("Timbres", c => @<span class="cifra-tabular cuenta-celda-timbres">@c.TimbresDisponibles.ToString("N0")</span>, Tabular: true),
         new("Membresía", c => @<span class="indicador-estado indicador-estado-@EstiloDeMembresia(c)">
                                    @TextoDeMembresia(c)
                                </span>),
         new("Alta", c => @<span class="cifra-tabular">@c.FechaAltaUtc.ToLocalTime().ToString("dd/MM/yyyy")</span>),
         new("Estado", c => @<span class="indicador-estado indicador-estado-@(c.Activa ? "timbrada" : "borrador")">
                                 @(c.Activa ? "Activa" : "Inactiva")
-                            </span>)
+                            </span>),
+        new("", c => @<span class="accion-ir-ficha">
+                          <span>Abrir</span>
+                          <MudIcon Icon="@Icons.Material.Filled.ChevronRight" Size="Size.Small" />
+                      </span>)
     ];
 
     private void IrALaFichaDeCuenta(CuentaEnListaDto cuenta)
@@ -69,6 +84,8 @@
         PeticionDePagina peticion, CancellationToken ct)
     {
         var pagina = await Clientes.ListarAsync(_texto, peticion.Pagina, peticion.TamanoPagina, ct);
+        _totalCuentas = pagina.Total;
+        StateHasChanged();
 
         return new ResultadoDePagina<CuentaEnListaDto>(pagina.Elementos, pagina.Total);
     }
@@ -95,8 +112,6 @@
             : "Activa",
         "vencida" => "Vencida",
         "cancelada" => "Cancelada",
-        // Una cuenta sin ningún registro de membresía nunca la ha tenido; no es lo mismo que
-        // tenerla vencida y conviene que se distingan de un vistazo.
         _ => "Sin membresía"
     };
 }

@@ -69,14 +69,15 @@ public sealed class ServicioDeUsuariosDePlataforma(
                     .Select(c => c.Nombre)
                     .FirstOrDefault() ?? string.Empty,
                 Empresas = baseDeDatos.UsuariosEmpresas.Count(ue => ue.UsuarioId == u.Id),
-                u.CreadoPorAdministrador
+                u.CreadoPorAdministrador,
+                u.EsTitular
             })
             .ToListAsync(ct);
 
         var elementos = crudos
             .Select(u => new UsuarioDePlataformaDto(
                 u.Id, u.Nombre, u.Correo, u.Activo, u.FechaAltaUtc,
-                u.CuentaId, u.CuentaNombre, u.Empresas, u.CreadoPorAdministrador))
+                u.CuentaId, u.CuentaNombre, u.Empresas, u.CreadoPorAdministrador, u.EsTitular))
             .ToList();
 
         return new PaginaDeUsuariosDePlataforma(elementos, total);

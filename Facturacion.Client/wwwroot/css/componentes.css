@@ -1609,26 +1609,134 @@
     text-decoration: underline;
 }
 
+.ficha-migas {
+    display: inline-flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 0.375rem;
+    margin-bottom: 0.875rem;
+    color: var(--texto-suave);
+    font-size: 0.8125rem;
+}
+
+.ficha-migas .ficha-operador-volver {
+    margin-bottom: 0;
+}
+
+.cuentas-barra-filtros {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 0.75rem 1rem;
+    margin-bottom: 1rem;
+    padding: 0.75rem 1rem;
+    background: var(--superficie);
+    border: 1px solid var(--borde);
+    border-radius: var(--radio);
+}
+
+.cuentas-barra-filtros > .mud-input-control {
+    flex: 1 1 18rem;
+    max-width: 28rem;
+}
+
+.cuentas-conteo {
+    padding: 0.25rem 0.625rem;
+    border-radius: var(--radio);
+    background: var(--fondo);
+    border: 1px solid var(--borde);
+    color: var(--texto-suave);
+    font-size: 0.8125rem;
+}
+
+.cuentas-tabla-contenedor .mud-table-row {
+    cursor: pointer;
+}
+
+.cuenta-celda-timbres {
+    font-weight: 500;
+}
+
+.ficha-titular-dato {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.25rem;
+    color: var(--texto);
+}
+
+.ficha-empresa-datos-fiscales {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.75rem 1.75rem;
+}
+
+.ficha-empresa-datos-fiscales > div {
+    display: flex;
+    flex-direction: column;
+}
+
 .ficha-cuenta-metricas {
     display: grid;
-    grid-template-columns: repeat(4, minmax(0, 1fr));
+    grid-template-columns: repeat(auto-fit, minmax(11rem, 1fr));
+    gap: 1px;
     margin: 0;
+    background: var(--borde);
     border-top: 1px solid var(--borde);
 }
 
 .ficha-cuenta-metricas > div {
     min-width: 0;
-    padding: 0.875rem 1.25rem;
+    padding: 0.875rem 1.125rem;
+    background: var(--superficie);
 }
 
 .ficha-cuenta-metricas > div + div {
-    border-left: 1px solid var(--borde);
+    border-left: 0;
 }
 
 .ficha-cuenta-metricas dt {
-    margin-bottom: 0.25rem;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.375rem;
+    margin-bottom: 0.375rem;
     color: var(--texto-suave);
     font-size: var(--etiqueta-tam);
+}
+
+.ficha-cuenta-metricas dt .mud-icon-root {
+    font-size: 1rem;
+    color: var(--acento-texto);
+}
+
+.ficha-metrica-tope {
+    font-size: 0.875rem;
+    font-weight: 400;
+    color: var(--texto-suave);
+}
+
+.ficha-metrica-barra {
+    height: 4px;
+    margin-top: 0.5rem;
+    border-radius: 999px;
+    background: var(--fondo);
+    overflow: hidden;
+}
+
+.ficha-metrica-barra > span {
+    display: block;
+    height: 100%;
+    border-radius: inherit;
+    background: var(--acento);
+}
+
+.ficha-modulos-chips {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.375rem;
+    font-size: 0.8125rem !important;
+    font-weight: 400 !important;
 }
 
 .ficha-cuenta-metricas dd {
@@ -2231,4 +2339,37 @@
    en vez de cortarlas con puntos suspensivos. */
 .selector-de-comprobante .tablero-acceso small {
     white-space: normal;
+}
+
+.tablero-pago-clicable {
+    cursor: pointer;
+}
+
+.tablero-pago-clicable:focus-visible {
+    outline: 2px solid var(--acento);
+    outline-offset: -2px;
+}
+
+.usuario-plataforma-nombre-linea {
+    display: inline-flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 0.375rem;
+}
+
+.usuario-nombre-titular {
+    color: var(--acento-texto);
+    font-weight: 600;
+}
+
+.etiqueta-titular {
+    display: inline-flex;
+    align-items: center;
+    padding: 0.0625rem 0.4375rem;
+    border-radius: var(--radio);
+    background: rgba(var(--acento-rgb), 0.14);
+    color: var(--acento-texto);
+    font-size: 0.75rem;
+    font-weight: var(--peso-etiqueta);
+    line-height: 1.4;
 }

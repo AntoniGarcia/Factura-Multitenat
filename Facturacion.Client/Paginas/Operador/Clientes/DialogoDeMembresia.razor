@@ -1,32 +1,32 @@
 @using MudBlazor
 
-@*
-    Alta o renovación de la suscripción de una cuenta. Propone un año desde hoy, que es la
-    vigencia habitual, pero deja mover las dos fechas: una renovación a mitad de periodo o una
-    prórroga corta son casos reales.
-
-    Devuelve el par de fechas; quien lo abre decide sobre qué cuenta se aplica.
-*@
-
-<MudDialog>
+<MudDialog Class="dialogo-cuenta-operador">
     <DialogContent>
-        <p class="dialogo-cancelacion-aviso">@Mensaje</p>
+        @if (!string.IsNullOrWhiteSpace(Mensaje))
+        {
+            <p class="seccion-ayuda">@Mensaje</p>
+        }
 
-        <section class="operador-dialogo-bloque" aria-labelledby="cuenta-membresia-vigencia">
-        <h2 id="cuenta-membresia-vigencia" class="seccion-titulo">Vigencia de la membresía</h2>
-        <div class="operador-dialogo-campos operador-dialogo-campos-dos">
-            <MudDatePicker @bind-Date="_inicio" Label="Vigente desde" />
-            <MudDatePicker @bind-Date="_fin" Label="Vigente hasta" />
-        </div>
+        <section class="formulario-catalogo-seccion formulario-catalogo-seccion-ancha" aria-labelledby="cuenta-membresia-vigencia">
+            <h2 id="cuenta-membresia-vigencia" class="seccion-titulo">Vigencia de la membresía</h2>
+            <div class="membresia-atajos" role="group" aria-label="Duración rápida">
+                <MudButton Size="Size.Small" Variant="Variant.Outlined" OnClick="@(() => AplicarMeses(6))">6 meses</MudButton>
+                <MudButton Size="Size.Small" Variant="Variant.Outlined" OnClick="@(() => AplicarMeses(12))">1 año</MudButton>
+                <MudButton Size="Size.Small" Variant="Variant.Outlined" OnClick="@(() => AplicarMeses(24))">2 años</MudButton>
+            </div>
+            <div class="operador-dialogo-campos operador-dialogo-campos-dos">
+                <MudDatePicker @bind-Date="_inicio" Label="Vigente desde" />
+                <MudDatePicker @bind-Date="_fin" Label="Vigente hasta" />
+            </div>
         </section>
 
         @if (!EsRangoValido)
         {
-            <p class="texto-error">La fecha de fin tiene que ser posterior a la de inicio.</p>
+            <p class="texto-error">La fecha de fin debe ser posterior a la de inicio.</p>
         }
     </DialogContent>
     <DialogActions>
-        <MudButton OnClick="@(() => Dialogo.Cancel())">Cancelar</MudButton>
+        <MudButton Variant="Variant.Text" OnClick="@(() => Dialogo.Cancel())">Cancelar</MudButton>
         <MudButton Variant="Variant.Filled" Color="Color.Primary" Disabled="@(!EsRangoValido)"
                    OnClick="Confirmar">
             Registrar membresía
@@ -46,12 +46,18 @@
 
     private bool EsRangoValido => _inicio is { } desde && _fin is { } hasta && hasta > desde;
 
+    private void AplicarMeses(int meses)
+    {
+        var baseFecha = _inicio ?? DateTime.Today;
+        _inicio = baseFecha;
+        _fin = baseFecha.AddMonths(meses);
+    }
+
     private void Confirmar()
     {
         if (!EsRangoValido) return;
 
-        // Se manda como UTC: la base guarda todo en UTC y el selector entrega la fecha local
-        // a medianoche. Sin especificarlo, una vigencia podría desplazarse un día.
+        // Las fechas se envían en UTC exacto a medianoche para evitar corrimientos de día.
         var desde = DateTime.SpecifyKind(_inicio!.Value, DateTimeKind.Utc);
         var hasta = DateTime.SpecifyKind(_fin!.Value, DateTimeKind.Utc);
 

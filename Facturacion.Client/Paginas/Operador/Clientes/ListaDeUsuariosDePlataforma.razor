@@ -46,7 +46,13 @@
     protected override void OnInitialized() => _columnas =
     [
         new("Usuario", u => @<div>
-                                 <div>@u.Nombre</div>
+                                 <div class="usuario-plataforma-nombre-linea">
+                                     <span class="@(u.EsTitular ? "usuario-nombre-titular" : null)">@u.Nombre</span>
+                                     @if (u.EsTitular)
+                                     {
+                                         <span class="etiqueta-titular">Titular</span>
+                                     }
+                                 </div>
                                  <div class="texto-secundario">@u.Correo</div>
                              </div>),
         new("Cuenta", u => @<span>@u.CuentaNombre</span>),

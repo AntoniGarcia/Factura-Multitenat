@@ -4,12 +4,16 @@
 @using System.Globalization
 @using Facturacion.Client.Componentes.Comunes
 @using Facturacion.Client.Servicios.Operador
+@using Facturacion.Shared.Comun
 @using Facturacion.Shared.Operador
 @inject ServicioDeTableroDeOperador Tablero
+@inject ServicioDeComprasDeOperador Compras
 @inject ServicioDeSesionDeOperador Sesion
+@inject IDialogService Dialogos
 
 <PageTitle>Resumen · Panel del operador</PageTitle>
 <TituloDePagina Texto="Resumen" />
+<PanelErrores Problema="_error" />
 
 @if (_datos is null)
 {
@@ -224,12 +228,13 @@ else
                     <h2 id="titulo-pagos" class="panel-titulo">Pagos acreditados recientemente</h2>
                     @if (Sesion.TienePermiso(PoliticasDelPanel.VerCompras))
                     {
-                        <MudButton Href="/operador/compras" Variant="Variant.Text" Size="Size.Small">
+                        <MudButton Href="/operador/compras?estado=pagada" Variant="Variant.Text" Size="Size.Small">
                             Ver todos
                         </MudButton>
                     }
                 </header>
                 <div class="panel-cuerpo panel-cuerpo-tabla">
+                    @{ var puedeVerComprobante = Sesion.TienePermiso(PoliticasDelPanel.VerCompras); }
                     <MudSimpleTable Dense="true" Hover="true">
                         <thead>
                             <tr>
@@ -238,12 +243,19 @@ else
                                 <th>Paquete</th>
                                 <th class="cifra-tabular">Timbres</th>
                                 <th class="cifra-tabular">Total</th>
+                                @if (puedeVerComprobante)
+                                {
+                                    <th></th>
+                                }
                             </tr>
                         </thead>
                         <tbody>
                             @foreach (var compra in _datos.UltimasAcreditadas)
                             {
-                                <tr>
+                                <tr class="@(puedeVerComprobante ? "tablero-pago-clicable" : null)"
+                                    tabindex="@(puedeVerComprobante ? "0" : null)"
+                                    @onclick="@(() => AbrirComprobanteAsync(compra))"
+                                    @onkeydown="@(e => AlTeclaPagoAsync(e, compra))">
                                     <td class="cifra-tabular">
                                         @((compra.AcreditadaUtc ?? compra.CreadaUtc).ToLocalTime().ToString("dd/MM/yyyy"))
                                     </td>
@@ -251,12 +263,22 @@ else
                                     <td>@compra.NombrePaquete</td>
                                     <td class="cifra-tabular">@compra.CantidadTimbres.ToString("N0")</td>
                                     <td class="cifra-tabular">@compra.PrecioTotal.ToString("C2")</td>
+                                    @if (puedeVerComprobante)
+                                    {
+                                        <td @onclick:stopPropagation="true">
+                                            <MudButton Size="Size.Small" Variant="Variant.Text"
+                                                       Disabled="@(_previsualizando is not null)"
+                                                       OnClick="@(() => AbrirComprobanteAsync(compra))">
+                                                @(_previsualizando == compra.Id ? "Abriendo…" : "Comprobante")
+                                            </MudButton>
+                                        </td>
+                                    }
                                 </tr>
                             }
                             @if (_datos.UltimasAcreditadas.Count == 0)
                             {
                                 <tr>
-                                    <td colspan="5" class="tabla-datos-estado">
+                                    <td colspan="@(puedeVerComprobante ? 6 : 5)" class="tabla-datos-estado">
                                         Todavía no se ha acreditado ningún pago.
                                     </td>
                                 </tr>
@@ -271,6 +293,8 @@ else
 
 @code {
     private TableroDeOperadorDto? _datos;
+    private DetalleProblema? _error;
+    private Guid? _previsualizando;
 
     private bool HayPendientes =>
         _datos is { } datos &&
@@ -304,6 +328,38 @@ else
     protected override async Task OnInitializedAsync()
     {
         _datos = await Tablero.ObtenerAsync();
+    }
+
+    private Task AlTeclaPagoAsync(KeyboardEventArgs e, CompraDeOperadorDto compra)
+        => e.Key is "Enter" or " " ? AbrirComprobanteAsync(compra) : Task.CompletedTask;
+
+    private async Task AbrirComprobanteAsync(CompraDeOperadorDto compra)
+    {
+        if (!Sesion.TienePermiso(PoliticasDelPanel.VerCompras) || _previsualizando is not null) return;
+
+        _previsualizando = compra.Id;
+        _error = null;
+
+        try
+        {
+            var (archivo, error) = await Compras.ObtenerComprobanteAsync(compra.Id);
+            _error = error;
+            if (archivo is null) return;
+
+            var parametros = new DialogParameters<DialogoDeComprobanteDeCompra>
+            {
+                { x => x.Archivo, archivo }
+            };
+
+            await Dialogos.ShowAsync<DialogoDeComprobanteDeCompra>(
+                $"Comprobante · {compra.EmpresaNombre}",
+                parametros,
+                new DialogOptions { MaxWidth = MaxWidth.ExtraLarge, FullWidth = true });
+        }
+        finally
+        {
+            _previsualizando = null;
+        }
     }
 
     private string EstiloDeAltura(decimal ingreso) =>

@@ -34,23 +34,36 @@ else if (_ficha is null)
 }
 else
 {
-    <a href="@($"/operador/cuentas/{CuentaId}")" class="ficha-operador-volver">
-        <MudIcon Icon="@Icons.Material.Filled.ArrowBack" Size="Size.Small" />
-        Volver a la cuenta
-    </a>
+    <nav class="ficha-migas" aria-label="Navegación">
+        <a href="/operador/cuentas" class="ficha-operador-volver">Cuentas</a>
+        <span aria-hidden="true">/</span>
+        <a href="@($"/operador/cuentas/{CuentaId}")" class="ficha-operador-volver">
+            <MudIcon Icon="@Icons.Material.Filled.ArrowBack" Size="Size.Small" />
+            Cuenta
+        </a>
+        <span aria-hidden="true">/</span>
+        <span>@_ficha.NombreFiscal</span>
+    </nav>
 
     <section class="ficha-cuenta-resumen ficha-empresa-resumen" aria-label="Resumen de la empresa">
         <div class="ficha-empresa-identidad">
             <div>
                 <div class="ficha-cuenta-meta">
                     <span class="indicador-estado indicador-estado-@(_ficha.Activa ? "timbrada" : "borrador")">
-                        @(_ficha.Activa ? "Empresa activa" : "Empresa inactiva")
+                        @(_ficha.Activa ? "Activa" : "Inactiva")
                     </span>
-                    <span>Alta el @_ficha.FechaAltaUtc.ToLocalTime().ToString("dd MMM yyyy")</span>
+                    <span>Alta @_ficha.FechaAltaUtc.ToLocalTime().ToString("dd MMM yyyy")</span>
                 </div>
-                <span class="ficha-cuenta-etiqueta">RFC</span>
-                <strong class="ficha-empresa-rfc">@_ficha.Rfc</strong>
-                <span class="ficha-empresa-regimen">Régimen fiscal @_ficha.RegimenFiscal</span>
+                <div class="ficha-empresa-datos-fiscales">
+                    <div>
+                        <span class="ficha-cuenta-etiqueta">RFC</span>
+                        <strong class="ficha-empresa-rfc">@_ficha.Rfc</strong>
+                    </div>
+                    <div>
+                        <span class="ficha-cuenta-etiqueta">Régimen fiscal</span>
+                        <strong class="cifra-tabular">@_ficha.RegimenFiscal</strong>
+                    </div>
+                </div>
             </div>
 
             <div class="ficha-empresa-acciones">
@@ -65,36 +78,44 @@ else
                 }
                 @if (Sesion.TienePermiso(_ficha.Activa ? PoliticasDelPanel.DesactivarEmpresas : PoliticasDelPanel.ReactivarEmpresas))
                 {
-                <MudButton Variant="Variant.Text"
+                <MudButton Variant="Variant.Outlined"
                            Color="@(_ficha.Activa ? Color.Error : Color.Primary)"
                            StartIcon="@(_ficha.Activa
                                ? Icons.Material.Filled.Block
                                : Icons.Material.Filled.CheckCircle)"
                            Disabled="@_trabajando"
                            OnClick="CambiarActivoEmpresa">
-                    @(_ficha.Activa ? "Desactivar" : "Reactivar empresa")
+                    @(_ficha.Activa ? "Desactivar" : "Reactivar")
                 </MudButton>
                 }
             </div>
         </div>
 
         <dl class="ficha-cuenta-metricas">
-            <div>
-                <dt>Usuarios con acceso</dt>
+            <div class="ficha-metrica-tarjeta">
+                <dt><MudIcon Icon="@Icons.Material.Filled.Group" Size="Size.Small" /> Usuarios con acceso</dt>
                 <dd class="cifra-tabular">@_ficha.Usuarios.Count.ToString("N0")</dd>
             </div>
-            <div>
-                <dt>Pagos pendientes</dt>
+            <div class="ficha-metrica-tarjeta">
+                <dt><MudIcon Icon="@Icons.Material.Filled.PendingActions" Size="Size.Small" /> Pagos pendientes</dt>
                 <dd class="cifra-tabular @(_totalPendientes > 0 ? "metrica-advertencia" : null)">
                     @_totalPendientes.ToString("N0")
                 </dd>
             </div>
+            <div class="ficha-metrica-tarjeta ficha-metrica-modulos">
+                <dt><MudIcon Icon="@Icons.Material.Filled.Extension" Size="Size.Small" /> Módulos contratados</dt>
+                <dd class="ficha-modulos-chips">
+                    @foreach (var modulo in ListaDeLicencias(_ficha.Licencias))
+                    {
+                        <span class="etiqueta-titular">@modulo</span>
+                    }
+                    @if (!ListaDeLicencias(_ficha.Licencias).Any())
+                    {
+                        <span class="texto-secundario">Solo factura estándar</span>
+                    }
+                </dd>
+            </div>
         </dl>
-
-        <div class="aviso-reservado" role="note">
-            <strong>Módulos contratados:</strong>
-            @EtiquetasDeLicencias(_ficha.Licencias)
-        </div>
     </section>
 
     <PanelErrores Problema="_error" />
@@ -109,8 +130,8 @@ else
         <div class="aviso-empresa-inactiva" role="status">
             <MudIcon Icon="@Icons.Material.Filled.Block" Size="Size.Small" />
             <div>
-                <strong>Esta empresa está inactiva</strong>
-                <span>No puede emitir nuevos comprobantes, pero su información permanece intacta.</span>
+                <strong>Empresa inactiva</strong>
+                <span>No emite comprobantes nuevos; su historial se conserva.</span>
             </div>
         </div>
     }
@@ -125,7 +146,7 @@ else
                     @_totalPendientes
                     @(_totalPendientes == 1 ? "pago espera acreditación" : "pagos esperan acreditación")
                 </strong>
-                <span>Confirma que el dinero haya llegado antes de entregar los timbres.</span>
+                <span>Confirma el pago antes de abonar timbres.</span>
             </div>
             <MudButton Variant="Variant.Text"
                        Size="Size.Small"
@@ -138,14 +159,12 @@ else
     <MudTabs @bind-ActivePanelIndex="_pestanaActiva"
              Elevation="0"
              ApplyEffectsToContainer="true"
+             KeepPanelsAlive="true"
              Class="pestanas-ficha-operador">
-        <MudTabPanel Text="@($"Usuarios ({_ficha.Usuarios.Count})")">
+        <MudTabPanel Text="@($"Usuarios ({_ficha.Usuarios.Count})")" Icon="@Icons.Material.Filled.Group">
             <div class="pestana-ficha-contenido">
                 <div class="cabecera-seccion-ficha">
-                    <div>
-                        <h2>Usuarios con acceso</h2>
-                        <p>Personas que pueden entrar y trabajar con esta empresa.</p>
-                    </div>
+                    <h2>Usuarios con acceso</h2>
                 </div>
 
                 <MudTable T="UsuarioDeCuentaDto"
@@ -229,13 +248,10 @@ else
             </div>
         </MudTabPanel>
 
-        <MudTabPanel Text="@($"Compras ({_totalPendientes} pendientes)")">
+        <MudTabPanel Text="@($"Compras ({_totalPendientes} pendientes)")" Icon="@Icons.Material.Filled.ReceiptLong">
             <div class="pestana-ficha-contenido">
                 <div class="cabecera-seccion-ficha cabecera-compras-ficha">
-                    <div>
-                        <h2>Compras de timbres</h2>
-                        <p>Solicitudes que requieren atención e historial acreditado.</p>
-                    </div>
+                    <h2>Compras de timbres</h2>
                     <MudTextField T="string"
                                   Value="_textoCompras"
                                   ValueChanged="AlBuscarCompras"
@@ -600,7 +616,8 @@ else
         };
 
         var referencia = await Dialogos.ShowAsync<DialogoDeLicenciasDeEmpresa>(
-            "Módulos contratados", parametros);
+            "Módulos contratados", parametros,
+            new DialogOptions { MaxWidth = MaxWidth.Small, FullWidth = true });
         var resultado = await referencia.Result;
 
         if (resultado is not { Canceled: false, Data: PeticionActualizarLicenciasDeEmpresa peticion }) return;
@@ -619,14 +636,14 @@ else
         await CargarAsync();
     }
 
-    private static string EtiquetasDeLicencias(LicenciasDeEmpresaDto licencias)
+    private static List<string> ListaDeLicencias(LicenciasDeEmpresaDto licencias)
     {
         var modulos = new List<string>();
         if (licencias.Notarios) modulos.Add("Notaría");
         if (licencias.Obras) modulos.Add("Constructoras");
         if (licencias.Comercio) modulos.Add("Comercio exterior");
         if (licencias.Ine) modulos.Add("Complemento INE");
-        return modulos.Count == 0 ? "Sin módulos adicionales." : string.Join(" · ", modulos);
+        return modulos;
     }
 
     private async Task RestablecerContrasena(UsuarioDeCuentaDto usuario)

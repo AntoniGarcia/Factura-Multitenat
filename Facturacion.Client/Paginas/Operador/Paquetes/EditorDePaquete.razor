@@ -26,19 +26,18 @@ else
                           Immediate="true" />
 
             <MudNumericField T="int"
-                             @bind-Value="_cantidadTimbres"
+                             Value="_cantidadTimbres"
+                             ValueChanged="AlCambiarCantidadTimbres"
                              Label="Cantidad de timbres"
                              Min="1"
                              Immediate="true"
                              Class="cifra-tabular" />
         </div>
         <ClavesSatDelPaquete @bind-ClaveProdServ="_claveProdServ" @bind-ClaveUnidad="_claveUnidad" Deshabilitado="_guardando" />
-        <p class="seccion-ayuda">Se precargan al preparar la factura.</p>
         </section>
 
         <section class="formulario-catalogo-seccion formulario-catalogo-seccion-ancha" aria-labelledby="paquete-precio">
         <h2 id="paquete-precio" class="seccion-titulo">Precio</h2>
-        <p class="seccion-ayuda">El precio total ya incluye IVA.</p>
 
         <div class="catalogo-rejilla catalogo-rejilla-dos">
             <CampoMoneda Valor="_precioTotal"
@@ -47,6 +46,7 @@ else
 
             <CampoMoneda Valor="_precioPorTimbre"
                          ValorCambiado="AlCambiarPrecioUnitario"
+                         Formato="0.00##"
                          Label="Precio por timbre" />
 
         </div>
@@ -166,12 +166,24 @@ else
         _cargando = false;
     }
 
+    private void AlCambiarCantidadTimbres(int valor)
+    {
+        _cantidadTimbres = valor;
+        RecalcularPrecioPorTimbre();
+    }
+
     private void AlCambiarPrecioTotal(decimal valor)
     {
         _precioTotal = valor;
+        RecalcularPrecioPorTimbre();
+    }
 
-        if (_precioPorTimbre == 0 && _cantidadTimbres > 0 && valor > 0)
-            _precioPorTimbre = Math.Round(valor / _cantidadTimbres, 6, MidpointRounding.AwayFromZero);
+    private void RecalcularPrecioPorTimbre()
+    {
+        if (_cantidadTimbres > 0 && _precioTotal > 0)
+            _precioPorTimbre = Math.Round(_precioTotal / _cantidadTimbres, 4, MidpointRounding.AwayFromZero);
+        else if (_precioTotal <= 0)
+            _precioPorTimbre = 0m;
     }
 
     private void AlCambiarPrecioUnitario(decimal valor) => _precioPorTimbre = valor;

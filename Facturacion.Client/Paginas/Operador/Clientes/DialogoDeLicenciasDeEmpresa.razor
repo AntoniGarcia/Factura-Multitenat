@@ -1,24 +1,32 @@
 @using Facturacion.Shared.Operador
 
-<MudDialog>
+<MudDialog Class="dialogo-cuenta-operador">
     <DialogContent>
         <p class="seccion-ayuda">
-            Define los módulos contratados por <strong>@NombreEmpresa</strong>. El cambio queda registrado en la bitácora.
+            Módulos activos para <strong>@NombreEmpresa</strong>.
         </p>
 
-        <section class="operador-dialogo-bloque" aria-labelledby="empresa-modulos-contratados">
+        <section class="formulario-catalogo-seccion formulario-catalogo-seccion-ancha" aria-labelledby="empresa-modulos-contratados">
         <h2 id="empresa-modulos-contratados" class="seccion-titulo">Módulos contratados</h2>
-        <div class="operador-dialogo-campos operador-dialogo-campos-dos">
-            <MudCheckBox @bind-Value="_notarios" Label="Notaría" />
-            <MudCheckBox @bind-Value="_obras" Label="Constructoras" />
-            <MudCheckBox @bind-Value="_comercio" Label="Comercio exterior" />
-            <MudCheckBox @bind-Value="_ine" Label="Complemento INE" />
+        <div class="permisos-acciones">
+            <div class="permiso-casilla @(_notarios ? "marcada" : null)">
+                <MudCheckBox @bind-Value="_notarios" Label="Notaría" Color="Color.Primary" Dense="true" />
+            </div>
+            <div class="permiso-casilla @(_obras ? "marcada" : null)">
+                <MudCheckBox @bind-Value="_obras" Label="Constructoras" Color="Color.Primary" Dense="true" />
+            </div>
+            <div class="permiso-casilla @(_comercio ? "marcada" : null)">
+                <MudCheckBox @bind-Value="_comercio" Label="Comercio exterior" Color="Color.Primary" Dense="true" />
+            </div>
+            <div class="permiso-casilla @(_ine ? "marcada" : null)">
+                <MudCheckBox @bind-Value="_ine" Label="Complemento INE" Color="Color.Primary" Dense="true" />
+            </div>
         </div>
         </section>
 
     </DialogContent>
     <DialogActions>
-        <MudButton OnClick="Cancelar">Cancelar</MudButton>
+        <MudButton Variant="Variant.Text" OnClick="Cancelar">Cancelar</MudButton>
         <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="Guardar">
             Guardar módulos
         </MudButton>

@@ -1,21 +1,21 @@
 @using MudBlazor
 @using System.ComponentModel.DataAnnotations
 
-<MudDialog>
+<MudDialog Class="dialogo-cuenta-operador">
     <DialogContent>
-        <p class="dialogo-cancelacion-aviso">@Mensaje</p>
+        <p class="seccion-ayuda">@Mensaje</p>
 
-        <div class="operador-dialogo-campos">
+        <section class="formulario-catalogo-seccion formulario-catalogo-seccion-ancha">
             <MudTextField @bind-Value="_correoNuevo" Label="Correo nuevo" InputType="InputType.Email"
                           Immediate="true" MaxLength="254" />
-        </div>
+        </section>
     </DialogContent>
     <DialogActions>
-        <MudButton OnClick="@(() => Dialogo.Cancel())">Cancelar</MudButton>
+        <MudButton Variant="Variant.Text" OnClick="@(() => Dialogo.Cancel())">Cancelar</MudButton>
         @if (PermiteCambiarContrasena)
         {
             <MudButton Color="Color.Primary" Variant="Variant.Outlined"
-                       OnClick="@(() => Dialogo.Close(DialogResult.Ok(true)))">Cambiar contraseña del titular</MudButton>
+                       OnClick="@(() => Dialogo.Close(DialogResult.Ok(true)))">Contraseña del titular</MudButton>
         }
         <MudButton Variant="Variant.Filled" Color="Color.Primary" Disabled="@(!SePuedeConfirmar)"
                    OnClick="Confirmar">

@@ -12,7 +12,8 @@ public sealed record UsuarioDePlataformaDto(
     Guid CuentaId,
     string CuentaNombre,
     int Empresas,
-    bool CreadoPorAdministrador);
+    bool CreadoPorAdministrador,
+    bool EsTitular = false);
 
 /// <summary>Una página de usuarios y cuántos hay en total con ese filtro.</summary>
 public sealed record PaginaDeUsuariosDePlataforma(
