@@ -137,8 +137,7 @@ else
         _aviso = null;
         try
         {
-            // Sin cerrar con clic fuera: perdería la contraseña y los permisos capturados.
-            var opciones = new DialogOptions { MaxWidth = MaxWidth.Medium, FullWidth = true, BackdropClick = false };
+            var opciones = new DialogOptions { MaxWidth = MaxWidth.Large, FullWidth = true, BackdropClick = false };
             var referencia = await Dialogos.ShowAsync<DialogoDeUsuario>("Nuevo usuario", opciones);
             var resultado = await referencia.Result;
 
@@ -184,7 +183,7 @@ else
                 { x => x.Usuario, usuario },
                 { x => x.Empresas, _datos.Empresas }
             };
-            var opciones = new DialogOptions { MaxWidth = MaxWidth.Medium, FullWidth = true, BackdropClick = false };
+            var opciones = new DialogOptions { MaxWidth = MaxWidth.Large, FullWidth = true, BackdropClick = false };
             var referencia = await Dialogos.ShowAsync<EditarUsuarioDialogo>("Editar usuario", parametros, opciones);
             if (await referencia.Result is { Canceled: false })
             {

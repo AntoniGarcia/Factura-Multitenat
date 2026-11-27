@@ -19,8 +19,8 @@
                         class="permiso-modulo-mostrar permiso-modulo-navegacion"
                         aria-pressed="@activa"
                         @onclick="@(() => SeleccionarSeccion(seccion))">
-                    <span>@seccion.Ver.Etiqueta</span>
-                    <span class="permiso-modulo-cantidad">
+                    <span class="permiso-modulo-nombre">@seccion.Ver.Etiqueta</span>
+                    <span class="permiso-modulo-cantidad @(AccionesHabilitadas(seccion) > 0 ? "con-activos" : null)">
                         @AccionesHabilitadas(seccion)
                     </span>
                     <MudIcon Icon="@Icons.Material.Filled.ChevronRight" Size="Size.Small" />
@@ -30,30 +30,32 @@
         }
     </div>
 
-    @{ var seccionActiva = SeccionActiva; }
+    @{ var seccionActiva = SeccionActiva; var claves = ClavesDeSeccion(seccionActiva).Where(PuedeDelegar).ToList(); var todosEnSeccion = claves.Count > 0 && claves.All(Value.Contains); }
     <section class="permisos-detalle" aria-labelledby="permisos-detalle-titulo" @key="seccionActiva.Ver.Clave">
         <div class="permisos-detalle-encabezado">
             <h3 id="permisos-detalle-titulo">@seccionActiva.Titulo</h3>
-            <span>@AccionesHabilitadas(seccionActiva) de @seccionActiva.Acciones.Count</span>
+            <div class="permisos-detalle-controles">
+                <span class="permiso-modulo-cantidad @(AccionesHabilitadas(seccionActiva) > 0 ? "con-activos" : null)">
+                    @AccionesHabilitadas(seccionActiva)/@seccionActiva.Acciones.Count
+                </span>
+                <MudButton Size="Size.Small" ButtonType="ButtonType.Button" Variant="Variant.Text" Color="Color.Primary"
+                           Disabled="@(Deshabilitado || claves.Count == 0)"
+                           OnClick="@(() => CambiarClaves(claves, marcar: !todosEnSeccion))">
+                    @(todosEnSeccion ? "Quitar todo" : "Activar todo")
+                </MudButton>
+            </div>
         </div>
-        @{ var claves = ClavesDeSeccion(seccionActiva).Where(PuedeDelegar).ToList(); }
-        <MudButton Size="Size.Small" ButtonType="ButtonType.Button" Variant="Variant.Outlined" Color="Color.Primary"
-                   Disabled="@(Deshabilitado || claves.All(Value.Contains))"
-                   OnClick="@(() => CambiarClaves(claves, marcar: true))">
-            Seleccionar todo
-        </MudButton>
-        @if (seccionActiva.Acciones.Count > 0)
-        {
-            <p class="permisos-detalle-ayuda">Para usar las acciones del módulo, habilita también su casilla de acceso.</p>
-        }
         <div class="permisos-acciones" role="group" aria-label="@($"Acciones de {seccionActiva.Titulo}")">
             @foreach (var accion in seccionActiva.Acciones)
             {
-                <div class="permiso-casilla" @key="accion.Clave">
+                var marcada = Value.Contains(accion.Clave);
+                <div class="permiso-casilla @(marcada ? "marcada" : null)" @key="accion.Clave">
                 <MudCheckBox T="bool"
-                             Value="@Value.Contains(accion.Clave)"
+                             Value="@marcada"
                              ValueChanged="@(marcado => CambiarCasilla(accion.Clave, marcado))"
                              Label="@accion.Etiqueta"
+                             Color="Color.Primary"
+                             Dense="true"
                              Disabled="@(Deshabilitado || !PuedeDelegar(accion.Clave))" />
                 </div>
             }
@@ -92,5 +94,22 @@
     private Task CambiarClaves(IEnumerable<string> claves, bool marcar)
         => ValueChanged.InvokeAsync(marcar ? [.. Value.Union(claves)] : [.. Value.Except(claves)]);
 
-    private Task CambiarCasilla(string clave, bool marcado) => CambiarClaves([clave], marcado);
+    private Task CambiarCasilla(string clave, bool marcado)
+    {
+        var seccion = PermisosDePanel.Secciones.FirstOrDefault(s =>
+            s.Ver.Clave == clave || s.Acciones.Any(a => a.Clave == clave));
+
+        if (marcado)
+        {
+            List<string> porMarcar = [clave];
+            if (seccion is not null && clave != seccion.Ver.Clave && PuedeDelegar(seccion.Ver.Clave))
+                porMarcar.Add(seccion.Ver.Clave);
+            return CambiarClaves(porMarcar, marcar: true);
+        }
+
+        if (seccion is not null && clave == seccion.Ver.Clave)
+            return CambiarClaves(ClavesDeSeccion(seccion), marcar: false);
+
+        return CambiarClaves([clave], marcar: false);
+    }
 }

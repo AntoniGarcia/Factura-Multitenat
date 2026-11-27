@@ -5,38 +5,58 @@
 @inject ServicioDeUsuarios Usuarios
 @implements IDisposable
 
-<MudDialog>
+<MudDialog Class="dialogo-edicion-operador dialogo-edicion-usuario">
     <DialogContent>
         <PanelErrores Problema="_error" />
-        <MudTabs>
-            <MudTabPanel Text="Datos del usuario">
-                <MudTextField @bind-Value="_nombre" Label="Nombre" Immediate="true" MaxLength="254" Disabled="@_guardando" />
-                <MudTextField @bind-Value="_correo" Label="Correo" Immediate="true" InputType="InputType.Email" MaxLength="254" Disabled="@_guardando" />
-                <p class="seccion-ayuda">Con este correo inicia sesión. Avísale al usuario si lo cambias.</p>
-                @if (PuedeCambiarContrasena)
-                {
-                    <MudTextField @bind-Value="_contrasena" Label="Contraseña nueva (opcional)" Immediate="true"
-                                  InputType="@(_verContrasena ? InputType.Text : InputType.Password)"
-                                  Adornment="Adornment.End" AdornmentIcon="@(_verContrasena ? Icons.Material.Filled.VisibilityOff : Icons.Material.Filled.Visibility)"
-                                  OnAdornmentClick="@(() => _verContrasena = !_verContrasena)" MaxLength="128" Disabled="@_guardando" />
-                    <MudTextField @bind-Value="_confirmacion" Label="Confirmar contraseña nueva" Immediate="true"
-                                  InputType="InputType.Password" MaxLength="128" Disabled="@_guardando"
-                                  Error="@(_confirmacion.Length > 0 && _contrasena != _confirmacion)" ErrorText="Las contraseñas no coinciden." />
-                    <p class="seccion-ayuda">Deja la contraseña vacía para conservarla. Si la cambias, se cerrarán sus sesiones y deberá entrar con la nueva.</p>
-                }
+        <MudTabs Elevation="0" KeepPanelsAlive="true">
+            <MudTabPanel Text="Datos del usuario" Icon="@Icons.Material.Filled.PersonOutline">
+                <div class="formulario-catalogo-secciones operador-edicion-secciones">
+                    <section class="formulario-catalogo-seccion formulario-catalogo-seccion-ancha" aria-labelledby="usuario-edicion-datos">
+                        <h2 id="usuario-edicion-datos" class="seccion-titulo">Datos de acceso</h2>
+                        <div class="operador-edicion-campos">
+                            <MudTextField @bind-Value="_nombre" Label="Nombre" Immediate="true" MaxLength="254"
+                                          Required="true" Disabled="@_guardando" />
+                            <MudTextField @bind-Value="_correo" Label="Correo" Immediate="true" InputType="InputType.Email"
+                                          MaxLength="254" Required="true" Disabled="@_guardando" />
+                        </div>
+                    </section>
+
+                    @if (PuedeCambiarContrasena)
+                    {
+                        <section class="formulario-catalogo-seccion formulario-catalogo-seccion-ancha" aria-labelledby="usuario-edicion-contrasena">
+                            <h2 id="usuario-edicion-contrasena" class="seccion-titulo">Contraseña</h2>
+                            <div class="operador-edicion-campos">
+                                <MudTextField @bind-Value="_contrasena" Label="Contraseña nueva (opcional)" Immediate="true"
+                                              InputType="@(_verContrasena ? InputType.Text : InputType.Password)"
+                                              Adornment="Adornment.End"
+                                              AdornmentIcon="@(_verContrasena ? Icons.Material.Filled.VisibilityOff : Icons.Material.Filled.Visibility)"
+                                              OnAdornmentClick="@(() => _verContrasena = !_verContrasena)"
+                                              MaxLength="128" Disabled="@_guardando" />
+                                <MudTextField @bind-Value="_confirmacion" Label="Confirmar contraseña nueva" Immediate="true"
+                                              InputType="InputType.Password" MaxLength="128" Disabled="@_guardando"
+                                              Error="@(_confirmacion.Length > 0 && _contrasena != _confirmacion)"
+                                              ErrorText="Las contraseñas no coinciden." />
+                            </div>
+                            <p class="seccion-ayuda">Déjala vacía para conservar la actual; al cambiarla se cierran sus sesiones.</p>
+                        </section>
+                    }
+                </div>
             </MudTabPanel>
-            <MudTabPanel Text="Permisos y empresas">
-                <p class="seccion-ayuda">Los permisos son los mismos en todas las empresas a las que entra.</p>
-                <SelectorDePermisos @bind-Value="_permisos" Empresas="Empresas" @bind-EmpresasElegidas="_empresas"
-                                    Deshabilitado="@_guardando" />
+            <MudTabPanel Text="Permisos y empresas" Icon="@Icons.Material.Filled.VerifiedUser">
+                <div class="formulario-catalogo-secciones operador-edicion-secciones">
+                    <section class="formulario-catalogo-seccion formulario-catalogo-seccion-ancha" aria-labelledby="usuario-edicion-permisos">
+                        <SelectorDePermisos @bind-Value="_permisos" Empresas="Empresas" @bind-EmpresasElegidas="_empresas"
+                                            Deshabilitado="@_guardando" />
+                    </section>
+                </div>
             </MudTabPanel>
         </MudTabs>
     </DialogContent>
     <DialogActions>
-        <MudButton OnClick="Cancelar" Disabled="@_guardando">Cancelar</MudButton>
+        <MudButton Variant="Variant.Text" OnClick="Cancelar" Disabled="@_guardando">Cancelar</MudButton>
         <MudButton Color="Color.Primary" Variant="Variant.Filled" OnClick="Guardar"
                    Disabled="@(_guardando || string.IsNullOrWhiteSpace(_nombre) || string.IsNullOrWhiteSpace(_correo) || _contrasena != _confirmacion)">
-            @(_guardando ? "Guardando…" : "Guardar")
+            @(_guardando ? "Guardando…" : "Guardar cambios")
         </MudButton>
     </DialogActions>
 </MudDialog>
