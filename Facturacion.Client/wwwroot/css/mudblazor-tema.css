@@ -121,7 +121,12 @@
     color: var(--acento-texto);
 }
 
-/* Contraste seguro en hover y foco para todos los botones en los 3 temas. */
+/* Contraste seguro en estado normal, hover y foco para todos los botones en los 3 temas. */
+.mud-button-filled.mud-button-filled-primary:not(:disabled) {
+    background-color: var(--acento);
+    color: var(--texto-inverso);
+}
+
 .mud-button-filled.mud-button-filled-primary:is(:hover, :focus-visible):not(:disabled) {
     background-color: var(--acento);
     color: var(--texto-inverso);

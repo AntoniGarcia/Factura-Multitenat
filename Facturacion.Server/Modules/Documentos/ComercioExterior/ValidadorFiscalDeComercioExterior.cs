@@ -58,7 +58,10 @@ public sealed class ValidadorFiscalDeComercioExterior(AppDbContext db)
                 return ErrorNegocio.Validacion("comercio-registro-tributario-invalido", "El registro tributario no cumple el formato del país del receptor.");
         }
 
-        var zona = TimeZoneInfo.FindSystemTimeZoneById("America/Mexico_City");
+        var zona = TimeZoneInfo.TryFindSystemTimeZoneById("America/Mexico_City", out var tz)
+            || TimeZoneInfo.TryFindSystemTimeZoneById("Central Standard Time (Mexico)", out tz)
+            ? tz
+            : TimeZoneInfo.Utc;
         var fechaUtc = comprobante.FechaEmisionUtc == default ? DateTime.UtcNow : DateTime.SpecifyKind(comprobante.FechaEmisionUtc, DateTimeKind.Utc);
         var fecha = DateOnly.FromDateTime(TimeZoneInfo.ConvertTimeFromUtc(fechaUtc, zona));
         foreach (var mercancia in datos.Mercancias ?? [])

@@ -289,7 +289,7 @@ public sealed class ServicioDeNotaria(
             return ErrorNegocio.Regla("operacion-notarial-pendiente",
                 "Guarda la operación notarial y sus partes antes de validar el XML.");
 
-        var resultado = await xml.GenerarAsync(comprobante, ct);
+        var resultado = await xml.GenerarParaVistaPreviaAsync(comprobante, ct);
         return resultado.EsFallo
             ? resultado.Error!
             : "El XML notarial cumple el esquema del SAT. No se envió al PAC ni se consumió ningún timbre.";

@@ -105,7 +105,10 @@ public sealed class ServicioDeXmlCfdi(
         // de XXX escribiría «1160» donde debe decir «1160.00».
         var monedaDeImportes = esPago ? comprobante.Pagos[0].MonedaP : comprobante.Moneda;
 
-        var decimales = await DecimalesDeMonedaAsync(monedaDeImportes, ct);
+        // XXX (sin valor monetario, usado en CFDI tipo T) siempre lleva 0 decimales según Anexo 20.
+        var decimales = string.Equals(monedaDeImportes, "XXX", StringComparison.OrdinalIgnoreCase)
+            ? 0
+            : await DecimalesDeMonedaAsync(monedaDeImportes, ct);
 
         if (decimales is null)
             return ErrorNegocio.Validacion(

@@ -31,7 +31,7 @@ public sealed class ServicioDeComercioExterior(
             return ErrorNegocio.NoEncontrado("factura-no-encontrada", "No se encontró la factura.");
         if (comprobante.Estatus is not ("borrador" or "error"))
             return ErrorNegocio.Conflicto("comercio-no-validable", "Solo se valida el XML de una factura en borrador o con error.");
-        var resultado = await xmlCfdi.GenerarAsync(comprobante, ct);
+        var resultado = await xmlCfdi.GenerarParaVistaPreviaAsync(comprobante, ct);
         return resultado.EsFallo ? resultado.Error! :
             "El CFDI con Comercio Exterior 2.0 cumple el esquema SAT. No se envió al PAC ni se consumió un timbre.";
     }
