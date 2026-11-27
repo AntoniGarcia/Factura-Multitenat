@@ -342,7 +342,7 @@ else
         {
             <MudTabPanel Text="Comercio exterior">
                 <DatosDeComercioExteriorDeFactura @ref="_datosComercio" ComprobanteId="@_comprobante.Id" GuardarFactura="GuardarAsync"
-                                                   ObtenerConceptos="@(() => _comprobante.Conceptos)"
+                                                   ObtenerConceptos="ObtenerConceptosEnCaptura"
                                                    ResidenciaFiscalSugerida="@_clienteDetalle?.ResidenciaFiscal"
                                                    NumeroRegistroTributarioSugerido="@_clienteDetalle?.NumRegIdTrib"
                                                    MonedaFactura="@_moneda" TipoCambioFactura="@_tipoCambio"
@@ -878,9 +878,24 @@ else
         return texto.Length <= 1000 ? texto : texto[..1000];
     }
 
+    private IReadOnlyList<ConceptoDto> ObtenerConceptosEnCaptura()
+        => [.. _renglones
+            .Where(r => !string.IsNullOrWhiteSpace(r.ClaveProdServ))
+            .Select((r, i) => new ConceptoDto(
+                null, i + 1, r.ProductoId, r.ClaveProdServ!, r.ClaveUnidad ?? string.Empty, r.UnidadTexto,
+                r.NoIdentificacion, r.Descripcion ?? string.Empty, r.Cantidad, r.ValorUnitario,
+                r.ImporteSeguro ?? 0m, r.Descuento, r.ObjetoImp ?? "01", r.Impuestos))];
+
     private async Task QuitarConceptoAsync(int indice)
     {
+        int? ordenComercio = null;
+        if (EsFacturaComercio && !string.IsNullOrWhiteSpace(_renglones[indice].ClaveProdServ))
+            ordenComercio = _renglones.Take(indice + 1).Count(r => !string.IsNullOrWhiteSpace(r.ClaveProdServ));
+
         _renglones.RemoveAt(indice);
+        if (ordenComercio is { } orden)
+            _datosComercio?.AlQuitarConcepto(orden);
+
         await ActualizarVistaPreviaAsync();
     }
 

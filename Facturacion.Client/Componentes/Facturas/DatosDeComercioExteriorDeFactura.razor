@@ -54,7 +54,7 @@
     <h2 class="seccion-titulo">Mercancías por concepto</h2>
     <p class="seccion-ayuda">Captura las mercancías exportadas. Si cambias un concepto, revisa sus datos aduaneros.</p>
     @foreach (var obsoleta in (_datos.Mercancias ?? []).Where(m => !ObtenerConceptos().Any(c =>
-        c.Orden == m.OrdenConcepto && c.ClaveProdServ == m.ClaveProdServConcepto && c.Descripcion == m.DescripcionConcepto)))
+        c.Orden == m.OrdenConcepto && c.ClaveProdServ == m.ClaveProdServConcepto)))
     {
         <div class="aviso-documentos" role="status">
             Los datos aduaneros del concepto @obsoleta.OrdenConcepto ya no coinciden con la factura.
@@ -64,7 +64,7 @@
     @foreach (var concepto in ObtenerConceptos().OrderBy(x => x.Orden))
     {
         var mercancia = (_datos.Mercancias ?? []).FirstOrDefault(x => x.OrdenConcepto == concepto.Orden &&
-            x.ClaveProdServConcepto == concepto.ClaveProdServ && x.DescripcionConcepto == concepto.Descripcion);
+            x.ClaveProdServConcepto == concepto.ClaveProdServ);
         <article class="comercio-mercancia" @key="concepto.Orden">
             <h3 class="comercio-mercancia-titulo">@concepto.Orden. @concepto.Descripcion</h3>
             @if (mercancia is null)
@@ -244,8 +244,25 @@
 
     private void RecalcularTotalUsd()
     {
-        if (_datos.Mercancias is not { Count: > 0 } mercancias || mercancias.Any(m => m.ValorDolares is null)) return;
+        if (_datos.Mercancias is not { Count: > 0 } mercancias)
+        {
+            _datos = _datos with { TotalUsd = null };
+            return;
+        }
+        if (mercancias.Any(m => m.ValorDolares is null)) return;
         _datos = _datos with { TotalUsd = Math.Round(mercancias.Sum(m => m.ValorDolares!.Value), 2, MidpointRounding.AwayFromZero) };
+    }
+
+    public void AlQuitarConcepto(int ordenEliminado)
+    {
+        if (_datos.Mercancias is not { Count: > 0 } mercancias) return;
+        var actualizadas = mercancias
+            .Where(m => m.OrdenConcepto != ordenEliminado)
+            .Select(m => m.OrdenConcepto > ordenEliminado ? m with { OrdenConcepto = m.OrdenConcepto - 1 } : m)
+            .ToArray();
+        _datos = _datos with { Mercancias = actualizadas };
+        RecalcularTotalUsd();
+        StateHasChanged();
     }
 
     private void AplicarDatosSugeridos()
@@ -322,7 +339,21 @@
         try
         {
             if (!await GuardarFactura()) return false;
-            var (datos, error) = await Comercio.GuardarAsync(ComprobanteId, _datos);
+            var conceptos = ObtenerConceptos().ToDictionary(c => c.Orden);
+            var datosParaGuardar = _datos.Mercancias is { Count: > 0 } mercancias
+                ? _datos with
+                {
+                    Mercancias = mercancias
+                        .Where(m => conceptos.ContainsKey(m.OrdenConcepto))
+                        .Select(m =>
+                        {
+                            var c = conceptos[m.OrdenConcepto];
+                            return m with { ClaveProdServConcepto = c.ClaveProdServ, DescripcionConcepto = c.Descripcion };
+                        })
+                        .ToArray()
+                }
+                : _datos;
+            var (datos, error) = await Comercio.GuardarAsync(ComprobanteId, datosParaGuardar);
             _error = error;
             if (datos is null) return false;
             _datos = datos;
