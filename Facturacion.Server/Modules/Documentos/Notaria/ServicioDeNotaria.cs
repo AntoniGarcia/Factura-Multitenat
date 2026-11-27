@@ -19,17 +19,14 @@ public sealed class ServicioDeNotaria(
     IServicioDeBitacora bitacora,
     ServicioDeXmlCfdi xml)
 {
-    // Alineado con notariospublicos.xsd: mes/día válidos, sexo H/M/X y primera letra/vocal válidas.
+    // Alineado exactamente con notariospublicos:t_CURP del XSD oficial del SAT.
     private static readonly Regex PatronCurp = new(
-        "^[A-ZÑ][AEIOUX][A-Z]{2}\\d{2}(0[1-9]|1[0-2])(0[1-9]|[12]\\d|3[01])[HMX][A-Z]{5}[A-Z0-9]\\d$",
+        "^[A-Z][AEIOUX][A-Z]{2}\\d{2}(0[1-9]|1[0-2])(0[1-9]|[12]\\d|3[01])[HMX][A-Z]{2}[BCDFGHJKLMNÑPQRSTVWXYZ]{3}[0-9A-Z]\\d$",
         RegexOptions.CultureInvariant);
 
     private static readonly HashSet<string> TiposDeInmueble = ["01", "02", "03", "04", "05"];
 
     private static readonly Regex PatronCodigoPostal = new("^\\d{5}$", RegexOptions.CultureInvariant);
-
-    private static readonly Regex PatronRfc = new(
-        "^[A-ZÑ&]{3,4}\\d{6}[A-Z0-9]{3}$", RegexOptions.CultureInvariant);
 
     public async Task<Resultado<ConfiguracionNotarioDto?>> ObtenerAsync(CancellationToken ct)
     {
@@ -53,9 +50,10 @@ public sealed class ServicioDeNotaria(
         var estado = (peticion.Estado ?? string.Empty).Trim().ToUpperInvariant();
         var adscripcion = Recortar(peticion.Adscripcion);
 
-        if (!PatronCurp.IsMatch(curp) || peticion.NumeroNotaria is < 1 or > 999 || adscripcion?.Contains('|') == true)
+        if (!PatronCurp.IsMatch(curp) || peticion.NumeroNotaria is < 1 or > 999 ||
+            adscripcion?.Length > 255 || adscripcion?.Contains('|') == true)
             return ErrorNegocio.Validacion(
-                "notario-invalido", "La CURP debe tener 18 caracteres válidos, el número de notaría va de 1 a 999 y la adscripción no puede contener «|».");
+                "notario-invalido", "La CURP debe tener 18 caracteres válidos, el número de notaría va de 1 a 999 y la adscripción admite hasta 255 caracteres sin «|».");
 
         var estadoValido = await baseDeDatos.SatEstados
             .AsNoTracking()
@@ -183,8 +181,8 @@ public sealed class ServicioDeNotaria(
                 Localidad = Recortar(x.Localidad),
                 Referencia = Recortar(x.Referencia),
                 Municipio = x.Municipio.Trim(),
-                Estado = x.Estado.Trim(),
-                Pais = x.Pais.Trim(),
+                Estado = Normalizar(x.Estado),
+                Pais = Normalizar(x.Pais),
                 CodigoPostal = x.CodigoPostal.Trim()
             }));
 
@@ -235,6 +233,9 @@ public sealed class ServicioDeNotaria(
                 "comprobante-notarial-no-editable",
                 "Solo se pueden editar vendedores y compradores de una factura en borrador o con error.");
 
+        if (ReglaDeVariante.Exigir(datos.Comprobante, VariantesDeFactura.Notaria, "factura notarial") is { } variante)
+            return variante;
+
         if (PermisoDeEmision.ExigirEdicion(contexto, datos.Comprobante) is { } sinPermiso)
             return sinPermiso;
 
@@ -278,6 +279,12 @@ public sealed class ServicioDeNotaria(
             return ErrorNegocio.Conflicto("comprobante-notarial-no-validable",
                 "Solo se puede validar el XML de una factura en borrador o con error.");
 
+        if (ReglaDeVariante.Exigir(comprobante, VariantesDeFactura.Notaria, "factura notarial") is { } variante)
+            return variante;
+
+        if (PermisoDeEmision.ExigirEdicion(contexto, comprobante) is { } sinPermiso)
+            return sinPermiso;
+
         if (!await baseDeDatos.DatosNotaria.AnyAsync(x => x.ComprobanteId == comprobanteId, ct))
             return ErrorNegocio.Regla("operacion-notarial-pendiente",
                 "Guarda la operación notarial y sus partes antes de validar el XML.");
@@ -293,24 +300,26 @@ public sealed class ServicioDeNotaria(
         if (peticion.NumeroInstrumentoNotarial is < 1 or > 999999 ||
             peticion.FechaInstrumentoNotarial == default ||
             !ImporteValido(peticion.MontoOperacion) || !ImporteValido(peticion.SubtotalOperacion) ||
-            !ImporteValido(peticion.IvaOperacion))
+            !ImporteValido(peticion.IvaOperacion) ||
+            peticion.MontoOperacion <= 0 || peticion.SubtotalOperacion <= 0)
             return ErrorNegocio.Validacion(
                 "operacion-notarial-invalida",
-                "Revisa el instrumento y su fecha. Los importes admiten hasta 12 enteros y 6 decimales, sin negativos.");
+                "Revisa el instrumento y su fecha. Monto y subtotal deben ser mayores a cero y admiten hasta 6 decimales.");
 
-        if (decimal.Round(peticion.SubtotalOperacion + peticion.IvaOperacion, 6, MidpointRounding.ToEven) !=
-            decimal.Round(peticion.MontoOperacion, 6, MidpointRounding.ToEven))
+        if (decimal.Round(peticion.SubtotalOperacion + peticion.IvaOperacion, 6, MidpointRounding.AwayFromZero) !=
+            decimal.Round(peticion.MontoOperacion, 6, MidpointRounding.AwayFromZero))
             return ErrorNegocio.Validacion(
                 "importe-operacion-inconsistente",
                 "El monto de la operación debe ser igual al subtotal más el IVA.");
 
-        if (peticion.Inmuebles.Count == 0 ||
-            peticion.Inmuebles.Select(x => x.Orden).Distinct().Count() != peticion.Inmuebles.Count)
+        var inmuebles = peticion.Inmuebles ?? [];
+        if (inmuebles.Count == 0 ||
+            inmuebles.Select(x => x.Orden).Distinct().Count() != inmuebles.Count)
             return ErrorNegocio.Validacion(
                 "inmueble-notarial-invalido",
                 "Agrega al menos un inmueble con un orden distinto para cada uno.");
 
-        foreach (var inmueble in peticion.Inmuebles)
+        foreach (var inmueble in inmuebles)
         {
             var error = ErrorDeInmueble(inmueble);
             if (error is not null)
@@ -318,15 +327,16 @@ public sealed class ServicioDeNotaria(
                     $"Inmueble {inmueble.Orden}: {error}");
         }
 
-        var paises = peticion.Inmuebles.Select(x => x.Pais.Trim()).Distinct().ToArray();
+        var paises = inmuebles.Select(x => Normalizar(x.Pais)).Distinct().ToArray();
         if (await baseDeDatos.SatPaises.AsNoTracking().CountAsync(x => paises.Contains(x.Clave) && x.Vigente, ct) != paises.Length)
             return ErrorNegocio.Validacion(
                 "pais-inmueble-invalido", "Selecciona países vigentes del catálogo SAT.");
 
-        foreach (var inmueble in peticion.Inmuebles)
+        foreach (var inmueble in inmuebles)
         {
-            var estado = inmueble.Estado.Trim();
-            var codigoPostal = inmueble.CodigoPostal.Trim();
+            var estado = Normalizar(inmueble.Estado);
+            var pais = Normalizar(inmueble.Pais);
+            var codigoPostal = (inmueble.CodigoPostal ?? string.Empty).Trim();
             var estadoValido = await baseDeDatos.SatEstados.AsNoTracking()
                 .AnyAsync(x => x.Clave == estado && x.ClavePais == "MEX" && x.Vigente, ct);
 
@@ -334,7 +344,7 @@ public sealed class ServicioDeNotaria(
                 return ErrorNegocio.Validacion(
                     "estado-inmueble-invalido", "Selecciona una entidad federativa vigente del catálogo SAT.");
 
-            if (inmueble.Pais.Trim() == "MEX")
+            if (pais == "MEX")
             {
                 var cpValido = await baseDeDatos.SatCodigosPostales.AsNoTracking()
                     .AnyAsync(x => x.Clave == codigoPostal && x.ClaveEstado == estado && x.Vigente, ct);
@@ -355,7 +365,7 @@ public sealed class ServicioDeNotaria(
     private static string? ErrorDeInmueble(InmuebleNotarialDto inmueble)
     {
         if (inmueble.Orden < 1) return "el orden debe ser positivo.";
-        if (!TiposDeInmueble.Contains(inmueble.TipoInmueble.Trim())) return "selecciona un tipo de inmueble válido.";
+        if (!TiposDeInmueble.Contains((inmueble.TipoInmueble ?? string.Empty).Trim())) return "selecciona un tipo de inmueble válido.";
         if (!EnRango(inmueble.Calle, 150)) return "captura una calle de hasta 150 caracteres.";
         if (!EnRangoOpcional(inmueble.NumeroExterior, 55)) return "el número exterior supera 55 caracteres.";
         if (!EnRangoOpcional(inmueble.NumeroInterior, 30)) return "el número interior supera 30 caracteres.";
@@ -363,9 +373,9 @@ public sealed class ServicioDeNotaria(
         if (!EnRangoOpcional(inmueble.Localidad, 100)) return "la localidad supera 100 caracteres.";
         if (!EnRangoOpcional(inmueble.Referencia, 100)) return "la referencia supera 100 caracteres.";
         if (!EnRango(inmueble.Municipio, 100)) return "captura un municipio o alcaldía de hasta 100 caracteres.";
-        if (inmueble.Estado.Trim().Length != 3) return "selecciona una entidad federativa del catálogo SAT.";
-        if (inmueble.Pais.Trim().Length != 3) return "selecciona un país del catálogo SAT.";
-        if (!PatronCodigoPostal.IsMatch(inmueble.CodigoPostal.Trim())) return "captura un código postal de cinco dígitos.";
+        if (Normalizar(inmueble.Estado).Length != 3) return "selecciona una entidad federativa del catálogo SAT.";
+        if (Normalizar(inmueble.Pais).Length != 3) return "selecciona un país del catálogo SAT.";
+        if (!PatronCodigoPostal.IsMatch((inmueble.CodigoPostal ?? string.Empty).Trim())) return "captura un código postal de cinco dígitos.";
         return null;
     }
 
@@ -378,12 +388,12 @@ public sealed class ServicioDeNotaria(
     private static ErrorNegocio? ValidarPartes(PeticionGuardarPartesNotariales peticion)
     {
         var errorEnajenantes = ValidarGrupo(
-            peticion.Enajenantes, peticion.EnajenantesEnCopropiedad, "vendedor", curpObligatoriaSiIndividual: true,
+            peticion.Enajenantes ?? [], peticion.EnajenantesEnCopropiedad, "vendedor", curpObligatoriaSiIndividual: true,
             apellidoPaternoObligatorioSiIndividual: true);
         if (errorEnajenantes is not null) return errorEnajenantes;
 
         return ValidarGrupo(
-            peticion.Adquirentes, peticion.AdquirentesEnCopropiedad, "comprador", curpObligatoriaSiIndividual: false,
+            peticion.Adquirentes ?? [], peticion.AdquirentesEnCopropiedad, "comprador", curpObligatoriaSiIndividual: false,
             apellidoPaternoObligatorioSiIndividual: false);
     }
 
@@ -395,14 +405,15 @@ public sealed class ServicioDeNotaria(
         bool apellidoPaternoObligatorioSiIndividual)
     {
         if (partes.Count == 0 || (!enCopropiedad && partes.Count != 1) ||
+            (enCopropiedad && partes.Count < 2) ||
             partes.Select(x => x.Orden).Distinct().Count() != partes.Count ||
-            partes.Select(x => Normalizar(x.Rfc)).Distinct().Count() != partes.Count)
+            partes.Select(x => Normalizar(x.Rfc)).Where(x => x != Rfc.GenericoExtranjero).GroupBy(x => x).Any(g => g.Count() > 1))
             return ErrorNegocio.Validacion(
                 $"{etiqueta}-notarial-invalido",
-                $"Captura {(enCopropiedad ? "uno o más" : "una sola")} persona(s) {etiqueta}(as) sin RFC repetido.");
+                $"Captura {(enCopropiedad ? "dos o más" : "una sola")} persona(s) {etiqueta}(as) sin RFC repetido.");
 
-        /// Según el XSD, un vendedor único es persona física (apellido paterno y CURP); en
-        /// copropiedad son opcionales y el RFC puede ser de persona moral.
+        // Según el XSD, un vendedor único es persona física (apellido paterno y CURP); en
+        // copropiedad son opcionales y el RFC puede ser de persona moral.
         var codigo = $"{etiqueta}-notarial-invalido";
         foreach (var parte in partes.OrderBy(x => x.Orden))
         {
@@ -417,8 +428,8 @@ public sealed class ServicioDeNotaria(
                 return ErrorNegocio.Validacion(codigo, $"Captura el nombre {quien}, de hasta 254 caracteres.");
             if (!EnRangoOpcional(parte.ApellidoPaterno, 200) || !EnRangoOpcional(parte.ApellidoMaterno, 200))
                 return ErrorNegocio.Validacion(codigo, $"Los apellidos {quien} admiten hasta 200 caracteres.");
-            if (!PatronRfc.IsMatch(rfc))
-                return ErrorNegocio.Validacion(codigo, $"Revisa el RFC {quien}: no tiene un formato válido.");
+            if (!Rfc.Validar(rfc).EsValido || rfc == Rfc.GenericoNacional)
+                return ErrorNegocio.Validacion(codigo, $"Revisa el RFC {quien}: debe ser un RFC válido y no genérico nacional.");
             if (esIndividual && curpObligatoriaSiIndividual && rfc.Length != 13)
                 return ErrorNegocio.Validacion(codigo,
                     $"Revisa el RFC {quien}: cuando hay un solo {etiqueta}, el SAT pide que sea persona física, con RFC de 13 caracteres.");
@@ -433,15 +444,15 @@ public sealed class ServicioDeNotaria(
             if (curp.Length > 0 && rfc.Length == 12)
                 return ErrorNegocio.Validacion(codigo,
                     $"Revisa el RFC {quien}: es de persona moral y una persona moral no lleva CURP.");
-            if (enCopropiedad && (parte.Porcentaje is null or < 0 or > 100 ||
+            if (enCopropiedad && (parte.Porcentaje is null or <= 0 or > 100 ||
                                   decimal.Round(parte.Porcentaje.Value, 2) != parte.Porcentaje))
                 return ErrorNegocio.Validacion(codigo,
-                    $"Captura el porcentaje {quien}, de 0 a 100 con hasta dos decimales.");
+                    $"Captura el porcentaje {quien}, mayor a 0 y hasta 100 con hasta dos decimales.");
             if (!enCopropiedad && parte.Porcentaje is not null)
                 return ErrorNegocio.Validacion(codigo, "El porcentaje solo se captura en copropiedad.");
         }
 
-        if (enCopropiedad && decimal.Round(partes.Sum(x => x.Porcentaje ?? 0m), 2) != 100m)
+        if (enCopropiedad && decimal.Round(partes.Sum(x => x.Porcentaje ?? 0m), 2, MidpointRounding.AwayFromZero) != 100m)
             return ErrorNegocio.Validacion(
                 $"porcentaje-{etiqueta}-invalido",
                 $"Los porcentajes de {etiqueta}(es) deben sumar exactamente 100 %.");

@@ -73,8 +73,12 @@
             {
                 _enajenantesEnCopropiedad = partes.EnajenantesEnCopropiedad;
                 _adquirentesEnCopropiedad = partes.AdquirentesEnCopropiedad;
-                _enajenantes = [.. partes.Enajenantes.Select(x => new ParteEditable(x))];
-                _adquirentes = [.. partes.Adquirentes.Select(x => new ParteEditable(x))];
+                _enajenantes = partes.Enajenantes.Count > 0
+                    ? [.. partes.Enajenantes.Select(x => new ParteEditable(x))]
+                    : [new()];
+                _adquirentes = partes.Adquirentes.Count > 0
+                    ? [.. partes.Adquirentes.Select(x => new ParteEditable(x))]
+                    : [new()];
             }
         }
         catch (Exception ex) when (ex is HttpRequestException or System.Text.Json.JsonException)

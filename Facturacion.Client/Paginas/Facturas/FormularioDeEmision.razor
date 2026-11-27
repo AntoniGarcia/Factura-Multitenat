@@ -1129,7 +1129,10 @@ else
     {
         if (_comprobante is null || !PuedeTimbrar) return;
 
-        if (!await GuardarAsync()) return;
+        var guardado = EsFacturaComercio && _datosComercio is not null
+            ? await _datosComercio.GuardarDatosAsync()
+            : await GuardarAsync();
+        if (!guardado) return;
 
         var confirmado = await Confirmacion.ConfirmarAsync(
             "Timbrar CFDI",

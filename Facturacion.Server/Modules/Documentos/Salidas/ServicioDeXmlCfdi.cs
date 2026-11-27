@@ -243,6 +243,9 @@ public sealed class ServicioDeXmlCfdi(
                     $"{EsquemasSat.EspacioDeNombresComercioExterior20} http://www.sat.gob.mx/sitio_internet/cfd/ComercioExterior20/ComercioExterior20.xsd");
                 raiz.Add(new XElement(XNamespace.Get(EsquemasSat.EspacioDeNombresCfdi) + "Complemento", complemento.Valor));
             }
+            else if (comprobante.Variante == VariantesDeFactura.Notaria && datosNotaria is null)
+                return ErrorNegocio.Regla("operacion-notarial-pendiente",
+                    "Guarda los datos notariales y las partes antes de generar el XML de esta factura.");
             else if (datosNotaria is null)
                 documento = generador.Generar(comprobante, datosDeEmision);
             else

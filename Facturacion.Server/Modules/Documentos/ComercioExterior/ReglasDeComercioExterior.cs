@@ -1,5 +1,6 @@
 using System.Text.RegularExpressions;
 using Facturacion.Server.Data.Entidades.Documentos;
+using Facturacion.Server.Modules.Documentos.Emision;
 using Facturacion.Shared.ComercioExterior;
 using Facturacion.Shared.Comun;
 
@@ -12,6 +13,14 @@ public static class ReglasDeComercioExterior
     {
         if (comprobante.GlobalPeriodicidad is not null || comprobante.GlobalMeses is not null || comprobante.GlobalAnio is not null)
             return ErrorNegocio.Validacion("comercio-informacion-global", "Comercio Exterior no admite información global.");
+        if (comprobante.Conceptos.Any(c => DatosFiscalesDeConcepto.Leer(c.DatosFiscalesJson) is { } f &&
+            (f.Tercero is not null || f.CuentasPrediales.Count > 0)))
+            return ErrorNegocio.Validacion("comercio-concepto-nodos-prohibidos",
+                "Comercio Exterior no permite conceptos con A Cuenta de Terceros ni Cuenta Predial (CCE111/CCE112).");
+        if (completo && comprobante.ReceptorRfc != Rfc.GenericoExtranjero)
+            return ErrorNegocio.Validacion("comercio-receptor-rfc", "La factura de Comercio Exterior requiere receptor extranjero (XEXX010101000).");
+        if (datos.DomicilioReceptor?.Pais is { Length: > 0 } paisRec && paisRec == "MEX")
+            return ErrorNegocio.Validacion("comercio-receptor-pais-mex", "El domicilio del receptor extranjero no puede estar en México (CCE134).");
         if (!datos.CertificadoOrigen && !string.IsNullOrWhiteSpace(datos.NumeroCertificadoOrigen))
             return ErrorNegocio.Validacion("comercio-certificado-no-aplica", "Quita el número de certificado o activa certificado de origen.");
         if (completo && string.IsNullOrWhiteSpace(datos.Incoterm))
@@ -31,8 +40,12 @@ public static class ReglasDeComercioExterior
         var servicio = mercancia.UnidadAduana == "99" || concepto.ClaveUnidad == "E48";
         if (servicio && !string.IsNullOrWhiteSpace(mercancia.FraccionArancelaria))
             return ErrorNegocio.Validacion("comercio-fraccion-no-aplica", "Los servicios E48 o con unidad aduanera 99 no llevan fracción arancelaria.");
+        if (concepto.ClaveUnidad == "E48" && mercancia.UnidadAduana is { Length: > 0 } unidad && unidad != "99")
+            return ErrorNegocio.Validacion("comercio-unidad-servicio", "Los conceptos con clave de unidad E48 deben usar unidad aduanera 99 (CCE160/CCE167).");
         if (!servicio && string.IsNullOrWhiteSpace(mercancia.FraccionArancelaria))
             return ErrorNegocio.Validacion("comercio-fraccion-obligatoria", "Selecciona la fracción arancelaria de cada mercancía.");
+        if (!servicio && mercancia.ValorDolares is <= 0)
+            return ErrorNegocio.Validacion("comercio-valor-dolares-cero", "El valor en dólares debe ser mayor que cero para bienes exportados (CCE172).");
         if (mercancia.UnidadAduana is not (null or "99") && mercancia.ValorUnitarioAduana is <= 0)
             return ErrorNegocio.Validacion("comercio-valor-unitario-aduana", "El valor unitario aduanero debe ser mayor que cero para bienes.");
         if (mercancia.CantidadAduana is { } cantidad && mercancia.ValorUnitarioAduana is { } unitario &&
@@ -61,14 +74,13 @@ public static class ReglasDeComercioExterior
         if (cambio is not > 0) return ErrorNegocio.Validacion("comercio-conversion-sin-cambio", "Falta el tipo de cambio de la factura para convertir a USD.");
         foreach (var grupo in datos.Mercancias.GroupBy(m => comprobante.Conceptos.First(c => c.Orden == m.OrdenConcepto).NoIdentificacion))
         {
-            if (grupo.Any(m => m.ValorDolares is null or 0 or 1)) continue;
+            var conceptos = comprobante.Conceptos.Where(c => c.NoIdentificacion == grupo.Key).ToArray();
+            var esServicio = grupo.All(m => m.UnidadAduana == "99") || conceptos.All(c => c.ClaveUnidad == "E48");
+            if (grupo.Any(m => m.ValorDolares is null or 1) || (esServicio && grupo.Any(m => m.ValorDolares == 0))) continue;
             try
             {
-                var conceptos = comprobante.Conceptos.Where(c => c.NoIdentificacion == grupo.Key).ToArray();
-                var importe = conceptos.Sum(c => decimal.Round(c.Importe, decimalesMoneda, MidpointRounding.ToEven));
-                if (grupo.Any(m => m.FraccionArancelaria == "9801000100"))
-                    importe -= conceptos.Sum(c => decimal.Round(c.Descuento, decimalesMoneda, MidpointRounding.ToEven));
-                var medioImporte = conceptos.Length * Paso(decimalesMoneda) / 2m;
+                var importe = conceptos.Sum(c => decimal.Round(c.Importe, decimalesMoneda, MidpointRounding.AwayFromZero));
+                var medioImporte = Paso(decimalesMoneda) / 2m;
                 var medioCambio = comprobante.Moneda == "MXN" ? 0m : Paso(6) / 2m;
                 var medioUsd = Paso(6) / 2m;
                 var inferior = Truncar(Math.Max(0, importe - medioImporte) * Math.Max(0, cambio.Value - medioCambio) /
@@ -78,6 +90,18 @@ public static class ReglasDeComercioExterior
                 var suma = grupo.Sum(m => m.ValorDolares!.Value);
                 if (suma < inferior || suma > superior)
                     return ErrorNegocio.Validacion("comercio-conversion-inconsistente", "Los valores en USD no corresponden al importe de los conceptos y sus tipos de cambio.");
+
+                // CCE163/CCE164: muestras (9801000100) no deben superar el descuento convertido a USD.
+                var muestras = grupo.Where(m => m.FraccionArancelaria == "9801000100").ToArray();
+                if (muestras.Length > 0)
+                {
+                    var descuento = conceptos.Sum(c => decimal.Round(c.Descuento, decimalesMoneda, MidpointRounding.AwayFromZero));
+                    var maxMuestraUsd = Subir((descuento + medioImporte - 0.000000000001m) * (cambio.Value + medioCambio - 0.000000000001m) /
+                        (datos.TipoCambioUsd.Value - medioUsd));
+                    if (muestras.Sum(m => m.ValorDolares!.Value) > maxMuestraUsd)
+                        return ErrorNegocio.Validacion("comercio-muestra-descuento",
+                            "El valor en USD de la fracción de muestras (9801000100) no puede superar el descuento del concepto (CCE164).");
+                }
             }
             catch (OverflowException)
             {

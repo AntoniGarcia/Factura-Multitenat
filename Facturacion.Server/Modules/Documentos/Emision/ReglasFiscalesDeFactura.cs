@@ -49,6 +49,10 @@ internal static class ReglasFiscalesDeFactura
         if (factura.ReceptorRfc is Rfc.GenericoNacional or Rfc.GenericoExtranjero && factura.ReceptorRegimenFiscal != "616")
             return ErrorNegocio.Validacion("generico-regimen",
                 $"Con el RFC {factura.ReceptorRfc} el régimen del receptor es 616, Sin obligaciones fiscales. Corrígelo en el cliente y vuelve a guardar.");
+        if (factura.ReceptorRfc is Rfc.GenericoNacional or Rfc.GenericoExtranjero &&
+            !string.IsNullOrEmpty(factura.ReceptorUsoCfdi) && factura.ReceptorUsoCfdi != "S01")
+            return ErrorNegocio.Validacion("generico-uso-cfdi",
+                $"Con el RFC {factura.ReceptorRfc} el uso de CFDI en facturas debe ser S01 (Sin efectos fiscales).");
         if (factura.ReceptorRfc == Rfc.GenericoExtranjero && factura.ReceptorResidenciaFiscal == "MEX")
             return ErrorNegocio.Validacion("extranjero-residencia-mex",
                 "La residencia fiscal de un cliente extranjero no puede ser México. Corrígela en el cliente y vuelve a guardar.");

@@ -29,20 +29,29 @@ public static class DatosComercioExteriorDelPdf
         var receptorCfdi = raiz.Element(Cfdi + "Receptor");
         var emisor = Requerido(complemento, "Emisor");
         var receptor = Requerido(complemento, "Receptor");
-        var conceptos = new Dictionary<string, (int Orden, XElement Concepto)>(StringComparer.Ordinal);
+        var conceptosPorId = new Dictionary<string, Queue<(int Orden, XElement Concepto)>>(StringComparer.Ordinal);
+        var ultimoConceptoPorId = new Dictionary<string, (int Orden, XElement Concepto)>(StringComparer.Ordinal);
         var orden = 0;
         foreach (var concepto in raiz.Element(Cfdi + "Conceptos")?.Elements(Cfdi + "Concepto") ?? [])
         {
             orden++;
-            if (Atributo(concepto, "NoIdentificacion") is { Length: > 0 } identificador &&
-                !conceptos.TryAdd(identificador, (orden, concepto)))
-                throw new InvalidDataException("El XML contiene identificadores de mercancía repetidos.");
+            if (Atributo(concepto, "NoIdentificacion") is { Length: > 0 } identificador)
+            {
+                if (!conceptosPorId.TryGetValue(identificador, out var cola))
+                {
+                    cola = new Queue<(int, XElement)>();
+                    conceptosPorId[identificador] = cola;
+                }
+                cola.Enqueue((orden, concepto));
+                ultimoConceptoPorId[identificador] = (orden, concepto);
+            }
         }
 
         var mercancias = Requerido(complemento, "Mercancias").Elements(Comercio + "Mercancia").Select(mercancia =>
         {
-            if (Atributo(mercancia, "NoIdentificacion") is not { } id || !conceptos.TryGetValue(id, out var concepto))
+            if (Atributo(mercancia, "NoIdentificacion") is not { } id || !conceptosPorId.TryGetValue(id, out var cola))
                 throw new InvalidDataException("Una mercancía del XML no corresponde a sus conceptos.");
+            var concepto = cola.Count > 0 ? cola.Dequeue() : ultimoConceptoPorId[id];
             var descripcion = mercancia.Element(Comercio + "DescripcionesEspecificas");
             return new MercanciaComercioExteriorDto(concepto.Orden,
                 Atributo(concepto.Concepto, "ClaveProdServ")!, Atributo(concepto.Concepto, "Descripcion")!,

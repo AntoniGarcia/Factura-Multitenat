@@ -6,16 +6,18 @@
 @inject IBusquedaDeCatalogo Busqueda
 
 <div class="rejilla-campos">
-    <MudTextField T="string" Value="@Valor.Calle" ValueChanged="v => Cambiar(Valor with { Calle = v })" Label="Calle" MaxLength="150" />
+    <MudTextField T="string" Value="@Valor.Calle" ValueChanged="v => Cambiar(Valor with { Calle = v })" Label="Calle" MaxLength="100" />
     <MudTextField T="string" Value="@Valor.NumeroExterior" ValueChanged="v => Cambiar(Valor with { NumeroExterior = v })" Label="Número exterior" MaxLength="55" />
     <MudTextField T="string" Value="@Valor.NumeroInterior" ValueChanged="v => Cambiar(Valor with { NumeroInterior = v })" Label="Número interior" MaxLength="55" />
-    <MudTextField T="string" Value="@Valor.Colonia" ValueChanged="v => Cambiar(Valor with { Colonia = v })" Label="Colonia" MaxLength="120" />
-    <MudTextField T="string" Value="@Valor.Localidad" ValueChanged="v => Cambiar(Valor with { Localidad = v })" Label="@(EsEmisor ? "Clave SAT de localidad" : "Localidad")" MaxLength="120" />
+    <MudTextField T="string" Value="@Valor.Colonia" ValueChanged="v => Cambiar(Valor with { Colonia = v })"
+                  Label="@(EsEmisor ? "Clave SAT de colonia (4 dígitos)" : "Colonia")" MaxLength="@(EsEmisor ? 4 : 120)" />
+    <MudTextField T="string" Value="@Valor.Localidad" ValueChanged="v => Cambiar(Valor with { Localidad = v })"
+                  Label="@(EsEmisor ? "Clave SAT de localidad (2 dígitos)" : "Localidad")" MaxLength="@(EsEmisor ? 2 : 120)" />
     <MudTextField T="string" Value="@Valor.Referencia" ValueChanged="v => Cambiar(Valor with { Referencia = v })" Label="Referencia" MaxLength="120" />
     @if (EsEmisor)
     {
         <BuscadorCatalogo Catalogo="c_Estado" Label="Estado" Valor="@EstadoSeleccionado"
-                          ValorCambiado="e => Cambiar(Valor with { Estado = e?.Clave, Municipio = null })"
+                          ValorCambiado="e => Cambiar(Valor with { Estado = e?.Clave, Municipio = null, Localidad = null })"
                           MostrarOpciones="true" MuestraSelectorEnLista="false" />
         <BuscadorCatalogo Catalogo="c_Municipio" Label="Municipio" Valor="@MunicipioSeleccionado"
                           ValorCambiado="m => Cambiar(Valor with { Municipio = m?.Clave })"
@@ -25,7 +27,7 @@
     else
     {
         <MudTextField T="string" Value="@Valor.Municipio" ValueChanged="v => Cambiar(Valor with { Municipio = v })" Label="Municipio" MaxLength="120" />
-        <MudTextField T="string" Value="@Valor.Estado" ValueChanged="v => Cambiar(Valor with { Estado = v })" Label="Estado o provincia" MaxLength="120" />
+        <MudTextField T="string" Value="@Valor.Estado" ValueChanged="v => Cambiar(Valor with { Estado = v })" Label="Estado o provincia" MaxLength="30" />
     }
     <BuscadorCatalogo Catalogo="c_Pais" Label="País" Valor="@PaisSeleccionado"
                       ValorCambiado="p => Cambiar(Valor with { Pais = p?.Clave })"
@@ -39,7 +41,7 @@
     }
     else
     {
-        <MudTextField T="string" Value="@Valor.CodigoPostal" ValueChanged="v => Cambiar(Valor with { CodigoPostal = v })" Label="Código postal" MaxLength="30" />
+        <MudTextField T="string" Value="@Valor.CodigoPostal" ValueChanged="v => Cambiar(Valor with { CodigoPostal = v })" Label="Código postal" MaxLength="12" />
     }
 </div>
 
@@ -77,8 +79,8 @@
         try { domicilio = await Transporte.ResolverDomicilioPorCodigoPostalAsync(codigoPostal.Clave); }
         catch (HttpRequestException) { }
         await Cambiar(domicilio is null
-            ? Valor with { CodigoPostal = codigoPostal.Clave }
-            : Valor with { CodigoPostal = codigoPostal.Clave, Estado = domicilio.Estado, Municipio = domicilio.Municipio ?? Valor.Municipio });
+            ? Valor with { CodigoPostal = codigoPostal.Clave, Localidad = null }
+            : Valor with { CodigoPostal = codigoPostal.Clave, Estado = domicilio.Estado, Municipio = domicilio.Municipio ?? Valor.Municipio, Localidad = null });
     }
 
     private Task Cambiar(DomicilioComercioExteriorDto domicilio)

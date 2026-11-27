@@ -50,17 +50,18 @@ public sealed class GeneradorDeXmlComercioExterior(EsquemasSat esquemas)
         if (mercancias.Count == 0)
             return ErrorNegocio.Validacion("comercio-sin-mercancias", "Agrega por lo menos una mercancía exportada.");
 
-        var llevaDatosAduaneros = mercancias.Any(x => x.CantidadAduana is not null ||
-            !string.IsNullOrWhiteSpace(x.UnidadAduana) || x.ValorUnitarioAduana is not null);
-
         var conceptos = comprobante.Conceptos.ToDictionary(x => x.Orden);
         if (comprobante.Conceptos.Any(c => string.IsNullOrWhiteSpace(c.NoIdentificacion)))
             return ErrorNegocio.Validacion("comercio-identificador-invalido", "Todos los conceptos necesitan identificador para Comercio Exterior.");
-        // CCE144 y CCE157: cada concepto del CFDI debe corresponder a una mercancía declarada.
+        // CCE151/CCE157: cada concepto del CFDI debe corresponder a una mercancía declarada.
         var ordenesMercancias = mercancias.Select(m => m.OrdenConcepto).ToHashSet();
         if (comprobante.Conceptos.Any(c => !ordenesMercancias.Contains(c.Orden)))
             return ErrorNegocio.Validacion("comercio-mercancias-faltantes",
-                "Cada concepto de la factura debe tener su mercancía declarada en Comercio Exterior (CCE144).");
+                "Cada concepto de la factura debe tener su mercancía declarada en Comercio Exterior (CCE151/CCE157).");
+        // CCE165 y CCE166: si se repite NoIdentificacion o cualquier mercancía trae datos aduaneros, todas los exigen.
+        var noIdRepetido = comprobante.Conceptos.GroupBy(c => c.NoIdentificacion).Any(g => g.Count() > 1);
+        var llevaDatosAduaneros = noIdRepetido || mercancias.Any(x => x.CantidadAduana is not null ||
+            !string.IsNullOrWhiteSpace(x.UnidadAduana) || x.ValorUnitarioAduana is not null);
         var identificadores = new HashSet<(string Identificador, string? Fraccion)>();
         foreach (var mercancia in mercancias)
         {
@@ -104,8 +105,8 @@ public sealed class GeneradorDeXmlComercioExterior(EsquemasSat esquemas)
             Opcional("NumeroExportadorConfiable", datos.NumeroExportadorConfiable),
             Opcional("Incoterm", datos.Incoterm),
             Opcional("Observaciones", datos.Observaciones),
-            new XAttribute("TipoCambioUSD", Numero(datos.TipoCambioUsd.Value)),
-            new XAttribute("TotalUSD", Numero(datos.TotalUsd.Value)),
+            new XAttribute("TipoCambioUSD", datos.TipoCambioUsd.Value.ToString("F6", CultureInfo.InvariantCulture)),
+            new XAttribute("TotalUSD", datos.TotalUsd.Value.ToString("F2", CultureInfo.InvariantCulture)),
             new XElement(Ce + "Emisor", Opcional("Curp", datos.CurpEmisor),
                 Domicilio(datos.DomicilioEmisor)),
             new XElement(Ce + "Receptor", Opcional("NumRegIdTrib", datos.NumeroRegistroTributario),
@@ -117,7 +118,9 @@ public sealed class GeneradorDeXmlComercioExterior(EsquemasSat esquemas)
                     x.CantidadAduana is { } cantidad ? new XAttribute("CantidadAduana", cantidad.ToString("F3", CultureInfo.InvariantCulture)) : null,
                     Opcional("UnidadAduana", x.UnidadAduana),
                     x.ValorUnitarioAduana is { } unitario ? new XAttribute("ValorUnitarioAduana", unitario.ToString("F6", CultureInfo.InvariantCulture)) : null,
-                    new XAttribute("ValorDolares", Numero(x.ValorDolares!.Value)),
+                    new XAttribute("ValorDolares", x.CantidadAduana is null
+                        ? x.ValorDolares!.Value.ToString("F2", CultureInfo.InvariantCulture)
+                        : x.ValorDolares!.Value.ToString("0.00##", CultureInfo.InvariantCulture)),
                     string.IsNullOrWhiteSpace(x.Marca) ? null :
                         new XElement(Ce + "DescripcionesEspecificas", new XAttribute("Marca", x.Marca),
                             Opcional("Modelo", x.Modelo), Opcional("SubModelo", x.Submodelo),
@@ -128,7 +131,8 @@ public sealed class GeneradorDeXmlComercioExterior(EsquemasSat esquemas)
         documento.Validate(esquemas.EsquemaComercioExterior, (_, args) =>
             errorEsquema ??= args.Message);
         if (errorEsquema is not null)
-            return ErrorNegocio.Validacion("comercio-esquema-invalido", $"El complemento no cumple el esquema SAT: {errorEsquema}");
+            return ErrorNegocio.Validacion("comercio-esquema-invalido",
+                "El complemento de Comercio Exterior no cumple el esquema del SAT. Revisa domicilios (claves SAT), fracciones arancelarias e importes.");
 
         return raiz;
     }
@@ -146,7 +150,6 @@ public sealed class GeneradorDeXmlComercioExterior(EsquemasSat esquemas)
             new XAttribute("Estado", d.Estado!), new XAttribute("Pais", d.Pais!),
             new XAttribute("CodigoPostal", d.CodigoPostal!));
 
-    private static string Numero(decimal numero) => numero.ToString("0.######", CultureInfo.InvariantCulture);
     private static XAttribute? Opcional(string nombre, string? valor)
         => string.IsNullOrWhiteSpace(valor) ? null : new XAttribute(nombre, valor);
 }

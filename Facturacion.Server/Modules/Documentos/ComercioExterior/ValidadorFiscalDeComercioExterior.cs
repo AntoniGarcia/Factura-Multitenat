@@ -28,9 +28,14 @@ public sealed class ValidadorFiscalDeComercioExterior(AppDbContext db)
             if (postal is null || postal.ClaveEstado != emisor.Estado || postal.ClaveMunicipio != emisor.Municipio ||
                 !string.IsNullOrEmpty(emisor.Localidad) && postal.ClaveLocalidad != emisor.Localidad)
                 return ErrorNegocio.Validacion("comercio-emisor-cp-inconsistente", "El código postal debe corresponder al estado, municipio y localidad del emisor.");
-            if (emisor.Colonia is { Length: 4 } colonia && colonia.All(char.IsAsciiDigit) &&
-                !await db.SatColonias.AsNoTracking().AnyAsync(x => x.Clave == colonia && x.ClaveCodigoPostal == cp && x.Vigente, ct))
-                return ErrorNegocio.Validacion("comercio-emisor-colonia-invalida", "La clave de colonia no corresponde al código postal del emisor.");
+            if (!string.IsNullOrWhiteSpace(emisor.Colonia))
+            {
+                var colonia = emisor.Colonia.Trim();
+                if (colonia.Length != 4 || !colonia.All(char.IsAsciiDigit) ||
+                    !await db.SatColonias.AsNoTracking().AnyAsync(x => x.Clave == colonia && x.ClaveCodigoPostal == cp && x.Vigente, ct))
+                    return ErrorNegocio.Validacion("comercio-emisor-colonia-invalida",
+                        "La colonia del emisor debe ser una clave SAT de 4 dígitos (c_Colonia) correspondiente al código postal.");
+            }
         }
 
         var receptor = datos.DomicilioReceptor;
@@ -53,7 +58,9 @@ public sealed class ValidadorFiscalDeComercioExterior(AppDbContext db)
                 return ErrorNegocio.Validacion("comercio-registro-tributario-invalido", "El registro tributario no cumple el formato del país del receptor.");
         }
 
-        var fecha = DateOnly.FromDateTime(comprobante.FechaEmisionUtc == default ? DateTime.UtcNow : comprobante.FechaEmisionUtc);
+        var zona = TimeZoneInfo.FindSystemTimeZoneById("America/Mexico_City");
+        var fechaUtc = comprobante.FechaEmisionUtc == default ? DateTime.UtcNow : DateTime.SpecifyKind(comprobante.FechaEmisionUtc, DateTimeKind.Utc);
+        var fecha = DateOnly.FromDateTime(TimeZoneInfo.ConvertTimeFromUtc(fechaUtc, zona));
         foreach (var mercancia in datos.Mercancias ?? [])
         {
             var concepto = comprobante.Conceptos.FirstOrDefault(c => c.Orden == mercancia.OrdenConcepto);
@@ -67,10 +74,17 @@ public sealed class ValidadorFiscalDeComercioExterior(AppDbContext db)
                     return ErrorNegocio.Validacion("comercio-fraccion-no-vigente", "La fracción arancelaria no está vigente para la fecha del comprobante.");
                 if (string.IsNullOrWhiteSpace(fraccion.UnidadMedida))
                     return ErrorNegocio.Regla("comercio-catalogo-sin-umt", "Actualiza el catálogo de fracciones arancelarias para cargar su UMT.");
-                // Compara solo la clave de c_UnidadAduana contra la UMT numérica de la fracción;
-                // UnidadTexto del concepto es texto libre y no es clave de catálogo aduanero.
-                if (mercancia.UnidadAduana is { Length: > 0 } unidadAduana && unidadAduana != fraccion.UnidadMedida)
-                    return ErrorNegocio.Validacion("comercio-unidad-fraccion-inconsistente", "La unidad aduanera debe coincidir con la UMT de la fracción arancelaria.");
+                // CCE162: si se captura UnidadAduana debe igualar la UMT; si se omite, Concepto.Unidad debe ser la clave UMT.
+                if (mercancia.UnidadAduana is { Length: > 0 } unidadAduana)
+                {
+                    if (unidadAduana != fraccion.UnidadMedida)
+                        return ErrorNegocio.Validacion("comercio-unidad-fraccion-inconsistente", "La unidad aduanera debe coincidir con la UMT de la fracción arancelaria.");
+                }
+                else if (completo && !string.Equals(concepto.UnidadTexto?.Trim(), fraccion.UnidadMedida, StringComparison.Ordinal))
+                {
+                    return ErrorNegocio.Validacion("comercio-unidad-aduana-requerida",
+                        $"Captura cantidad, unidad ({fraccion.UnidadMedida}) y valor unitario aduaneros para la mercancía {mercancia.OrdenConcepto} (CCE162).");
+                }
             }
             if (mercancia.UnidadAduana is { Length: > 0 } aduana &&
                 !await db.SatUnidadesAduana.AsNoTracking().AnyAsync(x => x.Clave == aduana && x.Vigente, ct))

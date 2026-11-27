@@ -53,8 +53,9 @@ public static class EntidadesNotariales
     // Acepta las dos claves: la vista previa lee c_Estado y el PDF fiscal, la del XML (01–32).
     public static string Nombre(string clave)
     {
+        var normalizada = (clave ?? string.Empty).Trim().ToUpperInvariant();
         foreach (var entidad in Entidades)
-            if (entidad.ClaveEstado == clave || entidad.Clave == clave) return entidad.Nombre;
-        return clave;
+            if (entidad.ClaveEstado == normalizada || entidad.Clave == normalizada) return entidad.Nombre;
+        return clave ?? string.Empty;
     }
 }

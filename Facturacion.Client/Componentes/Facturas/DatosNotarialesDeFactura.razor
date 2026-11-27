@@ -46,9 +46,9 @@ else
                            DateChanged="v => _fechaInstrumento = v ?? DateTime.Today" Required="true" Disabled="@(!Editable)" />
         </div>
         <div class="notaria-rejilla">
-            <CampoMoneda Valor="@_subtotalOperacion" ValorCambiado="v => _subtotalOperacion = v"
+            <CampoMoneda Valor="@_subtotalOperacion" ValorCambiado="v => { _subtotalOperacion = v; _montoOperacion = _subtotalOperacion + _ivaOperacion; }"
                          Label="Subtotal de la operación" Formato="0.00####" Requerido="true" Deshabilitado="@(!Editable)" />
-            <CampoMoneda Valor="@_ivaOperacion" ValorCambiado="v => _ivaOperacion = v"
+            <CampoMoneda Valor="@_ivaOperacion" ValorCambiado="v => { _ivaOperacion = v; _montoOperacion = _subtotalOperacion + _ivaOperacion; }"
                          Label="IVA de la operación" Formato="0.00####" Requerido="true" Deshabilitado="@(!Editable)" />
             <CampoMoneda Valor="@_montoOperacion" ValorCambiado="v => _montoOperacion = v"
                          Label="Monto de la operación" Formato="0.00####" Requerido="true" Deshabilitado="@(!Editable)" />
@@ -103,7 +103,7 @@ else
                 <div class="notaria-rejilla">
                     <MudTextField @bind-Value="inmueble.Municipio" Label="Municipio o alcaldía" MaxLength="100" Required="true" Disabled="@(!Editable)" />
                     <BuscadorCatalogo Catalogo="c_Estado" Label="Entidad federativa" Valor="@inmueble.Estado"
-                                      ValorCambiado="v => inmueble.Estado = v" Requerido="true" Deshabilitado="@(!Editable)" />
+                                      ValorCambiado="v => inmueble.Estado = v" MostrarOpciones="true" Requerido="true" Deshabilitado="@(!Editable)" />
                     <BuscadorCatalogo Catalogo="c_Pais" Label="País" Valor="@inmueble.Pais"
                                       ValorCambiado="v => inmueble.Pais = v" Requerido="true" Deshabilitado="@(!Editable)" />
                 </div>
@@ -149,7 +149,7 @@ else
     private DetalleProblema? _error;
     private bool _falloCarga;
     private string? _mensajeValidacion;
-    private int _numeroInstrumento;
+    private int _numeroInstrumento = 1;
     private DateTime? _fechaInstrumento = DateTime.Today;
     private decimal _montoOperacion, _subtotalOperacion, _ivaOperacion;
     private readonly List<InmuebleEditable> _inmuebles = [];
