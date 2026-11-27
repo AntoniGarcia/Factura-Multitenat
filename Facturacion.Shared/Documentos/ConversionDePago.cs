@@ -9,7 +9,7 @@ public static class ConversionDePago
     public static decimal AMonedaDelPago(decimal abono, decimal equivalencia) => abono / equivalencia;
 
     public static decimal Redondear(decimal importe, int decimales)
-        => Math.Round(importe, decimales, MidpointRounding.ToEven);
+        => Math.Round(importe, decimales, MidpointRounding.AwayFromZero);
 
     public static bool Cuadra(decimal monto, int decimalesPago,
         IEnumerable<(decimal Abono, decimal Equivalencia, int Decimales, bool MismaMoneda)> renglones)
@@ -29,8 +29,8 @@ public static class ConversionDePago
         const decimal epsilon = 0.000000000000000001m;
         var inferior = filas.Sum(x => decimal.Truncate((x.Abono - 1m / Escala(x.Decimales) / 2m) /
             (x.Equivalencia + mediaEquivalencia - epsilon) * escala) / escala);
-        var superior = filas.Sum(x => Redondear((x.Abono + 1m / Escala(x.Decimales) / 2m - epsilon) /
-            (x.Equivalencia - mediaEquivalencia), decimalesPago));
+        var superior = filas.Sum(x => decimal.Ceiling((x.Abono + 1m / Escala(x.Decimales) / 2m - epsilon) /
+            (x.Equivalencia - mediaEquivalencia) * escala) / escala);
         return monto >= inferior && monto <= superior;
     }
 

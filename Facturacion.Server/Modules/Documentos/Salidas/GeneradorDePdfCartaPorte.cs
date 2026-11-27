@@ -14,14 +14,14 @@ public sealed class GeneradorDePdfCartaPorte
 {
     // leyendaDelTimbre: el atributo Leyenda del timbre; ver DatosDelPdf.
     public byte[] Generar(Comprobante comprobante, TrasladoCartaPorte traslado, TimeZoneInfo zona, bool esBorrador = true,
-        string? leyendaDelTimbre = null)
+        string? leyendaDelTimbre = null, byte[]? logo = null)
         => Facturacion.Server.Infra.Pdf.CandadoDePdf.Generar(Document.Create(documento => documento.Page(pagina =>
         {
             pagina.Size(PageSizes.Letter);
             pagina.Margin(0.9f, Unit.Centimetre);
             pagina.DefaultTextStyle(x => x.FontFamily(Fonts.Calibri).FontSize(8));
             var datos = new DatosDelPdf(TimeZoneInfo.ConvertTimeFromUtc(DateTime.SpecifyKind(comprobante.FechaEmisionUtc, DateTimeKind.Utc), zona),
-                2, null, esBorrador, LeyendaDelTimbre: leyendaDelTimbre) { ZonaHoraria = zona };
+                2, logo, esBorrador, LeyendaDelTimbre: leyendaDelTimbre) { ZonaHoraria = zona };
             pagina.Header().Element(e => GeneradorDePdfCfdi.Encabezado(e, comprobante, datos));
             pagina.Content().PaddingTop(4).Column(c =>
             {
@@ -78,18 +78,30 @@ public sealed class GeneradorDePdfCartaPorte
                 }
             });
             if (!esBorrador)
-                pagina.Footer().PaddingTop(6).BorderTop(0.5f).PaddingTop(4).Element(c => Pie(c, comprobante));
+                pagina.Footer().PaddingTop(6).BorderTop(0.5f).PaddingTop(4).Element(c => Pie(c, comprobante, traslado, zona));
         })));
 
     private static string Fecha(DateTime utc, TimeZoneInfo zona) => TimeZoneInfo.ConvertTimeFromUtc(DateTime.SpecifyKind(utc, DateTimeKind.Utc), zona).ToString("dd/MM/yyyy HH:mm", CultureInfo.InvariantCulture);
 
-    private static void Pie(IContainer contenedor, Comprobante comprobante)
+    private static void Pie(IContainer contenedor, Comprobante comprobante, TrasladoCartaPorte traslado, TimeZoneInfo zona)
     {
-        var qr = Qr(comprobante);
+        var qrCfdi = QrCfdi(comprobante);
+        var qrCcp = QrCartaPorte(comprobante, traslado, zona);
         contenedor.Row(fila =>
         {
-            if (qr is not null)
-                fila.ConstantItem(72).Height(72).Image(qr).FitArea();
+            if (qrCfdi is not null)
+                fila.ConstantItem(68).Column(col =>
+                {
+                    col.Item().Width(68).Height(68).Image(qrCfdi).FitArea();
+                    col.Item().AlignCenter().Text("CFDI").FontSize(5.5f).Light();
+                });
+
+            if (qrCcp is not null)
+                fila.ConstantItem(74).PaddingLeft(6).Column(col =>
+                {
+                    col.Item().Width(68).Height(68).Image(qrCcp).FitArea();
+                    col.Item().AlignCenter().Text("Carta Porte 3.1").FontSize(5.5f).Light();
+                });
 
             fila.RelativeItem().PaddingLeft(6).Column(c =>
             {
@@ -103,15 +115,31 @@ public sealed class GeneradorDePdfCartaPorte
         });
     }
 
-    private static byte[]? Qr(Comprobante comprobante)
+    private static byte[]? QrCfdi(Comprobante comprobante)
     {
         var expresion = ExpresionImpresa.Construir(
             comprobante.Uuid, comprobante.EmisorRfc, comprobante.ReceptorRfc,
             ExpresionImpresa.Total(comprobante.Total, 0), comprobante.SelloCfd);
-        if (expresion is null) return null;
+        return expresion is null ? null : GenerarPngQr(expresion);
+    }
 
+    // QR obligatorio de verificación en carretera para Carta Porte 3.1 (SAT verificaccp).
+    private static byte[]? QrCartaPorte(Comprobante comprobante, TrasladoCartaPorte traslado, TimeZoneInfo zona)
+    {
+        if (string.IsNullOrWhiteSpace(traslado.IdCcp) || comprobante.FechaTimbradoUtc is not { } timbradoUtc)
+            return null;
+        var fechaOrig = TimeZoneInfo.ConvertTimeFromUtc(DateTime.SpecifyKind(traslado.FechaSalidaUtc, DateTimeKind.Utc), zona)
+            .ToString("yyyy-MM-ddTHH:mm:ss", CultureInfo.InvariantCulture);
+        var fechaTimb = TimeZoneInfo.ConvertTimeFromUtc(DateTime.SpecifyKind(timbradoUtc, DateTimeKind.Utc), zona)
+            .ToString("yyyy-MM-ddTHH:mm:ss", CultureInfo.InvariantCulture);
+        var url = $"https://verificacfdi.facturaelectronica.sat.gob.mx/verificaccp/default.aspx?IdCCP={traslado.IdCcp}&FechaOrig={fechaOrig}&FechaTimb={fechaTimb}";
+        return GenerarPngQr(url);
+    }
+
+    private static byte[] GenerarPngQr(string contenido)
+    {
         using var generador = new QRCodeGenerator();
-        using var datos = generador.CreateQrCode(expresion, QRCodeGenerator.ECCLevel.M);
+        using var datos = generador.CreateQrCode(contenido, QRCodeGenerator.ECCLevel.M);
         using var qr = new PngByteQRCode(datos);
         return qr.GetGraphic(20);
     }

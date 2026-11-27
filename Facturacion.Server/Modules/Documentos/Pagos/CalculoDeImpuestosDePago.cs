@@ -72,7 +72,7 @@ public static class CalculoDeImpuestosDePago
         foreach (var grupo in impuestosDeLaFactura)
         {
             var baseDr = Math.Round(
-                grupo.Base * proporcion, decimalesDeMoneda, MotorDeImpuestos.ModoDeRedondeo);
+                grupo.Base * proporcion, decimalesDeMoneda, MidpointRounding.AwayFromZero);
 
             if (baseDr <= 0) continue;
 
@@ -81,28 +81,21 @@ public static class CalculoDeImpuestosDePago
                 grupo.TipoFactor,
                 grupo.TasaOCuota,
                 baseDr,
-                ImporteDe(grupo, baseDr, proporcion, decimalesDeMoneda),
+                ImporteDe(grupo, baseDr, decimalesDeMoneda),
                 grupo.EsRetencion));
         }
 
         return repartidos;
     }
 
-    /// <summary>
-    /// Un exento no lleva importe —declararlo en cero es rechazo—, y una cuota es un monto
-    /// fijo por unidad, no un porcentaje: multiplicarla por la base daría un número sin
-    /// sentido, así que esa sí se escala.
-    /// </summary>
-    private static decimal? ImporteDe(
-        ImpuestoDeFactura grupo, decimal baseDr, decimal proporcion, int decimales)
+    // Exento no lleva importe; en Tasa y Cuota la base ya está en la unidad gravada (dinero o cantidad)
+    // y el SAT valida ImporteDR contra BaseDR * TasaOCuotaDR (CRP20261/CRP20254).
+    private static decimal? ImporteDe(ImpuestoDeFactura grupo, decimal baseDr, int decimales)
         => grupo.TipoFactor switch
         {
             TiposDeFactor.Exento => null,
-            TiposDeFactor.Cuota => grupo.Importe is { } importe
-                ? Math.Round(importe * proporcion, decimales, MotorDeImpuestos.ModoDeRedondeo)
-                : null,
             _ => grupo.TasaOCuota is { } tasa
-                ? Math.Round(baseDr * tasa, decimales, MotorDeImpuestos.ModoDeRedondeo)
+                ? Math.Round(baseDr * tasa, decimales, MidpointRounding.AwayFromZero)
                 : null
         };
 
@@ -118,7 +111,7 @@ public static class CalculoDeImpuestosDePago
             => Math.Round(
                 impuestos.Where(filtro).Sum(i => campo(i) ?? 0m),
                 decimalesDeMoneda,
-                MotorDeImpuestos.ModoDeRedondeo);
+                MidpointRounding.AwayFromZero);
 
         bool EsIvaTrasladadoA(ImpuestoDePagoCalculado i, decimal tasa)
             => !i.EsRetencion && i.Impuesto == ClavesDeImpuesto.Iva &&
@@ -138,7 +131,7 @@ public static class CalculoDeImpuestosDePago
             BaseIva0: Sumar(i => EsIvaTrasladadoA(i, 0m), i => i.Base),
             ImpuestoIva0: Sumar(i => EsIvaTrasladadoA(i, 0m), i => i.Importe),
             BaseIvaExento: Sumar(EsIvaExento, i => i.Base),
-            MontoTotalPagos: Math.Round(montoTotalPagos, decimalesDeMoneda, MotorDeImpuestos.ModoDeRedondeo));
+            MontoTotalPagos: Math.Round(montoTotalPagos, decimalesDeMoneda, MidpointRounding.AwayFromZero));
     }
 }
 

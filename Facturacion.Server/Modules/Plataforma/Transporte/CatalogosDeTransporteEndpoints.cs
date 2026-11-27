@@ -130,8 +130,14 @@ public static class CatalogosDeTransporteEndpoints
     {
         if (string.IsNullOrWhiteSpace(p.Clave) || string.IsNullOrWhiteSpace(p.Descripcion) || string.IsNullOrWhiteSpace(p.Placa) ||
             string.IsNullOrWhiteSpace(p.Aseguradora) || string.IsNullOrWhiteSpace(p.Poliza) || string.IsNullOrWhiteSpace(p.NumeroPermiso) ||
-            p.AnioModelo is < 1900 or > 2100)
-            return ErrorNegocio.Validacion("vehiculo-incompleto", "Completa los datos obligatorios del vehículo.");
+            p.AnioModelo is < 1900 or > 2099)
+            return ErrorNegocio.Validacion("vehiculo-incompleto", "Completa los datos obligatorios del vehículo (año modelo de 1900 a 2099).");
+        if (p.Aseguradora.Trim().Length is < 3 or > 50 || p.Aseguradora.Contains('|') ||
+            p.Poliza.Trim().Length is < 3 or > 30 || p.Poliza.Contains('|') ||
+            p.NumeroPermiso.Trim().Length > 50 || p.NumeroPermiso.Contains('|'))
+            return ErrorNegocio.Validacion("vehiculo-formato-sat", "La aseguradora admite 3–50 caracteres, la póliza 3–30 y el número de permiso hasta 50, sin '|'.");
+        if (!Facturacion.Server.Modules.Documentos.Salidas.GeneradorDeXmlCartaPorte.EsPermisoAutotransporte(p.TipoPermiso))
+            return ErrorNegocio.Validacion("permiso-no-autotransporte", "El tipo de permiso debe corresponder a autotransporte (TPAF01–TPAF20 o TPXX00).");
         if (p.PesoBrutoVehicular < 0.01m || Math.Round(p.PesoBrutoVehicular, 2) != p.PesoBrutoVehicular)
             return ErrorNegocio.Validacion("peso-vehicular-invalido", "El peso bruto vehicular debe ser de al menos 0.01 toneladas y tener máximo dos decimales.");
         var placa = string.Concat(p.Placa.Where(c => c != '-' && !char.IsWhiteSpace(c))).ToUpperInvariant();
@@ -149,6 +155,17 @@ public static class CatalogosDeTransporteEndpoints
             string.IsNullOrWhiteSpace(p.Calle) || string.IsNullOrWhiteSpace(p.NumeroExterior) || p.CodigoPostal.Length != 5 ||
             (p.TipoFigura == "01" && string.IsNullOrWhiteSpace(p.NumeroLicencia)))
             return ErrorNegocio.Validacion("figura-incompleta", "Completa los datos fiscales y el domicilio de la figura.");
+        var rfc = p.Rfc.Trim().ToUpperInvariant();
+        if (p.TipoFigura == "01"
+                ? !Facturacion.Server.Modules.Documentos.Salidas.GeneradorDeXmlCartaPorte.EsRfcOperadorValido(rfc)
+                : !Rfc.Validar(rfc).EsValido)
+            return ErrorNegocio.Validacion("figura-rfc-invalido",
+                p.TipoFigura == "01"
+                    ? "El operador debe tener un RFC válido de persona física (13 caracteres, no genérico)."
+                    : "El RFC de la figura de transporte no es válido.");
+        if (p.Nombre.Trim().Length > 254 || p.Nombre.Contains('|') ||
+            p.NumeroLicencia is { Length: > 0 } lic && (lic.Trim().Length is < 6 or > 16 || lic.Contains('|')))
+            return ErrorNegocio.Validacion("figura-formato-sat", "El nombre admite hasta 254 caracteres y la licencia de 6 a 16 caracteres, sin '|'.");
         if (!await db.SatFigurasTransporte.AnyAsync(x => x.Clave == p.TipoFigura && x.Vigente, ct) ||
             !await db.SatMunicipios.AnyAsync(x => x.Clave == p.Municipio && x.ClaveEstado == p.Estado && x.Vigente, ct) ||
             !await db.SatCodigosPostales.AnyAsync(x => x.Clave == p.CodigoPostal && x.ClaveEstado == p.Estado && x.ClaveMunicipio == p.Municipio && x.Vigente, ct))

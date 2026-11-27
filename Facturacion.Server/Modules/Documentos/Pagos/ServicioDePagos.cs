@@ -1,3 +1,4 @@
+using System.Text.RegularExpressions;
 using Facturacion.Server.Data;
 using Facturacion.Server.Data.Entidades.Documentos;
 using Facturacion.Server.Infra.Bitacora;
@@ -34,12 +35,19 @@ public sealed class ServicioDePagos(
     public async Task<PagoDto> CrearBorradorAsync(CancellationToken ct)
     {
         var emisor = await empresaEmisora.ObtenerParaTimbradoAsync(ct);
+        var seriePago = await baseDeDatos.Series.AsNoTracking()
+            .Where(s => s.Activa && s.TipoComprobante == TiposDeComprobante.Pago)
+            .OrderBy(s => s.Prefijo)
+            .Select(s => new { s.Id, s.Prefijo })
+            .FirstOrDefaultAsync(ct);
 
         var comprobante = new Comprobante
         {
             Id = Guid.NewGuid(),
             Estatus = EstatusComprobante.Borrador.ACadena(),
             TipoDeComprobante = TiposDeComprobante.Pago,
+            SerieId = seriePago?.Id,
+            Serie = seriePago?.Prefijo,
             FechaEmisionUtc = DateTime.UtcNow,
             LugarExpedicion = emisor.CodigoPostalExpedicion,
             Moneda = MonedaSinValor,
@@ -307,6 +315,9 @@ public sealed class ServicioDePagos(
         if (comprobante.ClienteId is not { } clienteId || comprobante.Pagos.Count != 1)
             return ErrorNegocio.Validacion("pago-incompleto", "Guarda un pago completo antes de emitirlo.");
         var pago = comprobante.Pagos[0];
+        if (pago.FechaPagoUtc > DateTime.UtcNow)
+            return ErrorNegocio.Validacion("fecha-pago-futura",
+                "La fecha y hora del pago no pueden ser posteriores al momento de timbrado (CRP20201).");
         var peticion = new PeticionGuardarPago(clienteId, pago.FechaPagoUtc, pago.FormaDePagoP,
             pago.MonedaP, pago.TipoCambioP, pago.Monto, pago.NumOperacion, pago.RfcEmisorCtaOrd,
             pago.NomBancoOrdExt, pago.CtaOrdenante, pago.RfcEmisorCtaBen, pago.CtaBeneficiario,
@@ -383,10 +394,11 @@ public sealed class ServicioDePagos(
         if (peticion.Documentos.Select(d => d.IdDocumento).Distinct().Count() != peticion.Documentos.Count)
             return ErrorNegocio.Validacion("documento-repetido", "Una factura no puede aparecer dos veces en el mismo pago.");
 
-        if (peticion.FechaPagoUtc == default || peticion.FechaPagoUtc.Kind != DateTimeKind.Utc)
-            return ErrorNegocio.Validacion("fecha-pago-invalida", "Captura una fecha válida para el pago.");
+        if (peticion.FechaPagoUtc == default || peticion.FechaPagoUtc.Kind != DateTimeKind.Utc ||
+            peticion.FechaPagoUtc.Year is < 2010 or > 2099)
+            return ErrorNegocio.Validacion("fecha-pago-invalida", "Captura una fecha válida para el pago (2010–2099).");
         // CRP20201: la fecha del pago no puede ser futura respecto a la emisión del CFDI.
-        if (peticion.FechaPagoUtc > DateTime.UtcNow.AddMinutes(5))
+        if (peticion.FechaPagoUtc > DateTime.UtcNow)
             return ErrorNegocio.Validacion("fecha-pago-futura", "La fecha y hora del pago no pueden ser posteriores al momento actual.");
 
         var decimales = await baseDeDatos.SatMonedas.AsNoTracking()
@@ -422,16 +434,25 @@ public sealed class ServicioDePagos(
             peticion.RfcEmisorCtaOrd?.Length > 13 || peticion.RfcEmisorCtaBen?.Length > 13)
             return ErrorNegocio.Validacion("datos-bancarios-demasiado-largos", "Revisa la longitud de la referencia y de los datos bancarios.");
 
-        // CRP20208-CRP20214: solo formas de pago bancarizadas admiten datos de cuentas y bancos.
-        var tieneDatosBancarios = peticion.RfcEmisorCtaOrd is not null || peticion.NomBancoOrdExt is not null ||
-            peticion.CtaOrdenante is not null || peticion.RfcEmisorCtaBen is not null || peticion.CtaBeneficiario is not null;
-        if (tieneDatosBancarios && !FormasDePagoBancarizadas.Contains(peticion.FormaDePagoP))
+        if (peticion.NumOperacion?.Contains('|') == true || peticion.NomBancoOrdExt?.Contains('|') == true)
+            return ErrorNegocio.Validacion("datos-bancarios-caracter-invalido", "La referencia y el nombre del banco no pueden contener «|».");
+
+        // CRP20208-CRP20214 y CRP20227-CRP20228: validar cuentas bancarias por forma de pago.
+        var tieneOrdenante = peticion.RfcEmisorCtaOrd is not null || peticion.NomBancoOrdExt is not null || peticion.CtaOrdenante is not null;
+        var tieneBeneficiario = peticion.RfcEmisorCtaBen is not null || peticion.CtaBeneficiario is not null;
+        if ((tieneOrdenante && !FormasDePagoConOrdenante.Contains(peticion.FormaDePagoP)) ||
+            (tieneBeneficiario && !FormasDePagoConBeneficiario.Contains(peticion.FormaDePagoP)))
             return ErrorNegocio.Validacion("datos-bancarios-no-aplican",
-                $"La forma de pago {peticion.FormaDePagoP} no es bancarizada; quita los RFC y cuentas de ordenante y beneficiario.");
+                peticion.FormaDePagoP == "06"
+                    ? "La forma de pago 06 (Dinero electrónico) no admite cuenta ni RFC del banco beneficiario (CRP20227/CRP20228)."
+                    : $"La forma de pago {peticion.FormaDePagoP} no es bancarizada; quita los RFC y cuentas bancarias.");
 
         if (peticion.RfcEmisorCtaOrd == Rfc.GenericoExtranjero && string.IsNullOrWhiteSpace(peticion.NomBancoOrdExt))
             return ErrorNegocio.Validacion("banco-extranjero-requerido",
                 "Cuando el RFC del banco ordenante es XEXX010101000, el nombre del banco extranjero es obligatorio (CRP20211).");
+        if (peticion.NomBancoOrdExt is not null && peticion.RfcEmisorCtaOrd != Rfc.GenericoExtranjero)
+            return ErrorNegocio.Validacion("banco-extranjero-no-aplica",
+                "El nombre del banco extranjero solo se captura cuando el RFC del banco ordenante es XEXX010101000.");
 
         if (peticion.RfcEmisorCtaOrd is { } rfcOrd && rfcOrd != Rfc.GenericoExtranjero &&
             (rfcOrd.Length != 12 || !Rfc.Validar(rfcOrd).EsValido))
@@ -442,6 +463,19 @@ public sealed class ServicioDePagos(
             (rfcBen.Length != 12 || !Rfc.Validar(rfcBen).EsValido))
             return ErrorNegocio.Validacion("rfc-emisor-cta-ben-invalido",
                 "El RFC del banco beneficiario debe ser de persona moral (12 caracteres).");
+
+        if (peticion.CtaOrdenante is { } ctaOrd && !PatronCuentaBancaria.IsMatch(ctaOrd))
+            return ErrorNegocio.Validacion("cta-ordenante-invalida",
+                "La cuenta ordenante debe tener entre 10 y 50 caracteres (solo mayúsculas, números o guion bajo).");
+        if (peticion.CtaBeneficiario is { } ctaBen)
+        {
+            if (!PatronCuentaBancaria.IsMatch(ctaBen))
+                return ErrorNegocio.Validacion("cta-beneficiario-invalida",
+                    "La cuenta beneficiaria debe tener entre 10 y 50 caracteres (solo mayúsculas, números o guion bajo).");
+            if (peticion.FormaDePagoP == "03" && !PatronCuentaSpeiBen.IsMatch(ctaBen))
+                return ErrorNegocio.Validacion("cta-beneficiario-spei-invalida",
+                    "Para transferencia electrónica (03), la cuenta beneficiaria debe ser de 10 dígitos o CLABE de 18 dígitos (CRP20226).");
+        }
 
         return Resultado.Exito();
     }
@@ -637,7 +671,10 @@ public sealed class ServicioDePagos(
     private async Task<PagoDto> ConDecimalesAsync(PagoDto pago, CancellationToken ct)
         => pago with { DecimalesPorMoneda = await baseDeDatos.SatMonedas.AsNoTracking().ToDictionaryAsync(x => x.Clave, x => x.Decimales, ct) };
 
-    private static readonly HashSet<string> FormasDePagoBancarizadas = ["02", "03", "04", "05", "06", "28", "29"];
+    private static readonly HashSet<string> FormasDePagoConOrdenante = ["02", "03", "04", "05", "06", "28", "29"];
+    private static readonly HashSet<string> FormasDePagoConBeneficiario = ["02", "03", "04", "05", "28", "29"];
+    private static readonly Regex PatronCuentaBancaria = new("^[A-Z0-9_]{10,50}$", RegexOptions.CultureInvariant);
+    private static readonly Regex PatronCuentaSpeiBen = new("^(\\d{10}|\\d{18})$", RegexOptions.CultureInvariant);
 
     private static string? Opcional(string? texto) => string.IsNullOrWhiteSpace(texto) ? null : texto;
     private static string? OpcionalTrim(string? texto) => string.IsNullOrWhiteSpace(texto) ? null : texto.Trim();

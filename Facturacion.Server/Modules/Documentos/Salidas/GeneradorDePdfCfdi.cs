@@ -703,6 +703,7 @@ public sealed class GeneradorDePdfCfdi
         var nombre = NombreDeImpuesto(impuesto, esRetencion: false);
 
         if (tipoFactor == TiposDeFactor.Exento) return $"{nombre} exento";
+        if (tipoFactor == TiposDeFactor.Cuota) return tasaOCuota is { } c ? $"{nombre} ${c:0.00####}" : nombre;
 
         return tasaOCuota is { } t ? $"{nombre} {t:P2}" : nombre;
     }

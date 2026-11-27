@@ -104,9 +104,10 @@ public sealed class ServicioDeSalidasFiscales(
                     "El XML de este CFDI no se pudo leer para generar el PDF. Avisa a soporte.");
             }
 
+            var logoTraslado = await logos.ObtenerAsync(ct);
             return new ArchivoFiscal(
                 NombreDeArchivoFiscal.Construir(comprobante, zona, "pdf"), "application/pdf",
-                generadorCartaPorte.Generar(comprobante, traslado, zona, esBorrador: false, leyendaDelTraslado));
+                generadorCartaPorte.Generar(comprobante, traslado, zona, esBorrador: false, leyendaDelTraslado, logoTraslado?.Contenido));
         }
 
         var fechaLocal = TimeZoneInfo.ConvertTimeFromUtc(

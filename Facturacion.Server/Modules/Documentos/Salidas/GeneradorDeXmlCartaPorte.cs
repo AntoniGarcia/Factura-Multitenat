@@ -104,7 +104,7 @@ public sealed class GeneradorDeXmlCartaPorte(GeneradorDeXmlCfdi generadorCfdi)
                     Opcional("AseguraMedAmbiente", traslado.AseguraMedAmbiente), Opcional("PolizaMedAmbiente", traslado.PolizaMedAmbiente)),
                 traslado.Remolques.Count == 0 ? null : new XElement(CartaPorte + "Remolques",
                     traslado.Remolques.OrderBy(x => x.Orden).Select(x => new XElement(CartaPorte + "Remolque",
-                        new XAttribute("SubTipoRem", x.SubTipoRem), new XAttribute("Placa", x.Placa))))));
+                        new XAttribute("SubTipoRem", x.SubTipoRem), new XAttribute("Placa", LimpiarPlaca(x.Placa)))))));
 
     private static XElement FiguraTransporte(TrasladoCartaPorte traslado)
         => new(CartaPorte + "FiguraTransporte",
@@ -129,7 +129,8 @@ public sealed class GeneradorDeXmlCartaPorte(GeneradorDeXmlCfdi generadorCfdi)
         }
         if (Facturacion.Server.Modules.Documentos.Traslados.ReglasDeMaterialPeligroso.ValidarSeguro(
             traslado.Mercancias.Any(x => x.MaterialPeligroso == "Sí"), traslado.AseguraMedAmbiente, traslado.PolizaMedAmbiente) is { } errorSeguro) return errorSeguro;
-        if (traslado.IdCcp is null || traslado.VehiculoAnioModelo is null || traslado.VehiculoPesoBruto is null ||
+        if (traslado.IdCcp is null || !EsIdCcpValido(traslado.IdCcp) ||
+            traslado.VehiculoAnioModelo is null or < 1900 or > 2099 || traslado.VehiculoPesoBruto is null ||
             traslado.Ubicaciones.Count != 2 || traslado.Mercancias.Count == 0 ||
             traslado.Ubicaciones.Any(x => string.IsNullOrWhiteSpace(x.RfcRemitenteDestinatario)) ||
             new[]
@@ -142,12 +143,19 @@ public sealed class GeneradorDeXmlCartaPorte(GeneradorDeXmlCfdi generadorCfdi)
                 "carta-porte-datos-incompletos",
                 "Guarda de nuevo el traslado después de elegir un vehículo y operador activos antes de validar su XML.");
 
-        if (traslado.FiguraTipo != "01" || !Rfc.Validar(traslado.FiguraRfc).EsValido ||
+        if (!EsPermisoAutotransporte(traslado.VehiculoTipoPermiso!) ||
+            traslado.VehiculoNumeroPermiso!.Length > 50 || traslado.VehiculoNumeroPermiso.Contains('|') ||
+            traslado.VehiculoAseguradora!.Length is < 3 or > 50 || traslado.VehiculoAseguradora.Contains('|') ||
+            traslado.VehiculoPoliza!.Length is < 3 or > 30 || traslado.VehiculoPoliza.Contains('|'))
+            return ErrorNegocio.Regla("vehiculo-carta-porte-invalido",
+                "El permiso (solo autotransporte), aseguradora (3–50) o póliza (3–30) del vehículo no cumple Carta Porte 3.1.");
+
+        if (traslado.FiguraTipo != "01" || !EsRfcOperadorValido(traslado.FiguraRfc) ||
             traslado.FiguraNumeroLicencia is { Length: > 0 } licencia &&
                 (licencia.Length is < 6 or > 16 || licencia.Contains('|')) ||
             traslado.FiguraNombre!.Length > 254 || traslado.FiguraNombre.Contains('|'))
             return ErrorNegocio.Regla("figura-carta-porte-invalida",
-                "El tipo, RFC, nombre o licencia de la figura no cumple el formato requerido. Corrige el catálogo de Transporte y vuelve a guardar el borrador.");
+                "El operador debe tener RFC válido de persona física (no genérico), nombre y licencia de 6 a 16 caracteres sin '|'.");
 
         var placa = LimpiarPlaca(traslado.VehiculoPlaca!);
         if (traslado.DistanciaRecorridaKm < 0.01m || traslado.DistanciaRecorridaKm > 99999m ||
@@ -176,4 +184,18 @@ public sealed class GeneradorDeXmlCartaPorte(GeneradorDeXmlCfdi generadorCfdi)
 
     private static string LimpiarPlaca(string placa)
         => string.Concat(placa.Where(caracter => caracter != '-' && !char.IsWhiteSpace(caracter))).ToUpperInvariant();
+
+    internal static bool EsPermisoAutotransporte(string? clave)
+        => !string.IsNullOrWhiteSpace(clave) &&
+           (clave.StartsWith("TPAF", StringComparison.Ordinal) || clave == "TPXX00");
+
+    internal static bool EsRfcOperadorValido(string? rfc)
+        => !string.IsNullOrWhiteSpace(rfc) &&
+           rfc.Length == 13 &&
+           rfc is not (Rfc.GenericoNacional or Rfc.GenericoExtranjero) &&
+           Rfc.Validar(rfc).EsValido;
+
+    private static bool EsIdCcpValido(string idCcp)
+        => idCcp.Length == 36 && idCcp.StartsWith("CCC", StringComparison.Ordinal) &&
+           Guid.TryParseExact("000" + idCcp[3..], "D", out _);
 }

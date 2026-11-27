@@ -32,9 +32,7 @@ public sealed class ServicioDeTrasladosCartaPorte(
     private const string UsoSinEfectosFiscales = "S01";
     private const string SinExportacion = "01";
 
-    // Claves prescritas para el concepto único de un CFDI de traslado con Carta Porte.
-    private const string ClaveServicioTraslado = "78101800";
-    private const string ClaveUnidadServicio = "E48";
+    private static readonly HashSet<string> TiposRelacionTraslado = ["04", "05", "06"];
 
     public async Task<Resultado<TrasladoCartaPorteDto>> CrearAsync(
         PeticionGuardarTrasladoCartaPorte peticion, CancellationToken ct)
@@ -44,28 +42,19 @@ public sealed class ServicioDeTrasladosCartaPorte(
         if (validacion.EsFallo) return validacion.Error!;
 
         var emisor = await empresaEmisora.ObtenerParaTimbradoAsync(ct);
+        var serieTraslado = await baseDeDatos.Series.AsNoTracking()
+            .Where(s => s.Activa && s.TipoComprobante == TipoTraslado)
+            .OrderBy(s => s.Prefijo)
+            .Select(s => new { s.Id, s.Prefijo })
+            .FirstOrDefaultAsync(ct);
         var fechas = await AFechasUtcAsync(peticion, ct);
         if (fechas.EsFallo) return fechas.Error!;
         var (salidaUtc, llegadaUtc) = fechas.Valor;
-        var comprobante = NuevoComprobante(emisor, contexto.UsuarioActual ?? Guid.Empty);
+        var comprobante = NuevoComprobante(emisor, contexto.UsuarioActual ?? Guid.Empty, serieTraslado?.Id, serieTraslado?.Prefijo);
         comprobante.Observaciones = Recortar(peticion.Observaciones);
         var traslado = NuevoTraslado(peticion, comprobante, salidaUtc, llegadaUtc, validacion.Valor);
         ReemplazarRelacionados(comprobante, peticion.Relacionados);
-
-        comprobante.Conceptos.Add(new Concepto
-        {
-            Id = Guid.NewGuid(),
-            Orden = 1,
-            ClaveProdServ = ClaveServicioTraslado,
-            ClaveUnidad = ClaveUnidadServicio,
-            UnidadTexto = "Servicio",
-            Descripcion = "Traslado de bienes y/o mercancías",
-            Cantidad = 1m,
-            ValorUnitario = 0m,
-            Importe = 0m,
-            Descuento = 0m,
-            ObjetoImp = "01"
-        });
+        ReemplazarConceptosDeTraslado(comprobante, peticion.Mercancias);
 
         baseDeDatos.Comprobantes.Add(comprobante);
         baseDeDatos.TrasladosCartaPorte.Add(traslado);
@@ -149,6 +138,7 @@ public sealed class ServicioDeTrasladosCartaPorte(
         CopiarDatosDeTransporte(traslado, validacion.Valor);
         ReemplazarDetalles(traslado, peticion, traslado.Comprobante.EmisorRfc,
             traslado.Comprobante.EmisorNombre, validacion.Valor.Destinatario, validacion.Valor.IndicadoresMercancia);
+        ReemplazarConceptosDeTraslado(traslado.Comprobante, peticion.Mercancias);
         ReemplazarRelacionados(traslado.Comprobante, peticion.Relacionados);
         traslado.Comprobante.Observaciones = Recortar(peticion.Observaciones);
         traslado.Comprobante.ModificadoUtc = DateTime.UtcNow;
@@ -173,12 +163,13 @@ public sealed class ServicioDeTrasladosCartaPorte(
             p.DistanciaRecorridaKm < 0.01m || p.DistanciaRecorridaKm > 99999m ||
             Math.Round(p.DistanciaRecorridaKm, 2) != p.DistanciaRecorridaKm ||
             p.FechaSalidaLocal == default || p.FechaLlegadaLocal == default ||
-            p.FechaLlegadaLocal < p.FechaSalidaLocal)
-            return ErrorNegocio.Validacion("traslado-incompleto", "Completa el trayecto, vehículo y operador; la distancia debe ser de 0.01 a 99999 km con máximo dos decimales.");
+            p.FechaLlegadaLocal <= p.FechaSalidaLocal)
+            return ErrorNegocio.Validacion("traslado-incompleto", "Completa el trayecto, vehículo y operador; la llegada debe ser posterior a la salida y la distancia de 0.01 a 99999 km.");
 
-        if (p.Ubicaciones.Count != 2 || p.Ubicaciones.Count(x => x.Tipo == "Origen") != 1 ||
-            p.Ubicaciones.Count(x => x.Tipo == "Destino") != 1)
-            return ErrorNegocio.Validacion("ubicaciones-invalidas", "Registra exactamente un origen y un destino.");
+        var origen = p.Ubicaciones.FirstOrDefault(x => x.Tipo == "Origen");
+        var destino = p.Ubicaciones.FirstOrDefault(x => x.Tipo == "Destino");
+        if (p.Ubicaciones.Count != 2 || origen is null || destino is null || origen.Orden >= destino.Orden)
+            return ErrorNegocio.Validacion("ubicaciones-invalidas", "Registra exactamente un origen (primero) y un destino (después).");
 
         var relacionados = p.Relacionados ?? [];
         if (relacionados.Any(x => x.UuidRelacionado == Guid.Empty || string.IsNullOrWhiteSpace(x.TipoRelacion)) ||
@@ -186,15 +177,18 @@ public sealed class ServicioDeTrasladosCartaPorte(
             return ErrorNegocio.Validacion("cfdi-relacionados-invalidos", "Cada CFDI relacionado requiere tipo de relación y UUID, sin repetir folios fiscales.");
 
         var tiposRelacion = relacionados.Select(x => x.TipoRelacion.Trim()).Distinct().ToArray();
+        if (tiposRelacion.Any(t => !TiposRelacionTraslado.Contains(t)))
+            return ErrorNegocio.Validacion("tipo-relacion-traslado-invalido", "Un CFDI de traslado solo admite relaciones 04, 05 o 06.");
         if (tiposRelacion.Length > 0 &&
             await baseDeDatos.SatTiposRelacion.CountAsync(x => tiposRelacion.Contains(x.Clave) && x.Vigente, ct) != tiposRelacion.Length)
             return ErrorNegocio.Validacion("tipo-relacion-invalido", "El tipo de relación no está vigente en el catálogo del SAT.");
 
         if (p.Mercancias.Count == 0 || p.Mercancias.Any(x => x.Orden < 1 || string.IsNullOrWhiteSpace(x.ClaveProdServ) ||
             string.IsNullOrWhiteSpace(x.ClaveUnidad) || string.IsNullOrWhiteSpace(x.Descripcion) ||
+            x.Descripcion.Trim().Length > 1000 || x.Descripcion.Contains('|') ||
             x.Cantidad < 0.000001m || x.Cantidad > MaximoDecimalPersistido || Math.Round(x.Cantidad, 6) != x.Cantidad ||
             x.PesoEnKg < 0.001m || x.PesoEnKg > MaximoDecimalPersistido || Math.Round(x.PesoEnKg, 3) != x.PesoEnKg))
-            return ErrorNegocio.Validacion("mercancias-invalidas", "Cada mercancía requiere cantidad mínima de 0.000001 (máximo seis decimales) y peso mínimo de 0.001 kg (máximo tres decimales).");
+            return ErrorNegocio.Validacion("mercancias-invalidas", "Cada mercancía requiere descripción (hasta 1000 caracteres sin '|'), cantidad mínima de 0.000001 y peso mínimo de 0.001 kg.");
 
         if (p.Mercancias.Any(x => x.PesoUnitarioKg is { } unitario &&
             (unitario < 0.000001m || unitario > MaximoDecimalPersistido ||
@@ -209,9 +203,12 @@ public sealed class ServicioDeTrasladosCartaPorte(
             return ErrorNegocio.Validacion("detalle-mercancia-invalido", "La unidad propia admite hasta 20 caracteres sin '|'; las dimensiones deben seguir el formato 30/40/30cm o 30/40/30plg.");
 
         if (p.Ubicaciones.Any(x => x.Orden < 1 || string.IsNullOrWhiteSpace(x.Calle) ||
+            x.Calle.Trim().Length > 100 || x.Calle.Contains('|') ||
+            (!string.IsNullOrWhiteSpace(x.NumeroExterior) && (x.NumeroExterior.Trim().Length > 55 || x.NumeroExterior.Contains('|'))) ||
+            (!string.IsNullOrWhiteSpace(x.NumeroInterior) && (x.NumeroInterior.Trim().Length > 55 || x.NumeroInterior.Contains('|'))) ||
             x.CodigoPostal.Length != 5 ||
             string.IsNullOrWhiteSpace(x.Estado) || string.IsNullOrWhiteSpace(x.Municipio)))
-            return ErrorNegocio.Validacion("domicilio-incompleto", "Completa el domicilio de origen y destino.");
+            return ErrorNegocio.Validacion("domicilio-incompleto", "Completa el domicilio de origen y destino (calle hasta 100 caracteres, números hasta 55, sin '|').");
 
         if (p.Ubicaciones.Select(x => x.Orden).Distinct().Count() != p.Ubicaciones.Count ||
             p.Mercancias.Select(x => x.Orden).Distinct().Count() != p.Mercancias.Count)
@@ -235,16 +232,21 @@ public sealed class ServicioDeTrasladosCartaPorte(
 
         var placa = string.Concat(vehiculo.Placa.Where(c => c != '-' && !char.IsWhiteSpace(c))).ToUpperInvariant();
         if (vehiculo.PesoBrutoVehicular < 0.01m || Math.Round(vehiculo.PesoBrutoVehicular, 2) != vehiculo.PesoBrutoVehicular ||
+            vehiculo.AnioModelo is < 1900 or > 2099 ||
+            !GeneradorDeXmlCartaPorte.EsPermisoAutotransporte(vehiculo.TipoPermiso) ||
+            vehiculo.NumeroPermiso.Length > 50 || vehiculo.NumeroPermiso.Contains('|') ||
+            vehiculo.Aseguradora.Length is < 3 or > 50 || vehiculo.Aseguradora.Contains('|') ||
+            vehiculo.Poliza.Length is < 3 or > 30 || vehiculo.Poliza.Contains('|') ||
             placa.Length is < 5 or > 7 || placa.Any(c => c is not (>= 'A' and <= 'Z' or >= '0' and <= '9')))
-            return ErrorNegocio.Validacion("vehiculo-carta-porte-invalido", "Actualiza la placa o el peso del vehículo en el catálogo de transporte antes de usarlo.");
+            return ErrorNegocio.Validacion("vehiculo-carta-porte-invalido", "Actualiza en Transporte los datos del vehículo (placa, peso, año 1900–2099, permiso de autotransporte, aseguradora 3–50 y póliza 3–30).");
         if (figura.TipoFigura == "01" && string.IsNullOrWhiteSpace(figura.NumeroLicencia))
             return ErrorNegocio.Validacion("operador-carta-porte-invalido", "Registra la licencia del operador en el catálogo de transporte antes de usarlo.");
-        if (!Rfc.Validar(figura.Rfc).EsValido ||
+        if (!GeneradorDeXmlCartaPorte.EsRfcOperadorValido(figura.Rfc) ||
             figura.NumeroLicencia is { Length: > 0 } licencia &&
                 (licencia.Length is < 6 or > 16 || licencia.Contains('|')) ||
             string.IsNullOrWhiteSpace(figura.Nombre) || figura.Nombre.Length > 254 || figura.Nombre.Contains('|'))
             return ErrorNegocio.Validacion("figura-carta-porte-invalida",
-                "Revisa el RFC y nombre de la figura en Transporte; la licencia, cuando se registra, debe tener entre 6 y 16 caracteres sin '|'.");
+                "El operador debe tener RFC válido de persona física (no genérico), nombre y licencia de 6 a 16 caracteres sin '|'.");
 
         var clavesProducto = p.Mercancias.Select(x => x.ClaveProdServ.Trim()).Distinct().ToArray();
         var clavesUnidad = p.Mercancias.Select(x => x.ClaveUnidad.Trim()).Distinct().ToArray();
@@ -299,11 +301,13 @@ public sealed class ServicioDeTrasladosCartaPorte(
         }
     }
 
-    private static Comprobante NuevoComprobante(EmisorFiscalDto emisor, Guid usuarioId) => new()
+    private static Comprobante NuevoComprobante(EmisorFiscalDto emisor, Guid usuarioId, Guid? serieId = null, string? serie = null) => new()
     {
         Id = Guid.NewGuid(),
         Estatus = EstatusComprobante.Borrador.ACadena(),
         TipoDeComprobante = TipoTraslado,
+        SerieId = serieId,
+        Serie = serie,
         FechaEmisionUtc = DateTime.UtcNow,
         LugarExpedicion = emisor.CodigoPostalExpedicion,
         Moneda = MonedaSinEfectos,
@@ -373,7 +377,7 @@ public sealed class ServicioDeTrasladosCartaPorte(
         {
             Id = Guid.NewGuid(), Tipo = x.Tipo, Orden = x.Orden,
             RfcRemitenteDestinatario = x.Tipo == "Destino" ? destinatario?.Rfc ?? rfcDeLaEmpresa : rfcDeLaEmpresa,
-            NombreRemitenteDestinatario = x.Tipo == "Destino" ? destinatario?.Nombre ?? nombreDeLaEmpresa : nombreDeLaEmpresa,
+            NombreRemitenteDestinatario = RecortarA(x.Tipo == "Destino" ? destinatario?.Nombre ?? nombreDeLaEmpresa : nombreDeLaEmpresa, 254),
             Calle = x.Calle.Trim(),
             NumeroExterior = Recortar(x.NumeroExterior) ?? string.Empty, NumeroInterior = Recortar(x.NumeroInterior),
             Estado = x.Estado.Trim(), Municipio = x.Municipio.Trim(), CodigoPostal = x.CodigoPostal.Trim()
@@ -388,6 +392,29 @@ public sealed class ServicioDeTrasladosCartaPorte(
             ProductoId = x.ProductoId
         }));
     }
+
+    private static void ReemplazarConceptosDeTraslado(Comprobante comprobante, IReadOnlyList<MercanciaCartaPorteDto> mercancias)
+    {
+        comprobante.Conceptos.Clear();
+        comprobante.Conceptos.AddRange(mercancias.OrderBy(x => x.Orden).Select(m => new Concepto
+        {
+            Id = Guid.NewGuid(),
+            Orden = m.Orden,
+            ProductoId = m.ProductoId,
+            ClaveProdServ = m.ClaveProdServ.Trim(),
+            ClaveUnidad = m.ClaveUnidad.Trim(),
+            UnidadTexto = Recortar(m.Unidad),
+            Descripcion = m.Descripcion.Trim(),
+            Cantidad = m.Cantidad,
+            ValorUnitario = 0m,
+            Importe = 0m,
+            Descuento = 0m,
+            ObjetoImp = "01"
+        }));
+    }
+
+    private static string RecortarA(string texto, int maximo)
+        => texto.Length <= maximo ? texto : texto[..maximo];
 
     private static void ReemplazarRelacionados(Comprobante comprobante, IReadOnlyList<Facturacion.Shared.Documentos.ComprobanteRelacionadoDto>? relacionados)
     {

@@ -48,6 +48,8 @@ public static class GeneradorDeXmlPago
 
     public static ErrorNegocio? Validar(Comprobante comprobante, int? decimalesMoneda = null)
     {
+        if (comprobante.Exportacion != "01")
+            return ErrorNegocio.Validacion("pago-exportacion-invalida", "Un CFDI de pagos debe llevar Exportación 01 (No aplica).");
         if (comprobante.Relacionados.Count > 1 || comprobante.Relacionados.Any(r =>
             r.TipoRelacion != "04" || r.UuidRelacionado == Guid.Empty || r.UuidRelacionado == comprobante.Uuid))
             return ErrorNegocio.Validacion("relacion-pago-invalida", "El pago solo admite un folio anterior con relación 04 de sustitución.");
@@ -61,8 +63,11 @@ public static class GeneradorDeXmlPago
             if (ReglasDeCadenaPago.Validar(pago.FormaDePagoP, pago.TipoCadPago,
                 pago.CertPago, pago.CadPago, pago.SelloPago) is { } errorCadena)
                 return errorCadena;
-            if (pago.MonedaP == "XXX" || pago.Monto <= 0 || pago.FechaPagoUtc == default || pago.FormaDePagoP == "99")
+            if (pago.MonedaP == "XXX" || pago.Monto <= 0 || pago.FechaPagoUtc == default ||
+                pago.FechaPagoUtc.Year is < 2010 or > 2099 || pago.FormaDePagoP == "99")
                 return ErrorNegocio.Validacion("pago-datos-invalidos", "Revisa la moneda, el importe y la fecha del pago.");
+            if (comprobante.FechaEmisionUtc != default && pago.FechaPagoUtc > comprobante.FechaEmisionUtc)
+                return ErrorNegocio.Validacion("fecha-pago-futura", "La fecha del pago no puede ser posterior a la emisión del comprobante (CRP20201).");
             if (pago.MonedaP != "MXN" && pago.TipoCambioP is not > 0m)
                 return ErrorNegocio.Validacion("tipo-cambio-pago-invalido", "El pago en moneda extranjera necesita un tipo de cambio positivo a MXN.");
             if ((pago.MonedaP == "MXN" && pago.TipoCambioP is { } cambioMxn && cambioMxn != 1m) ||
@@ -80,7 +85,7 @@ public static class GeneradorDeXmlPago
             {
                 if (!ConversionDePago.EsEquivalenciaValida(documento.MonedaDR, pago.MonedaP, documento.EquivalenciaDR))
                     return ErrorNegocio.Validacion("equivalencia-pago-invalida", "La equivalencia guardada no corresponde a las monedas del pago y de la factura.");
-                if (documento.IdDocumento == Guid.Empty || documento.NumParcialidad < 1 ||
+                if (documento.IdDocumento == Guid.Empty || documento.NumParcialidad is < 1 or > 999 ||
                     documento.ImpPagado <= 0 || documento.ImpSaldoAnt < documento.ImpPagado ||
                     documento.ImpSaldoInsoluto != documento.ImpSaldoAnt - documento.ImpPagado)
                     return ErrorNegocio.Validacion("saldos-pago-invalidos", "Los saldos o la parcialidad del pago son inconsistentes. Guarda nuevamente el borrador.");
@@ -91,7 +96,7 @@ public static class GeneradorDeXmlPago
                     (i.TipoFactor == TiposDeFactor.Exento && (i.EsRetencion || i.TasaOCuota is not null || i.Importe is not null)) ||
                     (i.TipoFactor != TiposDeFactor.Exento && (i.Importe is null || i.TasaOCuota is null))))
                     return ErrorNegocio.Validacion("impuestos-pago-invalidos", "Revisa las bases y los importes de los impuestos del pago.");
-                if (documento.Impuestos.Any(i => i.TipoFactor == TiposDeFactor.Tasa &&
+                if (documento.Impuestos.Any(i => i.TipoFactor is TiposDeFactor.Tasa or TiposDeFactor.Cuota &&
                     RedondearImpuesto(i.Base * i.TasaOCuota!.Value) != i.Importe))
                     return ErrorNegocio.Validacion("impuestos-pago-desactualizados", "El desglose guardado no coincide con el cálculo a seis decimales. Guarda nuevamente el borrador.");
             }
@@ -252,7 +257,7 @@ public static class GeneradorDeXmlPago
     }
 
     private static decimal RedondearImpuesto(decimal importe)
-        => Math.Round(importe, 6, MotorDeImpuestos.ModoDeRedondeo);
+        => Math.Round(importe, 6, MidpointRounding.AwayFromZero);
 
     private static XElement NodoDePago(Pago pago, int d, TimeZoneInfo zona,
         IReadOnlyList<ImpuestoDePagoCalculado> impuestos)
