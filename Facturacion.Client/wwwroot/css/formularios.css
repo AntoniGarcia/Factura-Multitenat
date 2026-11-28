@@ -1306,9 +1306,10 @@
 
 .permisos-resumen-conteo {
     padding: 0.125rem 0.5rem;
+    border: 1px solid var(--borde);
     border-radius: var(--radio);
-    background: rgba(var(--acento-rgb), 0.12);
-    color: var(--acento-texto);
+    background: var(--superficie);
+    color: var(--texto);
     font-size: 0.8125rem;
     font-weight: 600;
 }
@@ -1356,13 +1357,13 @@
 }
 
 .permiso-modulo.activo {
-    background: rgba(var(--acento-rgb), 0.09);
+    background: var(--fondo);
     border-left-color: var(--acento);
 }
 
 .permiso-modulo.activo .permiso-modulo-nombre {
-    color: var(--acento-texto);
-    font-weight: 500;
+    color: var(--texto);
+    font-weight: 600;
 }
 
 .permiso-modulo > .mud-checkbox {
@@ -1384,7 +1385,8 @@
 }
 
 .permiso-modulo-mostrar:hover {
-    color: var(--acento-texto);
+    background: transparent;
+    color: var(--texto);
 }
 
 .permiso-modulo-navegacion {
@@ -1437,9 +1439,9 @@
 }
 
 .permiso-modulo-cantidad.con-activos {
-    background: rgba(var(--acento-rgb), 0.14);
-    color: var(--acento-texto);
-    font-weight: 500;
+    background: rgba(var(--estado-timbrada-rgb), 0.12);
+    color: var(--estado-timbrada-texto);
+    font-weight: 600;
 }
 
 .permisos-detalle {
@@ -1663,17 +1665,20 @@
     padding: 0.375rem 0.625rem;
     border: 1px solid var(--borde);
     border-radius: var(--radio);
-    background: var(--fondo);
+    background: var(--superficie);
+    color: var(--texto);
     transition: border-color 120ms ease, background-color 120ms ease;
 }
 
 .permiso-casilla:hover {
-    border-color: rgba(var(--acento-rgb), 0.45);
+    background: var(--fondo);
+    border-color: var(--borde-fuerte);
 }
 
 .permiso-casilla.marcada {
-    background: rgba(var(--acento-rgb), 0.08);
-    border-color: rgba(var(--acento-rgb), 0.35);
+    background: var(--superficie);
+    border-color: var(--estado-timbrada);
+    box-shadow: inset 3px 0 0 var(--estado-timbrada);
 }
 
 .permiso-casilla.implicita {
