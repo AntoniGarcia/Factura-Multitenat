@@ -113,8 +113,9 @@ else
                     }
 
                     <MudTextField T="string" Label="R.F.C." Value="@(_cliente?.Rfc ?? _pago.ReceptorRfc)" ReadOnly="true"
-                                  Class="cifra-tabular" />
-                    <MudTextField T="string" Label="Nombre" Value="@(_cliente?.Nombre ?? _pago.ReceptorNombre)" ReadOnly="true" />
+                                  ShrinkLabel="true" Class="cifra-tabular" />
+                    <MudTextField T="string" Label="Nombre" Value="@(_cliente?.Nombre ?? _pago.ReceptorNombre)" ReadOnly="true"
+                                  ShrinkLabel="true" />
                 </div>
             </section>
 

@@ -7,7 +7,7 @@ namespace Facturacion.Client.Servicios.Plataforma;
 /// <summary>Abre <see cref="ModalCatalogo"/> y devuelve la clave elegida, o <c>null</c> si se canceló.</summary>
 public interface IServicioModalCatalogo
 {
-    Task<ClaveSatDto?> ElegirAsync(string catalogo, string titulo);
+    Task<ClaveSatDto?> ElegirAsync(string catalogo, string titulo, bool mostrarOpciones = false);
 }
 
 public sealed class ServicioModalCatalogo(IDialogService dialogos) : IServicioModalCatalogo
@@ -15,14 +15,18 @@ public sealed class ServicioModalCatalogo(IDialogService dialogos) : IServicioMo
     // Igual que en la confirmación: un doble clic no debe apilar dos buscadores de catálogo.
     private bool _abierto;
 
-    public async Task<ClaveSatDto?> ElegirAsync(string catalogo, string titulo)
+    public async Task<ClaveSatDto?> ElegirAsync(string catalogo, string titulo, bool mostrarOpciones = false)
     {
         if (_abierto) return null;
         _abierto = true;
 
         try
         {
-            var parametros = new DialogParameters<ModalCatalogo> { { x => x.Catalogo, catalogo } };
+            var parametros = new DialogParameters<ModalCatalogo>
+            {
+                { x => x.Catalogo, catalogo },
+                { x => x.MostrarOpciones, mostrarOpciones }
+            };
             var opciones = new DialogOptions { FullWidth = true, MaxWidth = MaxWidth.Medium };
 
             var referencia = await dialogos.ShowAsync<ModalCatalogo>(titulo, parametros, opciones);

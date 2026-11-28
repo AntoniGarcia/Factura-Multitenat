@@ -18,7 +18,7 @@
                        @ref="_campoBusqueda"
                        Value="@_texto"
                        ValueChanged="Buscar"
-                       Placeholder="Escribe al menos 3 caracteres…"
+                       Placeholder="@(MostrarOpciones ? "Filtra por clave o descripción…" : "Escribe al menos 3 caracteres…")"
                        Adornment="Adornment.Start"
                        AdornmentIcon="@Icons.Material.Filled.Search"
                        Immediate="true"
@@ -30,18 +30,18 @@
         {
             <p class="modal-catalogo-estado">Buscando…</p>
         }
-        else if (_texto.Length == 0)
+        else if (!MostrarOpciones && _texto.Length == 0)
         {
             <div class="modal-catalogo-estado modal-catalogo-inicial">
                 <MudIcon Icon="@Icons.Material.Filled.Search" />
                 <span>Escribe una clave o una parte de la descripción.</span>
             </div>
         }
-        else if (_texto.Length > 0 && _texto.Length < 3)
+        else if (!MostrarOpciones && _texto.Length > 0 && _texto.Length < 3)
         {
             <p class="modal-catalogo-estado">Escribe al menos 3 caracteres.</p>
         }
-        else if (_resultados.Count == 0 && _texto.Length >= 3)
+        else if (_resultados.Count == 0)
         {
             <p class="modal-catalogo-estado">Sin resultados para «@_texto».</p>
         }
@@ -72,11 +72,30 @@
     [Parameter, EditorRequired]
     public string Catalogo { get; set; } = default!;
 
+    [Parameter]
+    public bool MostrarOpciones { get; set; }
+
     private MudTextField<string>? _campoBusqueda;
     private string _texto = string.Empty;
     private bool _buscando;
+    private IReadOnlyList<ClaveSatDto> _todasLasOpciones = [];
     private IReadOnlyList<ClaveSatDto> _resultados = [];
     private CancellationTokenSource? _cancelacion;
+
+    protected override async Task OnInitializedAsync()
+    {
+        if (!MostrarOpciones) return;
+        _buscando = true;
+        try
+        {
+            _todasLasOpciones = await Busqueda.OpcionesAsync(Catalogo, CancellationToken.None);
+            _resultados = _todasLasOpciones;
+        }
+        finally
+        {
+            _buscando = false;
+        }
+    }
 
     protected override async Task OnAfterRenderAsync(bool primeraVez)
     {
@@ -86,11 +105,25 @@
 
     private async Task Buscar(string texto)
     {
-        _texto = texto;
+        _texto = texto ?? string.Empty;
+
+        if (MostrarOpciones)
+        {
+            var filtro = _texto.Trim();
+            _resultados = string.IsNullOrWhiteSpace(filtro)
+                ? _todasLasOpciones
+                : _todasLasOpciones.Where(x =>
+                    System.Globalization.CultureInfo.GetCultureInfo("es-MX").CompareInfo.IndexOf(
+                        x.Clave, filtro, System.Globalization.CompareOptions.IgnoreCase | System.Globalization.CompareOptions.IgnoreNonSpace) >= 0 ||
+                    System.Globalization.CultureInfo.GetCultureInfo("es-MX").CompareInfo.IndexOf(
+                        x.Descripcion, filtro, System.Globalization.CompareOptions.IgnoreCase | System.Globalization.CompareOptions.IgnoreNonSpace) >= 0)
+                    .ToArray();
+            return;
+        }
 
         _cancelacion?.Cancel();
 
-        if (texto.Length < 3)
+        if (_texto.Length < 3)
         {
             _resultados = [];
             return;
@@ -102,7 +135,7 @@
         _buscando = true;
         try
         {
-            var resultado = await Busqueda.BuscarAsync(Catalogo, texto, ct);
+            var resultado = await Busqueda.BuscarAsync(Catalogo, _texto, ct);
             if (ct.IsCancellationRequested) return;
 
             _resultados = resultado;

@@ -43,5 +43,11 @@
     }
 
     private static string Formatear(ProductoEnListaDto? producto)
-        => producto is null ? string.Empty : $"{producto.CodigoInterno} — {producto.Descripcion}";
+        => producto is null
+            ? string.Empty
+            : producto.CodigoInterno > 0
+                ? $"{producto.CodigoInterno} — {producto.Descripcion}"
+                : string.IsNullOrWhiteSpace(producto.IdInterno)
+                    ? producto.Descripcion
+                    : $"{producto.IdInterno} — {producto.Descripcion}";
 }

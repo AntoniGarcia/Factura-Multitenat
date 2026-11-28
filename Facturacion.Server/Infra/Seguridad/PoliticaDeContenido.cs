@@ -44,8 +44,10 @@ public static partial class PoliticaDeContenido
         return string.Format(Plantilla, string.Concat(hashes.Select(hash => $" '{hash}'")));
     }
 
+    // HTML5 normaliza CRLF/CR a LF antes de calcular el hash CSP del bloque <script>.
     private static string Hash(string contenido)
-        => "sha256-" + Convert.ToBase64String(SHA256.HashData(Encoding.UTF8.GetBytes(contenido)));
+        => "sha256-" + Convert.ToBase64String(SHA256.HashData(
+            Encoding.UTF8.GetBytes(contenido.Replace("\r\n", "\n").Replace('\r', '\n'))));
 
     // Solo los <script> sin src: los que traen src ya quedan cubiertos por 'self'.
     [GeneratedRegex(@"<script(?![^>]*\ssrc=)[^>]*>(?<contenido>[\s\S]*?)</script>", RegexOptions.IgnoreCase)]

@@ -155,7 +155,7 @@
 
     private async Task AbrirModalAsync()
     {
-        var clave = await ModalCatalogo.ElegirAsync(Catalogo, Label);
+        var clave = await ModalCatalogo.ElegirAsync(Catalogo, Label, MostrarOpciones);
         if (clave is not null) await AlElegirAsync(clave);
     }
 }

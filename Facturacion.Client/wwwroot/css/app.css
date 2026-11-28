@@ -63,7 +63,7 @@ h1 {
     margin-bottom: 1rem;
 }
 
-button {
+button:not(.mud-button-root) {
     min-height: var(--alto-control);
     padding: 0 0.75rem;
     border: 1px solid var(--acento);
@@ -73,7 +73,7 @@ button {
     cursor: pointer;
 }
 
-button:disabled {
+button:not(.mud-button-root):disabled {
     cursor: default;
     opacity: 0.6;
 }

@@ -91,6 +91,11 @@
     --mud-palette-info-lighten: rgba(var(--estado-borrador-rgb), 0.15);
 
     --mud-default-borderradius: var(--radio);
+    /* MudThemeProvider define estas opacidades; sin ellas los bordes de Variant.Outlined
+       desaparecen y el ripple de clic se pinta opaco cubriendo el texto del botón. */
+    --mud-palette-border-opacity: 0.45;
+    --mud-ripple-opacity: 0.1;
+    --mud-ripple-opacity-secondary: 0.16;
 }
 
 /* Filas de tabla a 40px y controles a 36px en todo, también dentro de MudBlazor
@@ -122,6 +127,22 @@
 }
 
 /* Contraste seguro en estado normal, hover y foco para todos los botones en los 3 temas. */
+.mud-button-outlined:not(:disabled) {
+    background-color: transparent;
+    border: 1px solid var(--borde-fuerte);
+    color: var(--texto);
+}
+
+.mud-button-outlined.mud-button-outlined-primary:not(:disabled) {
+    border-color: var(--acento);
+    color: var(--acento-texto);
+}
+
+.mud-button-outlined.mud-button-outlined-error:not(:disabled) {
+    border-color: var(--estado-error);
+    color: var(--estado-error);
+}
+
 .mud-button-filled.mud-button-filled-primary:not(:disabled) {
     background-color: var(--acento);
     color: var(--texto-inverso);
