@@ -12,15 +12,15 @@
 
     <BuscadorCatalogo @key="_estado?.Clave" Catalogo="c_Estado" Label="Estado" Valor="@_estado"
                       ValorCambiado="AlCambiarEstadoAsync" MostrarOpciones="true" MuestraSelectorEnLista="false"
-                      Contexto="@ResumenDomicilio" Deshabilitado="@Deshabilitado" Requerido="@Requerido" />
+                      Deshabilitado="@Deshabilitado" Requerido="@Requerido" />
     <BuscadorCatalogo @key="_municipio?.Clave" Catalogo="c_Municipio" Label="Municipio" Valor="@_municipio"
                       ValorCambiado="AlCambiarMunicipioAsync" BusquedaPersonalizada="BuscarMunicipiosAsync"
-                      MostrarOpciones="true" MuestraSelectorEnLista="false" Contexto="@ResumenDomicilio"
+                      MostrarOpciones="true" MuestraSelectorEnLista="false"
                       Deshabilitado="@(Deshabilitado || _estado is null)" Requerido="@Requerido" />
     <BuscadorCatalogo @key="_codigoPostal?.Clave" Catalogo="c_CodigoPostal" Label="Código postal" Valor="@_codigoPostal"
                       ValorCambiado="AlCambiarCodigoPostalAsync" TextoCambiado="AlEscribirCodigoPostalAsync"
                       BusquedaPersonalizada="BuscarCodigosPostalesAsync" MostrarSoloClave="true"
-                      MuestraSelectorEnLista="false" Contexto="@ResumenDomicilio" Deshabilitado="@Deshabilitado" Requerido="@Requerido" />
+                      MuestraSelectorEnLista="false" Deshabilitado="@Deshabilitado" Requerido="@Requerido" />
 </div>
 
 @code {

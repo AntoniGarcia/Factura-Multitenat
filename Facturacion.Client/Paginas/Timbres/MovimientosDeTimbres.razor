@@ -11,6 +11,8 @@
     exactamente el saldo actual: nada mueve el saldo sin dejar aquí su renglón.
 </p>
 
+<PanelErrores Problema="_error" />
+
 <div class="filtros-movimientos">
     <MudSelect T="string" Value="_tipo" ValueChanged="AlCambiarTipo" Label="Tipo"
                Dense="true" Clearable="true">
@@ -27,7 +29,7 @@
     <CampoFecha Label="Hasta" ValorUtc="_hasta" ValorUtcCambiado="AlCambiarHasta" />
 
     <MudButton Variant="Variant.Outlined" StartIcon="@Icons.Material.Filled.Download"
-               OnClick="Exportar">
+               Disabled="@_exportando" OnClick="ExportarAsync">
         Exportar
     </MudButton>
 </div>
@@ -87,6 +89,8 @@ else
     private DateTime? _desde;
     private DateTime? _hasta;
     private bool _cargando = true;
+    private bool _exportando;
+    private DetalleProblema? _error;
 
     protected override Task OnInitializedAsync() => CargarAsync();
 
@@ -125,10 +129,21 @@ else
         await CargarAsync();
     }
 
-    private void Exportar()
-        => Navegacion.NavigateTo(
-            ServicioDeTimbres.RutaDeExportacion(_tipo, _desde, _hasta?.Date.AddDays(1).AddTicks(-1)),
-            forceLoad: true);
+    private async Task ExportarAsync()
+    {
+        if (_exportando) return;
+        _exportando = true;
+        _error = null;
+        try
+        {
+            _error = await Timbres.ExportarMovimientosAsync(
+                _tipo, _desde, _hasta?.Date.AddDays(1).AddTicks(-1));
+        }
+        finally
+        {
+            _exportando = false;
+        }
+    }
 
     /// <summary>El signo importa más que el número: dice de un vistazo si entró o salió.</summary>
     private static string ConSigno(int delta) => delta switch

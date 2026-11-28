@@ -63,7 +63,9 @@ h1 {
     margin-bottom: 1rem;
 }
 
-button:not(.mud-button-root) {
+/* :where() deja especificidad cero para que cualquier botón con clase propia
+   (.tablero-acceso, .permiso-modulo-mostrar, etc.) conserve su fondo y contraste. */
+:where(button:not(.mud-button-root)) {
     min-height: var(--alto-control);
     padding: 0 0.75rem;
     border: 1px solid var(--acento);
@@ -73,7 +75,7 @@ button:not(.mud-button-root) {
     cursor: pointer;
 }
 
-button:not(.mud-button-root):disabled {
+:where(button:not(.mud-button-root)):disabled {
     cursor: default;
     opacity: 0.6;
 }

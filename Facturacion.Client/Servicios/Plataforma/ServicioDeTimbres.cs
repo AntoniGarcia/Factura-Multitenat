@@ -96,6 +96,24 @@ public sealed class ServicioDeTimbres(
             : (null, await respuesta.LeerProblemaAsync(ct));
     }
 
+    public async Task<DetalleProblema?> ExportarMovimientosAsync(
+        string? tipo, DateTime? desde, DateTime? hasta, CancellationToken ct = default)
+    {
+        using var respuesta = await Cliente.GetAsync(RutaDeExportacion(tipo, desde, hasta), ct);
+
+        if (!respuesta.IsSuccessStatusCode)
+            return await respuesta.LeerProblemaAsync(ct);
+
+        var contenido = await respuesta.Content.ReadAsByteArrayAsync(ct);
+        var nombre = respuesta.Content.Headers.ContentDisposition?.FileNameStar
+            ?? respuesta.Content.Headers.ContentDisposition?.FileName?.Trim('"')
+            ?? $"movimientos-timbres-{DateTime.Today:yyyyMMdd}.csv";
+        var tipoContenido = respuesta.Content.Headers.ContentType?.MediaType ?? "text/csv; charset=utf-8";
+
+        await descargas.GuardarAsync(new ArchivoParaDescarga(nombre, tipoContenido, contenido));
+        return null;
+    }
+
     public static string RutaDeExportacion(string? tipo, DateTime? desde, DateTime? hasta)
         => "api/timbres/movimientos/exportar" + Filtros(tipo, desde, hasta);
 

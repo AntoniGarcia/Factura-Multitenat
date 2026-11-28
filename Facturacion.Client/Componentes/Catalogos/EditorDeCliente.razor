@@ -136,11 +136,11 @@ else
         <p class="seccion-ayuda">Se precargan al facturar y pueden cambiarse en cada documento.</p>
 
         <div class="catalogo-rejilla catalogo-rejilla-tres">
-<BuscadorCatalogo Catalogo="c_UsoCFDI" Opciones="@Catalogos.Obtener("c_UsoCFDI")" @bind-Clave="_usoCfdi" Label="Uso de CFDI" PuedeLimpiar="true" Deshabilitado="@_esGenericoNacional" />
+<BuscadorCatalogo @key="_usoCfdi" Catalogo="c_UsoCFDI" Opciones="@Catalogos.Obtener("c_UsoCFDI")" @bind-Clave="_usoCfdi" Label="Uso de CFDI" PuedeLimpiar="true" Deshabilitado="@_esGenericoNacional" />
 
-<BuscadorCatalogo Catalogo="c_MetodoPago" Opciones="@Catalogos.Obtener("c_MetodoPago")" @bind-Clave="_metodoPago" Label="Método de pago" PuedeLimpiar="true" />
+<BuscadorCatalogo @key="_metodoPago" Catalogo="c_MetodoPago" Opciones="@Catalogos.Obtener("c_MetodoPago")" @bind-Clave="_metodoPago" Label="Método de pago" PuedeLimpiar="true" />
 
-<BuscadorCatalogo Catalogo="c_FormaPago" Opciones="@Catalogos.Obtener("c_FormaPago")" @bind-Clave="_formaPago" Label="Forma de pago" PuedeLimpiar="true" />
+<BuscadorCatalogo @key="_formaPago" Catalogo="c_FormaPago" Opciones="@Catalogos.Obtener("c_FormaPago")" @bind-Clave="_formaPago" Label="Forma de pago" PuedeLimpiar="true" />
         </div>
         </div>
         </details>
